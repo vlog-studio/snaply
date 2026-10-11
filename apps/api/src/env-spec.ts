@@ -505,7 +505,7 @@ export const ENV_VARS = [
     key: 'LEGAL_CONTACT_EMAIL',
     required: false,
     origin: 'shared',
-    description: '약관·개인정보처리방침 페이지에 표시되는 문의처',
+    description: '약관·개인정보처리방침 페이지에 표시되는 문의처. 쉼표로 여러 주소. 없으면 support@snaply.app',
   },
   {
     key: 'SITE_VERIFICATION_META',

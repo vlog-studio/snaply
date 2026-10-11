@@ -16,6 +16,7 @@ afterAll(async () => {
   await h.close();
 });
 afterEach(() => {
+  delete process.env.LEGAL_CONTACT_EMAIL;
   delete process.env.SITE_VERIFICATION_META;
   delete process.env.SITE_VERIFICATION_FILE_NAME;
   delete process.env.SITE_VERIFICATION_FILE_CONTENT;
@@ -31,6 +32,21 @@ describe('공개 페이지', () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toContain('text/html');
     expect(res.body).toContain(expected);
+  });
+
+  it('문의처는 쉼표로 받은 주소를 한 줄에 하나씩 메일 링크로 보인다', async () => {
+    process.env.LEGAL_CONTACT_EMAIL = ' a@dweax.com, b@dweax.com ,, c@dweax.com';
+    const res = await h.app.inject({ method: 'GET', url: '/legal/privacy' });
+
+    for (const email of ['a@dweax.com', 'b@dweax.com', 'c@dweax.com']) {
+      expect(res.body).toContain(`<p><a href="mailto:${email}">${email}</a></p>`);
+    }
+    expect(res.body).not.toContain('support@snaply.app');
+  });
+
+  it('문의처가 없으면 기본 주소를 보인다', async () => {
+    const res = await h.app.inject({ method: 'GET', url: '/legal/terms' });
+    expect(res.body).toContain('mailto:support@snaply.app');
   });
 
   it('법률 문서는 초안임을 페이지에 명시한다', async () => {

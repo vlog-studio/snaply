@@ -48,7 +48,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
  */
 
 const SERVICE = 'Snaply';
-const CONTACT = process.env.LEGAL_CONTACT_EMAIL ?? 'support@snaply.app';
+const DEFAULT_CONTACT = 'support@snaply.app';
 const UPDATED = '2026-09-29';
 
 /**
@@ -85,6 +85,20 @@ function escapeAttr(v: string): string {
   return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * 문의처. `LEGAL_CONTACT_EMAIL` 은 쉼표로 여러 주소를 받고, 한 줄에 하나씩 메일 링크로 보인다.
+ * 요청마다 읽는다 — 시크릿을 바꾼 뒤 다시 띄우면 바로 반영되고, 테스트가 값을 바꿀 수 있다.
+ */
+function contactHtml(): string {
+  const emails = (process.env.LEGAL_CONTACT_EMAIL ?? '')
+    .split(',')
+    .map((email) => email.trim())
+    .filter((email) => email !== '');
+  return (emails.length > 0 ? emails : [DEFAULT_CONTACT])
+    .map((email) => `<p><a href="mailto:${escapeAttr(email)}">${escapeAttr(email)}</a></p>`)
+    .join('\n');
+}
+
 function page(title: string, body: string): string {
   return `<!doctype html>
 <html lang="ko">
@@ -115,7 +129,7 @@ ${verificationMetaTags()}
 법률 검토를 거쳐 정식 문서로 교체될 예정입니다.</div>
 ${body}
 <h2>문의</h2>
-<p>${CONTACT}</p>
+${contactHtml()}
 </body>
 </html>`;
 }
