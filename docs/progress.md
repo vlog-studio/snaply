@@ -2761,3 +2761,14 @@ AWS 서버의 SSM 셸(`snaply` 계정)에서 오너가 명령을 돌리고 결�
   충분하다. [deployment-aws.md](./deployment-aws.md) §6 "용량". 렌디션 · 분석 워커의 부하는 따로 재지 않았다.
 - **에뮬레이터** — 추출 화면에서 에뮬레이터가 GPU 디코딩 오류(`Failed to find ColorBuffer`, h264 `no frame!`)로 꺼졌다. `-gpu swiftshader_indirect`
   로 다시 띄우자 끝까지 됐다 — 에뮬레이터 그래픽 문제로 보고 앱 결함으로 올리지 않았다.
+
+## 2026-10-11 (이어서) — 법률 문서의 문의처(backlog D-2 한 항목 닫음)
+
+약관 · 개인정보처리방침의 문의처가 기본값 `support@snaply.app`(우리 주소가 아니다)로 나가고 있었다.
+
+- **코드** — `LEGAL_CONTACT_EMAIL` 이 쉼표로 여러 주소를 받아 한 줄에 하나씩 메일 링크로 보이게 했다(`apps/api/src/routes/legal.ts`).
+  기동 때 한 번 읽던 것을 요청마다 읽는다. `legal.test.ts` 에 여러 주소 · 기본값 두 건을 더했고 `npm test -w apps/api` 41개 파일 631건 통과.
+- **값** — 처음에 팀원 세 명의 주소를 넣었다가 `snaply@dweax.com` 하나로 바꿨다. 담당자가 바뀌어도 값을 고칠 필요가 없고 개인 주소가
+  공개 페이지에 남지 않는다. **이 주소는 아직 메일함이 없다** — 공모전 동안 쓸 주소로 정했고, 회사 메일에 그룹 · 별칭으로 만들어 받는 사람을
+  잇기 전까지는 문의가 반송된다. 시크릿(`dweax/service/snaply/env`)에 넣은 뒤 `6c4497b` 배포로 반영됐고, 운영 `/legal/privacy` 에
+  `mailto:snaply@dweax.com` 하나만 나오는 것을 확인했다.
