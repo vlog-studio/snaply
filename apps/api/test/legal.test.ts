@@ -66,6 +66,15 @@ describe('공개 페이지', () => {
     expect(privacy).toContain('기기 앨범에 저장');
   });
 
+  // 데이터베이스는 AWS 서울의 서버에 있고 Supabase 는 인증만 한다(2026-10-11 리전 확인).
+  it('데이터베이스를 국내에 두고 Supabase 에는 로그인 정보만 맡긴다', async () => {
+    const privacy = (await h.app.inject({ method: 'GET', url: '/legal/privacy' })).body;
+
+    expect(privacy).toContain('<td>Supabase</td><td>계정 인증(로그인)</td>');
+    expect(privacy).toContain('서버 운영, 데이터베이스, 영상 파일 저장 및 전송');
+    expect(privacy).not.toContain('계정 인증, 데이터베이스');
+  });
+
   it('보상형 광고가 수집 항목 · 위탁 · 국외 이전에 모두 있다', async () => {
     const privacy = (await h.app.inject({ method: 'GET', url: '/legal/privacy' })).body;
 

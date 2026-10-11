@@ -26,11 +26,11 @@ import { MOVIE_RESULT_RETENTION_DAYS, SNAP_RETENTION_DAYS } from '../services/re
  *  3. ~~국외 이전 표의 나머지 수탁자~~ — **2026-08-19 확인.** Firebase·RevenueCat·Sentry 를 채웠다.
  *     근거: Sentry 는 우리 DSN 이 `ingest.us.sentry.io` 라 US 리전(EU 로 옮기려면 조직 이전이
  *     필요하다), RevenueCat 은 미국, FCM 은 리전을 고를 수 없다.
- *     **남은 두 가지**:
- *       (a) AWS 는 `AWS_REGION=ap-northeast-2`(서울)라 국외 이전이 아니라고 적었다. 2026-10-08 에
- *           AWS 서버가 떠서(backlog B-8) 이제 **실제 값을 확인할 수 있다** — 배포된 버킷의 리전과
- *           CloudFront 사용 여부(엣지는 전 세계다)를 확인해 확정할 것. 공모전 서버는 끝나면
- *           내려가므로, 서버가 옮겨 가면 이 확인을 다시 한다.
+ *     **두 가지**:
+ *       (a) ~~AWS 리전~~ — **2026-10-11 확인.** 공모전 서버의 리전은 `ap-northeast-2`(서울)이고 CloudFront 를
+ *           쓰지 않는다(버킷은 퍼블릭 차단, `CLOUDFRONT_DOMAIN` 비움 — deployment-aws.md §2). 그래서 영상 ·
+ *           결과물은 국외 이전이 아니다. 데이터베이스도 이 서버 안의 Postgres 라 서울이고, Supabase 는 인증만
+ *           한다 — 수탁자 · 국외 이전 표를 그에 맞췄다. 서버가 옮겨 가거나 CloudFront 를 붙이면 다시 본다.
  *       (b) ~~인스타그램·틱톡·Apple·Google~~ — **2026-08-19 확인.** Meta(미국·아일랜드 등)와
  *           TikTok(미국·싱가포르·말레이시아 등)은 우리가 직접 호출하므로 표에 내렸다
  *           (`services/sns/*.client.ts`). Apple·Google 은 **우리가 직접 보내지 않는다** — 백엔드는
@@ -324,8 +324,8 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
          <h2>4. 제3자 제공 및 처리 위탁</h2>
          <table>
            <tr><th>수탁자</th><th>위탁 내용</th></tr>
-           <tr><td>Supabase</td><td>계정 인증, 데이터베이스</td></tr>
-           <tr><td>Amazon Web Services</td><td>영상 파일 저장 및 전송</td></tr>
+           <tr><td>Supabase</td><td>계정 인증(로그인)</td></tr>
+           <tr><td>Amazon Web Services</td><td>서버 운영, 데이터베이스, 영상 파일 저장 및 전송</td></tr>
            <tr><td>Google (Firebase)</td><td>푸시 알림 발송</td></tr>
            <tr><td>Google (AdMob)</td><td>보상형 광고 제공 및 시청 완료 확인</td></tr>
            <tr><td>Meta (Instagram)</td><td>사용자가 요청한 릴스 게시</td></tr>
@@ -345,8 +345,8 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
            <tr><td>OpenAI</td><td>미국</td><td>영상에서 추출한 정지 이미지 최대 4장</td>
                <td>영상 내용 분석</td>
                <td>남용 모니터링 목적 최대 30일 (법령상 보관 의무가 있는 경우 제외)</td></tr>
-           <tr><td>Supabase</td><td>싱가포르</td><td>계정 식별자, 이메일, 프로필, 서비스 이용 기록</td>
-               <td>계정 인증, 데이터베이스</td><td>회원 탈퇴 시까지</td></tr>
+           <tr><td>Supabase</td><td>싱가포르</td><td>계정 식별자, 이메일 등 로그인 정보</td>
+               <td>계정 인증</td><td>회원 탈퇴 시까지</td></tr>
            <tr><td>Google (Firebase)</td><td>Google 이 시설을 운영하는 국가 (지역을 지정할 수 없습니다)</td>
                <td>푸시 알림 토큰, 알림 메시지</td><td>푸시 알림 발송</td><td>위탁 계약 종료 시까지</td></tr>
            <tr><td>Google (AdMob)</td><td>미국 등 Google 이 시설을 운영하는 국가</td>
@@ -363,8 +363,8 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
                <td>게시를 요청한 영상과 문구, 연동 계정의 접근 토큰</td>
                <td>사용자가 요청한 영상 게시</td><td>사용자가 게시물을 삭제할 때까지</td></tr>
          </table>
-         <p>업로드하신 영상 파일과 편집 결과물은 <strong>국내(서울) 리전</strong>에 저장되며 국외로
-         이전되지 않습니다. 인스타그램·틱톡으로의 이전은 <strong>사용자가 그 영상의 게시를 요청한
+         <p>업로드하신 영상 파일과 편집 결과물, 그리고 프로필 · 서비스 이용 기록을 담은 데이터베이스는
+         <strong>국내(서울) 리전</strong>에 저장되며 국외로 이전되지 않습니다. 인스타그램·틱톡으로의 이전은 <strong>사용자가 그 영상의 게시를 요청한
          경우에만</strong> 일어나며, 요청하지 않으면 어떤 영상도 외부 플랫폼으로 나가지 않습니다.</p>
          <p>인앱결제는 기기의 스토어(App Store · Google Play)와 사용자 사이에서 이루어지고,
          ${SERVICE}는 결제 자체를 중계하지 않습니다. 구매 사실의 검증과 통지는 위 RevenueCat 이
