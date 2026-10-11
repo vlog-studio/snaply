@@ -316,7 +316,6 @@ v3 는 **Movie export 에 붙인다** — `POST /edit-jobs` 는 2026-10-11 에 �
 - [ ] **편집 경로의 기본 처리** — 회전 검증 · 클립별 음량 정규화 · 컷 경계 마이크로 페이드 · `loudnorm` 과 클립 간 색 맞춤
       `grade.match` 는 [decisions/auto-edit-draft.md](./decisions/auto-edit-draft.md#63-v1-툴과-나중으로-둔-툴) §6.3 이 툴이 아닌 기본 처리 · 스타일 속성으로 두었으나 편집 워커
       (`apps/ai-worker/src/pipeline/`)에 없다([plans/trend-editing-pipeline.md](./plans/trend-editing-pipeline.md) §10 의 5번)
-- [ ] **편집 워커 동시성** — 단계별 CPU·메모리를 실측한 뒤 값을 정한다(같은 문서 §10 의 16번 · §2.3)
 
 **완료 조건**: 위 선행 결정·조달 확정 → `editSpec` v3 확정(계약 `editSpecSchema` 와 `openapi.json` 을 같은
 변경에서 갱신하고, `parseEditSpec` 이 모르는 스펙을 v1 `일상` 으로 삼키는 폴백을 거절로 바꾼다 —
@@ -498,15 +497,16 @@ geofence 쿨다운 판정용 이력이 무한히 쌓인다. 쿨다운은 30분 �
 
 - [ ] **iOS 테스터 앱** — 설치 배포(ad hoc · TestFlight)에 유료 Apple Developer 계정이 필요하고 번들 ID 가
       `com.anonymous.snaplyapp` 이다. 아이폰 테스터가 있으면 계정부터 정한다
-- [ ] **외부 연동 켜기** — RevenueCat · AdMob · Instagram · TikTok 콘솔에 콜백 · 웹훅 주소를 등록한 뒤 시크릿을 채운다
-      (deployment-aws.md §2). 지금은 비어 있어 mock · 꺼짐이다
+- [ ] **SNS 연동 켜기** — 2026-10-11 공모전에 SNS 연동이 필요하다고 정했다. 지금은 키가 비어 인스타 · 틱톡이 mock 이다.
+      ① 인스타(Meta 앱, sns-setup.md §2): Business login 의 리디렉션 URI 에 `https://snaply-api.dweaxai.com/sns/instagram/callback`,
+      개인정보 · 약관 URL 에 이 서버의 `/legal/privacy` · `/legal/terms` 를 등록한다. 앱이 개발 모드인 동안은 **앱 역할에 테스터로 넣은
+      프로페셔널 계정만** 연동된다 — 공모전 테스터의 인스타 계정을 넣거나 검수(C-5)를 받는다. 영상은 presigned S3 주소로 넘기므로
+      CloudFront 없이 된다. ② 틱톡: 리디렉션 URI `https://snaply-api.dweaxai.com/sns/tiktok/callback` 와 `/legal/` prefix 검증
+      (`SITE_VERIFICATION_*`)은 되지만 게시는 아래 "TikTok 게시"에 막힌다. ③ 키(`INSTAGRAM_*` · `TIKTOK_*`)와 `INSTAGRAM_REDIRECT_URI` ·
+      `TIKTOK_REDIRECT_URI` 를 시크릿에 넣고(deployment-aws.md §2) 배포 → 테스터 폰에서 연동 · 게시를 한 번 본다(sns-setup.md §4).
+      결제(RevenueCat) · 광고(AdMob)는 공모전에 켜지 않는다 — 크레딧은 가입 보너스로 준다(CRD-8)
 - [ ] **TikTok 게시** — 버킷이 퍼블릭 차단이고 CloudFront 가 없어 미디어 호스트의 URL prefix 검증(D-3) 파일을 둘 곳이 없다.
       공모전 시연에 필요하면 인프라에 CloudFront(또는 검증 경로 공개)를 요청하거나 C-3(직접 업로드)으로 간다
-- [ ] **백업의 사각** — DB 덤프는 `/data/backup` 에 쌓이고 인프라가 그 볼륨을 매일 스냅샷하므로(7개)
-      사내 서버 때의 "덤프가 같은 서버에만 남는다" 는 해소됐다. 남은 것은 **S3 영상이다** — 버킷의
-      버전 관리가 꺼져 있어 지운 영상은 되돌릴 수 없다(deployment-aws.md §5). 만료 정리 배치가
-      매일 돌므로 잘못 지우면 복구 수단이 없다 (B-1 에서 승계)
-- [ ] **수명** — 요청서의 종료일이 비어 있다
 
 **완료 조건**: main 머지가 이 서버에 자동 배포되고 배치가 돌며, 테스터 폰이 도메인으로 업로드 → 편집 → 재생까지 된다.
 
@@ -800,6 +800,7 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **A-5** FE-BE 연동 범위 · 일정 확정 — 2026-09-02, 같은 개발자가 FE·BE 를 함께 맡게 되어 따로 둘 이유가 없어졌다
 - **A-7** CI 의 ffmpeg 설치(골든 프레임 · ffprobe 계약 테스트) — 2026-09-15 → progress 2026-09-15 "산출물 계약 테스트와 CI 의 ffmpeg"
 - **A-7** 스티커 팩 매니페스트 스키마와 editSpec v3·에셋 매니페스트 초안의 남은 개정 — 2026-10-03, 2026-08-20 에 개정된 초안이 미병합 브랜치에서 main 에 들어왔다 → [plans/edit-spec-v3.md](./plans/edit-spec-v3.md) · [plans/asset-pack-manifest.md](./plans/asset-pack-manifest.md) §5 · §9(들일 때 `prefer` 가 남지 않고(`ref`), anchor 어휘가 매니페스트 §9 로 떨어져 `defaultAnchor` 가 없으며, editSpec §10.3 이 `resolved.xy` 를 범위 무제약으로 적는 것을 확인했다. 결정 V3-A1~V3-D8 은 초안에서 대응하는 서술을 찾는 정도로 대조했다)
+- **A-7** 편집 워커 동시성 — 2026-10-11, 렌더가 2 vCPU 를 다 써서 동시성 1 을 유지한다 → [decisions/aws-contest-server.md](./decisions/aws-contest-server.md) 2026-10-11 덧붙임
 - **A-10** 진행 중인 생성을 사용자당 하나로(MOV-11 — 유지하기로 하고 서버 · 앱에 구현, 실기기 확인은 F) — 2026-10-09 → progress 2026-10-09 "무비는 한 번에 하나씩 만든다"
 - **A-11** 경계별 전환(MOV-22) — 전환 어휘 · 무효화 액션 `cut-trim`·`transition-edit` · 무비 계약의 경계별 전환과 주인 · editSpec v3 렌더(`edit-v3` 큐) · AI 의 전환 규칙 · 편집 화면의 선택과 미리보기 · 실기기 확인 — 2026-10-01 → progress 2026-10-01 "Android 실기기에서 영상 두 개를 겹친 `crossfade`" ~ "경계별 전환 실기기 확인"
 - **A-11** 컷 역할 사전(`cut-role-vocabulary.json`, TS·워커 로더와 정합성 테스트) — 2026-10-01 → progress 2026-10-01 "컷 역할 사전"
@@ -816,6 +817,7 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **B-8** 테스터 앱 빌드 — 2026-10-09, Galaxy S22 Ultra 에서 도메인으로 업로드 → 편집 → 재생 → progress 2026-10-09 "AWS 서버로 휴대폰에서 업로드 → 편집 → 재생"
 - **B-8** 테스터 크레딧 — 2026-10-09, 공모전 서버 가입 보너스 500(CRD-8) · 중복 지급 경합 수정 · 시크릿 반영 → progress 2026-10-09 "공모전 서버의 가입 보너스(CRD-8) · 중복 지급 경합 수정" · "가입 보너스를 서버에서 켰다"
 - **B-8** DB 복구 리허설과 절차 · 용량 실측 — 2026-10-11, 별도 DB 에 최근 덤프를 부어 운영과 대조하고 실제 되돌리기 순서를 [deployment-aws.md](./deployment-aws.md) §5 에, 유휴 · 렌더 중 CPU · 메모리와 하루 렌더 한도(약 350편)를 §6 에 적었다 → progress 2026-10-11 "DB 복구 리허설 · 용량 실측"
+- **B-8** 수명 · 백업의 사각 — 2026-10-11, 운영은 2026년 11월까지, S3 영상 백업은 두지 않기로 했다 → [decisions/aws-contest-server.md](./decisions/aws-contest-server.md) 2026-10-11 덧붙임 · progress 2026-10-11 "공모전 서버의 기간 · 백업 · 편집 동시성"
 - **C-7** 회사 OpenAI API 키 발급 — 2026-09-29 → progress 2026-09-29 "실제 모델로 스냅 분석 · 템플릿 추천 첫 실행"(남은 확인 중 사용 한도 · rate limit 은 A-3, 운영 키 분리는 B-8 로 옮김)
 - **D-2** 법률 문서 문의처 — 2026-10-11, `LEGAL_CONTACT_EMAIL` 을 `snaply@dweax.com` 으로(쉼표로 여러 주소를 받게 했다) → progress 2026-10-11 "법률 문서의 문의처"
 - **D-2** 법률 문서의 광고 · 보관 기간 — 2026-10-11, 처리방침에 보상형 광고(수집 항목 · 위탁 · 국외 이전)와 스냅 15일 · 결과물 30일 · 최근 삭제 · 앨범 사본을, 약관에 광고 보상과 영상 보관을 넣었다(보관 일수는 정책 상수에서 읽는다) → progress 2026-10-11 "법률 문서에 광고와 보관 기간"
