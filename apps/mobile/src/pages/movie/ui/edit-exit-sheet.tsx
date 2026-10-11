@@ -26,7 +26,9 @@ export type EditExitSheetProps = {
  * option leaves a stored list behind; they differ in *which* list and in
  * whether a run starts:
  *
- * - 다시 만들기 — the edited composition becomes the movie, now.
+ * - 다시 만들기 — the edited composition becomes the movie, now. The sheet's
+ *   own line says what that costs (MOV-23), so this row is the confirmation —
+ *   a second ask on top of a sheet would be the stacking the ⋯ sheet avoids.
  * - 나중에 만들기 — the edits stay stored; watch mode keeps playing the
  *   render and carries a standing notice about the drift.
  * - 편집 취소 — the render's own composition is written back. Grouped apart
@@ -52,6 +54,7 @@ export function EditExitSheet({
         <ThemedText type="heading">편집을 마칠까요?</ThemedText>
         <ThemedText themeColor="textSecondary">
           완성한 뒤에 컷 구성이 달라졌어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요.
+          다시 만들면 지금 완성된 무비는 사라지고, 크레딧을 다시 써요.
         </ThemedText>
 
         <View style={[styles.group, { borderColor: theme.border }]}>

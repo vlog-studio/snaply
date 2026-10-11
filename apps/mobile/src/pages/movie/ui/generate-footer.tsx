@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { Movie } from '@/entities/movie';
@@ -9,6 +9,7 @@ import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { CutsRefusalMessages, RefusalNotice, type RefusalAction } from './refusal-notice';
+import { RemakeConfirm } from './remake-confirm';
 
 export type GenerateFooterProps = {
   movie: Movie;
@@ -79,6 +80,9 @@ export function GenerateFooter({
   const theme = useTheme();
   const hasFailed = movie.status === 'failed';
   const isReady = movie.status === 'ready';
+  // A finished movie's run replaces its result and is paid again, so that one
+  // press asks first (MOV-23). Only meaningful while the movie is still ready.
+  const [askingRemake, setAskingRemake] = useState(false);
 
   return (
     <View style={styles.footer}>
@@ -124,26 +128,37 @@ export function GenerateFooter({
       {refusalMessage ? <RefusalNotice message={refusalMessage} action={refusalAction} /> : null}
 
       <View style={styles.actionSlot}>
-        {inspector ?? (
-          <View style={styles.actions}>
-            {isReady ? (
-              <SnaplyButton
-                title={sharing.busy ? '공유 준비 중…' : '공유'}
-                variant="secondary"
-                disabled={sharing.blocked !== undefined || sharing.busy}
-                onPress={sharing.share}
-                style={styles.share}
-              />
-            ) : null}
-            <SnaplyButton
-              title={hasFailed ? '다시 시도' : isReady ? '이 구성으로 다시 만들기' : '무비 만들기'}
-              variant="ai"
-              disabled={cutCount === 0}
-              onPress={onStart}
-              style={styles.generate}
+        {inspector ??
+          (isReady && askingRemake ? (
+            <RemakeConfirm
+              onCancel={() => setAskingRemake(false)}
+              onConfirm={() => {
+                setAskingRemake(false);
+                onStart();
+              }}
             />
-          </View>
-        )}
+          ) : (
+            <View style={styles.actions}>
+              {isReady ? (
+                <SnaplyButton
+                  title={sharing.busy ? '공유 준비 중…' : '공유'}
+                  variant="secondary"
+                  disabled={sharing.blocked !== undefined || sharing.busy}
+                  onPress={sharing.share}
+                  style={styles.share}
+                />
+              ) : null}
+              <SnaplyButton
+                title={
+                  hasFailed ? '다시 시도' : isReady ? '이 구성으로 다시 만들기' : '무비 만들기'
+                }
+                variant="ai"
+                disabled={cutCount === 0}
+                onPress={isReady ? () => setAskingRemake(true) : onStart}
+                style={styles.generate}
+              />
+            </View>
+          ))}
       </View>
     </View>
   );
