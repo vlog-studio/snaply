@@ -2744,3 +2744,20 @@ ONBOARDING §3 의 "`docker login ghcr.io` 가 되어 있으면 받아 오고, �
   바꿨다. 상태 어휘는 사용자가 얻는 효과를 기준으로 하는데, 서버 플래그(`MOVIE_RECOMMENDATION_ENABLED`)가 꺼져 아무에게도 추천이 가지 않는다.
   앱 쪽은 다 만들어져 있어 플래그를 켜는 날(A-6) `Functional` 로 올린다.
 - **앱 맵 순서**([features/README.md](../apps/mobile/docs/features/README.md))는 2026-10-09 에 맞춘 `root-layout.tsx` 선언 순서(가드 우선순위)를 유지한다.
+
+## 2026-10-11 (이어서) — DB 복구 리허설 · 용량 실측(backlog B-8 두 항목 닫음)
+
+AWS 서버의 SSM 셸(`snaply` 계정)에서 오너가 명령을 돌리고 결과를 받아 정리했다. 운영 DB(`snaply`)는 읽기만 했다.
+
+- **덤프** — `/data/backup` 에 매일 18:30 UTC(03:30 KST) 덤프가 쌓인다(10-08 11K · 10-09 20K · 10-10 32K). `/data` 50G 중 4.7G.
+- **복구 리허설** — `snaply_restore_check` 를 만들어 10-10 덤프를 `ON_ERROR_STOP` 으로 부었다 — 오류 없이 0.7초. 운영과 대조하면
+  `users` 2 · `movies` 5 · `edit_jobs` 14 · `credit_ledger` 20 · 마이그레이션 30개(마지막 `20261007010000_add_video_kept_for_restore`, 저장소와 같다)가
+  같고 `videos` 만 운영 62 · 복구본 56 — 덤프 뒤에 올라온 스냅이다. 리허설 DB 는 지웠고 남은 DB 는 `snaply` 하나다.
+- **절차** — 실제로 되돌리는 순서(앱 컨테이너 멈춤 → DB 지우고 만들기 → 붓기 → 마이그레이션 대조 → 올리기)와 리허설 명령을
+  [deployment-aws.md](./deployment-aws.md) §5 에 적었다. 실제 되돌리기는 운영에서 돌리지 않았다.
+- **용량** — 유휴: 컨테이너 모두 CPU 1% 아래, 메모리 약 1GiB/7.6GiB, load 0.01 ~ 0.04. 렌더 중: 에뮬레이터(테스터 앱)로 20초 클립에서 자른
+  5초 스냅 여러 개로 24초 무비를 만들자 `ai-worker` 가 CPU 196%(2 vCPU 거의 전부) · 메모리 1.23GiB, 렌더 66 ~ 71초. 렌더 한 편 약 140 vCPU · 초라
+  추가 요금선(24시간 평균 30% = 하루 약 51,840 vCPU · 초)까지 하루 약 350편이다. 이미지는 17개 4.2GB(3.8GB 가 지난 배포)이고 72시간 정리로
+  충분하다. [deployment-aws.md](./deployment-aws.md) §6 "용량". 렌디션 · 분석 워커의 부하는 따로 재지 않았다.
+- **에뮬레이터** — 추출 화면에서 에뮬레이터가 GPU 디코딩 오류(`Failed to find ColorBuffer`, h264 `no frame!`)로 꺼졌다. `-gpu swiftshader_indirect`
+  로 다시 띄우자 끝까지 됐다 — 에뮬레이터 그래픽 문제로 보고 앱 결함으로 올리지 않았다.

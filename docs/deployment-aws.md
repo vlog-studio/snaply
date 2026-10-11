@@ -156,9 +156,35 @@ FCM 은 dry-run 으로 떨어지는데, 보내지 않은 예고를 보냈다고 
 
 - 매일 03:30(KST) `pg_dump` → `/data/backup`, 14일 보관. `/data` 볼륨은 인프라가 매일 스냅샷한다(7개).
 - **S3 영상은 백업이 없다.** 버킷의 버전 관리가 꺼져 있어 지운 영상은 되돌릴 수 없다.
-- 복구는 §6 의 셸에서 빈 DB 에(덤프는 `pg_dump` 기본값이라 `DROP` 이 없어, 데이터가 있는 DB 에 부으면 섞인다)
-  `gunzip -c /data/backup/snaply-<YYYYMMDD-HHMMSS>.sql.gz | docker compose --env-file .env exec -T postgres psql -U postgres -d snaply`.
-  볼륨째 되돌리는 것은 인프라에 요청한다.
+- 볼륨째 되돌리는 것은 인프라에 요청한다. 덤프로 DB 만 되돌리는 법은 아래.
+
+### 덤프로 DB 되돌리기
+
+덤프는 `pg_dump` 기본값이라 `DROP` 이 없다 — **데이터가 있는 DB 에 부으면 섞인다.** 그래서 DB 를 지우고 새로 만든 뒤 붓는다.
+덤프 뒤에 생긴 데이터(스냅 · 무비 · 크레딧)는 사라지고, S3 에는 그 사이 올라온 영상이 행 없이 남는다. §6 의 셸에서 한다.
+배치 시각(03:30 ~ 04:40, 10:00 — §4)은 피한다.
+
+```bash
+docker compose --env-file .env stop api ai-worker analysis-worker rendition-worker notification-worker
+docker compose --env-file .env exec -T postgres dropdb -U postgres snaply
+docker compose --env-file .env exec -T postgres createdb -U postgres snaply
+gunzip -c /data/backup/snaply-<YYYYMMDD-HHMMSS>.sql.gz | docker compose --env-file .env exec -T postgres psql -U postgres -d snaply -v ON_ERROR_STOP=1 -q
+docker compose --env-file .env exec -T postgres psql -U postgres -d snaply -tAc "SELECT count(*), max(migration_name) FROM _prisma_migrations"
+docker compose --env-file .env up -d
+```
+
+- 다섯째 줄의 마이그레이션 수 · 마지막 이름이 저장소(`apps/api/prisma/migrations`)보다 뒤처졌으면 마지막 배포를 Re-run 한다 — 배포가
+  마이그레이션을 먼저 적용한다(§3). 덤프보다 새 코드가 이미 돌고 있었다는 뜻이다.
+- `up -d` 뒤 `curl -s localhost:3000/health` 가 `db=connected` 인지 본다.
+
+**리허설은 운영 DB 를 건드리지 않고 한다** — 다른 이름의 DB 에 부어 보고 지운다. 2026-10-11 에 한 번 했다(최근 덤프 32K, 붓기 0.7초,
+행 수 · 마이그레이션 일치 — [progress.md](./progress.md) 2026-10-11 "DB 복구 리허설 · 용량 실측"). 위의 실제 되돌리기 순서는 아직 운영에서 돌린 적이 없다.
+
+```bash
+docker compose --env-file .env exec -T postgres createdb -U postgres snaply_restore_check
+gunzip -c /data/backup/snaply-<YYYYMMDD-HHMMSS>.sql.gz | docker compose --env-file .env exec -T postgres psql -U postgres -d snaply_restore_check -v ON_ERROR_STOP=1 -q
+docker compose --env-file .env exec -T postgres dropdb -U postgres snaply_restore_check
+```
 
 ## 6. 자주 볼 것
 
@@ -180,6 +206,20 @@ curl -s localhost:3000/health
 | `analysis-worker` 가 재시작을 반복 | `OPENAI_API_KEY` 가 없다(의도된 동작) |
 | 도메인이 502 · 디스크 · presigned URL 의 `ExpiredToken` | 인프라 문서 8장 |
 | WebSocket 이 끊김 | 서버가 30초마다 ping 을 보내 ALB 유휴 제한(180초)을 넘기지 않는다(2026-10-09). 그래도 끊기면 앱이 다시 붙는다 — 인프라 문서 8장 |
+
+### 용량 (2026-10-11 실측)
+
+| 상태 | CPU | 메모리 |
+|---|---|---|
+| 유휴 | 컨테이너 모두 1% 아래, load average 0.01 ~ 0.04 | 7.6GiB 중 약 1GiB 사용 · 6.3GiB 여유, 컨테이너 합 약 350MiB |
+| 렌더 중(24초 무비, 5초 스냅 여러 개) | `ai-worker` 196% — 2 vCPU 를 거의 다 쓴다 | `ai-worker` 1.23GiB |
+
+- 24초 무비 하나의 렌더는 66 ~ 71초 걸렸다. 렌더 동안 서버가 차지만, 편집 워커는 작업을 하나씩 받아 여러 사용자의 생성은
+  대기열에서 차례를 기다린다(쓰러지지 않는다).
+- **추가 요금선(24시간 평균 CPU 30%)** 은 하루 약 51,840 vCPU · 초다. 렌더 한 편이 약 140 vCPU · 초라 **하루 약 350편** 까지는 그 아래다
+  (렌디션 · 분석은 따로 재지 않았다). 실제 사용량은 EC2 콘솔 → 인스턴스 → 모니터링의 CPUUtilization 24시간 평균으로 본다.
+- 디스크는 `/data` 50G 중 4.7G. 이미지가 17개 4.2GB 이고 그중 3.8GB 가 지난 배포의 것인데, 배포가 72시간 지난 이미지를 지워(§3) 46G 여유에
+  비하면 지금 주기로 충분하다.
 
 ## 7. 인스턴스를 교체하면
 
