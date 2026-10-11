@@ -252,7 +252,7 @@ export async function createEditJob(params: {
   subtitles: boolean;
   /**
    * 경계마다의 전환(`clips.length - 1` 개). 주면 editSpec v3 로 `edit-v3` 큐에 간다(무비 생성).
-   * 없으면 지금까지처럼 v2 — 프리셋 하나가 전환을 정한다(`POST /edit-jobs`).
+   * 없으면 v2 — 프리셋 하나가 전환을 정한다. 이 길을 쓰던 `POST /edit-jobs` 는 2026-10-11 에 없앴고, 무비 생성은 늘 전환을 준다.
    */
   transitions?: Transition[];
 }): Promise<{ jobId: string; videoId: string }> {
@@ -373,7 +373,7 @@ export async function createEditJob(params: {
 /**
  * 사용자당 진행 중 생성은 하나다(specs/movie.md MOV-11). `assertCreditsForExport` 가 유저 행을 잠근 뒤에 보므로
  * 동시에 온 두 요청 중 하나만 통과한다. 막힌 쪽에는 지금 생성 중인 무비를 알려 앱이 그 무비로 안내하게 한다 —
- * 무비 없이 `POST /edit-jobs` 로 만든 작업이면 `movieId: null`. 갇힌 작업은 사용자가 그 무비에서 취소하면 풀린다.
+ * 무비 없는 작업(2026-10-11 폐기된 `POST /edit-jobs` 로 만든 옛 행)이면 `movieId: null`. 갇힌 작업은 사용자가 그 무비에서 취소하면 풀린다.
  */
 async function assertNoGenerationInProgress(
   tx: Prisma.TransactionClient,

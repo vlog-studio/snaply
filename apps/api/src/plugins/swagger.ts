@@ -190,7 +190,7 @@ export async function registerDocs(app: FastifyInstance, config: DocsConfig): Pr
         {
           name: 'edit-jobs',
           description:
-            'AI 편집. `ready` 영상들로 `POST /edit-jobs` → 202 `jobId` → `GET /edit-jobs/{id}` 폴링(또는 WS)으로 진행률 → 완료 시 결과물 영상의 `editedUrl`. **AI 워커(`npm run worker`)가 떠 있어야 처리된다.**',
+            'AI 편집 작업. 무비 생성(`POST /movies/{id}/export`)이 202 `jobId` 를 주면 `GET /edit-jobs/{id}` 폴링(또는 WS)으로 진행률 → 완료 시 결과물 영상의 `editedUrl`. 취소는 `DELETE /edit-jobs/{id}`. **AI 워커(`npm run worker`)가 떠 있어야 처리된다.**',
         },
         {
           name: 'movies',

@@ -3,7 +3,6 @@
  * 인증이 필요한 라우트라 전역 제한은 넉넉히 두고, 라우트 override 만 검증한다.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { randomUUID } from 'node:crypto';
 import { createHarness, type Harness } from './helpers/harness.js';
 
 let h: Harness;
@@ -19,37 +18,6 @@ beforeEach(async () => {
 });
 
 describe('라우트별 rate limit', () => {
-  it('/edit-jobs 는 토큰당 분당 5회, 6번째는 429', async () => {
-    const user = await h.createUser();
-    const video = await h.prisma.video.create({
-      data: {
-        userId: user.id,
-        originalUrls: ['https://cdn.example.com/c.mp4'],
-        status: 'ready',
-        s3Key: `uploads/${user.id}/${randomUUID()}.mp4`,
-      },
-      select: { id: true },
-    });
-
-    const codes: number[] = [];
-    for (let i = 0; i < 6; i += 1) {
-      const res = await h.app.inject({
-        method: 'POST',
-        url: '/edit-jobs',
-        headers: user.auth,
-        payload: { videoIds: [video.id], stylePreset: '일상' },
-      });
-      codes.push(res.statusCode);
-      if (i === 5) {
-        expect(res.json().error.code).toBe('RATE_LIMITED');
-      }
-    }
-
-    expect(codes[5]).toBe(429);
-    // 앞의 5번은 제한에 걸리지 않았다 (202 이거나 Free 제한 403)
-    expect(codes.slice(0, 5).every((c) => c !== 429)).toBe(true);
-  });
-
   it('/notifications/geofence-enter 는 토큰당 분당 10회, 11번째는 429', async () => {
     const user = await h.createUser();
     const location = await h.prisma.location.create({

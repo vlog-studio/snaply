@@ -1,12 +1,6 @@
 import { z } from 'zod';
 
-import {
-  AUTHENTICATED_ERROR_RESPONSES,
-  apiErrorSchema,
-  apiSuccess,
-  generationConflictErrorSchema,
-  paymentRequiredErrorSchema,
-} from './common.js';
+import { AUTHENTICATED_ERROR_RESPONSES, apiErrorSchema, apiSuccess } from './common.js';
 import { defineRoute } from './define-route.js';
 import {
   DEFAULT_FIT_MODE,
@@ -23,7 +17,6 @@ import {
 } from './vocab.js';
 
 export const MAX_EDIT_CLIPS = 10;
-const MAX_CLIP_MS = 86_400_000;
 
 export const clipSpecSchema = z.object({
   videoId: z.uuid(),
@@ -123,74 +116,10 @@ export const editJobSchema = z
   .meta({ id: 'EditJob' });
 export type EditJob = z.infer<typeof editJobSchema>;
 
-export const jobCreatedSchema = z.object({ jobId: z.uuid() });
-export type JobCreated = z.infer<typeof jobCreatedSchema>;
-
 export const editJobCanceledSchema = z.object({ canceled: z.boolean() });
 
-export const createEditJobBodySchema = z
-  .object({
-    clips: z
-      .array(
-        z.object({
-          videoId: z.uuid(),
-          startMs: z.int().min(0).max(MAX_CLIP_MS).default(0),
-          endMs: z.int().min(1).max(MAX_CLIP_MS).optional(),
-        }),
-      )
-      .min(1)
-      .max(MAX_EDIT_CLIPS)
-      .optional()
-      .describe(
-        '이어붙일 클립 구간(권장). **배열 순서대로** 연결되며 같은 영상을 다른 구간으로 반복 사용할 수 있다. 1~10개.',
-      ),
-    videoIds: z
-      .array(z.uuid())
-      .min(1)
-      .max(MAX_EDIT_CLIPS)
-      .optional()
-      .describe(
-        '이어붙일 원본 클립 id 목록(구버전 호환 — `clips` 를 사용하세요). **배열 순서대로** 연결된다. 1~10개. 모두 `status: "ready"`이고 내 소유여야 한다.',
-      ),
-    stylePreset: stylePresetSchema.describe(
-      '편집 스타일. 워커가 이 값으로 BGM 선곡·컷 호흡·색보정을 결정한다. 세 값 중 하나만 허용(다른 값은 400).',
-    ),
-    subtitles: z
-      .boolean()
-      .default(false)
-      .describe(
-        '소프트 자막(mov_text 트랙) 생성 여부. 기본 false — 쇼츠용이라 자막이 필요 없고, 음성 인식(whisper)을 건너뛰어 편집이 더 빠르다. true면 한국어 음성을 인식해 별도 자막 트랙으로 삽입한다(영상에 굽지 않으므로 플레이어에서 자막을 켜야 보이고, SNS 업로드 시에는 유지되지 않음).',
-      ),
-    outputProfile: outputProfileSchema
-      .default(DEFAULT_OUTPUT_PROFILE)
-      .describe('출력 규격. 기본 short_vertical(1080x1920, 쇼츠용).'),
-    fitMode: fitModeSchema
-      .default(DEFAULT_FIT_MODE)
-      .describe('원본 비율이 출력 규격과 다를 때 채우는 방식. 기본 blur_background(흐린 배경 위에 원본).'),
-  })
-  .refine((body) => (body.clips === undefined) !== (body.videoIds === undefined), {
-    message: 'clips 또는 videoIds 중 하나만 보내야 합니다.',
-  });
-export type CreateEditJobBody = z.input<typeof createEditJobBodySchema>;
-
 const jobIdParamsSchema = z.object({
-  id: z.string().describe('`POST /edit-jobs`가 반환한 jobId(uuid)'),
-});
-
-export const createEditJob = defineRoute({
-  method: 'POST',
-  path: '/edit-jobs',
-  schema: {
-    body: createEditJobBodySchema,
-    response: {
-      202: apiSuccess(jobCreatedSchema),
-      400: apiErrorSchema,
-      402: paymentRequiredErrorSchema,
-      // 사용자당 진행 중 생성은 하나다 — `GENERATION_IN_PROGRESS` + 생성 중인 무비 id(MOV-11).
-      409: generationConflictErrorSchema,
-      ...AUTHENTICATED_ERROR_RESPONSES,
-    },
-  },
+  id: z.string().describe('무비 생성(`POST /movies/{id}/export`)이 반환한 jobId(uuid)'),
 });
 
 export const getEditJob = defineRoute({

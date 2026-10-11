@@ -90,7 +90,7 @@ export async function videoRoutes(app: FastifyInstance): Promise<void> {
           '- 용량이 500MB 이하인지 확인 (초과하면 S3 객체·DB 레코드를 삭제하고 400)',
           '- `status`를 `pending` → **`ready`** 로 전이하고 `originalUrls`를 채운다',
           '',
-          '`ready` 상태가 되어야 `POST /edit-jobs`의 편집 대상으로 쓸 수 있다.',
+          '`ready` 상태가 되어야 무비의 컷으로 넣어 생성할 수 있다.',
           '',
           '성공 시 **201**과 Video 객체 반환:',
           '```json',

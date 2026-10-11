@@ -1,16 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
-import {
-  cancelEditJob,
-  createEditJob,
-  getEditJob,
-  ok,
-  type ClipSpec,
-} from '@vlog-studio/shared-types';
+import { cancelEditJob, getEditJob, ok } from '@vlog-studio/shared-types';
 import { createRedisConnection, editProgressChannel } from '../lib/redis.js';
 import {
   cancelEditJob as cancelEditJobForOwner,
-  createEditJob as enqueueEditJob,
   getEditJob as getEditJobForUser,
   getEditJobForOwner,
   getEditJobOutputUrl,
@@ -23,71 +16,6 @@ const WS_KEEPALIVE_INTERVAL_MS = 30_000;
 export async function editJobRoutes(app: FastifyInstance): Promise<void> {
   const routes = app.withTypeProvider<ZodTypeProvider>();
 
-  // POST /edit-jobs — 편집 요청 (BullMQ 큐 적재)
-  routes.post(
-    createEditJob.fastifyPath,
-    {
-      preHandler: app.authenticate,
-      config: {
-        // 유저(토큰)당 분당 5회
-        rateLimit: {
-          max: 5,
-          timeWindow: '1 minute',
-          keyGenerator: (req) => req.headers.authorization ?? req.ip,
-        },
-      },
-      schema: {
-        ...createEditJob.schema,
-        tags: ['edit-jobs'],
-        summary: '편집 요청 (큐 적재)',
-        description: [
-          '여러 클립을 하나의 숏폼으로 합치는 AI 편집을 요청한다. **비동기** — 즉시 `202`와 `jobId`만 돌려주고, 실제 편집은 Python 워커가 큐에서 꺼내 처리한다.',
-          '',
-          '`npm run worker`가 떠 있지 않으면 job이 `queued`에 머문 채 진행되지 않는다.',
-          '',
-          '요청은 `clips`(시간 구간 지정, 권장) 또는 `videoIds`(전체 영상, 구버전 호환) 중 하나로 보낸다. `clips`는 최종 합성 순서이며, 같은 영상을 다른 구간으로 반복 사용할 수 있다.',
-          '',
-          '서버가 순서대로 하는 일:',
-          '1. 참조된 영상 전부가 **내 소유 + `source` + `ready` 상태**인지 검증 (하나라도 아니면 403)',
-          '2. 결과물이 담길 새 영상 레코드를 `kind: result`, `processing`으로 생성',
-          '3. `edit_jobs` 레코드를 `queued`로 생성하고 (editSpec/renderSpec 스냅샷 포함) BullMQ 큐에 적재',
-          '4. 크레딧을 예약(차감)한다 — 2·3·4는 한 트랜잭션이라 잔액이 모자라면 작업 자체가 만들어지지 않는다',
-          '',
-          '**크레딧**: export 1회에 100크레딧을 예약한다. 잔액이 모자라면 `402 INSUFFICIENT_CREDITS` 이며 응답의 `required`·`balance`로 부족분을 표시할 수 있다. 작업이 실패하거나 취소되면 예약분은 자동 환급된다.',
-          '',
-          '**진행 상황 확인** — 둘 중 하나:',
-          '- `GET /edit-jobs/{id}` 폴링 (Swagger에서 가능)',
-          '- WebSocket `ws://localhost:3000/edit-jobs/{id}/progress?token={jwt}` (실시간, Swagger 미지원)',
-          '',
-          '워커가 끝내면 3번에서 만든 결과물 영상의 `status`가 `done`, `editedUrl`이 채워진다. `GET /videos/{id}`로 확인.',
-          '',
-          '응답: `{ "success": true, "data": { "jobId": "uuid" } }`',
-          '',
-          '⚠️ **Rate limit: 토큰당 분당 5회.** 6번째 호출은 `429 RATE_LIMITED`.',
-        ].join('\n'),
-      },
-    },
-    async (request, reply) => {
-      const clips: ClipSpec[] = request.body.clips
-        ? request.body.clips.map((clip) => ({
-            videoId: clip.videoId,
-            startMs: clip.startMs,
-            ...(clip.endMs !== undefined ? { endMs: clip.endMs } : {}),
-          }))
-        : (request.body.videoIds ?? []).map((videoId) => ({ videoId, startMs: 0 }));
-      const data = await enqueueEditJob({
-        userId: request.user.id,
-        clips,
-        stylePreset: request.body.stylePreset,
-        outputProfile: request.body.outputProfile,
-        fitMode: request.body.fitMode,
-        subtitles: request.body.subtitles,
-      });
-      reply.status(202);
-      return ok(data);
-    },
-  );
-
   // GET /edit-jobs/:id — 편집 작업 상태 조회
   routes.get(
     getEditJob.fastifyPath,
@@ -98,7 +26,7 @@ export async function editJobRoutes(app: FastifyInstance): Promise<void> {
         tags: ['edit-jobs'],
         summary: '편집 작업 상태 조회',
         description: [
-          '`POST /edit-jobs`로 만든 작업의 진행 상태. WebSocket 대신 **폴링으로 확인할 때 쓰는 엔드포인트**라 Swagger에서 편집 전 과정을 추적할 수 있다.',
+          '무비 생성(`POST /movies/{id}/export`)이 만든 작업의 진행 상태. WebSocket 대신 **폴링으로 확인할 때 쓰는 엔드포인트**라 Swagger에서 편집 전 과정을 추적할 수 있다.',
           '',
           '- `status`: `queued`(워커 대기) → `processing` → `done` | `failed` | `canceled`(사용자 취소). 일시적 실패 뒤 워커가 다시 시도하면 `processing` → `queued` 로 돌아간다(최대 3회 시도, `failed` 는 마지막 시도에서만)',
           '- `progress`: 0~100. 워커가 단계별로 갱신한다',

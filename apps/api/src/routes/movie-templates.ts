@@ -22,7 +22,7 @@ export async function movieTemplateRoutes(app: FastifyInstance): Promise<void> {
           '**앱은 이 응답을 캐시하고, 실패하면 내장 카탈로그로 폴백한다.** 그래서 이 API 가 죽어도',
           '템플릿 화면은 동작한다. 캐시 갱신 판단은 `updatedAt` 으로 한다.',
           '',
-          '`style` 은 `POST /edit-jobs` 가 받는 프리셋 이름 그대로다. 서버가 새 프리셋을 추가했는데',
+          '`style` 은 무비의 `stylePreset` 이 받는 프리셋 이름 그대로다. 서버가 새 프리셋을 추가했는데',
           '앱이 아직 모를 수 있으므로 **모르는 프리셋의 템플릿은 앱이 건너뛴다** — 서버는 거르지 않는다.',
           '',
           '슬롯의 `label`·`hint` 는 **사람에게 보여주는 촬영 지시**이지, 그 자리에 들어간 스냅의',

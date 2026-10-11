@@ -274,17 +274,18 @@ describe('export 크레딧 예약·환급', () => {
     return video.id;
   }
 
-  function createJob(user: TestUser, videoId: string) {
+  /** 앱과 같은 길 — 무비를 만들고 생성(export)한다. 응답은 export 의 것이다. */
+  async function createJob(user: TestUser, videoId: string) {
+    const movie = await h.app.inject({
+      method: 'POST',
+      url: '/movies',
+      headers: user.auth,
+      payload: { clips: [{ videoId, startMs: 0, endMs: 3000 }] },
+    });
     return h.app.inject({
       method: 'POST',
-      url: '/edit-jobs',
+      url: `/movies/${movie.json().data.id as string}/export`,
       headers: user.auth,
-      payload: {
-        clips: [{ videoId, startMs: 0, endMs: 3000 }],
-        stylePreset: '일상',
-        outputProfile: 'short_vertical',
-        fitMode: 'contain',
-      },
     });
   }
 

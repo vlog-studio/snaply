@@ -441,24 +441,30 @@ describe('사용자당 진행 중 생성은 하나다(MOV-11)', () => {
     expect((await exportMovie(user, await readyMovie(user))).statusCode).toBe(202);
   });
 
-  it('무비 없이 POST /edit-jobs 로 만든 작업이 진행 중이면 movieId 는 null 이다', async () => {
+  // 생성은 무비 경로 하나다(decisions/movie-export-policy.md ⑤) — 옛 직접 생성 API 는 없다.
+  it('POST /edit-jobs 는 없다', async () => {
+    const user = await h.createUser();
+    const res = await h.app.inject({
+      method: 'POST',
+      url: '/edit-jobs',
+      headers: user.auth,
+      payload: { videoIds: [crypto.randomUUID()], stylePreset: '일상' },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  // 무비 없는 작업은 이제 만들 수 없지만(`POST /edit-jobs` 폐기, 2026-10-11) 그 전에 만든 행은 남아 있을 수 있다.
+  it('무비 없는 옛 작업이 진행 중이면 movieId 는 null 이다', async () => {
     const user = await h.createUser();
     await h.prisma.creditLedger.create({
       data: { userId: user.id, delta: MOVIE_EXPORT_COST * 2, reason: 'promo' },
     });
-    const snapId = await createSnap(user);
-    const job = await h.app.inject({
-      method: 'POST',
-      url: '/edit-jobs',
-      headers: user.auth,
-      payload: {
-        clips: [{ videoId: snapId, startMs: 0, endMs: 3000 }],
-        stylePreset: '일상',
-        outputProfile: 'short_vertical',
-        fitMode: 'contain',
-      },
+    const result = await h.prisma.video.create({
+      data: { userId: user.id, kind: 'result', status: 'processing' },
     });
-    expect(job.statusCode).toBe(202);
+    await h.prisma.editJob.create({
+      data: { videoId: result.id, userId: user.id, status: 'processing' },
+    });
 
     const res = await exportMovie(user, await readyMovie(user));
 

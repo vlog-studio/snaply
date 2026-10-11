@@ -8,8 +8,8 @@
  *   3. POST /movies (컷 목록) → POST /movies/:id/export → GET /edit-jobs/:id 폴링
  *   4. GET /movies/:id 로 결과물을 찾아 editedUrl 출력
  *
- * 앱이 쓰는 경로와 같다. 옛 `POST /edit-jobs` 직접 호출은 한 릴리스 더 살아 있지만
- * (docs/backlog.md A-1), 검증은 앱이 실제로 가는 길을 따라가야 의미가 있다.
+ * 앱이 쓰는 경로와 같다. 옛 `POST /edit-jobs` 직접 호출은 2026-10-11 에 없앴다(docs/backlog.md A-1) —
+ * 검증은 앱이 실제로 가는 길을 따라가야 의미가 있다.
  *
  * 사용법:
  *   node scripts/media-e2e.mjs clip1.mov clip2.mp4

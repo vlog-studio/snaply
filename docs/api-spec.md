@@ -14,11 +14,12 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 - **인증**: 🔒 표시 엔드포인트는 `Authorization: Bearer {supabase_jwt}` 헤더 필수. 토큰은 Supabase Auth 로그인으로 발급.
 - **응답 형식(공통)**: 성공 `{ "success": true, "data": … }` / 실패 `{ "success": false, "error": { "code", "message", …부가 필드 } }`
   ([`common.ts`](../packages/shared-types/src/contract/common.ts)). 예외는 외부 플랫폼이 받는 웹훅(`/billing/webhook/*`)의 성공 응답뿐이다(봉투 없는 `{ "received": true }`).
-  부가 필드는 **라우트·상태 코드별로** 계약(`common.ts`의 `*ErrorSchema`)에 선언된 것만 온다 — 선언되지 않은 키는 직렬화에서 지워진다. 예: `403 ACCOUNT_PENDING_DELETION` 의 `purgeAfter`, `POST /movies/{id}/export` · `POST /edit-jobs` 의 `402 INSUFFICIENT_CREDITS` 의 `required`·`balance`.
+  부가 필드는 **라우트·상태 코드별로** 계약(`common.ts`의 `*ErrorSchema`)에 선언된 것만 온다 — 선언되지 않은 키는 직렬화에서 지워진다. 예: `403 ACCOUNT_PENDING_DELETION` 의 `purgeAfter`, `POST /movies/{id}/export` 의 `402 INSUFFICIENT_CREDITS` 의 `required`·`balance`.
 - **공통 에러 코드**: `UNAUTHORIZED`(401) · `FORBIDDEN`(403) · `ACCOUNT_PENDING_DELETION`(403, 삭제 대기 계정 — 복구는 `POST /auth/me/restore`) · `NOT_FOUND`(404) · `BAD_REQUEST`/`VALIDATION_ERROR`(400) · `CONFLICT`(409) · `RATE_LIMITED`(429) · `INTERNAL_SERVER_ERROR`(500).
   타 유저의 리소스를 **조회·삭제**하면 403 이 아니라 **404** 다(존재를 알리지 않는다). 편집 요청처럼 남의 영상을 **입력으로 넘긴** 경우만 403 이다.
-- **Rate limit**: 전역은 IP당 분당 60회(`RATE_LIMIT_GLOBAL_MAX`, `/billing/webhook/*` 제외). 라우트별 제한은 토큰(`Authorization` 헤더)당 분당 — `POST /edit-jobs` 5회, `POST /notifications/geofence-enter`·`POST /movie-recommendations`·`POST /movie-drafts` 10회. 초과 시 `429 RATE_LIMITED`. 도메인 한도(`429 RECOMMENDATION_LIMIT`·`429 DRAFT_LIMIT`)는 다른 코드다 — 잠시 후 재시도로 풀리지 않는다.
-  `POST /edit-jobs` 의 토큰당 제한은 요청당 비용이 큰 작업의 큐 폭탄을 막는 보호 장치이며, 크레딧·결제와 무관하게 모두에게 같다. `POST /movies/{id}/export` 에는 라우트별 제한이 없다 — 전역 제한과 크레딧 예약, 무비당 생성 1개(409)가 막는다.
+- **Rate limit**: 전역은 IP당 분당 60회(`RATE_LIMIT_GLOBAL_MAX`, `/billing/webhook/*` 제외). 라우트별 제한은 토큰(`Authorization` 헤더)당 분당 — `POST /notifications/geofence-enter`·`POST /movie-recommendations`·`POST /movie-drafts` 10회. 초과 시 `429 RATE_LIMITED`. 도메인 한도(`429 RECOMMENDATION_LIMIT`·`429 DRAFT_LIMIT`)는 다른 코드다 — 잠시 후 재시도로 풀리지 않는다.
+  `POST /movies/{id}/export` 에는 라우트별 제한이 없다 — 전역 제한과 크레딧 예약, 사용자당 생성 1개(409, MOV-11)가 막는다
+  (토큰당 분당 5회 제한은 2026-10-11 에 없앤 `POST /edit-jobs` 에만 있었다).
 - **알 수 없는 enum 값**: 서버가 값을 늘릴 수 있는 곳(편집 상태·에러 코드·템플릿 스타일·푸시 `kind` 등)에서 앱은 모르는 값을 **버리지 말고 보수적으로 해석**한다(모르는 실패 코드는 `INTERNAL`처럼, 모르는 템플릿 스타일은 건너뛰기).
 
 ---
@@ -104,22 +105,21 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 
 ## AI 편집 (`contract/edit-jobs.ts`)
 
-편집 작업은 무비 생성(`POST /movies/{id}/export`)이 쓰는 엔진이다. 앱은 무비 경로로 만들고 진행률·취소·실패 사유를
-여기서 본다. **`POST /edit-jobs` 직접 호출은 무비 생성으로 대체됐고 다음 릴리스에서 없앤다**
-([decisions/movie-export-policy.md](./decisions/movie-export-policy.md) ⑤, [backlog](./backlog.md) A-1).
+편집 작업은 무비 생성(`POST /movies/{id}/export`)이 쓰는 엔진이다. **작업은 무비 생성으로만 만든다** — 앱은 진행률·취소·실패 사유를
+여기서 본다. 클립을 바로 받던 `POST /edit-jobs` 는 2026-10-11 에 없앴다(404,
+[decisions/movie-export-policy.md](./decisions/movie-export-policy.md) ⑤ — 한 버전 공존 후 폐기).
 
-- `POST /edit-jobs` 🔒 (토큰당 분당 5회) — **비동기**. `202` + `jobId`. `npm run worker` 가 떠 있지 않으면 `queued` 에 머문다.
-  - `clips`(권장) 또는 `videoIds`(구버전, 전체 영상) 중 **하나만**. `clips` 는 최종 합성 순서이며 같은 영상을 다른 구간으로 반복 사용할 수 있다. 클립 수 상한(계약)은 클립 수만큼 정규화 인코딩·전환 필터가 늘어나는 워커 점유 시간의 상한이다. `startMs` 생략은 0, `endMs` 생략은 영상 끝까지. 지정 구간은 최소 100ms.
-  - 소유·`source`·`ready` 영상만 허용(아니면 403). `outputProfile`·`fitMode` 는 생략하면 서버 기본값(계약의 `.default()` — 세로 숏폼 · 흐린 배경). 무비 생성은 이 기본값으로만 만든다.
+- **작업을 만들 때(무비 생성)** — `npm run worker` 가 떠 있지 않으면 `queued` 에 머문다.
   - **크레딧 100 을 예약(차감)한다.** 잔액이 모자라면 `402 INSUFFICIENT_CREDITS` 이며 작업이 만들어지지 않는다(예약과 생성이 한 트랜잭션). 에러의 `required`·`balance` 로 부족분을 그린다. 작업이 **실패하거나 취소되면 전액 자동 환급**, 자동 재시도로 추가 차감 없음. 해상도·워터마크 차등은 없다.
   - 큐 적재가 실패하면 요청은 500 이고, 이미 만든 작업은 `failed`(`errorCode: QUEUE_FAILED`)로 남으며 예약은 환급된다.
   - **사용자당 진행 중 생성은 하나다**(MOV-11). 같은 사용자의 `queued`·`processing` 작업이 있으면 `409 GENERATION_IN_PROGRESS` 이고
-    `error.movieId` 가 지금 생성 중인 무비다(무비 없이 이 라우트로 만든 작업이면 `null`). 크레딧 확인(402)이 먼저다. 그 작업이
+    `error.movieId` 가 지금 생성 중인 무비다(무비 없는 옛 작업이면 `null`). 크레딧 확인(402)이 먼저다. 그 작업이
     끝나거나(`done`·`failed`) 취소되면 다시 만들 수 있다 — 갇힌 작업은 그 무비에서 취소하면 풀린다.
+  - 출력은 늘 서버 기본값(세로 숏폼 · 흐린 배경)이다. 출력 프로필 · 맞춤 방식을 고르는 길은 없다(MOV-8 `부분`, backlog A-10).
 - `GET /edit-jobs/{id}` 🔒 — 폴링용. `videoId` 는 **결과물** 영상 id 다(원본이 아니다). 완료 후 `GET /videos/{videoId}` 로 `editedUrl` 을 얻는다.
   - `errorMessage` 는 서버 진단용 원문 — **사용자 노출 문구가 아니다.** 화면 문구는 `errorCode` 로 분기해 앱이 만든다. `errorCode` 는 append-only 라 앱은 모르는 코드를 `INTERNAL` 처럼 다룬다. `TIMEOUT` 은 작업이 워커 제한 시간(`EDIT_TIMEOUT_SECONDS`, 기본 10분)을 넘긴 것이다 — 멈춘 ffmpeg·whisper 가 워커를 붙잡아 두지 않게 한다.
   - `pipelineVersion`·`editSpec`·`renderSpec` 은 재현 가능한 작업 스냅샷이다.
-  - `editSpec.version` 은 1~3 이다. v1 은 옛 작업, `POST /edit-jobs` 는 v2(프리셋 하나가 전환을 정한다), **무비 생성은 v3**
+  - `editSpec.version` 은 1~3 이다. v1 · v2 는 옛 작업(v2 는 없앤 `POST /edit-jobs` — 프리셋 하나가 전환을 정한다), **무비 생성은 v3**
     (2026-10-01, 경계마다 전환 — 형태는 계약의 `editSpecV3Schema`). v3 는 별도 큐(`EDIT_V3_QUEUE_NAME`, 기본
     `edit-v3`)로만 간다 — 구버전 워커가 전환을 버리고 v2 로 렌더하지 않게 하기 위해서다
     ([decisions/edit-spec-v3.md](./decisions/edit-spec-v3.md) §4).

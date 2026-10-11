@@ -27,7 +27,7 @@ export const movieTemplateSchema = z
     name: z.string(),
     description: z.string(),
     style: stylePresetSchema.describe(
-      'POST /edit-jobs 가 받는 프리셋 이름 그대로. 앱이 모르는 프리셋이 오면 그 템플릿을 건너뛴다',
+      '무비의 stylePreset 이 받는 프리셋 이름 그대로. 앱이 모르는 프리셋이 오면 그 템플릿을 건너뛴다',
     ),
     bgm: z.string().describe('앱에서만 쓰는 트랙 키. 편집 파이프라인은 받지 않는다'),
     slots: z.array(movieTemplateSlotSchema).describe('촬영 순서 (`position` 오름차순)'),

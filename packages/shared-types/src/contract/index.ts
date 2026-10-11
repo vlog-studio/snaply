@@ -39,7 +39,7 @@ import {
   revenuecatWebhook,
   syncPurchases,
 } from './billing.js';
-import { cancelEditJob, createEditJob, getEditJob } from './edit-jobs.js';
+import { cancelEditJob, getEditJob } from './edit-jobs.js';
 import { getHealth } from './health.js';
 import { listNearbyLocations, reportGeofenceEnter } from './locations.js';
 import { requestMovieDraft } from './movie-drafts.js';
@@ -97,7 +97,6 @@ export const apiContract = {
   restoreVideo,
   requestVideoAnalysis,
   getVideoAnalysis,
-  createEditJob,
   getEditJob,
   cancelEditJob,
   createMovie,

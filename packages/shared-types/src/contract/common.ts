@@ -86,7 +86,7 @@ export const generationConflictErrorSchema = apiErrorWith({
     .uuid()
     .nullable()
     .optional()
-    .describe('GENERATION_IN_PROGRESS — 지금 생성 중인 무비 id. 무비 없이 `POST /edit-jobs` 로 만든 작업이면 null'),
+    .describe('GENERATION_IN_PROGRESS — 지금 생성 중인 무비 id. 무비 없는 옛 작업(폐기된 `POST /edit-jobs` 로 만든 것)이면 null'),
 });
 
 export const COMMON_ERROR_RESPONSES = {
