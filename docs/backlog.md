@@ -500,16 +500,10 @@ geofence 쿨다운 판정용 이력이 무한히 쌓인다. 쿨다운은 30분 �
 
 - [ ] **iOS 테스터 앱** — 설치 배포(ad hoc · TestFlight)에 유료 Apple Developer 계정이 필요하고 번들 ID 가
       `com.anonymous.snaplyapp` 이다. 아이폰 테스터가 있으면 계정부터 정한다
-- [ ] **SNS 연동 켜기** — 2026-10-11 공모전에 SNS 연동이 필요하다고 정했다. 지금은 키가 비어 인스타 · 틱톡이 mock 이다.
-      ① 인스타(Meta 앱, sns-setup.md §2): Business login 의 리디렉션 URI 에 `https://snaply-api.dweaxai.com/sns/instagram/callback`,
-      개인정보 · 약관 URL 에 이 서버의 `/legal/privacy` · `/legal/terms` 를 등록한다. 앱이 개발 모드인 동안은 **앱 역할에 테스터로 넣은
-      프로페셔널 계정만** 연동된다 — 공모전 테스터의 인스타 계정을 넣거나 검수(C-5)를 받는다. 영상은 presigned S3 주소로 넘기므로
-      CloudFront 없이 된다. ② 틱톡: 리디렉션 URI `https://snaply-api.dweaxai.com/sns/tiktok/callback` 와 `/legal/` prefix 검증
-      (`SITE_VERIFICATION_*`)은 되지만 게시는 아래 "TikTok 게시"에 막힌다. ③ 키(`INSTAGRAM_*` · `TIKTOK_*`)와 `INSTAGRAM_REDIRECT_URI` ·
-      `TIKTOK_REDIRECT_URI` 를 시크릿에 넣고(deployment-aws.md §2) 배포 → 테스터 폰에서 연동 · 게시를 한 번 본다(sns-setup.md §4).
-      결제(RevenueCat) · 광고(AdMob)는 공모전에 켜지 않는다 — 크레딧은 가입 보너스로 준다(CRD-8)
 - [ ] **TikTok 게시** — 버킷이 퍼블릭 차단이고 CloudFront 가 없어 미디어 호스트의 URL prefix 검증(D-3) 파일을 둘 곳이 없다.
       공모전 시연에 필요하면 인프라에 CloudFront(또는 검증 경로 공개)를 요청하거나 C-3(직접 업로드)으로 간다
+      켤 때는 콘솔의 리디렉션 URI `https://snaply-api.dweaxai.com/sns/tiktok/callback` · `/legal/` prefix 검증(`SITE_VERIFICATION_*`)과
+      키(`TIKTOK_*` · `TIKTOK_REDIRECT_URI`)를 시크릿에 넣는다(deployment-aws.md §2). 앱에는 틱톡 연결 진입점이 아직 없다(`준비 중`, SNS-8)
 
 **완료 조건**: main 머지가 이 서버에 자동 배포되고 배치가 돌며, 테스터 폰이 도메인으로 업로드 → 편집 → 재생까지 된다.
 
@@ -821,6 +815,7 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **B-8** 테스터 크레딧 — 2026-10-09, 공모전 서버 가입 보너스 500(CRD-8) · 중복 지급 경합 수정 · 시크릿 반영 → progress 2026-10-09 "공모전 서버의 가입 보너스(CRD-8) · 중복 지급 경합 수정" · "가입 보너스를 서버에서 켰다"
 - **B-8** DB 복구 리허설과 절차 · 용량 실측 — 2026-10-11, 별도 DB 에 최근 덤프를 부어 운영과 대조하고 실제 되돌리기 순서를 [deployment-aws.md](./deployment-aws.md) §5 에, 유휴 · 렌더 중 CPU · 메모리와 하루 렌더 한도(약 350편)를 §6 에 적었다 → progress 2026-10-11 "DB 복구 리허설 · 용량 실측"
 - **B-8** 수명 · 백업의 사각 — 2026-10-11, 운영은 2026년 11월까지, S3 영상 백업은 두지 않기로 했다 → [decisions/aws-contest-server.md](./decisions/aws-contest-server.md) 2026-10-11 덧붙임 · progress 2026-10-11 "공모전 서버의 기간 · 백업 · 편집 동시성"
+- **B-8** SNS 연동 켜기(인스타그램) — 2026-10-11, Meta 앱 · 테스터 계정 · 시크릿을 갖추고 앱에 연결 · 게시를 만들어 에뮬레이터에서 실제 릴스 게시까지 봤다. 틱톡은 B-8 "TikTok 게시"에 남았다 → progress 2026-10-11 "앱에서 Instagram 에 연결하고 무비를 게시한다"
 - **C-7** 회사 OpenAI API 키 발급 — 2026-09-29 → progress 2026-09-29 "실제 모델로 스냅 분석 · 템플릿 추천 첫 실행"(남은 확인 중 사용 한도 · rate limit 은 A-3, 운영 키 분리는 B-8 로 옮김)
 - **D-2** 법률 문서 문의처 — 2026-10-11, `LEGAL_CONTACT_EMAIL` 을 `snaply@dweax.com` 으로(쉼표로 여러 주소를 받게 했다) → progress 2026-10-11 "법률 문서의 문의처"
 - **D-2** 법률 문서의 광고 · 보관 기간 — 2026-10-11, 처리방침에 보상형 광고(수집 항목 · 위탁 · 국외 이전)와 스냅 15일 · 결과물 30일 · 최근 삭제 · 앨범 사본을, 약관에 광고 보상과 영상 보관을 넣었다(보관 일수는 정책 상수에서 읽는다) → progress 2026-10-11 "법률 문서에 광고와 보관 기간"
