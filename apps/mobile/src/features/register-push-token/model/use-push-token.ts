@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { useIsAuthenticated } from '@/entities/session';
 import {
   configureForegroundNotifications,
+  deleteFcmToken,
   ensureNotificationChannel,
   getFcmToken,
   hasNotificationPermission,
@@ -26,9 +27,30 @@ import { registerFcmToken } from '../api/register-fcm-token';
  * token, and registers it; it then re-registers on token refresh. Foreground
  * messages are presented as a local notification, since FCM suppresses the
  * system banner while the app is foregrounded.
+ *
+ * Signing out deletes the token. The backend files a token under the account
+ * that registered it, so a device that kept it would go on receiving that
+ * account's pushes — a movie-ready alert names the movie — even after another
+ * account signs in on it (backlog E-28). The next sign-in registers a fresh
+ * token, and the backend drops the deleted one the first time a send fails.
  */
 export function usePushTokenRegistration({ recheckKey }: { recheckKey?: unknown } = {}): void {
   const isAuthenticated = useIsAuthenticated();
+  const wasAuthenticated = useRef(false);
+  const deletion = useRef<Promise<void>>(Promise.resolve());
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      wasAuthenticated.current = true;
+      return;
+    }
+    // A launch without a session has no account's token to let go of.
+    if (!wasAuthenticated.current) return;
+    wasAuthenticated.current = false;
+    deletion.current = deleteFcmToken().catch((error: unknown) => {
+      if (__DEV__) console.warn('[push] token deletion failed:', String(error));
+    });
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -38,6 +60,10 @@ export function usePushTokenRegistration({ recheckKey }: { recheckKey?: unknown 
 
     void (async () => {
       try {
+        // A sign-in right after a sign-out must not read back the token that
+        // is still being deleted.
+        await deletion.current;
+        if (cancelled) return;
         const granted = await hasNotificationPermission();
         if (!granted || cancelled) return;
 

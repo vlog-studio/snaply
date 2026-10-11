@@ -60,6 +60,15 @@ export function getFcmToken(): Promise<string> {
   return messaging.getToken(messaging.getMessaging());
 }
 
+/**
+ * Void the device's current FCM token. Pushes still sent to it fail (and the
+ * backend forgets it on that failure); the next `getFcmToken` returns a new one.
+ */
+export async function deleteFcmToken(): Promise<void> {
+  if (!messaging) return;
+  await messaging.deleteToken(messaging.getMessaging());
+}
+
 /** Subscribe to token rotation. Returns an unsubscribe function. */
 export function onFcmTokenRefresh(listener: (token: string) => void): () => void {
   if (!messaging) return () => {};
