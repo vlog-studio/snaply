@@ -2799,3 +2799,20 @@ AWS 서버의 SSM 셸(`snaply` 계정)에서 오너가 명령을 돌리고 결�
   국외 이전 표의 Supabase 항목을 "계정 식별자, 이메일 등 로그인 정보"로 좁혔고 국내 저장 문장에 데이터베이스를 더했다(`apps/api/src/routes/legal.ts`).
 - **검증** — `legal.test.ts` 에 "데이터베이스를 국내에 두고 Supabase 에는 로그인 정보만 맡긴다"를 더했다. 서버가 옮겨 가거나 CloudFront 를 붙이면
   이 확인을 다시 한다(파일 머리말 3-(a)).
+
+## 2026-10-11 (이어서) — `POST /edit-jobs` 를 없앴다(backlog A-1 한 항목 닫음)
+
+결정 ⑤(2026-09-09 "한 버전 공존 후 폐기", [decisions/movie-export-policy.md](./decisions/movie-export-policy.md))의 마지막 단계다. 앱은
+2026-09-12 에 무비 생성(`POST /movies/{id}/export`)으로 옮겼고 그 뒤로 이 라우트를 부르지 않는다 — 스토어에 나간 빌드가 없고 테스터 APK 도
+모두 무비 경로다. 그래서 A-7(editSpec v3)을 붙일 곳이 무비 생성 하나가 됐다.
+
+- **지운 것** — 라우트(`apps/api/src/routes/edit-jobs.ts`), 계약의 `createEditJob` · 입력 스키마 · `jobCreatedSchema`(`packages/shared-types`),
+  `openapi.json` 의 해당 경로(재생성). 조회 · 취소(`GET` · `DELETE /edit-jobs/{id}`)와 진행률 WebSocket 은 그대로다. 생성 서비스(`createEditJob`)는
+  무비 생성이 쓰므로 남았다 — 그 안의 v2 분기(전환 없이 프리셋만)는 이제 부르는 곳이 없다.
+- **테스트** — 크레딧 예약 · 환급(`billing.test.ts`)은 무비 생성으로 옮겼다(같은 검증). "무비 없는 작업이면 `movieId: null`"(`movies.test.ts`)은 옛 행을
+  직접 만들어 확인한다. 라우트별 rate limit 테스트는 지웠다 — 토큰당 분당 5회는 이 라우트에만 있었고, 무비 생성은 전역 제한 · 크레딧 예약 ·
+  사용자당 생성 1개(MOV-11)가 막는다. "`POST /edit-jobs` 는 없다(404)"를 더했다. `npm test -w apps/api` 41개 파일 634건, `npm run verify:mobile`
+  1412건 통과(앱은 주석만 바뀌었다).
+- **문서** — [api-spec.md](./api-spec.md) AI 편집 절을 "작업은 무비 생성으로만 만든다"로 고쳐 크레딧 · `QUEUE_FAILED` · 409 설명을 옮기고, rate limit 목록에서
+  뺐다. Swagger 설명 · 스펙 MOV-8 · backlog A-7 · A-10 의 "폐기 예정" 문구를 고쳤다. 출력 비율을 고를 수 있던 유일한 길이 이 라우트였지만 앱은
+  쓴 적이 없다 — 고르게 할지는 A-10 에 그대로 있다.
