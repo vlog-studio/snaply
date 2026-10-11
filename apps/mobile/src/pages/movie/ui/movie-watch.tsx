@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,6 +12,7 @@ import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { emptyStageReason } from '../model/cut-gone';
+import { resultExpiry } from '../model/result-expiry';
 import { toPlaybackCuts } from '../model/playback-cuts';
 import type { Cut } from '../model/use-movie-cuts';
 import { watchDurationSec } from '../model/watch-cuts';
@@ -114,6 +115,10 @@ export function MovieWatch({
     formatSeconds(totalSec),
     renderedStyle ? movieStyleLabel(renderedStyle) : undefined,
   ].filter((fact) => fact !== undefined);
+  // When the unfinished file goes away (MOV-16). Read once per visit: the line
+  // is a deadline in days, and a screen left open across midnight is rare.
+  const [now] = useState(Date.now);
+  const expiry = movie.render ? resultExpiry(movie.render.renderedAt, now) : undefined;
 
   return (
     <View style={styles.body}>
@@ -181,6 +186,15 @@ export function MovieWatch({
       <ThemedText type="small" themeColor="textSecondary" style={styles.facts}>
         {facts.join(' · ')}
       </ThemedText>
+      {expiry ? (
+        <ThemedText
+          type="small"
+          themeColor={expiry.urgent ? 'danger' : 'textSecondary'}
+          style={styles.facts}
+        >
+          {expiry.text}
+        </ThemedText>
+      ) : null}
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.three }]}>
         {editedSinceRender ? (

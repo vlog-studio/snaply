@@ -8,7 +8,7 @@ export const SnapLibraryHref: Href = '/snaps';
 /**
  * Where a tapped notification should take the user, from the data it carried.
  *
- * The `kind` vocabulary is the server's (`movie_ready`, `snap_expiry`, sent as
+ * The `kind` vocabulary is the server's (`movie_ready`, `movie_expiry`, `snap_expiry`, sent as
  * FCM `data`) plus the one local notice the app still raises itself
  * (`movie_failed`, `features/compose-movie`). A notification with no kind this
  * build knows — an older payload, a kind added later — resolves to nothing, and
@@ -20,6 +20,8 @@ export function notificationTarget(data: unknown): Href | undefined {
   switch (kind) {
     case 'movie_ready':
     case 'movie_failed':
+    // A one-movie expiry notice names its movie; a grouped one carries none and only opens the app.
+    case 'movie_expiry':
       return typeof movieId === 'string' && movieId.length > 0 ? movieHref(movieId) : undefined;
     case 'snap_expiry':
       return SnapLibraryHref;

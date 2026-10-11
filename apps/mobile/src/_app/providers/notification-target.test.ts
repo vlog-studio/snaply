@@ -6,6 +6,7 @@ describe('notificationTarget', () => {
   it.each([
     ['a server 완성 알림', { kind: 'movie_ready', movieId: 'm1', videoId: 'v1' }],
     ['a local failure notice', { kind: 'movie_failed', movieId: 'm1' }],
+    ['a one-movie expiry notice', { kind: 'movie_expiry', movieId: 'm1', daysBefore: '3' }],
   ])('opens the movie %s names', (_case, data) => {
     expect(notificationTarget(data)).toEqual(movieHref('m1'));
   });
@@ -22,6 +23,7 @@ describe('notificationTarget', () => {
     ['a kind this build does not know', { kind: 'location_arrival' }],
     ['a movie kind with no movie id', { kind: 'movie_ready' }],
     ['a movie kind with a blank movie id', { kind: 'movie_ready', movieId: '' }],
+    ['an expiry notice grouping several movies', { kind: 'movie_expiry', daysBefore: '3' }],
     ['an older payload without a kind', { movieId: 'm1', outcome: 'ready' }],
   ])('goes nowhere for %s, so the tap only opens the app', (_case, data) => {
     expect(notificationTarget(data)).toBeUndefined();
