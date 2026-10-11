@@ -772,6 +772,34 @@ describe('인스타그램 토큰 교환', () => {
     expect(calls).toHaveLength(3);
   });
 
+  it.each(['MEDIA_CREATOR', 'Media_Creator', 'BUSINESS'])(
+    '프로페셔널 계정(%s)은 연동을 저장한다',
+    async (accountType) => {
+      const user = await h.createUser();
+      stubFetch((url) => {
+        if (url.includes('api.instagram.com/oauth/access_token')) {
+          return { body: { access_token: 'short', user_id: 1 } };
+        }
+        if (url.includes('graph.instagram.com/access_token')) {
+          return { body: { access_token: 'long', expires_in: 5_184_000 } };
+        }
+        if (url.includes('/me')) {
+          return { body: { user_id: '1', username: 'creator_user', account_type: accountType } };
+        }
+        return undefined;
+      });
+
+      const { encodeState } = await import('../src/lib/crypto.js');
+      const res = await h.app.inject({
+        method: 'GET',
+        url: `/sns/instagram/callback?code=c&state=${encodeURIComponent(encodeState(user.id))}`,
+      });
+
+      expect(res.headers.location).toBe('snaplyapp://sns/connected?platform=instagram');
+      expect(await h.prisma.snsConnection.count()).toBe(1);
+    },
+  );
+
   it('PERSONAL 계정은 콜백에서 걸러진다', async () => {
     const user = await h.createUser();
     stubFetch((url) => {

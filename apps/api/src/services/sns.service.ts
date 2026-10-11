@@ -53,6 +53,12 @@ export function instagramAppSecret(): string | undefined {
   return config().instagram.clientSecret;
 }
 
+/**
+ * 릴스를 올릴 수 있는 계정 타입(대문자 비교). Instagram API with Instagram Login 은 크리에이터를
+ * `MEDIA_CREATOR`(문서 표기 `Media_Creator`)로 준다 — `CREATOR` 만 허용하면 크리에이터가 거절된다.
+ */
+const INSTAGRAM_PROFESSIONAL_TYPES = new Set(['BUSINESS', 'MEDIA_CREATOR', 'CREATOR']);
+
 /** OAuth 콜백 처리 → 앱으로 돌아갈 딥링크 반환. */
 export async function handleCallback(params: {
   platform: SnsPlatform;
@@ -71,7 +77,8 @@ export async function handleCallback(params: {
   if (params.platform === 'instagram') {
     token = await instagram.exchangeCode(pc, params.code, params.logger);
     // 비즈니스/크리에이터 계정만 릴스 업로드 가능
-    if (token.accountType && !['BUSINESS', 'CREATOR'].includes(token.accountType)) {
+    if (token.accountType && !INSTAGRAM_PROFESSIONAL_TYPES.has(token.accountType.toUpperCase())) {
+      params.logger?.info({ accountType: token.accountType }, 'Instagram 프로페셔널 계정이 아니라 연동을 거절');
       return deepLink('sns/error?platform=instagram&reason=account_type');
     }
   } else {
