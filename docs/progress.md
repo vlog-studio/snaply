@@ -2880,3 +2880,21 @@ E-28 수정(#69)이 AWS 서버에 배포된 뒤 `main`(`6d9fa41`)으로 테스�
   `movie.md` 의 무비 만들기 · 완성 알림 · 정리하기 행과 알림 기능 문서의 푸시 등록 행에 확인 결과를 적고, 알려진 한계의 "계정 전환은 기기 미확인"을 지웠다.
 - **찾은 것** — 로그아웃해도 알림창에 이미 떠 있는 이전 계정의 알림(무비 제목이 든 완성 알림)은 남는다. E-28 과 같은 성격이라 backlog E-29 로 올렸다.
 - **테스트 데이터** — B 에 스냅 넷 · 무비 둘이 생겼고 크레딧 300 을 썼다(잔액 200). A 의 스냅 · 무비는 건드리지 않았다.
+
+## 2026-10-11 (이어서) — Meta 의 연결 해제 · 데이터 삭제 요청(backlog C-5 닫음)
+
+Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실제 요청으로 확인했다.
+
+- **결정** — 데이터 삭제 요청은 계정 삭제를 재사용하지 않고 **Instagram 에서 받은 데이터만** 지운다(오너 결정, 스펙 SNS-9). Instagram
+  설정의 요청 하나로 Snaply 의 스냅 · 무비까지 사라지면 사용자가 기대한 범위를 넘는다. [decisions/account-deletion.md](./decisions/account-deletion.md)의
+  "`deleteAccount` 재사용" 줄을 이 결정으로 바꿨다.
+- **구현** — `POST /sns/instagram/deauthorize` · `POST /sns/instagram/data-deletion` 은 `signed_request` 를 `INSTAGRAM_APP_SECRET` 으로
+  검증하고 그 계정의 연동과 게시 이력의 Instagram 값(게시물 ID · 실패 사유)을 지운다. 데이터 삭제는 상태 주소와 서명된 확인 코드를
+  돌려주고, `GET /sns/instagram/data-deletion/status` 가 언제 지웠고 계정은 남았다고 보여 준다. 개인정보처리방침 §3 에 한 문장을 더했다.
+- **실제 요청에서 찾은 것 → 고침** — ① `signed_request` 의 `user_id` 는 Meta 일반 문서의 "앱 범위 ID" 가 아니라 **프로페셔널 계정 ID**
+  (`/me` 의 `user_id`, `1784…`)였다. 앱 범위 ID 로 저장을 바꿨던 첫 배포는 `removed: 0` 이었고, 저장 값을 프로페셔널 계정 ID 로 되돌렸다.
+  ② 연결 해제 콜백은 urlencoded 가 아닌 형식으로 와 415 였다 — 본문 형식과 무관하게 `signed_request` 를 꺼내고, 검증 실패 때 content-type 을
+  남긴다.
+- **검증** — `npm test -w apps/api` 41개 파일 646건(서명 · 삭제 범위 · multipart · 위조 코드). Meta 콘솔(비즈니스 로그인 설정)에 두 주소를
+  등록하고, 에뮬레이터에서 `dayeonnnn2` 를 연결한 뒤 Instagram 앱에서 Snaply 를 제거하자 Meta 가 두 요청을 보냈다 — 연결 해제가
+  `removed: 1`, 이어 온 데이터 삭제는 이미 지운 뒤라 `removed: 0` 으로 200. 앱의 소셜 연결 화면은 다시 `연결` 이 됐다.
