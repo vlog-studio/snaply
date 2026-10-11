@@ -413,3 +413,16 @@ FE 가 알아야 할 동작:
 
 릴스 게시 자체에는 웹훅이 필요 없다. 콘솔이 등록을 요구할 때 통과시키기 위한 것이다.
 `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` 미설정 시 403. 계약 레지스트리 밖이다(`routes/sns-webhook.ts`).
+
+### 인스타그램 연결 해제 · 데이터 삭제 요청 (Meta 전용, 스펙 SNS-9)
+
+| 경로 | 용도 |
+|---|---|
+| `POST /sns/instagram/deauthorize` | 사용자가 Instagram 에서 앱을 제거했을 때. 연동을 지우고 `{ "received": true }` |
+| `POST /sns/instagram/data-deletion` | 데이터 삭제 요청. 연동과 게시 이력의 Instagram 값을 지우고 `{ "url", "confirmation_code" }` |
+| `GET /sns/instagram/data-deletion/status?code=` | 사용자가 여는 상태 페이지(HTML). 위조된 코드는 404 |
+
+둘 다 `application/x-www-form-urlencoded` 의 `signed_request`(`base64url(HMAC-SHA256).base64url(payload)`, 키는
+`INSTAGRAM_APP_SECRET`)로 오고, 서명이 틀리면 400 이며 아무것도 지우지 않는다. 사용자는 payload 의 `user_id`(앱 범위 ID)로
+찾는다 — 연동 때 `/me` 의 `id` 를 `platform_user_id` 에 저장한다(2026-10-11 전에 맺은 연동은 프로페셔널 계정 ID 를 저장해서 맞지
+않는다. 다시 연결하면 맞는다). 모르는 사용자여도 200 과 확인 코드를 준다. Snaply 계정은 지우지 않는다. 계약 레지스트리 밖이다.

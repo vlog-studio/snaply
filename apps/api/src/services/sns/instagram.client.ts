@@ -67,6 +67,9 @@ interface LongLivedToken {
 }
 
 interface IgProfile {
+  /** 앱 범위 ID — Meta 의 연결 해제 · 데이터 삭제 요청(`signed_request`)이 이 값으로 사용자를 가리킨다. */
+  id?: string;
+  /** 프로페셔널 계정 ID — 웹훅 알림의 계정 ID. */
   user_id?: string;
   username?: string;
   account_type?: string;
@@ -159,8 +162,9 @@ export async function exchangeCode(
   return {
     accessToken,
     expiresAt,
-    // /me 응답은 값을 문자열로 주므로 안전하다. 폴백은 정밀도 보존해 추출한 값.
-    platformUserId: profile.user_id ?? shortUserId ?? '',
+    // 앱 범위 ID 를 저장한다 — 연결 해제 · 데이터 삭제 요청이 이 값으로 온다(backlog C-5).
+    // /me 응답은 값을 문자열로 주므로 안전하다. 폴백은 토큰 응답에서 정밀도를 보존해 추출한 같은 ID.
+    platformUserId: profile.id ?? shortUserId ?? profile.user_id ?? '',
     platformUsername: profile.username ?? '',
     accountType: profile.account_type,
   };
@@ -172,7 +176,7 @@ export async function exchangeCode(
  */
 async function fetchProfile(accessToken: string, logger?: SnsLogger): Promise<IgProfile> {
   const url = new URL(`${GRAPH_HOST}/${GRAPH_VERSION}/me`);
-  url.searchParams.set('fields', 'user_id,username,account_type');
+  url.searchParams.set('fields', 'id,user_id,username,account_type');
   url.searchParams.set('access_token', accessToken);
   const res = await fetch(url);
   if (!res.ok) {

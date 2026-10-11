@@ -78,3 +78,33 @@ export function decodeState(state: string): string | null {
     return null;
   }
 }
+
+// ── Meta 데이터 삭제 확인 코드 ─────────────────────────
+// 형식: base64url({ t: 처리 시각(ms), n: nonce }).hmac — 저장하지 않고 서명으로 진위를 확인한다.
+// 삭제는 요청 안에서 끝나므로, 진짜 코드는 곧 "그 시각에 처리됐다"는 뜻이다.
+
+export function encodeDeletionCode(processedAt: Date): string {
+  const payload = b64url(
+    Buffer.from(JSON.stringify({ t: processedAt.getTime(), n: randomBytes(6).toString('hex') })),
+  );
+  return `${payload}.${sign(payload)}`;
+}
+
+/** 확인 코드 검증 후 처리 시각 반환. 위조/변조 시 null. */
+export function decodeDeletionCode(code: string): Date | null {
+  const [payload, mac] = code.split('.');
+  if (!payload || !mac) {
+    return null;
+  }
+  const a = Buffer.from(mac);
+  const b = Buffer.from(sign(payload));
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    return null;
+  }
+  try {
+    const json = JSON.parse(Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'));
+    return typeof json.t === 'number' ? new Date(json.t) : null;
+  } catch {
+    return null;
+  }
+}

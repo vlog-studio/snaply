@@ -562,7 +562,7 @@ describe('user_id 정밀도 (2^53 초과)', () => {
     expect(result.platformUserId).not.toBe('27899354646370750');
   });
 
-  it('/me 가 성공하면 그 값(문자열)을 쓴다', async () => {
+  it('/me 가 성공하면 그 앱 범위 ID(문자열)를 쓴다', async () => {
     stubFetch((url) => {
       if (url.includes('api.instagram.com/oauth/access_token')) {
         return { raw: `{"access_token":"short","user_id":${BIG_ID}}` };
@@ -572,7 +572,12 @@ describe('user_id 정밀도 (2^53 초과)', () => {
       }
       if (url.includes('/me')) {
         return {
-          body: { user_id: '17841439086162200', username: 'gagejigi', account_type: 'BUSINESS' },
+          body: {
+            id: BIG_ID,
+            user_id: '17841439086162200',
+            username: 'gagejigi',
+            account_type: 'BUSINESS',
+          },
         };
       }
       return undefined;
@@ -580,7 +585,8 @@ describe('user_id 정밀도 (2^53 초과)', () => {
 
     const result = await instagram.exchangeCode(igConfig, 'code');
 
-    expect(result.platformUserId).toBe('17841439086162200');
+    // 프로페셔널 계정 ID(user_id)가 아니라 앱 범위 ID — Meta 의 데이터 삭제 요청이 이 값으로 온다.
+    expect(result.platformUserId).toBe(BIG_ID);
     expect(result.accountType).toBe('BUSINESS');
     expect(result.accessToken).toBe('long-lived');
   });
@@ -743,6 +749,118 @@ describe('인스타그램 웹훅 (콘솔 등록용 검증)', () => {
     });
 
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('인스타그램 연결 해제 · 데이터 삭제 요청 (SNS-9)', () => {
+  const BIG_ID = '27899354646370752';
+
+  /** Meta 와 같은 방식으로 서명한다: base64url(HMAC(payload)).payload — user_id 는 따옴표 없는 큰 정수. */
+  function signedRequest(userId: string, secret = REAL_KEYS.INSTAGRAM_APP_SECRET): string {
+    const payload = Buffer.from(
+      `{"algorithm":"HMAC-SHA256","issued_at":1791716400,"user_id":${userId}}`,
+    ).toString('base64url');
+    const sig = createHmac('sha256', secret).update(payload).digest('base64url');
+    return `${sig}.${payload}`;
+  }
+
+  function post(url: string, signed: string) {
+    return h.app.inject({
+      method: 'POST',
+      url,
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: `signed_request=${encodeURIComponent(signed)}`,
+    });
+  }
+
+  /** 연동 하나와 게시 이력 하나를 가진 사용자. */
+  async function connectedUser(platformUserId: string) {
+    const user = await h.createUser();
+    await h.prisma.snsConnection.create({
+      data: {
+        userId: user.id,
+        platform: 'instagram',
+        platformUserId,
+        platformUsername: 'creator_user',
+        accessToken: encrypt('tok'),
+      },
+    });
+    const video = await h.prisma.video.create({
+      data: { userId: user.id, originalUrls: [], status: 'completed' },
+      select: { id: true },
+    });
+    await h.prisma.snsUpload.create({
+      data: {
+        userId: user.id,
+        videoId: video.id,
+        platform: 'instagram',
+        platformPostId: 'ig-post-1',
+        status: 'success',
+      },
+    });
+    return user;
+  }
+
+  it('데이터 삭제 요청은 연동과 게시 이력의 Instagram 값을 지우고 계정은 남긴다', async () => {
+    const user = await connectedUser(BIG_ID);
+    const other = await connectedUser('111');
+
+    const res = await post('/sns/instagram/data-deletion', signedRequest(BIG_ID));
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { url: string; confirmation_code: string };
+    expect(body.url).toContain('/sns/instagram/data-deletion/status?code=');
+    expect(body.confirmation_code).toBeTruthy();
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
+    const upload = await h.prisma.snsUpload.findFirstOrThrow({ where: { userId: user.id } });
+    expect(upload.platformPostId).toBeNull();
+    expect(upload.status).toBe('success');
+    expect(await h.prisma.user.count({ where: { id: user.id } })).toBe(1);
+    // 다른 계정의 연동은 그대로다.
+    expect(await h.prisma.snsConnection.count({ where: { userId: other.id } })).toBe(1);
+
+    const status = await h.app.inject({
+      method: 'GET',
+      url: `/sns/instagram/data-deletion/status?code=${encodeURIComponent(body.confirmation_code)}`,
+    });
+    expect(status.statusCode).toBe(200);
+    expect(status.body).toContain('삭제했어요');
+  });
+
+  it('연결 해제 콜백은 연동을 지운다', async () => {
+    const user = await connectedUser(BIG_ID);
+
+    const res = await post('/sns/instagram/deauthorize', signedRequest(BIG_ID));
+
+    expect(res.statusCode).toBe(200);
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it('모르는 사용자여도 확인 코드를 돌려준다(이미 지운 경우)', async () => {
+    const res = await post('/sns/instagram/data-deletion', signedRequest('999'));
+
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as { confirmation_code: string }).confirmation_code).toBeTruthy();
+  });
+
+  it('서명이 틀리면 400 이고 아무것도 지우지 않는다', async () => {
+    const user = await connectedUser(BIG_ID);
+
+    const deauth = await post('/sns/instagram/deauthorize', signedRequest(BIG_ID, 'wrong-secret'));
+    const deletion = await post('/sns/instagram/data-deletion', signedRequest(BIG_ID, 'wrong-secret'));
+
+    expect(deauth.statusCode).toBe(400);
+    expect(deletion.statusCode).toBe(400);
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it('위조한 확인 코드는 상태 페이지가 404', async () => {
+    const res = await h.app.inject({
+      method: 'GET',
+      url: '/sns/instagram/data-deletion/status?code=eyJ0IjoxfQ.forged',
+    });
+
+    expect(res.statusCode).toBe(404);
   });
 });
 

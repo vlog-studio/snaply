@@ -9168,6 +9168,45 @@
         }
       }
     },
+    "/sns/instagram/deauthorize": {
+      "post": {
+        "summary": "인스타그램 연결 해제 콜백",
+        "tags": [
+          "sns"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/sns/instagram/data-deletion": {
+      "post": {
+        "summary": "인스타그램 데이터 삭제 요청",
+        "tags": [
+          "sns"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/sns/instagram/data-deletion/status": {
+      "get": {
+        "summary": "인스타그램 데이터 삭제 상태",
+        "tags": [
+          "sns"
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/billing/products": {
       "get": {
         "summary": "크레딧 팩 목록",

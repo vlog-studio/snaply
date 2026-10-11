@@ -10,7 +10,7 @@ export interface TokenExchangeResult {
   expiresAt?: Date;
   platformUserId: string;
   platformUsername: string;
-  /** instagram: BUSINESS | CREATOR | PERSONAL */
+  /** instagram: BUSINESS | MEDIA_CREATOR | PERSONAL (대소문자는 응답마다 다를 수 있다) */
   accountType?: string;
 }
 

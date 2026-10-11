@@ -1,6 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { instagramWebhookVerifyToken, instagramAppSecret } from '../services/sns.service.js';
+import { decodeDeletionCode, encodeDeletionCode } from '../lib/crypto.js';
+import {
+  forgetInstagramUser,
+  instagramWebhookVerifyToken,
+  instagramAppSecret,
+  parseInstagramSignedRequest,
+} from '../services/sns.service.js';
 
 interface VerifyQuery {
   'hub.mode'?: string;
@@ -22,6 +28,14 @@ export async function snsWebhookRoutes(app: FastifyInstance): Promise<void> {
   app.addContentTypeParser('application/json', { parseAs: 'buffer' }, (_req, body, done) => {
     done(null, body);
   });
+  // 연결 해제 · 데이터 삭제 요청은 `signed_request=...` 폼으로 온다.
+  app.addContentTypeParser(
+    'application/x-www-form-urlencoded',
+    { parseAs: 'string' },
+    (_req, body, done) => {
+      done(null, Object.fromEntries(new URLSearchParams(body as string)));
+    },
+  );
 
   // GET — 등록 시 1회 호출되는 검증 핸드셰이크
   app.get<{ Querystring: VerifyQuery }>(
@@ -69,6 +83,61 @@ export async function snsWebhookRoutes(app: FastifyInstance): Promise<void> {
 
       request.log.info({ bytes: rawBody?.length ?? 0 }, '인스타그램 웹훅 수신(미처리)');
       return reply.status(200).send({ received: true });
+    },
+  );
+
+  // POST — 사용자가 Instagram 설정에서 Snaply 를 제거했을 때(연결 해제 콜백). 토큰은 이미 쓸 수 없으므로
+  // 연동을 지운다(SNS-9). Meta 는 응답 본문을 보지 않는다.
+  app.post<{ Body: { signed_request?: string } }>(
+    '/sns/instagram/deauthorize',
+    { schema: { tags: ['sns'], summary: '인스타그램 연결 해제 콜백' } },
+    async (request, reply) => {
+      const platformUserId = parseInstagramSignedRequest(request.body?.signed_request ?? '');
+      if (!platformUserId) {
+        request.log.warn('인스타그램 연결 해제 콜백 서명 검증 실패');
+        return reply.status(400).send();
+      }
+      const removed = await forgetInstagramUser(platformUserId);
+      request.log.info({ platformUserId, removed }, '인스타그램 연결 해제 콜백 처리');
+      return reply.status(200).send({ received: true });
+    },
+  );
+
+  // POST — 사용자가 Instagram 설정에서 데이터 삭제를 요청했을 때. 지우고 상태 확인 주소와 확인 코드를 돌려준다.
+  // 지우는 범위는 Meta 에서 받은 데이터뿐이다 — Snaply 계정은 남는다(SNS-9).
+  app.post<{ Body: { signed_request?: string } }>(
+    '/sns/instagram/data-deletion',
+    { schema: { tags: ['sns'], summary: '인스타그램 데이터 삭제 요청' } },
+    async (request, reply) => {
+      const platformUserId = parseInstagramSignedRequest(request.body?.signed_request ?? '');
+      if (!platformUserId) {
+        request.log.warn('인스타그램 데이터 삭제 요청 서명 검증 실패');
+        return reply.status(400).send();
+      }
+      const removed = await forgetInstagramUser(platformUserId);
+      request.log.info({ platformUserId, removed }, '인스타그램 데이터 삭제 요청 처리');
+      const code = encodeDeletionCode(new Date());
+      const url = `${request.protocol}://${request.host}/sns/instagram/data-deletion/status?code=${encodeURIComponent(code)}`;
+      return reply.status(200).send({ url, confirmation_code: code });
+    },
+  );
+
+  // GET — 데이터 삭제 상태 페이지. 사용자가 Meta 에서 받은 링크로 연다.
+  app.get<{ Querystring: { code?: string } }>(
+    '/sns/instagram/data-deletion/status',
+    { schema: { tags: ['sns'], summary: '인스타그램 데이터 삭제 상태' } },
+    async (request, reply) => {
+      const processedAt = decodeDeletionCode(request.query.code ?? '');
+      const body = processedAt
+        ? `<p>Instagram에서 받은 정보(연결 정보와 게시 기록의 Instagram 값)를 ${processedAt.toISOString()}에 삭제했어요.</p>
+<p>Snaply 계정과 스냅·무비는 그대로예요. 계정까지 지우려면 앱의 나 탭에서 계정 삭제를 해 주세요.</p>`
+        : '<p>확인 코드를 찾을 수 없어요. Instagram에서 받은 링크를 그대로 열어 주세요.</p>';
+      return reply
+        .status(processedAt ? 200 : 404)
+        .type('text/html; charset=utf-8')
+        .send(
+          `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Snaply — 데이터 삭제 상태</title></head><body style="font-family:sans-serif;max-width:640px;margin:40px auto;padding:0 16px;line-height:1.6"><h1>데이터 삭제 상태</h1>${body}</body></html>`,
+        );
     },
   );
 }

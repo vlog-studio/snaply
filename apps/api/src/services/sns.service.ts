@@ -3,6 +3,7 @@ import type { SnsConfig, SnsProviderConfig } from '../config.js';
 import { getPrisma } from '../db/client.js';
 import { AppError } from '../lib/errors.js';
 import { captureException } from '../lib/sentry.js';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { encrypt, decrypt, encodeState, decodeState } from '../lib/crypto.js';
 import { finishMovieForResult } from './movie.service.js';
 import { createDownloadUrl } from './storage.service.js';
@@ -51,6 +52,53 @@ export function instagramWebhookVerifyToken(): string | undefined {
 /** 웹훅 페이로드 서명 검증에 쓰는 앱 시크릿. */
 export function instagramAppSecret(): string | undefined {
   return config().instagram.clientSecret;
+}
+
+/**
+ * Meta 의 `signed_request`(연결 해제 · 데이터 삭제 요청)를 검증하고 앱 범위 사용자 ID 를 꺼낸다.
+ * 형식: `base64url(HMAC-SHA256(payload, 앱 시크릿)).base64url(payloadJSON)`. 위조 · 변조 · 시크릿 미설정이면 null.
+ * `user_id` 는 2^53 을 넘을 수 있어 JSON 숫자로 와도 문자열 그대로 뽑는다.
+ */
+export function parseInstagramSignedRequest(signedRequest: string): string | null {
+  const secret = config().instagram.clientSecret;
+  const [sig, payload] = signedRequest.split('.');
+  if (!secret || !sig || !payload) {
+    return null;
+  }
+  const expected = createHmac('sha256', secret).update(payload).digest();
+  const actual = Buffer.from(sig.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+    return null;
+  }
+  const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  return /"user_id"\s*:\s*"?(\d+)"?/.exec(json)?.[1] ?? null;
+}
+
+/**
+ * Meta 가 알려 온 사용자의 인스타그램 데이터를 지운다(SNS-9) — 연동 행(토큰 · 계정 ID · 사용자명)과
+ * 그 계정의 게시 이력에 남은 플랫폼 값(게시물 ID · 플랫폼이 준 실패 사유). Snaply 계정 · 스냅 · 무비는 건드리지 않는다.
+ * 연결 해제와 데이터 삭제 요청이 같은 일을 한다. 지운 연동 수를 반환한다(이미 지웠으면 0).
+ */
+export async function forgetInstagramUser(platformUserId: string): Promise<number> {
+  const prisma = getPrisma();
+  return prisma.$transaction(async (tx) => {
+    const connections = await tx.snsConnection.findMany({
+      where: { platform: 'instagram', platformUserId },
+      select: { userId: true },
+    });
+    if (connections.length === 0) {
+      return 0;
+    }
+    const userIds = connections.map((c) => c.userId);
+    await tx.snsUpload.updateMany({
+      where: { platform: 'instagram', userId: { in: userIds } },
+      data: { platformPostId: null, errorMessage: null },
+    });
+    const { count } = await tx.snsConnection.deleteMany({
+      where: { platform: 'instagram', platformUserId },
+    });
+    return count;
+  });
 }
 
 /**

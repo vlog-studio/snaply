@@ -129,10 +129,11 @@ Meta 에는 "Instagram 로그인" 이라는 사용 사례가 **없다**. Instagr
 | 필드 | 지금 필요? | 비고 |
 |---|---|---|
 | OAuth 리디렉션 URI | **필수** | `https://<A>.trycloudflare.com/sns/instagram/callback` |
-| 승인 취소 콜백 URL | 비워도 됨 | 앱 검수(출시) 시 필요. 사용자가 앱 연결을 해제하면 Meta 가 호출 |
-| 데이터 삭제 요청 URL | 비워도 됨 | 앱 검수(출시) 시 필요. 개인정보 삭제 요청 처리용 |
+| 승인 취소 콜백 URL | 검수 시 필수 | `https://<API 호스트>/sns/instagram/deauthorize` — 사용자가 Instagram 에서 앱을 제거하면 Meta 가 호출, 연동을 지운다 |
+| 데이터 삭제 요청 URL | 검수 시 필수 | `https://<API 호스트>/sns/instagram/data-deletion` — Instagram 쪽 데이터만 지우고 상태 주소 · 확인 코드를 돌려준다(스펙 SNS-9) |
 
-OAuth 테스트에는 리디렉션 URI 하나만 있으면 된다. 나머지 두 URL 은 **앱 검수를 받을 때** 구현하면 된다([backlog.md](./backlog.md) C-5).
+OAuth 테스트에는 리디렉션 URI 하나만 있으면 된다. 나머지 두 URL 은 앱 검수에 필요하다 — 서버는 `INSTAGRAM_APP_SECRET` 으로
+요청 서명을 확인하므로 시크릿이 들어간 서버의 주소를 넣는다. 공모전 서버는 `https://snaply-api.dweaxai.com/...` 이다.
 
 ### 웹훅 (요구될 때만)
 
