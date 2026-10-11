@@ -562,7 +562,7 @@ describe('user_id 정밀도 (2^53 초과)', () => {
     expect(result.platformUserId).not.toBe('27899354646370750');
   });
 
-  it('/me 가 성공하면 그 앱 범위 ID(문자열)를 쓴다', async () => {
+  it('/me 가 성공하면 그 프로페셔널 계정 ID(문자열)를 쓴다', async () => {
     stubFetch((url) => {
       if (url.includes('api.instagram.com/oauth/access_token')) {
         return { raw: `{"access_token":"short","user_id":${BIG_ID}}` };
@@ -585,8 +585,8 @@ describe('user_id 정밀도 (2^53 초과)', () => {
 
     const result = await instagram.exchangeCode(igConfig, 'code');
 
-    // 프로페셔널 계정 ID(user_id)가 아니라 앱 범위 ID — Meta 의 데이터 삭제 요청이 이 값으로 온다.
-    expect(result.platformUserId).toBe(BIG_ID);
+    // 앱 범위 ID(id)가 아니라 프로페셔널 계정 ID — Meta 의 데이터 삭제 요청이 이 값으로 온다(2026-10-11 실측).
+    expect(result.platformUserId).toBe('17841439086162200');
     expect(result.accountType).toBe('BUSINESS');
     expect(result.accessToken).toBe('long-lived');
   });
@@ -831,6 +831,25 @@ describe('인스타그램 연결 해제 · 데이터 삭제 요청 (SNS-9)', () 
     const user = await connectedUser(BIG_ID);
 
     const res = await post('/sns/instagram/deauthorize', signedRequest(BIG_ID));
+
+    expect(res.statusCode).toBe(200);
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  // 실측: Meta 의 연결 해제 콜백이 urlencoded 가 아닌 형식으로 와 415 가 났다.
+  it('multipart 로 온 연결 해제 콜백도 처리한다', async () => {
+    const user = await connectedUser(BIG_ID);
+    const boundary = '----meta';
+    const payload =
+      `--${boundary}\r\nContent-Disposition: form-data; name="signed_request"\r\n\r\n` +
+      `${signedRequest(BIG_ID)}\r\n--${boundary}--\r\n`;
+
+    const res = await h.app.inject({
+      method: 'POST',
+      url: '/sns/instagram/deauthorize',
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload,
+    });
 
     expect(res.statusCode).toBe(200);
     expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);

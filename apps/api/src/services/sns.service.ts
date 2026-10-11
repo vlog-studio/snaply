@@ -55,7 +55,7 @@ export function instagramAppSecret(): string | undefined {
 }
 
 /**
- * Meta 의 `signed_request`(연결 해제 · 데이터 삭제 요청)를 검증하고 앱 범위 사용자 ID 를 꺼낸다.
+ * Meta 의 `signed_request`(연결 해제 · 데이터 삭제 요청)를 검증하고 `user_id`(프로페셔널 계정 ID)를 꺼낸다.
  * 형식: `base64url(HMAC-SHA256(payload, 앱 시크릿)).base64url(payloadJSON)`. 위조 · 변조 · 시크릿 미설정이면 null.
  * `user_id` 는 2^53 을 넘을 수 있어 JSON 숫자로 와도 문자열 그대로 뽑는다.
  */

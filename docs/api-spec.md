@@ -423,6 +423,6 @@ FE 가 알아야 할 동작:
 | `GET /sns/instagram/data-deletion/status?code=` | 사용자가 여는 상태 페이지(HTML). 위조된 코드는 404 |
 
 둘 다 `application/x-www-form-urlencoded` 의 `signed_request`(`base64url(HMAC-SHA256).base64url(payload)`, 키는
-`INSTAGRAM_APP_SECRET`)로 오고, 서명이 틀리면 400 이며 아무것도 지우지 않는다. 사용자는 payload 의 `user_id`(앱 범위 ID)로
-찾는다 — 연동 때 `/me` 의 `id` 를 `platform_user_id` 에 저장한다(2026-10-11 전에 맺은 연동은 프로페셔널 계정 ID 를 저장해서 맞지
-않는다. 다시 연결하면 맞는다). 모르는 사용자여도 200 과 확인 코드를 준다. Snaply 계정은 지우지 않는다. 계약 레지스트리 밖이다.
+`INSTAGRAM_APP_SECRET`)로 오고, 서명이 틀리면 400 이며 아무것도 지우지 않는다. 사용자는 payload 의 `user_id` 로
+찾는다 — Instagram 로그인에서는 이 값이 프로페셔널 계정 ID(`/me` 의 `user_id`)이고(2026-10-11 실측), 연동 때 같은 값을
+`platform_user_id` 에 저장한다. 모르는 사용자여도 200 과 확인 코드를 준다. Snaply 계정은 지우지 않는다. 계약 레지스트리 밖이다.
