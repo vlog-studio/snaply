@@ -32,6 +32,7 @@ import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Toast } from '@/shared/ui/toast';
 
+import { emptyStageReason } from '../model/cut-gone';
 import { offerableLeftOut } from '../model/left-out-snaps';
 import { boundaryPlan, toCutIndex, toPlaybackCuts, toPlaybackIndex } from '../model/playback-cuts';
 import type { TimelinePlayhead } from '../model/timeline-layout';
@@ -440,7 +441,7 @@ export function MoviePage({ movieId }: MoviePageProps) {
               <View style={[styles.empty, { borderColor: theme.border }]}>
                 <ThemedText type="heading">재생할 컷이 없어요</ThemedText>
                 <ThemedText themeColor="textSecondary" style={styles.centerText}>
-                  {cuts.every((cut) => cut.gone === 'expired')
+                  {emptyStageReason(cuts) === 'expired'
                     ? '이 무비가 쓰던 스냅의 보관 기간이 끝났어요.'
                     : '이 무비가 쓰던 스냅이 모두 삭제됐어요.'}
                 </ThemedText>

@@ -1,6 +1,6 @@
 import type { SnapRef } from '@/entities/movie';
 
-import { cutGone } from './cut-gone';
+import { cutGone, emptyStageReason } from './cut-gone';
 
 const ref = (fields: Partial<SnapRef> = {}): SnapRef => ({ snapId: 's1', order: 0, ...fields });
 
@@ -37,5 +37,18 @@ describe('cutGone', () => {
     ['playable', ref(), true, undefined],
   ] as const)('%s', (_label, cut, hasSnap, expected) => {
     expect(cutGone(cut, hasSnap)).toBe(expected);
+  });
+});
+
+describe('emptyStageReason', () => {
+  it('reads expired only when every remaining cut expired', () => {
+    expect(emptyStageReason([{ gone: 'expired' }, { gone: 'expired' }])).toBe('expired');
+    expect(emptyStageReason([{ gone: 'expired' }, { gone: 'deleted' }])).toBe('deleted');
+  });
+
+  // A movie whose only snap was deleted has no cuts left; the empty stage said
+  // its snaps had expired (found on the emulator, 2026-10-11).
+  it('reads a movie with no cuts as deleted', () => {
+    expect(emptyStageReason([])).toBe('deleted');
   });
 });

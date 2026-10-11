@@ -18,3 +18,13 @@ export function cutGone(ref: SnapRef, hasSnap: boolean): CutGone | undefined {
   if (ref.unavailable) return ref.unavailableReason === 'user' ? 'deleted' : 'expired';
   return hasSnap ? undefined : 'deleted';
 }
+
+/**
+ * Why a movie has nothing to play, for its empty stage: `expired` only when
+ * every cut that is left ran out its retention. A movie with no cuts at all got
+ * there by the user's deletions — a deleted snap takes its cut out of the movie
+ * (SNAP-20) — so it reads as deleted, never as expired.
+ */
+export function emptyStageReason(cuts: readonly { gone?: CutGone }[]): CutGone {
+  return cuts.length > 0 && cuts.every((cut) => cut.gone === 'expired') ? 'expired' : 'deleted';
+}
