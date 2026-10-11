@@ -4,6 +4,7 @@ import { useIsAuthenticated } from '@/entities/session';
 import {
   configureForegroundNotifications,
   deleteFcmToken,
+  dismissAllNotifications,
   ensureNotificationChannel,
   getFcmToken,
   hasNotificationPermission,
@@ -33,6 +34,8 @@ import { registerFcmToken } from '../api/register-fcm-token';
  * account's pushes — a movie-ready alert names the movie — even after another
  * account signs in on it (backlog E-28). The next sign-in registers a fresh
  * token, and the backend drops the deleted one the first time a send fails.
+ * Signing out also clears the app's notifications from the tray: the ones
+ * already there belong to the account that just left (E-29).
  */
 export function usePushTokenRegistration({ recheckKey }: { recheckKey?: unknown } = {}): void {
   const isAuthenticated = useIsAuthenticated();
@@ -49,6 +52,9 @@ export function usePushTokenRegistration({ recheckKey }: { recheckKey?: unknown 
     wasAuthenticated.current = false;
     deletion.current = deleteFcmToken().catch((error: unknown) => {
       if (__DEV__) console.warn('[push] token deletion failed:', String(error));
+    });
+    void dismissAllNotifications().catch((error: unknown) => {
+      if (__DEV__) console.warn('[push] clearing the tray failed:', String(error));
     });
   }, [isAuthenticated]);
 

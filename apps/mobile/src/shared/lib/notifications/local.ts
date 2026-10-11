@@ -126,3 +126,12 @@ export async function getOpeningLocalNotificationResponse(): Promise<LocalNotifi
   const response = await Notifications.getLastNotificationResponseAsync();
   return response ? toResponse(response) : null;
 }
+
+/**
+ * Clear every notification this app has in the tray — the ones it presented and
+ * the ones FCM drew while the app was in the background alike (both belong to
+ * the app on the OS side). Scheduled-but-not-yet-shown ones are not touched.
+ */
+export function dismissAllNotifications(): Promise<void> {
+  return Notifications.dismissAllNotificationsAsync();
+}
