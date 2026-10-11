@@ -780,16 +780,6 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 2026-10-09 문서 전수 감사에서 나온, 코드 동작은 그대로이고 **규칙이나 문서를 어느 쪽으로 맞출지만 정하면 되는** 판단이다.
 각 항목에 배경 · 선택지 · 권장(있으면) · 완료 조건을 적었다. 정하면 해당 문서(와 필요한 경우 코드 · 테스트)를 고치고 닫는다.
 
-### H-13. 모바일 기능 문서의 상태 라벨 두 개와 앱 맵 순서
-
-- [snap-extract.md](../apps/mobile/docs/features/snap-extract.md)의 `Partial` 근거가 "Android 실기기 검증 대기, iOS 미빌드"인데 추출
-  화면을 Android 실기기로 검증한 기록은 progress 에 없다. 휴대폰에서 추출을 써 봤다면 `Functional` 로 올리고 기록한다
-- [movie-templates.md](../apps/mobile/docs/features/movie-templates.md)의 Stage 2(서버 추천)는 앱이 다 만들어졌지만 서버 플래그
-  (`MOVIE_RECOMMENDATION_ENABLED`)가 꺼져 사용자에게 효과가 없다. 상태 어휘로는 `Not implemented`(효과를 완료할 수 없음)에 가깝다 —
-  (a) 앱 기준 `Functional`(dormant) 유지 (b) `Not implemented`(dormant)로
-- 2026-10-09 정리에서 [features/README.md](../apps/mobile/docs/features/README.md)의 앱 맵을 `root-layout.tsx` 의 실제 선언 순서
-  (= 가드의 우선순위)로 재정렬했다. 예전 "개념 순서"가 더 낫다면 되돌린다
-
 ---
 
 ## 닫은 항목
@@ -887,4 +877,5 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **H-10** 결정 문서의 결정 ID 가 백로그 ID 와 같은 모양이다(`V3-A1` 꼴로) — 2026-10-10 → progress 2026-10-10 "editSpec v3 결정 ID 에 접두를 붙인다"
 - **H-11** `env-management.md` 의 "후속 연계" 절(헤더 배너로) — 2026-10-10 → progress 2026-10-10 "env-management 의 후속 연계를 배너로 옮긴다"
 - **H-12** 모바일 UX 문서 체계의 두 군데(guardrails 유지, 목표 문장은 philosophy 하나로) — 2026-10-10 → progress 2026-10-10 "UX 목표 문장을 하나로 맞춘다"
+- **H-13** 모바일 기능 문서의 상태 라벨 두 개와 앱 맵 순서 — 2026-10-11, 스냅 추출은 `Partial` 유지(에뮬레이터 확인만, 실기기 · iOS 미검증) · 서버 추천(Stage 2)은 `Not implemented`(dormant) · 앱 맵은 `root-layout.tsx` 선언 순서 유지 → progress 2026-10-11 "기능 문서 상태 라벨 정리"
 - **H-14** 백로그 A-1 ② 의 통과 판정(통과 유지 — 오너 확인) — 2026-10-10 → progress 2026-10-10 "A-1 ② 의 통과를 유지한다"

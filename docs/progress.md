@@ -2734,3 +2734,13 @@ MinIO 커뮤니티판은 이미지 배포와 보안 패치를 멈췄고, 우리�
 줄이는 편의일 뿐이고, 비공개여도 막히는 곳이 없다 — `ensure-minio-image.sh` 가 받지 못하면 같은 Dockerfile 로 로컬 빌드하고(CI 도 같다),
 배포 잡은 잡 토큰으로 받는다. 회사 조직 이름으로 이미지를 외부에 내놓는 일과 MinIO(AGPL) 바이너리 공개 배포의 의무를 따질 필요도 없어진다.
 ONBOARDING §3 의 "`docker login ghcr.io` 가 되어 있으면 받아 오고, 아니면 로컬 빌드" 는 그대로 맞다.
+
+## 2026-10-11 — 기능 문서 상태 라벨 정리(backlog H-13 닫음)
+
+- **스냅 추출**([snap-extract.md](../apps/mobile/docs/features/snap-extract.md))은 `Partial` 을 유지한다. 근거를 "Android 실기기 검증 대기"에서
+  "에뮬레이터에서만 확인"으로 고쳤다 — 2026-10-09 EAS release 빌드(네이티브 trim 포함)를 에뮬레이터에 깔아 갤러리 영상을 스냅으로 잘라
+  업로드 · 무비 생성 · 재생까지 했지만(같은 날 "테스터 앱을 EAS 로도 만든다"), 실기기와 iOS 는 아직이다.
+- **서버 추천(Stage 2)**([movie-templates.md](../apps/mobile/docs/features/movie-templates.md))을 `Functional`(dormant)에서 `Not implemented`(dormant)로
+  바꿨다. 상태 어휘는 사용자가 얻는 효과를 기준으로 하는데, 서버 플래그(`MOVIE_RECOMMENDATION_ENABLED`)가 꺼져 아무에게도 추천이 가지 않는다.
+  앱 쪽은 다 만들어져 있어 플래그를 켜는 날(A-6) `Functional` 로 올린다.
+- **앱 맵 순서**([features/README.md](../apps/mobile/docs/features/README.md))는 2026-10-09 에 맞춘 `root-layout.tsx` 선언 순서(가드 우선순위)를 유지한다.
