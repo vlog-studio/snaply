@@ -85,7 +85,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // POST /auth/fcm-token — FCM 토큰 등록/갱신 (기기 교체 대비 항상 덮어쓰기)
+  // POST /auth/fcm-token — FCM 토큰 등록/갱신 (기기 교체 대비 항상 덮어쓰기, 같은 토큰을 가진 다른 계정에서는 지운다)
   routes.post(
     registerFcmToken.fastifyPath,
     {

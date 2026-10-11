@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
-import { createHarness, type Harness } from './helpers/harness.js';
+import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
 
 let h: Harness;
 
@@ -230,5 +230,57 @@ describe('PATCH /auth/me — 알림 설정', () => {
       });
       expect(res.statusCode).toBe(400);
     }
+  });
+});
+
+describe('POST /auth/fcm-token', () => {
+  async function storedToken(userId: string) {
+    const row = await h.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { fcmToken: true },
+    });
+    return row.fcmToken;
+  }
+
+  function register(user: TestUser, fcmToken: string) {
+    return h.app.inject({
+      method: 'POST',
+      url: '/auth/fcm-token',
+      headers: user.auth,
+      payload: { fcmToken },
+    });
+  }
+
+  // 한 기기에서 계정을 바꾸면 그 기기의 토큰이 두 계정에 남아, 이전 계정의 알림이
+  // 지금 로그인한 다른 계정의 기기로 갔다(backlog E-28, 2026-10-11 에뮬레이터).
+  it('같은 기기 토큰을 다른 계정이 등록하면 이전 계정에서 지운다', async () => {
+    const before = await h.createUser();
+    const after = await h.createUser();
+    await register(before, 'fcm-shared-device');
+
+    const res = await register(after, 'fcm-shared-device');
+
+    expect(res.statusCode).toBe(200);
+    expect(await storedToken(after.id)).toBe('fcm-shared-device');
+    expect(await storedToken(before.id)).toBeNull();
+  });
+
+  it('다른 기기 토큰을 가진 계정은 건드리지 않는다', async () => {
+    const other = await h.createUser();
+    const user = await h.createUser();
+    await register(other, 'fcm-other-device');
+
+    await register(user, 'fcm-this-device');
+
+    expect(await storedToken(other.id)).toBe('fcm-other-device');
+  });
+
+  it('같은 계정이 같은 토큰을 다시 등록해도 남는다', async () => {
+    const user = await h.createUser();
+    await register(user, 'fcm-same-device');
+
+    await register(user, 'fcm-same-device');
+
+    expect(await storedToken(user.id)).toBe('fcm-same-device');
   });
 });

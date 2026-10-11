@@ -139,10 +139,21 @@ export async function updateProfile(userId: string, patch: ProfileUpdate): Promi
   return (await getProfile(userId))!;
 }
 
-/** 기기 교체를 고려해 항상 덮어쓴다(upsert 성격). */
+/**
+ * 기기 교체를 고려해 항상 덮어쓴다(upsert 성격). 같은 토큰을 가진 다른 계정에서는 지운다 —
+ * 토큰은 기기 하나를 가리키므로, 한 기기에서 계정을 바꾸면 이전 계정의 알림(무비 제목이 든
+ * 완성 알림 등)이 지금 다른 계정으로 로그인한 그 기기로 가게 된다(backlog E-28).
+ */
 export async function updateFcmToken(userId: string, fcmToken: string): Promise<void> {
-  await getPrisma().user.update({
-    where: { id: userId },
-    data: { fcmToken },
-  });
+  const prisma = getPrisma();
+  await prisma.$transaction([
+    prisma.user.updateMany({
+      where: { fcmToken, id: { not: userId } },
+      data: { fcmToken: null },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { fcmToken },
+    }),
+  ]);
 }

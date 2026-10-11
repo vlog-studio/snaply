@@ -13,6 +13,10 @@ export function getFcmToken(): Promise<string> {
   return Promise.reject(new Error('FCM is not available on web'));
 }
 
+export function deleteFcmToken(): Promise<void> {
+  return Promise.resolve();
+}
+
 export function onFcmTokenRefresh(_listener: (token: string) => void): () => void {
   return () => {};
 }

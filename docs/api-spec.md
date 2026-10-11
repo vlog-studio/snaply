@@ -38,7 +38,9 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 - `DELETE /auth/me` 🔒 — 즉시: SNS 연동·FCM 토큰 삭제, 진행 중 편집 작업 취소(예약 크레딧 환급). 이후 **30일 유예** 동안 복구 가능하고, 유예가 지나면 배치가 S3 원본까지 영구 삭제한다. 응답의 `purgeAfter` 가 실삭제 예정 시각.
   삭제 대기 중에 다른 인증 API 를 부르면 `403 ACCOUNT_PENDING_DELETION` 이고 같은 `purgeAfter` 를 에러에 싣는다 — 앱은 삭제 응답을 저장해 두지 않아도 남은 유예를 보여줄 수 있다.
 - `POST /auth/me/restore` 🔒 — 유예 내 복구. FCM 토큰·SNS 연동은 되살아나지 않는다(재등록 필요). 크레딧 잔액은 보존된다. 삭제 대기 상태가 아니면 400.
-- `POST /auth/fcm-token` 🔒 — 항상 덮어쓴다(기기 하나만 등록됨 — [backlog B-2](./backlog.md)).
+- `POST /auth/fcm-token` 🔒 — 항상 덮어쓴다(기기 하나만 등록됨 — [backlog B-2](./backlog.md)). 같은 토큰을 가진 다른 계정에서는
+  그 토큰을 지운다 — 토큰은 기기 하나를 가리키므로, 한 기기에서 계정을 바꾸면 그 기기는 새 계정의 알림만 받는다(NTF-5).
+  앱은 로그아웃할 때 기기의 토큰을 폐기하고 다음 로그인에서 새 토큰을 등록한다.
 
 ### 스냅 분석 동의 (`contract/analysis-consent.ts`)
 

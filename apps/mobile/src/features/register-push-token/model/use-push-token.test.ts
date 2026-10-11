@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useIsAuthenticated } from '@/entities/session';
 import {
   configureForegroundNotifications,
+  deleteFcmToken,
   ensureNotificationChannel,
   getFcmToken,
   onFcmTokenRefresh,
@@ -19,6 +20,7 @@ jest.mock('@/entities/session', () => ({ useIsAuthenticated: jest.fn() }));
 
 jest.mock('@/shared/lib/notifications', () => ({
   configureForegroundNotifications: jest.fn(),
+  deleteFcmToken: jest.fn(),
   ensureNotificationChannel: jest.fn(),
   getFcmToken: jest.fn(),
   onFcmTokenRefresh: jest.fn(),
@@ -41,6 +43,7 @@ const mockRegisterRemote = registerForRemoteMessages as jest.MockedFunction<
   typeof registerForRemoteMessages
 >;
 const mockGetToken = getFcmToken as jest.MockedFunction<typeof getFcmToken>;
+const mockDeleteToken = deleteFcmToken as jest.MockedFunction<typeof deleteFcmToken>;
 const mockOnTokenRefresh = onFcmTokenRefresh as jest.MockedFunction<typeof onFcmTokenRefresh>;
 const mockOnForegroundMessage = onForegroundMessage as jest.MockedFunction<
   typeof onForegroundMessage
@@ -60,6 +63,7 @@ beforeEach(() => {
   mockEnsureChannel.mockResolvedValue(undefined);
   mockRegisterRemote.mockResolvedValue(undefined);
   mockGetToken.mockResolvedValue('token-1');
+  mockDeleteToken.mockResolvedValue(undefined);
   mockRegisterToken.mockResolvedValue(undefined);
   mockOnTokenRefresh.mockReturnValue(jest.fn());
   mockOnForegroundMessage.mockReturnValue(jest.fn());
@@ -188,6 +192,53 @@ describe('usePushTokenRegistration', () => {
       );
     });
     expect(mockPresentLocal).toHaveBeenCalledTimes(1);
+  });
+
+  // The backend files a token under the account that registered it, so a
+  // device that kept its token after signing out went on receiving that
+  // account's pushes under the next account (backlog E-28, 2026-10-11).
+  it('deletes the device token when the user signs out', async () => {
+    const { rerender } = await renderHook(usePushTokenRegistration);
+    await waitFor(() => expect(mockRegisterToken).toHaveBeenCalledWith('token-1'));
+    expect(mockDeleteToken).not.toHaveBeenCalled();
+
+    mockIsAuthenticated.mockReturnValue(false);
+    await act(async () => rerender({}));
+
+    expect(mockDeleteToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the token alone at a launch without a session', async () => {
+    mockIsAuthenticated.mockReturnValue(false);
+
+    await renderHook(usePushTokenRegistration);
+    await Promise.resolve();
+
+    expect(mockDeleteToken).not.toHaveBeenCalled();
+  });
+
+  it('registers the next account only after the deletion finishes', async () => {
+    let finishDeletion!: () => void;
+    mockDeleteToken.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishDeletion = resolve;
+        }),
+    );
+    const { rerender } = await renderHook(usePushTokenRegistration);
+    await waitFor(() => expect(mockRegisterToken).toHaveBeenCalledTimes(1));
+    mockIsAuthenticated.mockReturnValue(false);
+    await act(async () => rerender({}));
+
+    mockGetToken.mockResolvedValue('token-2');
+    mockIsAuthenticated.mockReturnValue(true);
+    await act(async () => rerender({}));
+    expect(mockGetToken).toHaveBeenCalledTimes(1);
+
+    await act(async () => finishDeletion());
+
+    await waitFor(() => expect(mockRegisterToken).toHaveBeenLastCalledWith('token-2'));
+    expect(mockRegisterToken).toHaveBeenCalledTimes(2);
   });
 
   it('unsubscribes both native listeners on unmount', async () => {
