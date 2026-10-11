@@ -79,3 +79,12 @@ export function cutoffFor(days: number, now: Date = new Date()): Date {
 export function snapExpiresAt(uploadedAt: Date): Date {
   return new Date(uploadedAt.getTime() + (SNAP_RETENTION_DAYS + EXPIRY_TO_PURGE_DAYS) * DAY_MS);
 }
+
+/**
+ * 위치 알림(geofence) 발송 이력의 보관 기간(일).
+ *
+ * 이 행은 30분 쿨다운 판정에만 쓰이고, 그보다 오래된 행은 아무도 읽지 않는다. 운영 중 "왜 알림이
+ * 갔나/안 갔나"를 볼 여유로 7일을 둔다(backlog B-4, 2026-10-11). 만료 예고(`snap_expiry`) 행은
+ * 같은 예고를 두 번 보내지 않는 유일한 근거라 이 기간으로 지우지 않는다.
+ */
+export const GEOFENCE_LOG_RETENTION_DAYS = 7;

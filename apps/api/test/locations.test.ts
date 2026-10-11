@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
-import { handleGeofenceEnter } from '../src/services/location.service.js';
+import { handleGeofenceEnter, purgeOldGeofenceLogs } from '../src/services/location.service.js';
 
 let h: Harness;
 
@@ -360,5 +360,40 @@ describe('POST /notifications/geofence-enter', () => {
 
     expect(results.filter((r) => r.notified)).toHaveLength(1);
     expect(await h.prisma.notificationLog.count({ where: { userId: user.id } })).toBe(1);
+  });
+});
+
+describe('위치 알림 이력 정리 (backlog B-4)', () => {
+  it('7일 지난 위치 알림 이력만 지우고 만료 예고 이력은 남긴다', async () => {
+    const user = await h.createUser();
+    const location = await createLocation();
+    const video = await h.prisma.video.create({
+      data: { userId: user.id, originalUrls: [], status: 'ready' },
+      select: { id: true },
+    });
+    const now = new Date('2026-10-11T00:00:00Z');
+    const daysAgo = (days: number) => new Date(now.getTime() - days * 86_400_000);
+    await h.prisma.notificationLog.createMany({
+      data: [
+        { userId: user.id, locationId: location.id, sentAt: daysAgo(8) },
+        { userId: user.id, locationId: location.id, sentAt: daysAgo(6) },
+        {
+          userId: user.id,
+          kind: 'snap_expiry',
+          videoId: video.id,
+          noticeDaysBefore: 3,
+          sentAt: daysAgo(30),
+        },
+      ],
+    });
+
+    expect(await purgeOldGeofenceLogs({ now, dryRun: true })).toBe(1);
+    expect(await h.prisma.notificationLog.count()).toBe(3);
+
+    expect(await purgeOldGeofenceLogs({ now })).toBe(1);
+    const left = await h.prisma.notificationLog.findMany({ select: { kind: true, sentAt: true } });
+    expect(left).toHaveLength(2);
+    expect(left.some((row) => row.kind === 'snap_expiry')).toBe(true);
+    expect(left.some((row) => row.kind === 'geofence' && row.sentAt.getTime() === daysAgo(6).getTime())).toBe(true);
   });
 });

@@ -134,7 +134,7 @@ main 머지
 | 시각(KST) | 무엇 | 로그 |
 |---|---|---|
 | 03:30 | DB 백업 | `backup.log` |
-| 04:00 | 만료 정리(스냅 · 결과물 · 남은 객체) | `purge-expired.log` |
+| 04:00 | 만료 정리(스냅 · 결과물 · 남은 객체 · 7일 지난 위치 알림 이력) | `purge-expired.log` |
 | 04:20 | 계정 실삭제 | `accounts-purge.log` |
 | 04:40 | pending 영상 회수 | `purge-pending.log` |
 | **10:00** | **만료 예고 알림** | `notify-expiring.log` |

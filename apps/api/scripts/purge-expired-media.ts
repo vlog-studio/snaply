@@ -1,12 +1,13 @@
 /**
  * 보관 기간 만료 정리 배치.
  *
- * 세 가지를 한 번에 돌린다 — 모두 같은 구조라 따로 스케줄할 이유가 없다:
+ * 네 가지를 한 번에 돌린다 — 하루 1회면 되는 정리라 따로 스케줄할 이유가 없다:
  *   ① 스냅 원본 (업로드 후 15일, SNAP-9)
  *   ② 끝내지 않은 무비 결과물 (생성 후 30일, MOV-16)
  *   ③ 앞선 삭제에서 S3 만 실패해 남은 객체 (backlog E-3)
+ *   ④ 7일 지난 위치 알림 발송 이력 (backlog B-4) — 이것만은 행을 지운다. 쿨다운 판정 말고는 쓰이지 않는다
  *
- * **행은 지우지 않는다.** 사라지는 것은 파일이고 메타데이터는 툼스톤으로 남는다 —
+ * **①~③ 은 행을 지우지 않는다.** 사라지는 것은 파일이고 메타데이터는 툼스톤으로 남는다 —
  * 사용자가 무엇을 잃었는지 알아야 하고, 그 영상을 참조하던 무비의 컷도 깨지면 안 된다
  * (docs/specs/snap-library.md SNAP-12).
  *
@@ -21,7 +22,9 @@ import { initStorage } from '../src/services/storage.service.js';
 import {
   MOVIE_RESULT_RETENTION_DAYS,
   SNAP_RETENTION_DAYS,
+  GEOFENCE_LOG_RETENTION_DAYS,
 } from '../src/services/retention-policy.js';
+import { purgeOldGeofenceLogs } from '../src/services/location.service.js';
 import {
   findExpiredMovieResults,
   findExpiredSnaps,
@@ -67,8 +70,10 @@ try {
   report(`① 보관 기간(${SNAP_RETENTION_DAYS}일) 지난 스냅 원본`, snaps);
   report(`② 끝내지 않은 채 ${MOVIE_RESULT_RETENTION_DAYS}일 지난 무비 결과물`, movieResults);
   report('③ 앞선 삭제에서 남은 S3 객체', orphans);
+  const geofenceLogs = await purgeOldGeofenceLogs({ dryRun: true });
+  console.log(`\n④ ${GEOFENCE_LOG_RETENTION_DAYS}일 지난 위치 알림 이력: ${geofenceLogs}건`);
 
-  const total = snaps.length + movieResults.length + orphans.length;
+  const total = snaps.length + movieResults.length + orphans.length + geofenceLogs;
   if (total === 0) {
     console.log('\n지울 것이 없습니다.');
     process.exit(0);
@@ -83,6 +88,7 @@ try {
     summarize('① 스냅', await purgeExpiredSnaps()) +
     summarize('② 무비 결과물', await purgeExpiredMovieResults()) +
     summarize('③ 남은 객체', await purgeOrphanedObjects());
+  console.log(`④ 위치 알림 이력: 삭제 ${await purgeOldGeofenceLogs()}건`);
   if (failures > 0) {
     process.exitCode = 1;
   }

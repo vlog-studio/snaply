@@ -3,6 +3,7 @@ import { getPrisma } from '../db/client.js';
 import { AppError } from '../lib/errors.js';
 import { sendToUser, type PushMessage } from './fcm.service.js';
 import { isQuietNow } from '../lib/quiet-hours.js';
+import { GEOFENCE_LOG_RETENTION_DAYS } from './retention-policy.js';
 
 const COOLDOWN_MINUTES = 30;
 const EARTH_RADIUS_M = 6_371_000;
@@ -145,4 +146,24 @@ async function claimCooldownSlot(
       select: { id: true },
     });
   });
+}
+
+/**
+ * 보관 기간이 지난 위치 알림 이력을 지운다(정리 배치 ④). `dryRun` 이면 개수만 센다.
+ * 만료 예고 행은 건드리지 않는다 — `GEOFENCE_LOG_RETENTION_DAYS` 참고.
+ */
+export async function purgeOldGeofenceLogs(params: {
+  now?: Date;
+  dryRun?: boolean;
+} = {}): Promise<number> {
+  const now = params.now ?? new Date();
+  const where = {
+    kind: 'geofence' as const,
+    sentAt: { lt: new Date(now.getTime() - GEOFENCE_LOG_RETENTION_DAYS * 86_400_000) },
+  };
+  if (params.dryRun) {
+    return getPrisma().notificationLog.count({ where });
+  }
+  const { count } = await getPrisma().notificationLog.deleteMany({ where });
+  return count;
 }
