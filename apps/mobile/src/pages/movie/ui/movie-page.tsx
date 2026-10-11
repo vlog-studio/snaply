@@ -21,6 +21,7 @@ import {
   useRenderSource,
 } from '@/features/compose-movie';
 import { FinishMovieConfirm } from '@/features/finish-movie';
+import type { PostOutcome } from '@/features/post-to-instagram';
 import { RenameMovieSheet } from '@/features/rename-movie';
 import { useShareMovie } from '@/features/share-movie';
 import { adRewardQueries } from '@/features/watch-reward-ad';
@@ -29,6 +30,7 @@ import { BackBar } from '@/shared/ui/back-bar';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Toast } from '@/shared/ui/toast';
 
 import { offerableLeftOut } from '../model/left-out-snaps';
 import { boundaryPlan, toCutIndex, toPlaybackCuts, toPlaybackIndex } from '../model/playback-cuts';
@@ -43,6 +45,7 @@ import { DetailSheet } from './detail-sheet';
 import { EditExitSheet } from './edit-exit-sheet';
 import { GenerateFooter } from './generate-footer';
 import { GenerationProgress } from './generation-progress';
+import { InstagramPostSheet } from './instagram-post-sheet';
 import { LeftOutNotice } from './left-out-notice';
 import { MovieActionsSheet } from './movie-actions-sheet';
 import { MovieWatch } from './movie-watch';
@@ -143,6 +146,8 @@ export function MoviePage({ movieId }: MoviePageProps) {
   // 끝내기 asked from the watch stage's own prompt (the ⋯ sheet hosts its own
   // copy of the step, so the two Modals are never up together).
   const [finishAsking, setFinishAsking] = useState(false);
+  const [postAsking, setPostAsking] = useState(false);
+  const [postNotice, setPostNotice] = useState<string | undefined>(undefined);
   // The refusal already in the user's words, resolved where the outcome arrives
   // rather than by the footer that draws it: a credit refusal names the ad
   // top-up only when the server says that door is open, which is read then.
@@ -259,6 +264,17 @@ export function MoviePage({ movieId }: MoviePageProps) {
   const canPlay = playbackCuts.length > 0 && previewReady;
   const isGenerating = movie.status === 'generating';
   const viewing = movie.status === 'ready' && !editing;
+  // Posting needs the render's file on the server (SNS-8); without one there
+  // is nothing to send, the same reason 공유 is blocked.
+  const postableVideoId = viewing ? movie.render?.videoId : undefined;
+  const announcePost = (outcome: PostOutcome) => {
+    setPostAsking(false);
+    setPostNotice(
+      outcome === 'posted'
+        ? 'Instagram에 게시했어요'
+        : 'Instagram에서 처리하는 중이에요. 잠시 뒤 Instagram에서 확인해 주세요.',
+    );
+  };
   // Worded exactly as the 세부 sheet words it, since the chip is that row's
   // read-out standing outside the sheet.
   const arrangementLabel = isAiArranged(movie) ? '찍은 시각 순' : '지금 순서';
@@ -371,6 +387,7 @@ export function MoviePage({ movieId }: MoviePageProps) {
           editedSinceRender={editedSinceRender}
           onReviewEdits={openStudio}
           onFinish={() => setFinishAsking(true)}
+          onPostToInstagram={postableVideoId ? () => setPostAsking(true) : undefined}
         />
       ) : (
         <>
@@ -607,6 +624,8 @@ export function MoviePage({ movieId }: MoviePageProps) {
           setActionsOpen(false);
           sharing.share();
         }}
+        postableVideoId={postableVideoId}
+        onPosted={announcePost}
         onConfirmDelete={() => {
           setActionsOpen(false);
           // Leave first: a deleted movie renders this screen's not-found state,
@@ -649,6 +668,20 @@ export function MoviePage({ movieId }: MoviePageProps) {
         />
       </BottomSheet>
 
+      {/* A post that goes through finishes the movie (MOV-17), so watch mode —
+          this sheet's host — is gone the moment it lands; closing first keeps
+          the Modal from outliving the face that opened it, as with 정리. */}
+      {postableVideoId ? (
+        <InstagramPostSheet
+          visible={postAsking}
+          movieId={movie.id}
+          title={movie.title}
+          videoId={postableVideoId}
+          onClose={() => setPostAsking(false)}
+          onPosted={announcePost}
+        />
+      ) : null}
+
       <TransitionPickerSheet
         visible={transitionIndex >= 0}
         index={Math.max(transitionIndex, 0)}
@@ -683,6 +716,15 @@ export function MoviePage({ movieId }: MoviePageProps) {
         movieId={movie.id}
         title={movie.title}
         onClose={() => setRenaming(false)}
+      />
+
+      {/* What the post did. Outlives the sheet and watch mode both: after a
+          post goes through, the movie has become a draft and this is the one
+          place the result is said. */}
+      <Toast
+        message={postNotice}
+        onDismiss={() => setPostNotice(undefined)}
+        bottomOffset={insets.bottom + Spacing.three}
       />
     </View>
   );

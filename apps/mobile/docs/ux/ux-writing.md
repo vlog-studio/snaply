@@ -151,6 +151,8 @@ Fixed product vocabulary. Use exactly these words; never introduce a synonym.
 | 나 | The tab with the user's record and every preference (`나 탭에서 언제든 끌 수 있고`, `나 탭 크레딧에서`) | 마이, 프로필 |
 | 가져오기 | Importing from the gallery | 업로드, 임포트, 추출 |
 | 올리기 | Sending a snap to the server (`올리는 중`, `다시 올리기`) | 업로드 |
+| 게시 | Sending a finished movie to an SNS account as a post (`Instagram에 게시`, `게시하는 중…`, `Instagram에 게시했어요`). Distinct from 올리기, which is the app's own transfer of a snap | 올리기, 업로드, 공유 (공유 is the system share sheet) |
+| 연결 | Linking an SNS account to Snaply (`Instagram 연결`, `연결 해제`, `다시 연결`) | 연동, 로그인, 인증 |
 | 앨범 | The device's own photo gallery, where a snap's copy is the user's to keep (`앨범에 저장`, `앨범에 저장했어요`, `찍은 스냅을 앨범에도 저장`). The OS permission is named for the OS's own app (`사진 권한`, `사진 추가`) | 갤러리, 사진첩, 카메라 롤, 내려받기, 다운로드 |
 | 이 기기에서만 삭제 | Deleting a snap's file on this device while the server still keeps it; the opposite answer is `모든 기기에서 삭제` | 로컬 삭제, 서버에 남기기, 공간 정리 |
 | 삭제 | Removing something: `…삭제할까요?` / `삭제` / `삭제하는 중…`. The rule binds what the user presses and what the user is asked; a sentence describing what will happen may say `지워요` (`끄면 분석 결과를 지워요`, `최대 30일 보관한 뒤 지워요`) | 지우기, 지울까요 — on a button or in a question |

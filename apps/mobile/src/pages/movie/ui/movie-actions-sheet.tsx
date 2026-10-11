@@ -5,12 +5,15 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { Movie } from '@/entities/movie';
 import { FinishMovieConfirm } from '@/features/finish-movie';
+import type { PostOutcome } from '@/features/post-to-instagram';
 import { RenameMovieForm } from '@/features/rename-movie';
 import { ShareBlockMessages, type ShareBlock } from '@/features/share-movie';
 import { formatSeconds } from '@/shared/lib/datetime';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+
+import { InstagramPostStep } from './instagram-post-sheet';
 
 export type MovieActionsSheetProps = {
   visible: boolean;
@@ -23,13 +26,20 @@ export type MovieActionsSheetProps = {
   shareBlock: ShareBlock | undefined;
   onEdit: () => void;
   onShare: () => void;
+  /**
+   * The finished render's file on the server, when there is one to post to
+   * Instagram (SNS-8). Absent hides the row.
+   */
+  postableVideoId?: string;
+  /** A post went through (or is processing); the page says so. */
+  onPosted: (outcome: PostOutcome) => void;
   /** Actually deletes — the confirm step inside this sheet has been passed. */
   onConfirmDelete: () => void;
   onClose: () => void;
 };
 
 /** The ⋯ sheet's own steps; each is a face of the one Modal. */
-type Step = 'menu' | 'delete' | 'rename' | 'finish';
+type Step = 'menu' | 'delete' | 'rename' | 'finish' | 'instagram';
 
 /**
  * Everything watch mode can do to the movie besides watching it, behind the
@@ -55,6 +65,8 @@ export function MovieActionsSheet({
   shareBlock,
   onEdit,
   onShare,
+  postableVideoId,
+  onPosted,
   onConfirmDelete,
   onClose,
 }: MovieActionsSheetProps) {
@@ -82,10 +94,24 @@ export function MovieActionsSheet({
             ? '무비 이름 바꾸기'
             : step === 'finish'
               ? '무비 정리 확인'
-              : '무비 더보기'
+              : step === 'instagram'
+                ? 'Instagram에 게시'
+                : '무비 더보기'
       }
     >
-      {step === 'finish' ? (
+      {step === 'instagram' && postableVideoId ? (
+        // Posting as a step here too: one Modal, no race (see above).
+        <InstagramPostStep
+          movieId={movie.id}
+          title={movie.title}
+          videoId={postableVideoId}
+          onCancel={() => setStep('menu')}
+          onPosted={(outcome) => {
+            close();
+            onPosted(outcome);
+          }}
+        />
+      ) : step === 'finish' ? (
         // 끝내기 (MOV-17) as a step here, for the same reason delete and rename
         // are: one Modal, no race. The feature's confirm carries the words that
         // make the loss plain and the request that makes it so.
@@ -173,6 +199,14 @@ export function MovieActionsSheet({
               divider
               onPress={act(onShare)}
             />
+            {postableVideoId ? (
+              <ActionRow
+                icon="logo-instagram"
+                label="Instagram에 게시"
+                divider
+                onPress={() => setStep('instagram')}
+              />
+            ) : null}
             {/* Only a movie with a file to give up can be finished; the note
                 says what the act is, since the word alone could mean anything. */}
             {movie.render ? (

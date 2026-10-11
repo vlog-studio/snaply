@@ -37,6 +37,15 @@ jest.mock('@/entities/session', () => ({
 }));
 jest.mock('@/entities/snap', () => ({ useSnaps: () => [] }));
 jest.mock('@/entities/movie', () => ({ useMovies: () => [] }));
+let mockInstagram: { connection?: object; isLoaded: boolean; isError: boolean } = {
+  isLoaded: true,
+  isError: false,
+};
+jest.mock('@/entities/sns-connection', () => ({
+  useSnsConnection: () => mockInstagram,
+  needsReconnect: (connection: { tokenExpiresAt: Date | null }, now: number) =>
+    connection.tokenExpiresAt === null || connection.tokenExpiresAt.getTime() <= now,
+}));
 const mockAnalysisConsent = jest.fn();
 jest.mock('@/features/analysis-consent', () => ({
   useAnalysisConsent: () => mockAnalysisConsent(),
@@ -59,7 +68,6 @@ jest.mock('@/features/save-snap-to-album', () => ({
 const interestsTitle = '\uAD00\uC2EC\uC0AC'; // 관심사
 const comingSoon = '\uC900\uBE44 \uC911'; // 준비 중
 const socialTitle = '\uC18C\uC15C \uC5F0\uACB0'; // 소셜 연결
-const socialReadOut = 'TikTok \u00B7 Instagram \uC900\uBE44 \uC911'; // TikTok · Instagram 준비 중
 const notificationsTitle = '\uC54C\uB9BC'; // 알림
 const analysisTitle = '\uC2A4\uB0C5 \uBD84\uC11D'; // 스냅 분석
 const analysisOn = '\uCF1C\uC9D0'; // 켜짐
@@ -101,14 +109,39 @@ describe('MePage', () => {
     expect(screen.queryByRole('button', { name: interestsTitle })).toBeNull();
   });
 
-  // The planned connections stay visible, but no screen sits behind them: the
-  // row names the platforms itself, and nothing offers to connect.
-  it('shows \uC18C\uC15C \uC5F0\uACB0 as a placeholder naming both platforms, opening nothing', async () => {
+  // Instagram can be linked (SNS-8); the row reads the link and opens its screen.
+  it('reads 소셜 연결 as the linked account and opens its screen', async () => {
+    mockInstagram = {
+      isLoaded: true,
+      isError: false,
+      connection: { username: 'snaply', tokenExpiresAt: new Date(Date.now() + 86_400_000) },
+    };
     await renderPage();
 
-    expect(screen.getByText(socialTitle)).toBeTruthy();
-    expect(screen.getByText(socialReadOut)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: socialTitle })).toBeNull();
+    expect(screen.getByText('Instagram @snaply')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: socialTitle }));
+    expect(mockPush).toHaveBeenCalledWith('/settings/social');
+    mockInstagram = { isLoaded: true, isError: false };
+  });
+
+  // A link whose access ran out, or whose end nobody knows, must be made again
+  // before a post can go through — the summary says so before the user tries.
+  it('reads 소셜 연결 as needing a new link when the access cannot be trusted', async () => {
+    mockInstagram = {
+      isLoaded: true,
+      isError: false,
+      connection: { username: 'snaply', tokenExpiresAt: null },
+    };
+    await renderPage();
+
+    expect(screen.getByText('Instagram 다시 연결 필요')).toBeTruthy();
+    mockInstagram = { isLoaded: true, isError: false };
+  });
+
+  it('reads 소셜 연결 as unlinked when there is no account', async () => {
+    await renderPage();
+
+    expect(screen.getByText('연결된 계정 없음')).toBeTruthy();
   });
 
   it('keeps the rows that have a screen behind them as buttons', async () => {

@@ -38,6 +38,11 @@ export type MovieWatchProps = {
   onReviewEdits: () => void;
   /** Opens the 끝내기 confirm (MOV-17); never finishes by itself. */
   onFinish: () => void;
+  /**
+   * Opens the Instagram post sheet (SNS-8). Absent when the render has no file
+   * on the server to post — the same condition that blocks 공유.
+   */
+  onPostToInstagram?: () => void;
 };
 
 /**
@@ -81,6 +86,7 @@ export function MovieWatch({
   editedSinceRender,
   onReviewEdits,
   onFinish,
+  onPostToInstagram,
 }: MovieWatchProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -202,6 +208,9 @@ export function MovieWatch({
           disabled={sharing.blocked !== undefined || sharing.busy}
           onPress={sharing.share}
         />
+        {onPostToInstagram ? (
+          <SnaplyButton title="Instagram에 게시" variant="secondary" onPress={onPostToInstagram} />
+        ) : null}
         {sharing.blocked !== undefined ? (
           <ThemedText type="note" themeColor="textSecondary" style={styles.centerText}>
             {ShareBlockMessages[sharing.blocked]}

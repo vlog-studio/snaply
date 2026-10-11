@@ -2,13 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useRouter, useScrollToTop } from 'expo-router';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { creditQueries } from '@/entities/credit';
 import { useMovies } from '@/entities/movie';
 import { useClearSession, useCurrentUser } from '@/entities/session';
 import { useSnaps } from '@/entities/snap';
+import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useAnalysisConsent } from '@/features/analysis-consent';
 import { useNotificationPreferences } from '@/features/notification-settings';
 import { useAlbumAutoSaveEnabled } from '@/features/save-snap-to-album';
@@ -57,6 +58,17 @@ export function MePage() {
   const clearSession = useClearSession();
   const snaps = useSnaps();
   const movies = useMovies();
+  const instagram = useSnsConnection('instagram');
+  // When the tab opened — enough to tell a lapsed link (the same reading 최근 삭제 uses).
+  const [now] = useState(Date.now);
+  // Before the server answers, nothing claims a link either way.
+  const socialReadOut = !instagram.isLoaded
+    ? undefined
+    : !instagram.connection
+      ? '연결된 계정 없음'
+      : needsReconnect(instagram.connection, now)
+        ? 'Instagram 다시 연결 필요'
+        : `Instagram ${instagram.connection.username ? `@${instagram.connection.username}` : '연결됨'}`;
   const notificationPreferences = useNotificationPreferences();
   const albumAutoSave = useAlbumAutoSaveEnabled();
   const themeMode = useThemeMode();
@@ -180,16 +192,16 @@ export function MePage() {
             happens. The same placeholder the capture reminders use. */}
         <SettingRow icon="heart-outline" title="관심사" sub="준비 중" subLines={1} />
         <RowDivider />
-        {/* The planned connections stay visible (owner decision) but open
-            nothing: the screen behind the row only repeated 준비 중 for each
-            platform, so the row names the platforms itself. No 연결 button
-            anywhere — the backend integration works for a single test account,
-            and a connect control would promise what no other user can do. */}
+        {/* Instagram can be linked here and a finished movie posted to it
+            (SNS-8, 2026-10-11); the row reads the link. TikTok has no link to
+            offer yet, so the screen behind shows it as 준비 중. */}
         <SettingRow
           icon="link-outline"
           title="소셜 연결"
-          sub="TikTok · Instagram 준비 중"
+          sub={socialReadOut}
           subLines={1}
+          right={<Chevron />}
+          onPress={() => router.push('/settings/social')}
         />
       </View>
 

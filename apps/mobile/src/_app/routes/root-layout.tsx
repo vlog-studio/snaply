@@ -151,6 +151,14 @@ function RootStack() {
         <Stack.Screen name="settings/analysis" options={{ title: '스냅 분석' }} />
         <Stack.Screen name="settings/album" options={{ title: '앨범 저장' }} />
         <Stack.Screen name="settings/theme" options={{ title: '화면 테마' }} />
+        <Stack.Screen name="settings/social" options={{ title: '소셜 연결' }} />
+        {/* Where the backend sends the browser back to after linking an SNS
+            account. The connect flow reads the URL from its own browser
+            session; these only catch the same link reaching the router, and
+            step straight back (see SnsReturnPage). Signed-in only: linking is
+            an account's act. */}
+        <Stack.Screen name="sns/connected" options={{ headerShown: false, animation: 'none' }} />
+        <Stack.Screen name="sns/error" options={{ headerShown: false, animation: 'none' }} />
         <Stack.Screen name="settings/delete-account" options={{ title: '계정 삭제' }} />
       </Stack.Protected>
 
