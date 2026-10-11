@@ -17,6 +17,8 @@ import { getPrisma } from '../db/client.js';
 import { captureException } from '../lib/sentry.js';
 import { isFcmDryRun, sendToUser } from './fcm.service.js';
 import {
+  MOVIE_EXPIRY_NOTICE_DAYS,
+  MOVIE_RESULT_RETENTION_DAYS,
   SNAP_EXPIRY_NOTICE_DAYS,
   SNAP_RETENTION_DAYS,
   cutoffFor,
@@ -169,6 +171,150 @@ export async function sendExpiryNotices(params: {
       { skipped: outcome.skipped },
       'FCM 이 dry-run 이라 만료 예고가 실제로 발송되지 않았다 — 서비스 계정을 확인할 것',
     );
+  }
+  return outcome;
+}
+
+// ── 무비 결과물 만료 예고 (NTF-10) ─────────────────────────────
+
+export interface MovieNoticeOutcome {
+  /** 알림을 보낸 사용자 수 */
+  notified: number;
+  /** 예고한 무비 수 */
+  movies: number;
+  /** 보내지 않은 이유별 사용자 수 */
+  skipped: Record<string, number>;
+}
+
+/**
+ * 예고 대상: 끝내지 않았고(MOV-17), 결과물이 아직 살아 있고, D-`daysBefore` 를 지났고, 그 예고를 아직 못 받은 무비.
+ * 결과물의 기준 시각은 정리 배치와 같은 `resultVideo.createdAt` 이다(`findExpiredMovieResults`).
+ */
+async function findDueMovies(daysBefore: number, now: Date) {
+  return await getPrisma().movie.findMany({
+    where: {
+      deletedAt: null,
+      finishedAt: null,
+      resultVideo: {
+        deletedAt: null,
+        createdAt: {
+          lte: cutoffFor(MOVIE_RESULT_RETENTION_DAYS - daysBefore, now),
+          gt: cutoffFor(MOVIE_RESULT_RETENTION_DAYS, now),
+        },
+        notificationLogs: { none: { kind: 'movie_expiry', noticeDaysBefore: daysBefore } },
+      },
+    },
+    select: { id: true, userId: true, title: true, resultVideoId: true },
+    orderBy: { createdAt: 'asc' },
+  });
+}
+
+/**
+ * 무비 예고는 **무비 알림 스위치를 따른다**(스냅 예고와 다르다, NTF-10). 무비는 지워져도 컷 구성이 남아
+ * 다시 만들 수 있고, 감상 화면이 남은 기간을 늘 보여 주기 때문이다.
+ */
+async function canNotifyMovie(userId: string): Promise<boolean> {
+  const user = await getPrisma().user.findUnique({
+    where: { id: userId },
+    select: { notificationEnabled: true, movieNotificationEnabled: true, deletedAt: true },
+  });
+  return Boolean(
+    user && user.notificationEnabled && user.movieNotificationEnabled && !user.deletedAt,
+  );
+}
+
+function movieMessageFor(daysBefore: number, titles: string[]): { title: string; body: string } {
+  const when = daysBefore === 1 ? '내일' : `${daysBefore}일 후`;
+  const what = titles.length === 1 ? `'${titles[0]}' 무비가` : `무비 ${titles.length}편이`;
+  return {
+    title: '무비 보관 기간이 곧 끝나요',
+    body: `${when} ${what} 사라져요. 남기려면 저장하거나 게시해 주세요.`,
+  };
+}
+
+/**
+ * 무비 결과물 만료 예고를 발송한다. `apply` 가 false 면 대상만 센다(dry-run).
+ * 선점 · 되돌리기 · 사용자당 한 알림은 스냅 예고(`sendExpiryNotices`)와 같다.
+ */
+export async function sendMovieExpiryNotices(params: {
+  logger: Logger;
+  now?: Date;
+  apply?: boolean;
+}): Promise<MovieNoticeOutcome> {
+  const now = params.now ?? new Date();
+  const apply = params.apply ?? false;
+  const prisma = getPrisma();
+  const outcome: MovieNoticeOutcome = { notified: 0, movies: 0, skipped: {} };
+  const skip = (reason: string): void => {
+    outcome.skipped[reason] = (outcome.skipped[reason] ?? 0) + 1;
+  };
+
+  for (const daysBefore of MOVIE_EXPIRY_NOTICE_DAYS) {
+    const due = await findDueMovies(daysBefore, now);
+    const byUser = new Map<string, typeof due>();
+    for (const movie of due) {
+      byUser.set(movie.userId, [...(byUser.get(movie.userId) ?? []), movie]);
+    }
+
+    for (const [userId, movies] of byUser) {
+      if (!(await canNotifyMovie(userId))) {
+        skip('notifications_disabled');
+        continue;
+      }
+      if (!apply) {
+        outcome.notified += 1;
+        outcome.movies += movies.length;
+        continue;
+      }
+
+      const videoIds = movies.flatMap((movie) => (movie.resultVideoId ? [movie.resultVideoId] : []));
+      try {
+        await prisma.notificationLog.createMany({
+          data: videoIds.map((videoId) => ({
+            userId,
+            kind: 'movie_expiry' as const,
+            videoId,
+            noticeDaysBefore: daysBefore,
+          })),
+          skipDuplicates: true,
+        });
+      } catch (err) {
+        captureException(err, { userId, daysBefore, phase: 'movie-expiry-notice-claim' });
+        skip('claim_failed');
+        continue;
+      }
+
+      const result = await sendToUser(params.logger, userId, {
+        ...movieMessageFor(
+          daysBefore,
+          movies.map((movie) => movie.title),
+        ),
+        // 한 편이면 그 무비를 연다. 여러 편이면 앱만 연다 — 어느 하나를 고를 근거가 없다.
+        data:
+          movies.length === 1
+            ? { kind: 'movie_expiry', movieId: movies[0]!.id, daysBefore: String(daysBefore) }
+            : { kind: 'movie_expiry', daysBefore: String(daysBefore) },
+      });
+
+      const delivered = result.sent && !result.dryRun;
+      if (!delivered) {
+        await prisma.notificationLog
+          .deleteMany({
+            where: {
+              userId,
+              kind: 'movie_expiry',
+              noticeDaysBefore: daysBefore,
+              videoId: { in: videoIds },
+            },
+          })
+          .catch(() => undefined);
+        skip(result.sent ? 'dry_run' : result.reason);
+        continue;
+      }
+
+      outcome.notified += 1;
+      outcome.movies += movies.length;
+    }
   }
   return outcome;
 }

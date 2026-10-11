@@ -53,6 +53,12 @@ export const EXPIRY_TO_PURGE_DAYS = 0;
 export const SNAP_EXPIRY_NOTICE_DAYS = [3, 1] as const;
 
 /**
+ * 끝내지 않은 무비 결과물의 만료 예고 시점(만료 며칠 전). 한 번만 보낸다 — 무비는 지워져도 컷 구성이
+ * 남아 다시 만들 수 있고, 감상 화면이 남은 기간을 늘 보여 준다(NTF-10, 2026-10-11 결정).
+ */
+export const MOVIE_EXPIRY_NOTICE_DAYS = [3] as const;
+
+/**
  * 예고 알림을 보내는 시각(KST, 0-23).
  *
  * 정리 배치(새벽)와 **일부러 분리했다.** 사용자의 조용한 시간대 기본값이 22-08시라 새벽에

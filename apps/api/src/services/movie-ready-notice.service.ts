@@ -12,6 +12,7 @@
 import { getPrisma } from '../db/client.js';
 import { isQuietNow } from '../lib/quiet-hours.js';
 import { sendToUser } from './fcm.service.js';
+import { MOVIE_RESULT_RETENTION_DAYS } from './retention-policy.js';
 
 interface Logger {
   info: (o: object, m?: string) => void;
@@ -72,7 +73,8 @@ export async function notifyMovieReady(params: {
 
   const result = await sendToUser(params.logger, params.userId, {
     title: '무비가 완성됐어요',
-    body: `'${movie.title}' 무비를 지금 볼 수 있어요.`,
+    // 끝내지 않은 결과물은 보관 상한이 지나면 사라진다(MOV-16) — 처음 알릴 때 기간과 남기는 방법을 같이 말한다.
+    body: `'${movie.title}' 무비를 지금 볼 수 있어요. ${MOVIE_RESULT_RETENTION_DAYS}일 뒤 사라지니 저장하거나 게시해 두세요.`,
     // 앱이 곧장 그 무비를 열 수 있게 id 를 싣는다.
     data: { kind: 'movie_ready', movieId: movie.id, videoId: params.videoId },
   });

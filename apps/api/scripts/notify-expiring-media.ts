@@ -1,5 +1,5 @@
 /**
- * 스냅 만료 예고 알림 배치 (SNAP-13).
+ * 만료 예고 알림 배치 — 스냅(SNAP-13)과 끝내지 않은 무비 결과물(NTF-10).
  *
  * **정리 배치(`media:purge-expired`)와 일부러 분리했다.** 정리는 새벽에 돌아도 되지만 예고는
  * 안 된다 — 사용자의 조용한 시간대 기본값이 22-08시라 그때 보내면 알림이 발송되지 않고
@@ -13,7 +13,10 @@
  */
 import { loadConfig } from '../src/config.js';
 import { initFcm, isFcmDryRun } from '../src/services/fcm.service.js';
-import { sendExpiryNotices } from '../src/services/expiry-notice.service.js';
+import {
+  sendExpiryNotices,
+  sendMovieExpiryNotices,
+} from '../src/services/expiry-notice.service.js';
 import {
   EXPIRY_NOTICE_HOUR_KST,
   SNAP_EXPIRY_NOTICE_DAYS,
@@ -48,6 +51,13 @@ try {
       `\n${apply ? '발송' : '대상'}: 사용자 ${outcome.notified}명 · 스냅 ${outcome.videos}건`,
     );
     for (const [reason, count] of Object.entries(outcome.skipped)) {
+      console.log(`  건너뜀(${reason}): ${count}명`);
+    }
+    const movieOutcome = await sendMovieExpiryNotices({ logger, apply });
+    console.log(
+      `${apply ? '발송' : '대상'}(무비): 사용자 ${movieOutcome.notified}명 · 무비 ${movieOutcome.movies}편`,
+    );
+    for (const [reason, count] of Object.entries(movieOutcome.skipped)) {
       console.log(`  건너뜀(${reason}): ${count}명`);
     }
     if (!apply) {

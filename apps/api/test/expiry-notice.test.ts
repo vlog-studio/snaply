@@ -37,8 +37,12 @@ const SERVICE_ACCOUNT = JSON.stringify({
 
 const { createHarness } = await import('./helpers/harness.js');
 const { initFcm } = await import('../src/services/fcm.service.js');
-const { sendExpiryNotices } = await import('../src/services/expiry-notice.service.js');
-const { SNAP_RETENTION_DAYS } = await import('../src/services/retention-policy.js');
+const { sendExpiryNotices, sendMovieExpiryNotices } = await import(
+  '../src/services/expiry-notice.service.js'
+);
+const { MOVIE_RESULT_RETENTION_DAYS, SNAP_RETENTION_DAYS } = await import(
+  '../src/services/retention-policy.js'
+);
 type Harness = Awaited<ReturnType<typeof createHarness>>;
 
 let h: Harness;
@@ -260,4 +264,95 @@ describe('종류별 스위치가 없다', () => {
   });
 
   // 전체 스위치를 끈 경우만 가지 않는다 — 위 '보내지 못한 것을...' 의 마지막 테스트가 고정한다.
+});
+
+describe('무비 결과물 만료 예고 (NTF-10)', () => {
+  /** 결과물이 `ageDays` 일 전에 만들어진 무비. */
+  async function movieWithResultDaysAgo(
+    userId: string,
+    ageDays: number,
+    fields: { title?: string; finishedAt?: Date; deletedAt?: Date } = {},
+  ) {
+    const result = await h.prisma.video.create({
+      data: {
+        userId,
+        kind: 'result',
+        status: 'done',
+        originalUrls: [],
+        createdAt: new Date(now.getTime() - ageDays * DAY_MS),
+      },
+      select: { id: true },
+    });
+    return h.prisma.movie.create({
+      data: { userId, title: fields.title ?? '제주 3일', resultVideoId: result.id, ...fields },
+      select: { id: true },
+    });
+  }
+
+  async function movieUser() {
+    const user = await userWithToken();
+    await h.prisma.user.update({ where: { id: user.id }, data: { movieNotificationEnabled: true } });
+    return user;
+  }
+
+  it('만료 3일 전을 지난 결과물에 그 무비를 여는 예고를 한 번 보낸다', async () => {
+    const user = await movieUser();
+    const movie = await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 3);
+
+    const first = await sendMovieExpiryNotices({ logger, now, apply: true });
+    const second = await sendMovieExpiryNotices({ logger, now, apply: true });
+
+    expect(first.notified).toBe(1);
+    expect(second.notified).toBe(0);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sentBody(0)).toBe("3일 후 '제주 3일' 무비가 사라져요. 남기려면 저장하거나 게시해 주세요.");
+    expect(send.mock.calls[0]?.[0]?.data).toMatchObject({ kind: 'movie_expiry', movieId: movie.id });
+  });
+
+  it('아직 이르거나 이미 만료됐거나 끝낸 · 지운 무비에는 보내지 않는다', async () => {
+    const user = await movieUser();
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 4);
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS + 1);
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 2, { finishedAt: now });
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 2, { deletedAt: now });
+
+    const outcome = await sendMovieExpiryNotices({ logger, now, apply: true });
+
+    expect(outcome.notified).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('같은 날 여러 편이면 한 알림으로 묶는다', async () => {
+    const user = await movieUser();
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 3);
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 2, { title: '부산' });
+
+    const outcome = await sendMovieExpiryNotices({ logger, now, apply: true });
+
+    expect(outcome).toMatchObject({ notified: 1, movies: 2 });
+    expect(sentBody(0)).toContain('무비 2편이');
+  });
+
+  it('무비 알림을 끈 사용자에게는 보내지 않는다 — 스냅 예고와 다르다', async () => {
+    const user = await userWithToken();
+    await h.prisma.user.update({ where: { id: user.id }, data: { movieNotificationEnabled: false } });
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 3);
+
+    const outcome = await sendMovieExpiryNotices({ logger, now, apply: true });
+
+    expect(outcome.skipped).toEqual({ notifications_disabled: 1 });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('발송이 실패하면 선점을 되돌려 다음 실행에서 다시 보낸다', async () => {
+    const user = await movieUser();
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 3);
+    send.mockRejectedValueOnce(Object.assign(new Error('boom'), { code: 'messaging/internal' }));
+
+    const failed = await sendMovieExpiryNotices({ logger, now, apply: true });
+    const retried = await sendMovieExpiryNotices({ logger, now, apply: true });
+
+    expect(failed.notified).toBe(0);
+    expect(retried.notified).toBe(1);
+  });
 });

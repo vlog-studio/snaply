@@ -94,6 +94,8 @@ enum NotificationKind {
   geofence
   /// 스냅 만료 예고. 같은 영상·같은 예고일에 한 번만 — `@@unique` 가 막는다.
   snap_expiry
+  /// 무비 결과물 만료 예고(NTF-10). `videoId` 는 결과물 영상이고 중복은 같은 `@@unique` 가 막는다.
+  movie_expiry
 }
 
 /// 보낸 알림의 기록. **중복 발송을 막는 것이 주 용도**라 발송 전에 먼저 선점하고,

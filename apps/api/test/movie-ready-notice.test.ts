@@ -92,6 +92,8 @@ describe('완성 알림', () => {
     expect(result).toEqual({ notified: true, movieId });
     const message = send.mock.calls[0]?.[0];
     expect(message?.notification?.body).toContain('제주 3일');
+    // 끝내지 않은 결과물이 사라지는 기한과 남기는 방법을 처음 알림에서 말한다(MOV-16).
+    expect(message?.notification?.body).toContain('30일 뒤 사라지니 저장하거나 게시해 두세요.');
     expect(message?.data).toMatchObject({ kind: 'movie_ready', movieId, videoId });
   });
 

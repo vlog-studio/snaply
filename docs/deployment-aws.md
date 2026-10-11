@@ -137,7 +137,7 @@ main 머지
 | 04:00 | 만료 정리(스냅 · 결과물 · 남은 객체 · 7일 지난 위치 알림 이력) | `purge-expired.log` |
 | 04:20 | 계정 실삭제 | `accounts-purge.log` |
 | 04:40 | pending 영상 회수 | `purge-pending.log` |
-| **10:00** | **만료 예고 알림** | `notify-expiring.log` |
+| **10:00** | **만료 예고 알림**(스냅 D-3 · D-1, 끝내지 않은 무비 결과물 D-3) | `notify-expiring.log` |
 
 **예고와 정리를 같은 시각에 묶지 않는다.** 조용한 시간대(22–08시)에 보낸 예고는 발송되지 않고 버려지고,
 그러면 예고 없는 삭제가 된다([decisions/expiry-notice-schedule.md](./decisions/expiry-notice-schedule.md)).
