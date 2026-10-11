@@ -6,6 +6,10 @@
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { createHarness, type Harness } from './helpers/harness.js';
+import {
+  MOVIE_RESULT_RETENTION_DAYS,
+  SNAP_RETENTION_DAYS,
+} from '../src/services/retention-policy.js';
 
 let h: Harness;
 
@@ -47,6 +51,28 @@ describe('공개 페이지', () => {
   it('문의처가 없으면 기본 주소를 보인다', async () => {
     const res = await h.app.inject({ method: 'GET', url: '/legal/terms' });
     expect(res.body).toContain('mailto:support@snaply.app');
+  });
+
+  // 보관 기간은 정책 상수에서 읽는다 — 값을 바꾸면 문서도 함께 바뀌어야 한다(backlog D-2).
+  it('보관 기간을 정책 값 그대로 알린다', async () => {
+    const privacy = (await h.app.inject({ method: 'GET', url: '/legal/privacy' })).body;
+    const terms = (await h.app.inject({ method: 'GET', url: '/legal/terms' })).body;
+
+    for (const body of [privacy, terms]) {
+      expect(body).toContain(`${SNAP_RETENTION_DAYS}일`);
+      expect(body).toContain(`${MOVIE_RESULT_RETENTION_DAYS}일`);
+    }
+    expect(privacy).toContain('최근 삭제에서 되살릴 수 있고');
+    expect(privacy).toContain('기기 앨범에 저장');
+  });
+
+  it('보상형 광고가 수집 항목 · 위탁 · 국외 이전에 모두 있다', async () => {
+    const privacy = (await h.app.inject({ method: 'GET', url: '/legal/privacy' })).body;
+
+    expect(privacy).toContain('광고 시청 기록');
+    expect(privacy.match(/Google \(AdMob\)/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(privacy).toContain('광고 식별자');
+    expect(privacy).toContain('광고를 보지 않으면 광고 SDK 는 동작하지 않습니다');
   });
 
   it('법률 문서는 초안임을 페이지에 명시한다', async () => {

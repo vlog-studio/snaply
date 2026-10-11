@@ -1,5 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
+import { MOVIE_RESULT_RETENTION_DAYS, SNAP_RETENTION_DAYS } from '../services/retention-policy.js';
+
 /**
  * 플랫폼 콘솔(틱톡 Login Kit, Meta 앱 검수)이 요구하는 공개 페이지.
  *
@@ -35,11 +37,11 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
  *           스토어를 호출하지 않고, 결제는 기기의 스토어 SDK 가, 영수증 검증은 RevenueCat 이
  *           한다. 그래서 표가 아니라 문장으로 관계만 적었다. 이 취급이 맞는지는 법무 확인 대상.
  *
- *  5. **광고(AdMob)가 이 문서에 아예 없다.** 앱은 `react-native-google-mobile-ads` 로 보상형
- *     광고를 띄우는데, 수집 항목·위탁·국외 이전 어디에도 광고가 없다. 광고 SDK 는 광고 식별자와
- *     기기 정보를 Google 로 보내므로 세 곳 모두에 들어가야 하고, Play 데이터 안전성 신고와도
- *     맞물린다. 어떤 식별자가 실제로 나가는지는 맞춤 광고 설정·동의(UMP) 처리 방식에 따라
- *     달라지므로, 그 정책을 먼저 정하고 쓸 것 — backlog D-2.
+ *  5. **광고(AdMob)** — 2026-10-11 수집 항목·위탁·국외 이전에 넣었다. 지금 앱의 동작 그대로다: SDK 는
+ *     사용자가 광고 보기를 누를 때 처음 초기화되고(`admob-reward-ad-provider.ts`), 맞춤 광고를 끄는
+ *     옵션도 동의(UMP) 화면도 없이 기본값으로 요청하며, 보상 확인용으로 앱 사용자 id 를 싣는다.
+ *     **맞춤 광고 · 동의(UMP) 정책을 정하면 이 문장을 그 정책에 맞춘다** — backlog D-2.
+ *     Play 데이터 안전성 · App Store 개인정보 신고는 C-6.
  *     Sentry 보관 기간은 요금제에 따라 30일(무료)/90일(유료)이므로 요금제 확정 시 숫자를 좁힐 것.
  *     참고: 데이터 레지던시(한국 포함)는 Enterprise 승인 고객 대상이라, 신청 전에는 OpenAI 가 미국이다.
  *  4. **별도 동의 필요 여부.** 약관·방침 고지로 충분한지, 개별 동의를 받아야 하는지는 법무 판단이다.
@@ -49,7 +51,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 
 const SERVICE = 'Snaply';
 const DEFAULT_CONTACT = 'support@snaply.app';
-const UPDATED = '2026-09-29';
+const UPDATED = '2026-10-11';
 
 /**
  * 플랫폼의 URL 소유권 검증용 메타 태그.
@@ -235,11 +237,19 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
          크레딧을 돌려드립니다. 스토어를 통해 결제가 환불되면 지급된 크레딧은 회수됩니다.
          구매한 크레딧은 현금으로 환급하거나 타인에게 양도할 수 없으며, 계정을 삭제하면 남은
          크레딧은 소멸합니다.</p>
+         <p>광고를 끝까지 보면 크레딧을 받을 수 있습니다. 하루에 받을 수 있는 횟수에는 제한이 있고,
+         광고 제공자가 시청 완료를 확인한 경우에만 지급됩니다.</p>
 
-         <h2>7. 서비스 변경 및 중단</h2>
+         <h2>7. 영상의 보관</h2>
+         <p>업로드한 영상 클립은 업로드 후 ${SNAP_RETENTION_DAYS}일 동안, 정리하지 않은 편집 결과물은 만든 뒤
+         ${MOVIE_RESULT_RETENTION_DAYS}일 동안 서버에 보관되고 그 뒤 삭제됩니다. 편집 결과물은 다운로드하거나
+         게시해 정리하면 바로 삭제됩니다. 오래 남기려면 기기에 저장해 주세요. 자세한 내용은
+         개인정보처리방침에 있습니다.</p>
+
+         <h2>8. 서비스 변경 및 중단</h2>
          <p>서비스 내용은 변경될 수 있으며, 중요한 변경은 사전에 공지합니다.</p>
 
-         <h2>8. 책임의 한계</h2>
+         <h2>9. 책임의 한계</h2>
          <p>자동 편집 결과물의 품질, 외부 플랫폼의 정책 변경이나 장애로 인한 업로드 실패 등
          ${SERVICE}의 통제 범위를 벗어난 사유에 대해서는 책임이 제한될 수 있습니다.</p>`,
       ),
@@ -261,10 +271,16 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
            <tr><td>알림 발송 이력(장소·시각)</td><td>중복 알림 방지</td></tr>
            <tr><td>SNS 접근 토큰</td><td>사용자가 요청한 게시 수행 (암호화 저장)</td></tr>
            <tr><td>크레딧 잔액·증감 내역, 스토어 거래 식별자</td><td>크레딧 지급·차감 및 환불 처리</td></tr>
+           <tr><td>광고 시청 기록(보상 요청 시각, 지급 여부, 광고 거래 식별자)</td><td>광고 보상 크레딧 지급 및 중복 지급 방지</td></tr>
          </table>
          <p>위치 정보는 주변 장소를 조회할 때 사용되며 서버에 저장하지 않습니다.
          알림이 실제로 발송된 경우에 한해 어느 장소에서 언제 보냈는지만 기록합니다.
          결제 카드 정보는 수집·저장하지 않습니다.</p>
+         <p><strong>보상형 광고</strong> — 크레딧을 받기 위해 광고 보기를 선택하면, 그때부터 광고 SDK
+         (Google AdMob)가 광고를 보여 주기 위해 기기의 광고 식별자, 기기·앱 정보, IP 주소를 Google 로 보냅니다.
+         보상을 확인하기 위해 ${SERVICE}의 사용자 식별자도 함께 전달됩니다. 광고는 Google 의 설정에 따라
+         관심사 기반(맞춤형)으로 제공될 수 있으며, 기기 설정에서 광고 식별자를 재설정하거나 맞춤 광고를 끌 수
+         있습니다. 광고를 보지 않으면 광고 SDK 는 동작하지 않습니다.</p>
 
          <h2>2. 영상 내용 분석</h2>
          <p>무비를 만들 때 어떤 영상을 넣을지 제안하기 위해, 후보 영상의 내용을 외부 AI 사업자의
@@ -290,6 +306,16 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
          </ul>
 
          <h2>3. 보관 및 파기</h2>
+         <ul>
+           <li><strong>업로드한 영상 클립(스냅)</strong> — 서버에 올라온 지 <strong>${SNAP_RETENTION_DAYS}일</strong>이
+               지나면 서버에서 삭제됩니다. 기준은 촬영 시각이 아니라 업로드 시각입니다. 사용자가 지운 스냅도
+               원래 보관 기간이 끝날 때까지는 서버에 남아 앱의 최근 삭제에서 되살릴 수 있고, 그 뒤 삭제됩니다.
+               보관 기간이 지나도 남기고 싶은 스냅은 앱에서 기기 앨범에 저장할 수 있으며, 앨범의 사본은
+               사용자의 기기에 남습니다.</li>
+           <li><strong>편집 결과물</strong> — 사용자가 결과물을 다운로드하거나 SNS 에 게시해 정리하면 서버의 파일을
+               바로 삭제합니다. 정리하지 않은 결과물도 만든 지 <strong>${MOVIE_RESULT_RETENTION_DAYS}일</strong>이
+               지나면 삭제됩니다. 어떤 스냅으로 무비를 구성했는지는 남아 다시 만들 수 있습니다.</li>
+         </ul>
          <p>계정을 삭제하면 프로필, 영상, 연동 정보, 알림 이력이 함께 삭제됩니다.
          계정 삭제를 요청하면 SNS 접근 토큰과 푸시 알림 토큰은 즉시 삭제되며, 나머지 정보는
          30일의 복구 유예 기간이 지난 뒤 영구 삭제됩니다. 유예 기간 중에는 앱에서 삭제를
@@ -301,6 +327,7 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
            <tr><td>Supabase</td><td>계정 인증, 데이터베이스</td></tr>
            <tr><td>Amazon Web Services</td><td>영상 파일 저장 및 전송</td></tr>
            <tr><td>Google (Firebase)</td><td>푸시 알림 발송</td></tr>
+           <tr><td>Google (AdMob)</td><td>보상형 광고 제공 및 시청 완료 확인</td></tr>
            <tr><td>Meta (Instagram)</td><td>사용자가 요청한 릴스 게시</td></tr>
            <tr><td>TikTok</td><td>사용자가 요청한 영상 게시</td></tr>
            <tr><td>RevenueCat</td><td>인앱결제 영수증 검증 및 구매 상태 통지</td></tr>
@@ -322,6 +349,9 @@ export async function legalRoutes(app: FastifyInstance): Promise<void> {
                <td>계정 인증, 데이터베이스</td><td>회원 탈퇴 시까지</td></tr>
            <tr><td>Google (Firebase)</td><td>Google 이 시설을 운영하는 국가 (지역을 지정할 수 없습니다)</td>
                <td>푸시 알림 토큰, 알림 메시지</td><td>푸시 알림 발송</td><td>위탁 계약 종료 시까지</td></tr>
+           <tr><td>Google (AdMob)</td><td>미국 등 Google 이 시설을 운영하는 국가</td>
+               <td>광고 식별자, 기기·앱 정보, IP 주소, 보상 확인용 사용자 식별자</td>
+               <td>보상형 광고 제공 및 시청 완료 확인</td><td>Google 의 보관 정책에 따름</td></tr>
            <tr><td>RevenueCat</td><td>미국</td><td>앱 사용자 식별자, 스토어 거래 식별자와 구매 상태</td>
                <td>인앱결제 영수증 검증 및 구매 상태 통지</td><td>위탁 계약 종료 시까지</td></tr>
            <tr><td>Sentry</td><td>미국</td><td>오류 발생 시의 진단 정보 (인증 헤더와 토큰은 마스킹)</td>
