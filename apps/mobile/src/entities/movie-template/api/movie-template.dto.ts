@@ -39,7 +39,7 @@ export const movieTemplateCatalogDtoSchema = z.object({
 export type MovieTemplateDto = z.infer<typeof movieTemplateDtoSchema>;
 
 /**
- * The backend's preset names, as `POST /edit-jobs` spells them, mapped onto the
+ * The backend's preset names, as a movie's `stylePreset` spells them, mapped onto the
  * app's own `MovieStyle`.
  *
  * The reverse map lives in `features/compose-movie/api` because that is where

@@ -36,8 +36,8 @@ const SnapSyncStoreName = 'snaply.snap-sync';
  * Kept apart from the snap store on purpose — a snap is an immutable original,
  * and its sync state is not part of what it is. Several features meet here:
  * `features/upload-snap` (the worker) writes progress and drains tombstones,
- * `features/delete-snap` retires entries into tombstones, and movie creation
- * will read the id mapping once `POST /edit-jobs` is real. Features never
+ * `features/delete-snap` retires entries into tombstones, and movie sync reads
+ * the id mapping to send a movie's cuts by their server ids. Features never
  * import each other, so this entity store is where they communicate.
  *
  * The upload queue is derived, never stored: every snap whose status here is
