@@ -117,7 +117,7 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
   - **사용자당 진행 중 생성은 하나다**(MOV-11). 같은 사용자의 `queued`·`processing` 작업이 있으면 `409 GENERATION_IN_PROGRESS` 이고
     `error.movieId` 가 지금 생성 중인 무비다(무비 없는 옛 작업이면 `null`). 크레딧 확인(402)이 먼저다. 그 작업이
     끝나거나(`done`·`failed`) 취소되면 다시 만들 수 있다 — 갇힌 작업은 그 무비에서 취소하면 풀린다.
-  - 출력은 늘 서버 기본값(세로 숏폼 · 흐린 배경)이다. 출력 프로필 · 맞춤 방식을 고르는 길은 없다(MOV-8 `부분`, backlog A-10).
+  - 출력은 늘 세로 9:16 숏폼(흐린 배경 맞춤)이다. 출력 프로필 · 맞춤 방식은 고르지 않는다(MOV-8).
 - `GET /edit-jobs/{id}` 🔒 — 폴링용. `videoId` 는 **결과물** 영상 id 다(원본이 아니다). 완료 후 `GET /videos/{videoId}` 로 `editedUrl` 을 얻는다.
   - `errorMessage` 는 서버 진단용 원문 — **사용자 노출 문구가 아니다.** 화면 문구는 `errorCode` 로 분기해 앱이 만든다. `errorCode` 는 append-only 라 앱은 모르는 코드를 `INTERNAL` 처럼 다룬다. `TIMEOUT` 은 작업이 워커 제한 시간(`EDIT_TIMEOUT_SECONDS`, 기본 10분)을 넘긴 것이다 — 멈춘 ffmpeg·whisper 가 워커를 붙잡아 두지 않게 한다.
   - `pipelineVersion`·`editSpec`·`renderSpec` 은 재현 가능한 작업 스냅샷이다.
