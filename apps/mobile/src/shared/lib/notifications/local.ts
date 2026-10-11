@@ -90,6 +90,14 @@ export function presentLocalNotification({
   });
 }
 
+/**
+ * Clear every notification this app has in the tray — the ones it presented and
+ * the ones FCM displayed for it, which Android posts under this app as well.
+ */
+export async function dismissPresentedNotifications(): Promise<void> {
+  await Notifications.dismissAllNotificationsAsync();
+}
+
 /** A tap on a locally presented notification: which one, and what it carried. */
 export type LocalNotificationResponse = {
   /** The notification's own id — the one `presentLocalNotification` returned. */

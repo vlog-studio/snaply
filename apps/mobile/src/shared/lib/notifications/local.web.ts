@@ -23,6 +23,10 @@ export function presentLocalNotification(_input: {
   return Promise.resolve('');
 }
 
+export function dismissPresentedNotifications(): Promise<void> {
+  return Promise.resolve();
+}
+
 export type LocalNotificationResponse = { id: string; data: Record<string, unknown> };
 
 export function onLocalNotificationResponse(

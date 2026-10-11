@@ -1,10 +1,15 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-import { ensureNotificationChannel, presentLocalNotification } from './local';
+import {
+  dismissPresentedNotifications,
+  ensureNotificationChannel,
+  presentLocalNotification,
+} from './local';
 
 jest.mock('expo-notifications', () => ({
   AndroidImportance: { DEFAULT: 3 },
+  dismissAllNotificationsAsync: jest.fn(),
   scheduleNotificationAsync: jest.fn(),
   setNotificationChannelAsync: jest.fn(),
   setNotificationHandler: jest.fn(),
@@ -50,5 +55,13 @@ describe('local notifications', () => {
     await ensureNotificationChannel();
 
     expect(mockSetChannel).toHaveBeenCalledWith('default', expect.any(Object));
+  });
+});
+
+describe('dismissPresentedNotifications', () => {
+  it('clears every notification the app has in the tray', async () => {
+    await dismissPresentedNotifications();
+
+    expect(Notifications.dismissAllNotificationsAsync).toHaveBeenCalledTimes(1);
   });
 });

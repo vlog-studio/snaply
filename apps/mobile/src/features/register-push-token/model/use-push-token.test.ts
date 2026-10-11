@@ -4,6 +4,7 @@ import { useIsAuthenticated } from '@/entities/session';
 import {
   configureForegroundNotifications,
   deleteFcmToken,
+  dismissPresentedNotifications,
   ensureNotificationChannel,
   getFcmToken,
   onFcmTokenRefresh,
@@ -21,6 +22,7 @@ jest.mock('@/entities/session', () => ({ useIsAuthenticated: jest.fn() }));
 jest.mock('@/shared/lib/notifications', () => ({
   configureForegroundNotifications: jest.fn(),
   deleteFcmToken: jest.fn(),
+  dismissPresentedNotifications: jest.fn(),
   ensureNotificationChannel: jest.fn(),
   getFcmToken: jest.fn(),
   onFcmTokenRefresh: jest.fn(),
@@ -44,6 +46,9 @@ const mockRegisterRemote = registerForRemoteMessages as jest.MockedFunction<
 >;
 const mockGetToken = getFcmToken as jest.MockedFunction<typeof getFcmToken>;
 const mockDeleteToken = deleteFcmToken as jest.MockedFunction<typeof deleteFcmToken>;
+const mockDismissAll = dismissPresentedNotifications as jest.MockedFunction<
+  typeof dismissPresentedNotifications
+>;
 const mockOnTokenRefresh = onFcmTokenRefresh as jest.MockedFunction<typeof onFcmTokenRefresh>;
 const mockOnForegroundMessage = onForegroundMessage as jest.MockedFunction<
   typeof onForegroundMessage
@@ -64,6 +69,7 @@ beforeEach(() => {
   mockRegisterRemote.mockResolvedValue(undefined);
   mockGetToken.mockResolvedValue('token-1');
   mockDeleteToken.mockResolvedValue(undefined);
+  mockDismissAll.mockResolvedValue(undefined);
   mockRegisterToken.mockResolvedValue(undefined);
   mockOnTokenRefresh.mockReturnValue(jest.fn());
   mockOnForegroundMessage.mockReturnValue(jest.fn());
@@ -215,6 +221,21 @@ describe('usePushTokenRegistration', () => {
     await Promise.resolve();
 
     expect(mockDeleteToken).not.toHaveBeenCalled();
+    expect(mockDismissAll).not.toHaveBeenCalled();
+  });
+
+  // Deleting the token stops only the pushes still to come; a movie-ready
+  // alert already in the tray kept the signed-out account's movie title in
+  // view of the next account (backlog E-29, 2026-10-11 emulator).
+  it('clears the tray when the user signs out', async () => {
+    const { rerender } = await renderHook(usePushTokenRegistration);
+    await waitFor(() => expect(mockRegisterToken).toHaveBeenCalledWith('token-1'));
+    expect(mockDismissAll).not.toHaveBeenCalled();
+
+    mockIsAuthenticated.mockReturnValue(false);
+    await act(async () => rerender({}));
+
+    expect(mockDismissAll).toHaveBeenCalledTimes(1);
   });
 
   it('registers the next account only after the deletion finishes', async () => {

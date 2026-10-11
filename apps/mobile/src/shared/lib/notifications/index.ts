@@ -10,6 +10,7 @@ export {
 } from './messaging';
 export {
   configureForegroundNotifications,
+  dismissPresentedNotifications,
   ensureNotificationChannel,
   getOpeningLocalNotificationResponse,
   hasLocalNotificationPermission,
