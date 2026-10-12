@@ -24,9 +24,7 @@ import type { NotificationPreferences } from './notification-preferences';
  * something consumes it (backlog A-9). It is not cleared, so it can come back.
  */
 
-const REMINDER_WINDOW_IDS = ['morning', 'lunch', 'evening'] as const;
-
-export type ReminderWindowId = (typeof REMINDER_WINDOW_IDS)[number];
+export type ReminderWindowId = 'morning' | 'lunch' | 'evening';
 
 /** Preferences an older build kept on this device and the user had changed. */
 export type LegacyChoices = Partial<NotificationPreferences>;
