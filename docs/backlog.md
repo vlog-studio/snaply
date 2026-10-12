@@ -296,9 +296,10 @@ v3 는 **Movie export 에 붙인다** — `POST /edit-jobs` 는 2026-10-11 에 �
       사전 행과 그 `note`(`packages/shared-types/src/invalidation-vocabulary.json` — 폐기된 전제인 storage-and-subscription-policy §3
       을 아직 근거로 든다)를 고치거나 지운다. E-5(BGM 재현성)와 함께 본다
 - [ ] **팩을 긴급 차단(`retired`)할 때 사용자에게 무엇을 보일지** — [plans/asset-pack-manifest.md](./plans/asset-pack-manifest.md) §12
-- [ ] **편집 경로의 기본 처리** — 회전 검증 · 클립별 음량 정규화 · 컷 경계 마이크로 페이드 · `loudnorm` 과 클립 간 색 맞춤
-      `grade.match` 는 [decisions/auto-edit-draft.md](./decisions/auto-edit-draft.md#63-v1-툴과-나중으로-둔-툴) §6.3 이 툴이 아닌 기본 처리 · 스타일 속성으로 두었으나 편집 워커
-      (`apps/ai-worker/src/pipeline/`)에 없다([plans/trend-editing-pipeline.md](./plans/trend-editing-pipeline.md) §10 의 5번)
+- [ ] **편집 경로의 기본 처리 — 남은 것: 클립 간 색 맞춤 `grade.match`** — [decisions/auto-edit-draft.md](./decisions/auto-edit-draft.md#63-v1-툴과-나중으로-둔-툴) §6.3 이
+      스타일에 딸린 속성으로 두었으나 편집 워커(`apps/ai-worker/src/pipeline/`)에 없다. 시간 · 장소가 다른 스냅을 붙일 때 가장 눈에 띄는 차이다.
+      나머지(회전 검증 · 컷별 음량 · 마이크로 페이드 · `loudnorm` · `+faststart` · CRF)는 2026-10-12 에 넣었다 → progress 2026-10-12 "편집 결과물의 기본 처리".
+      BGM 덕킹(`sidechaincompress`)은 BGM 조달(A-7)과 함께 본다
 
 **완료 조건**: 위 선행 결정·조달 확정 → `editSpec` v3 확정(계약 `editSpecSchema` 와 `openapi.json` 을 같은
 변경에서 갱신하고, `parseEditSpec` 이 모르는 스펙을 v1 `일상` 으로 삼키는 폴백을 거절로 바꾼다 —
