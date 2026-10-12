@@ -264,6 +264,8 @@ v3 는 **Movie export 에 붙인다** — `POST /edit-jobs` 는 2026-10-11 에 �
       어느 쪽이든 앱에서 자막을 켤 길이 없어 MOV-9 가 `부분`이다 — 소프트 유지면 앱에 스위치를, 번인이면 계약 변경을 함께 한다
 - [ ] BGM 을 어디서 확보할 것인가(AI 생성 음원 포함)와 예산 — [decisions/bgm-sourcing.md](./decisions/bgm-sourcing.md)(미결)
 - [ ] `bgm_tracks` 스키마 신설 — `schema.prisma` 는 공유 파일이라 [team.md](./team.md) §2·§3 적용
+- [ ] **BGM 덕킹** — 원본 소리가 나는 동안 BGM 을 낮춘다(`sidechaincompress`, [plans/trend-editing-pipeline.md](./plans/trend-editing-pipeline.md) §6.3). 지금 BGM 은
+      고정 0.25 배로 섞인다(`pipeline/music.py`). 실제 BGM 으로 들어 봐야 값을 정할 수 있어 BGM 조달과 함께 한다
 - [ ] 스티커를 어디서 확보할 것인가(디자이너 커미션 여부와 스타일 방향) —
       [decisions/sticker-asset-sourcing.md](./decisions/sticker-asset-sourcing.md) 결정 1(미결)
 - [ ] 스티커를 어떤 경로로 등록·관리할 것인가(관리자 페이지 도입 여부) — 같은 문서 결정 2(미결)
