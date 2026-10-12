@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 import pipeline.hdr as hdr
+from pipeline import color_match
 from pipeline import transition as tr
 from pipeline.render_spec import RenderSpec, build_video_filter
 
@@ -289,17 +290,35 @@ def extract_thumbnail(video: str, out: str, at_seconds: float = 1.0) -> None:
     ])
 
 
+def _color_matches(clips: list[ClipSource]) -> list[str]:
+    """컷마다 걸 색 맞춤 필터 — 사용자가 고른 구간만 잰다(겹침용 여분 프레임은 빼고)."""
+    if len(clips) < 2:
+        return ["" for _ in clips]
+    colors = []
+    for clip in clips:
+        try:
+            start, _end, duration = _resolve_clip_window(
+                probe_duration(clip.path), clip.start_ms, clip.end_ms
+            )
+        except ValueError:
+            colors.append(None)
+            continue
+        colors.append(color_match.measure_color(clip.path, start, duration))
+    return color_match.match_filters(colors)
+
+
 def edit(
     clips: list[ClipSource], preset: StylePreset, render_spec: RenderSpec, work_dir: str
 ) -> str:
     """원본 클립들을 편집해 편집본(BGM/자막 전) 경로를 반환."""
+    matches = _color_matches(clips)
     normalized: list[str] = []
     for i, clip in enumerate(clips):
         dst = f"{work_dir}/norm_{i}.mp4"
         normalize_clip(
             clip.path,
             dst,
-            preset.eq,
+            color_match.with_style(matches[i], preset.eq),
             render_spec,
             start_ms=clip.start_ms,
             end_ms=clip.end_ms,
@@ -439,6 +458,7 @@ def edit_timeline(
 
     windows = [_ms_window(clip) for clip in clips]
     resolved = resolve_boundaries(windows, transitions)
+    matches = _color_matches(clips)
 
     segments: list[_Segment] = []
     for i, (clip, (start_ms, end_ms, _source_ms)) in enumerate(zip(clips, windows)):
@@ -448,7 +468,7 @@ def edit_timeline(
         normalize_clip(
             clip.path,
             dst,
-            preset.eq,
+            color_match.with_style(matches[i], preset.eq),
             render_spec,
             start_ms=start_ms - before,
             end_ms=end_ms + after,

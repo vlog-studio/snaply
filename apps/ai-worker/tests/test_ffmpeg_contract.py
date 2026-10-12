@@ -304,6 +304,43 @@ class AudioBasicsContract(unittest.TestCase):
 
 
 @unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class ColorMatchContract(unittest.TestCase):
+    """컷 사이 색 맞춤 — 찍은 곳마다 다른 밝기 · 색이 무비 안에서 가까워진다(auto-edit-draft §6.3)."""
+
+    def test_cuts_shot_in_different_light_come_closer_and_a_single_cut_is_untouched(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            paths = []
+            for name, color in (("a", "0x8C8C8C"), ("b", "0x8C8C8C"), ("dim_blue", "0x50608C")):
+                path = os.path.join(work, f"{name}.mp4")
+                make_color_clip(path, color, seconds=1.5)
+                paths.append(path)
+
+            def gap(path_out: str, times: tuple[float, float]) -> float:
+                first, last = pixel(path_out, times[0]), pixel(path_out, times[1])
+                return sum(abs(x - y) for x, y in zip(first, last))
+
+            before = sum(abs(x - y) for x, y in zip(pixel(paths[0], 0.7), pixel(paths[2], 0.7)))
+            out = edit_timeline(
+                [ClipSource(p) for p in paths],
+                [Transition("hardcut"), Transition("hardcut")],
+                get_preset("일상"),
+                DEFAULT_RENDER_SPEC,
+                work,
+            )
+            after = gap(out, (0.7, 3.7))
+
+            # 어둡고 푸른 컷이 다른 둘 쪽으로 다가온다 — 같아지지는 않는다(절반만 옮기고 상한이 있다).
+            self.assertLess(after, before * 0.75, (before, after))
+            self.assertGreater(after, 0)
+
+            single_work = os.path.join(work, "single")
+            os.makedirs(single_work)
+            single = edit([ClipSource(paths[2])], get_preset("일상"), DEFAULT_RENDER_SPEC, single_work)
+            source_px, out_px = pixel(paths[2], 0.7), pixel(single, 0.7)
+            self.assertLess(sum(abs(x - y) for x, y in zip(source_px, out_px)), 15, (source_px, out_px))
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
 class TimelineContract(unittest.TestCase):
     """경계별 전환(editSpec v3)의 산출물. 색으로 읽는다 — 빨강 → 파랑 → 초록."""
 
