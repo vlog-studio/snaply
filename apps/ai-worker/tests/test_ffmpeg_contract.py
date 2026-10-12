@@ -28,7 +28,14 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from pipeline import music, rendition, subtitle  # noqa: E402
-from pipeline.editor import ClipSource, edit, edit_timeline, get_preset  # noqa: E402
+from pipeline.editor import (  # noqa: E402
+    ClipSource,
+    edit,
+    edit_timeline,
+    finalize,
+    get_preset,
+    measure_loudness,
+)
 from pipeline.transition import Transition  # noqa: E402
 from pipeline.render_spec import DEFAULT_RENDER_SPEC  # noqa: E402
 
@@ -203,6 +210,97 @@ def darkest_near(path: str, at: float, span: float = 0.1) -> int:
 
 def duration_of(path: str) -> float:
     return float(probe(path)["format"]["duration"])
+
+
+def make_tone_clip(path: str, *, volume: float, seconds: float = 2.0, color: str = "gray") -> None:
+    """세로 단색에 `volume` 배 크기의 소리 — 컷마다 녹음 크기가 다른 휴대폰 영상의 대역."""
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", f"color=c={color}:s=1080x1920:rate=30:duration={seconds}",
+            "-f", "lavfi", "-i", f"sine=frequency=440:duration={seconds}",
+            "-af", f"volume={volume}",
+            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
+            path,
+        ],
+        capture_output=True,
+        check=True,
+    )
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class AudioBasicsContract(unittest.TestCase):
+    """기본 처리(decisions/auto-edit-draft.md §6.3) — 컷이 바뀔 때 소리가 튀지 않고, 무비는 플랫폼 크기다."""
+
+    def test_cuts_recorded_at_different_levels_come_out_alike(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            quiet, loud = os.path.join(work, "quiet.mp4"), os.path.join(work, "loud.mp4")
+            make_tone_clip(quiet, volume=0.4)
+            make_tone_clip(loud, volume=1.6)
+            # 원본은 약 12dB 다르다 — 컷 하나에 주는 이득의 상한(±12dB) 안이다.
+            self.assertGreater(measure_loudness(loud) - measure_loudness(quiet), 10)
+
+            out = edit_timeline(
+                [ClipSource(quiet), ClipSource(loud)],
+                [Transition("hardcut")],
+                get_preset("일상"),
+                DEFAULT_RENDER_SPEC,
+                work,
+            )
+
+            first, second = measure_loudness(out, 0.2, 1.6), measure_loudness(out, 2.2, 1.6)
+            self.assertLess(abs(first - second), 2.0, (first, second))
+
+    def test_the_movie_is_finished_at_platform_loudness_and_plays_while_downloading(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "tone.mp4")
+            make_tone_clip(src, volume=0.1, seconds=4.0)
+            out = os.path.join(work, "final.mp4")
+
+            finalize(src, out)
+
+            self.assertAlmostEqual(measure_loudness(out), -14.0, delta=1.0)
+            # +faststart: moov 가 mdat 앞에 있어야 받으면서 바로 재생된다.
+            with open(out, "rb") as f:
+                head = f.read(4096)
+            self.assertIn(b"moov", head)
+            info = probe(out)
+            self.assertEqual(info["video"]["codec_name"], "h264")
+
+    def test_a_portrait_shot_stored_sideways_comes_out_upright(self) -> None:
+        """
+        세로로 찍은 휴대폰 영상은 가로로 인코딩되고 회전 메타데이터를 단다(§6.1 — 검증된 적이 없었다). 위가
+        빨강 · 아래가 파랑으로 보이게 찍은 것이 결과물에서도 그렇게 서 있어야 한다 — 누우면 좌우로 갈린다.
+        """
+        with tempfile.TemporaryDirectory() as work:
+            stored = os.path.join(work, "stored-sideways.mp4")
+            # 인코딩된 가로 화면: 왼쪽 빨강 · 오른쪽 파랑. 90° 회전 표시 → 세로로 보면 위아래로 나뉜다.
+            subprocess.run(
+                [
+                    "ffmpeg", "-y",
+                    "-f", "lavfi", "-i", "color=c=red:s=1920x1080:rate=30:duration=2",
+                    "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+                    "-vf", "drawbox=x=960:y=0:w=960:h=1080:color=blue:t=fill",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
+                    stored,
+                ],
+                capture_output=True,
+                check=True,
+            )
+            rotated = os.path.join(work, "rotated.mp4")
+            subprocess.run(
+                ["ffmpeg", "-y", "-display_rotation", "90", "-i", stored, "-c", "copy", rotated],
+                capture_output=True,
+                check=True,
+            )
+
+            out = edit([ClipSource(rotated)], get_preset("일상"), DEFAULT_RENDER_SPEC, work)
+
+            top, bottom = pixel(out, 1.0, 540, 300), pixel(out, 1.0, 540, 1620)
+            left, right = pixel(out, 1.0, 200, 960), pixel(out, 1.0, 880, 960)
+            # 위아래가 다른 색이고, 같은 높이의 좌우는 같은 색이다 — 서 있다.
+            self.assertNotEqual(top[0] > top[2], bottom[0] > bottom[2], (top, bottom))
+            self.assertEqual(left[0] > left[2], right[0] > right[2], (left, right))
 
 
 @unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")

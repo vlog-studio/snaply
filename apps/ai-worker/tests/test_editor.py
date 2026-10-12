@@ -10,6 +10,7 @@ from pipeline import editor  # noqa: E402
 from pipeline.render_spec import DEFAULT_RENDER_SPEC  # noqa: E402
 
 
+@patch("pipeline.editor.measure_loudness", new=lambda *_args, **_kw: None)
 class NormalizeClipTest(unittest.TestCase):
     @patch("pipeline.editor._run")
     @patch("pipeline.editor.probe_duration", return_value=7.25)
@@ -66,6 +67,34 @@ class NormalizeClipTest(unittest.TestCase):
             editor.normalize_clip(
                 "input.mp4", "output.mp4", "", DEFAULT_RENDER_SPEC, end_ms=6000
             )
+
+
+class ClipLevelTest(unittest.TestCase):
+    """컷마다 녹음 크기가 달라 컷이 바뀔 때 소리가 튀던 것(plans/trend-editing-pipeline.md §6.2)."""
+
+    def test_gain_brings_a_cut_to_the_target_within_the_cap(self) -> None:
+        self.assertAlmostEqual(editor.clip_gain_db(-22.0), 6.0)
+        self.assertAlmostEqual(editor.clip_gain_db(-10.0), -6.0)
+        self.assertEqual(editor.clip_gain_db(-40.0), editor.CLIP_MAX_GAIN_DB)
+
+    def test_near_silence_and_unmeasured_cuts_are_left_alone(self) -> None:
+        # 잡음만 있는 컷을 기준 크기로 끌어올리면 쉬익 소리만 커진다.
+        self.assertEqual(editor.clip_gain_db(-60.0), 0.0)
+        self.assertEqual(editor.clip_gain_db(None), 0.0)
+
+    @patch("pipeline.editor._run")
+    @patch("pipeline.editor.measure_loudness", return_value=-26.0)
+    @patch("pipeline.editor.probe_duration", return_value=3.0)
+    @patch("pipeline.editor._has_audio", return_value=True)
+    def test_normalized_cut_is_levelled_and_faded_at_both_ends(
+        self, _has_audio, _probe_duration, _measure, run
+    ) -> None:
+        editor.normalize_clip("input.mp4", "output.mp4", "", DEFAULT_RENDER_SPEC)
+
+        graph = run.call_args.args[0][run.call_args.args[0].index("-filter_complex") + 1]
+        self.assertIn("volume=10.00dB", graph)
+        self.assertIn("afade=t=in:d=0.005", graph)
+        self.assertIn("afade=t=out:st=2.995:d=0.005", graph)
 
 
 if __name__ == "__main__":

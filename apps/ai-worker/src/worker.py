@@ -142,6 +142,11 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     else:
         await _progress(job_id, 85, "자막 건너뜀")
 
+    # 마지막 손질 — 전체 음량을 플랫폼 기준으로, 첫 재생을 앞당긴다(editor.finalize).
+    final_path = os.path.join(work_dir, "final.mp4")
+    await asyncio.to_thread(editor.finalize, current, final_path)
+    current = final_path
+
     # 5) 썸네일 추출 (기본 1초, 짧은 결과물은 중간 시점)
     thumb_path = os.path.join(work_dir, "thumb.jpg")
     thumbnail_at = min(1.0, duration / 2)

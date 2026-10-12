@@ -16,6 +16,24 @@ from pipeline.render_spec import RenderSpec, build_video_filter
 MIN_CLIP_DURATION_SECONDS = 0.1
 CLIP_END_TOLERANCE_SECONDS = 0.05
 
+# ── 기본 처리(사용자가 고르지 않는다 — decisions/auto-edit-draft.md §6.3, plans/trend-editing-pipeline.md §6) ──
+#
+# 컷마다 녹음 레벨이 달라 컷이 바뀔 때마다 소리가 튀었다. 컷 하나하나를 같은 크기로 맞추고(선형 이득 —
+# 동적 압축은 짧은 컷에서 숨소리처럼 펌핑한다), 경계에는 몇 ms 페이드를 걸어 파형이 0 을 지나지 않는
+# 컷에서 나는 '틱' 을 없앤다. 무비 전체는 마지막에 플랫폼 기준 크기로 한 번 더 맞춘다(`finalize`).
+CLIP_TARGET_LUFS = -16.0
+# 거의 무음인 컷을 기준 크기로 끌어올리면 잡음만 커진다 — 이보다 작으면 건드리지 않는다.
+CLIP_SILENCE_LUFS = -50.0
+CLIP_MAX_GAIN_DB = 12.0
+MICRO_FADE_SECONDS = 0.005
+# 릴스 · 틱톡이 맞추는 크기. 안 맞추면 업로드 뒤 플랫폼이 다시 눌러 소리가 뭉개진다.
+MOVIE_TARGET_LUFS = -14.0
+MOVIE_TRUE_PEAK_DB = -1.5
+MOVIE_LRA = 11.0
+# 마지막으로 인코딩하는 화질. 중간 파일은 한 번 더 인코딩되므로 조금 높게 둔다.
+FINAL_CRF = "20"
+INTERMEDIATE_CRF = "18"
+
 
 @dataclass(frozen=True)
 class ClipSource:
@@ -75,6 +93,43 @@ def _has_audio(path: str) -> bool:
     return bool(json.loads(out.stdout).get("streams"))
 
 
+def _parse_loudnorm(stderr: str) -> dict | None:
+    """`loudnorm=print_format=json` 이 stderr 끝에 찍는 측정값."""
+    start = stderr.rfind("{")
+    end = stderr.rfind("}")
+    if start < 0 or end < start:
+        return None
+    try:
+        return json.loads(stderr[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
+def measure_loudness(path: str, start: float = 0.0, duration: float | None = None) -> float | None:
+    """구간의 통합 음량(LUFS). 소리가 없거나 잴 수 없으면 None."""
+    cmd = ["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{start:.3f}"]
+    if duration is not None:
+        cmd += ["-t", f"{duration:.3f}"]
+    cmd += ["-i", path, "-vn", "-af", "loudnorm=print_format=json", "-f", "null", "-"]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    measured = _parse_loudnorm(proc.stderr) if proc.returncode == 0 else None
+    if measured is None:
+        return None
+    try:
+        value = float(measured["input_i"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
+
+
+def clip_gain_db(loudness: float | None) -> float:
+    """컷 하나를 기준 크기로 맞추는 이득. 무음 · 측정 불가는 0, 크기는 ±상한 안."""
+    if loudness is None or loudness < CLIP_SILENCE_LUFS:
+        return 0.0
+    gain = CLIP_TARGET_LUFS - loudness
+    return max(-CLIP_MAX_GAIN_DB, min(CLIP_MAX_GAIN_DB, gain))
+
+
 def _resolve_clip_window(
     source_duration: float, start_ms: int, end_ms: int | None
 ) -> tuple[float, float, float]:
@@ -119,9 +174,14 @@ def normalize_clip(
     tonemap = "".join("," + f for f in hdr.source_filters(src))
     video_trim = f"[0:v:0]trim=start={start:.3f}:end={end:.3f}{tonemap}[trimmed_v]"
     if has_audio:
+        gain = clip_gain_db(measure_loudness(src, start, duration))
+        fade = min(MICRO_FADE_SECONDS, duration / 4)
         audio_filter = (
             f"{audio_input}aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
-            f"apad,atrim=start={start:.3f}:end={end:.3f},asetpts=PTS-STARTPTS[a]"
+            f"apad,atrim=start={start:.3f}:end={end:.3f},asetpts=PTS-STARTPTS,"
+            # 컷 하나의 크기 맞춤 → 키운 만큼 넘치지 않게 −1dBFS 에서 막고 → 양 끝 마이크로 페이드.
+            f"volume={gain:.2f}dB,alimiter=limit=0.891:level=0,"
+            f"afade=t=in:d={fade:.3f},afade=t=out:st={duration - fade:.3f}:d={fade:.3f}[a]"
         )
     else:
         audio_filter = (
@@ -137,7 +197,7 @@ def normalize_clip(
         "-filter_complex", filter_graph,
         "-map", "[v]",
         "-map", "[a]",
-        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", INTERMEDIATE_CRF, "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-ar", "48000", "-ac", "2",
         "-map_metadata", "-1",
         dst,
@@ -154,8 +214,8 @@ def _concat(normalized: list[str], out: str) -> None:
     _run([
         "ffmpeg", "-y", *inputs,
         "-filter_complex", fc, "-map", "[v]", "-map", "[a]",
-        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", out,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", FINAL_CRF, "-profile:v", "high",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", out,
     ])
 
 
@@ -183,8 +243,41 @@ def _crossfade(normalized: list[str], durations: list[float], t: float, out: str
     _run([
         "ffmpeg", "-y", *inputs,
         "-filter_complex", fc, "-map", v_prev, "-map", a_prev,
-        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", out,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", FINAL_CRF, "-profile:v", "high",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", out,
+    ])
+
+
+def finalize(video_in: str, out: str) -> None:
+    """무비의 마지막 손질 — 전체 음량을 플랫폼 기준에 맞추고 첫 재생을 앞당긴다.
+
+    음량은 두 번에 맞춘다: 재고(측정) 그 값으로 **선형** 정규화한다. 한 번에 하는 동적 모드는 짧은
+    무비에서 소리가 숨 쉬듯 오르내린다. 영상 · 자막은 다시 인코딩하지 않는다(`copy`). `+faststart` 는
+    moov 를 앞으로 옮겨, 받으면서 바로 재생되게 한다.
+    """
+    target = f"I={MOVIE_TARGET_LUFS:g}:TP={MOVIE_TRUE_PEAK_DB:g}:LRA={MOVIE_LRA:g}"
+    probe_proc = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostats", "-i", video_in, "-vn",
+         "-af", f"loudnorm={target}:print_format=json", "-f", "null", "-"],
+        capture_output=True, text=True,
+    )
+    measured = _parse_loudnorm(probe_proc.stderr) if probe_proc.returncode == 0 else None
+    audio_filter = f"loudnorm={target}"
+    if measured is not None and all(
+        math.isfinite(float(measured.get(k, "nan")))
+        for k in ("input_i", "input_tp", "input_lra", "input_thresh")
+    ):
+        audio_filter += (
+            f":measured_I={measured['input_i']}:measured_TP={measured['input_tp']}"
+            f":measured_LRA={measured['input_lra']}:measured_thresh={measured['input_thresh']}"
+            f":offset={measured.get('target_offset', '0')}:linear=true"
+        )
+    _run([
+        "ffmpeg", "-y", "-i", video_in,
+        "-map", "0", "-c", "copy",
+        "-af", f"{audio_filter},aresample=48000", "-c:a", "aac", "-b:a", "192k",
+        "-movflags", "+faststart",
+        out,
     ])
 
 
@@ -422,6 +515,6 @@ def _join_segments(
     _run([
         "ffmpeg", "-y", *inputs,
         "-filter_complex", ";".join(parts), "-map", acc_v, "-map", acc_a,
-        "-c:v", "libx264", "-preset", "veryfast", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", out,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", FINAL_CRF, "-profile:v", "high",
+        "-pix_fmt", "yuv420p", "-c:a", "aac", out,
     ])
