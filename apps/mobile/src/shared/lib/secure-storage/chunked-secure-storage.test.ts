@@ -1,6 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
 
-import { chunkedSecureStorage, splitByUtf8Bytes } from './chunked-secure-storage';
+import {
+  chunkedSecureStorage,
+  forgetChunkedSecureStorageMemory,
+  splitByUtf8Bytes,
+} from './chunked-secure-storage';
 
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
@@ -49,6 +53,7 @@ describe('splitByUtf8Bytes', () => {
 describe('chunkedSecureStorage', () => {
   beforeEach(() => {
     backingStore.clear();
+    forgetChunkedSecureStorageMemory();
     jest.clearAllMocks();
   });
 
@@ -84,5 +89,53 @@ describe('chunkedSecureStorage', () => {
     await chunkedSecureStorage.setItem('sb-ref-auth-token', 'small');
 
     expect(await chunkedSecureStorage.getItem('sb-ref-auth-token')).toBe('small');
+  });
+
+  it('persists a write so a fresh process reads it back', async () => {
+    await chunkedSecureStorage.setItem('sb-ref-auth-token', largeValue);
+    await chunkedSecureStorage.setItem('sb-ref-auth-token', 'small');
+    forgetChunkedSecureStorageMemory();
+
+    expect(await chunkedSecureStorage.getItem('sb-ref-auth-token')).toBe('small');
+  });
+
+  // E-30: a cold start's burst of requests each read the session; one native
+  // read now answers all of them, and later reads none.
+  it('reads the device once for concurrent and repeated reads', async () => {
+    backingStore.set('k.chunks', '1');
+    backingStore.set('k.0', 'session');
+
+    const values = await Promise.all([1, 2, 3, 4].map(() => chunkedSecureStorage.getItem('k')));
+    await chunkedSecureStorage.getItem('k');
+
+    expect(values).toEqual(['session', 'session', 'session', 'session']);
+    // One count read and one chunk read.
+    expect(SecureStore.getItemAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('answers from what was written without reading the device', async () => {
+    await chunkedSecureStorage.setItem('k', 'fresh');
+    jest.mocked(SecureStore.getItemAsync).mockClear();
+
+    expect(await chunkedSecureStorage.getItem('k')).toBe('fresh');
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+  });
+
+  it('lets a write that lands during a read win over that read', async () => {
+    backingStore.set('k.chunks', '1');
+    backingStore.set('k.0', 'old');
+
+    const read = chunkedSecureStorage.getItem('k');
+    await chunkedSecureStorage.setItem('k', 'new');
+
+    expect(await read).toBe('new');
+    expect(await chunkedSecureStorage.getItem('k')).toBe('new');
+  });
+
+  it('remembers a removal', async () => {
+    await chunkedSecureStorage.setItem('k', 'value');
+    await chunkedSecureStorage.removeItem('k');
+
+    expect(await chunkedSecureStorage.getItem('k')).toBeNull();
   });
 });

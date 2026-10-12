@@ -11,6 +11,14 @@ import * as SecureStore from 'expo-secure-store';
  *
  * The native SecureStore keychain/keystore keeps every chunk encrypted at rest,
  * which is why auth tokens live here rather than in plain AsyncStorage.
+ *
+ * **Reads are remembered in memory** (backlog E-30, 2026-10-12). Supabase reads
+ * the session from storage on every `getSession()`, and every API request asks
+ * for it (`shared/api/auth-header.ts`), so a cold start's burst of nine requests
+ * queued nine keystore reads of several chunks each — measured at 0.3–0.7 s per
+ * request on the emulator. This process is the only writer, so a value read or
+ * written once stays true until this adapter changes it; concurrent reads of a
+ * key share one native read.
  */
 const MAX_CHUNK_BYTES = 1800;
 
@@ -58,28 +66,57 @@ async function removeChunks(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(chunkCountKey(key));
 }
 
+/** What this process last read or wrote per key — `null` is a known absence. */
+const memory = new Map<string, string | null>();
+/** A native read in flight per key, shared by everyone who asks meanwhile. */
+const reads = new Map<string, Promise<string | null>>();
+
+async function readChunks(key: string): Promise<string | null> {
+  try {
+    const countRaw = await SecureStore.getItemAsync(chunkCountKey(key));
+    if (countRaw == null) return null;
+    const count = Number(countRaw);
+    let value = '';
+    for (let i = 0; i < count; i += 1) {
+      const part = await SecureStore.getItemAsync(chunkKey(key, i));
+      if (part == null) return null; // partial/corrupt write — treat as absent
+      value += part;
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+/** Forgets what was remembered, so the next read goes to the device. For tests. */
+export function forgetChunkedSecureStorageMemory(): void {
+  memory.clear();
+  reads.clear();
+}
+
 /**
  * Chunk-aware persistent key-value adapter over Expo SecureStore. Same contract
  * as the plain `secureStorage` adapter, safe for values of any size.
  */
 export const chunkedSecureStorage = {
   async getItem(key: string): Promise<string | null> {
-    try {
-      const countRaw = await SecureStore.getItemAsync(chunkCountKey(key));
-      if (countRaw == null) return null;
-      const count = Number(countRaw);
-      let value = '';
-      for (let i = 0; i < count; i += 1) {
-        const part = await SecureStore.getItemAsync(chunkKey(key, i));
-        if (part == null) return null; // partial/corrupt write — treat as absent
-        value += part;
+    if (memory.has(key)) return memory.get(key) ?? null;
+    const pending = reads.get(key);
+    if (pending) return pending;
+    const read = readChunks(key).then((value) => {
+      // A write that landed while this read was in flight is newer than it.
+      if (reads.get(key) === read) {
+        reads.delete(key);
+        memory.set(key, value);
       }
-      return value;
-    } catch {
-      return null;
-    }
+      return memory.has(key) ? (memory.get(key) ?? null) : value;
+    });
+    reads.set(key, read);
+    return read;
   },
   async setItem(key: string, value: string): Promise<void> {
+    memory.set(key, value);
+    reads.delete(key);
     try {
       await removeChunks(key);
       const parts = splitByUtf8Bytes(value, MAX_CHUNK_BYTES);
@@ -92,6 +129,8 @@ export const chunkedSecureStorage = {
     }
   },
   async removeItem(key: string): Promise<void> {
+    memory.set(key, null);
+    reads.delete(key);
     try {
       await removeChunks(key);
     } catch {
