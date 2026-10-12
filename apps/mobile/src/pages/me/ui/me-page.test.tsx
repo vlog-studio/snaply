@@ -60,6 +60,15 @@ jest.mock('@/features/notification-settings', () => ({
   }),
 }));
 
+let mockNickname: string | null = null;
+jest.mock('@/features/edit-nickname', () => ({
+  useNickname: (fallback: string | undefined) => mockNickname ?? fallback,
+  EditNicknameSheet: ({ name }: { name: string }) => {
+    const { Text } = jest.requireActual<typeof import('react-native')>('react-native');
+    return <Text>{`nickname-sheet:${name}`}</Text>;
+  },
+}));
+
 let mockAlbumAutoSave = false;
 jest.mock('@/features/save-snap-to-album', () => ({
   useAlbumAutoSaveEnabled: () => mockAlbumAutoSave,
@@ -101,6 +110,24 @@ describe('MePage', () => {
   // Nothing reads interests yet, so a picker would promise personalization
   // that never happens (spec ACC-5, backlog A-9): the row states 준비 중 and is
   // not a way into anything.
+  // ACC-5: the name is the way to change it, and a saved nickname wins over
+  // the sign-in identity's name.
+  it('shows the nickname once set and opens the sheet from the name', async () => {
+    mockNickname = '다연';
+    await renderPage();
+
+    await fireEvent.press(screen.getByRole('button', { name: '이름 다연 · 바꾸기' }));
+
+    expect(screen.getByText('nickname-sheet:다연')).toBeOnTheScreen();
+    mockNickname = null;
+  });
+
+  it('falls back to the sign-in name before a nickname is set', async () => {
+    await renderPage();
+
+    expect(screen.getByText('tester@example.com')).toBeOnTheScreen();
+  });
+
   it('shows \uAD00\uC2EC\uC0AC as a \uC900\uBE44 \uC911 placeholder that opens nothing', async () => {
     await renderPage();
 

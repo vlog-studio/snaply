@@ -11,6 +11,7 @@ import { useClearSession, useCurrentUser } from '@/entities/session';
 import { useSnaps } from '@/entities/snap';
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useAnalysisConsent } from '@/features/analysis-consent';
+import { EditNicknameSheet, useNickname } from '@/features/edit-nickname';
 import { useNotificationPreferences } from '@/features/notification-settings';
 import { useAlbumAutoSaveEnabled } from '@/features/save-snap-to-album';
 import {
@@ -61,6 +62,8 @@ export function MePage() {
   const instagram = useSnsConnection('instagram');
   // When the tab opened — enough to tell a lapsed link (the same reading 최근 삭제 uses).
   const [now] = useState(Date.now);
+  const name = useNickname(currentUser?.displayName);
+  const [editingName, setEditingName] = useState(false);
   // Before the server answers, nothing claims a link either way.
   const socialReadOut = !instagram.isLoaded
     ? undefined
@@ -112,11 +115,22 @@ export function MePage() {
       ]}
     >
       <View style={styles.hero}>
-        <WeekRing days={days} initial={(currentUser?.displayName ?? '?').charAt(0)} size={148} />
+        <WeekRing days={days} initial={(name ?? '?').charAt(0)} size={148} />
         <View style={styles.heroCopy}>
-          <ThemedText type="subtitle" numberOfLines={1}>
-            {currentUser?.displayName ?? '로그인하지 않음'}
-          </ThemedText>
+          {/* The name is the way to change it (ACC-5): a tap opens the sheet. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`이름 ${name ?? ''} · 바꾸기`}
+            disabled={!currentUser}
+            onPress={() => setEditingName(true)}
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [styles.nameRow, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <ThemedText type="subtitle" numberOfLines={1} style={styles.name}>
+              {name ?? '로그인하지 않음'}
+            </ThemedText>
+            {currentUser ? <Ionicons name="pencil" size={16} color={theme.textSecondary} /> : null}
+          </Pressable>
           <ThemedText type="small" themeColor="textSecondary">
             {`이번 주 ${recordedDays}일 기록`}
           </ThemedText>
@@ -229,6 +243,11 @@ export function MePage() {
       <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
         {appVersion ? `Snaply ${appVersion}` : 'Snaply'}
       </ThemedText>
+
+      {/* Mounted per opening so the form starts from the name shown now. */}
+      {editingName && name ? (
+        <EditNicknameSheet visible name={name} onClose={() => setEditingName(false)} />
+      ) : null}
     </ScrollView>
   );
 }
@@ -266,6 +285,8 @@ const styles = StyleSheet.create({
   },
   hero: { alignItems: 'center', gap: Spacing.four },
   heroCopy: { alignItems: 'center', gap: Spacing.half },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, maxWidth: '100%' },
+  name: { flexShrink: 1 },
   statPills: { flexDirection: 'row', gap: Spacing.two },
   statPill: {
     flexDirection: 'row',
