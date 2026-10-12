@@ -61,7 +61,7 @@
 | [credit-payment-model.md](credit-payment-model.md) | 구독 제거, 무비 생성 = 크레딧 100 | 완료 |
 | [product-concept.md](product-concept.md) | 제품 방향 — 필름 은유를 걷고 스튜디오(작업대형)를 채택, 이름(스냅·무비·컷·초안 무비·스튜디오·나), 원본/조합 모델, 무비 한 화면·실행 밖 편집·순서 고정 · 2026-10-12 피드 없음 · 버전 없음 · 최대 50초 · 세로 9:16 하나 | 완료 |
 | [movie-model.md](movie-model.md) | 영상 묶음은 평면 `Video`를 참조하는 `Movie` 엔티티 | 완료(서버 2026-09-09 · 앱 전환 2026-09-12). 세부 규칙은 movie-export-policy |
-| [instagram-app-handoff.md](instagram-app-handoff.md) | Instagram 게시 시트에 "Instagram 앱에서 올리기"(앨범 저장 → Instagram 앱 열기)를 함께 둔다 — Meta 고급 액세스는 회사 비즈니스의 Tech Provider(액세스 인증)가 먼저라 보류, 앱은 주식회사 디윅스 소유로 옮김 | 완료(2026-10-12). Tech Provider · 검수는 C-8 |
+| [instagram-app-handoff.md](instagram-app-handoff.md) | Instagram 게시 시트에 "Instagram 앱에서 올리기"(앨범 저장 → Instagram 앱 열기)를 함께 둔다 — Meta 고급 액세스는 회사 비즈니스의 Tech Provider(액세스 인증)가 먼저라 보류, 앱은 주식회사 디윅스 소유로 옮김 | 완료(2026-10-12). 이후 액세스 인증을 마치고 검수 제출(2026-10-12) — 결과는 C-8 |
 | [aws-contest-server.md](aws-contest-server.md) | 공모전 테스트 서버를 인프라팀 EC2 에 올린다 — GitHub self-hosted runner + GHCR(main 배포만 받음), S3 는 인스턴스 역할, 단독 compose, Secrets Manager → 배포 때 env 파일. **2026-10-09 부터 유일한 배포 대상** — 사내 서버 안은 접었다([archive/on-prem-deployment.md](../archive/on-prem-deployment.md)). 2026-10-11: 운영은 11월까지, S3 영상 백업 없음, 편집 워커 동시성 1 | 저장소 쪽 완료 · 첫 배포(2026-10-08). 남은 일은 B-8 |
 | [env-management.md](env-management.md) | 로컬은 `apps/api/.env`, 운영은 서버 측 주입(AWS 서버는 Secrets Manager 에서 배포 때 만든 파일) | 완료 |
 
