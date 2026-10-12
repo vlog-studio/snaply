@@ -8,6 +8,7 @@ import {
   useExpiredSnapIds,
   useFailedUploadCount,
   useRetryFailedUploads,
+  useSnapExpiresAt,
   useSnapFiles,
   useSnapSyncEntries,
   type Snap,
@@ -37,6 +38,7 @@ import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/wi
 
 import { draftConfirmation, useEditDraft } from '../model/use-edit-draft';
 import { playerAlbumAction } from '../model/player-album-action';
+import { snapExpiryCaption } from '../model/snap-expiry-caption';
 import { useMovieDeleteImpact } from '../model/use-movie-delete-impact';
 import {
   SnapDeleteDialog,
@@ -132,6 +134,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
   } = useEditDraft();
   const capacity = purpose === 'draft' ? draftLimit : MovieSnapLimit;
   const [playing, setPlaying] = useState<Snap>();
+  const [playerOpenedAt, setPlayerOpenedAt] = useState(Date.now);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteOpenedAt, setDeleteOpenedAt] = useState(0);
   const [importError, setImportError] = useState<string>();
@@ -192,6 +195,10 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
           openSettings: () => void Linking.openSettings(),
         })
       : undefined;
+  // When the server's copy runs out (SNAP-13). Read when the player opens:
+  // the line is a deadline in days, and a player left open across midnight is rare.
+  const playingExpiresAt = useSnapExpiresAt(playing?.id ?? '');
+  const playingDeadline = playing ? snapExpiryCaption(playingExpiresAt, playerOpenedAt) : undefined;
   const closePlayer = () => {
     setPlaying(undefined);
     albumSave.reset();
@@ -294,7 +301,10 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     // movie the screen no longer describes.
     if (selecting && draftBusy) return;
     if (selecting) toggle(snap.id);
-    else setPlaying(snap);
+    else {
+      setPlayerOpenedAt(Date.now());
+      setPlaying(snap);
+    }
   };
 
   const handleLongPress = (snap: Snap) => {
@@ -554,7 +564,9 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
         placeholder={playingPlaceholder}
         closeLabel="스냅 닫기"
         edgeLabel={playing ? formatSeconds(playing.durationSec) : undefined}
-        caption={playingAlbum?.problem ?? (playingExpired ? '보관 기간이 끝났어요' : undefined)}
+        caption={
+          playingAlbum?.problem ?? (playingExpired ? '보관 기간이 끝났어요' : playingDeadline)
+        }
         action={playingAlbum?.action}
         onClose={closePlayer}
       />

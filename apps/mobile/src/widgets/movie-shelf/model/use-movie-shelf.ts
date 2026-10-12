@@ -1,8 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   cutsDurationSec,
+  MovieResultCountdownDays,
   movieJobRatio,
+  movieResultDaysLeft,
   useMovies,
   type Movie,
   type MovieStatus,
@@ -43,6 +45,12 @@ export type MovieSummary = {
   progress?: number;
   /** Why the last generation broke. Present only while `failed`. */
   error?: string;
+  /**
+   * `3일 남음` while a finished, unfinished-with result is in its last days
+   * (MOV-16) — the window of the server's D-3 notice (NTF-10), counted the way
+   * the snap cards count theirs. Absent otherwise.
+   */
+  expiryCountdown?: string;
 };
 
 /**
@@ -56,7 +64,13 @@ function jobProgress(movie: Movie): number | undefined {
   return movieJobRatio(movie.job);
 }
 
-function summarize(movie: Movie, snapIndex: SnapIndex): MovieSummary {
+function expiryCountdownOf(movie: Movie, now: number): string | undefined {
+  if (movie.status !== 'ready' || !movie.render) return undefined;
+  const days = movieResultDaysLeft(movie.render.renderedAt, now);
+  return days >= 1 && days <= MovieResultCountdownDays ? `${days}일 남음` : undefined;
+}
+
+function summarize(movie: Movie, snapIndex: SnapIndex, now: number): MovieSummary {
   const snaps = snapsByRefs(movie.snapRefs, snapIndex);
 
   return {
@@ -77,6 +91,7 @@ function summarize(movie: Movie, snapIndex: SnapIndex): MovieSummary {
     // store can tell one attempt from the next, but a card showing it after the
     // movie recovered would be reporting a problem that is over.
     error: movie.status === 'failed' ? movie.error : undefined,
+    expiryCountdown: expiryCountdownOf(movie, now),
   };
 }
 
@@ -91,13 +106,15 @@ function summarize(movie: Movie, snapIndex: SnapIndex): MovieSummary {
 export function useMovieSummaries(): MovieSummary[] {
   const movies = useMovies();
   const snapIndex = useSnapIndex();
+  // The countdown is in whole days; reading the clock once per mount is enough.
+  const [now] = useState(Date.now);
 
   return useMemo(
     () =>
       [...movies]
         .sort((left, right) => right.updatedAt - left.updatedAt)
-        .map((movie) => summarize(movie, snapIndex)),
-    [movies, snapIndex],
+        .map((movie) => summarize(movie, snapIndex, now)),
+    [movies, snapIndex, now],
   );
 }
 

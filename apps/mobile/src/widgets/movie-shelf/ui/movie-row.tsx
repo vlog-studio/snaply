@@ -32,6 +32,7 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
         MovieStatusLabels[movie.status],
         `컷 ${movie.snapCount}`,
         movie.progress === undefined ? undefined : `${Math.round(movie.progress * 100)}%`,
+        movie.expiryCountdown,
       ]
         .filter(Boolean)
         .join(' · ')}
@@ -69,6 +70,11 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
           <ThemedText type="note" themeColor="textSecondary">
             {movie.dateLabel}
           </ThemedText>
+          {movie.expiryCountdown ? (
+            <ThemedText type="note" themeColor="danger">
+              {movie.expiryCountdown}
+            </ThemedText>
+          ) : null}
         </View>
         {movie.progress !== undefined ? (
           // A job in flight is the one thing the board exists to show, so the row

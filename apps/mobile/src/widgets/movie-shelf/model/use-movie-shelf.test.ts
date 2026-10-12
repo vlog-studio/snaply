@@ -14,10 +14,13 @@ jest.mock('@/entities/movie', () => {
   // modules.
   const trim = jest.requireActual('@/entities/movie/lib/movie-trim');
   const generation = jest.requireActual('@/entities/movie/lib/movie-generation');
+  const expiry = jest.requireActual('@/entities/movie/lib/movie-result-expiry');
   return {
     useMovies: () => mockMovies(),
     cutsDurationSec: trim.cutsDurationSec,
     movieJobRatio: generation.movieJobRatio,
+    movieResultDaysLeft: expiry.movieResultDaysLeft,
+    MovieResultCountdownDays: expiry.MovieResultCountdownDays,
   };
 });
 jest.mock('@/entities/snap', () => {
@@ -62,6 +65,28 @@ beforeEach(() => {
 });
 
 describe('useMovieSummaries', () => {
+  // MOV-16: the cards count down the result's last days, as the snap cards do.
+  it('counts down a finished result in its last three days only', async () => {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    mockMovies.mockReturnValue([
+      makeMovie({
+        id: 'soon',
+        status: 'ready',
+        render: { renderedAt: now - 28 * dayMs, durationSec: 3 },
+      }),
+      makeMovie({ id: 'fresh', status: 'ready', render: { renderedAt: now, durationSec: 3 } }),
+      makeMovie({ id: 'draft' }),
+    ]);
+
+    const { result } = await renderHook(() => useMovieSummaries());
+
+    const byId = new Map(result.current.map((summary) => [summary.id, summary]));
+    expect(byId.get('soon')?.expiryCountdown).toBe('2일 남음');
+    expect(byId.get('fresh')?.expiryCountdown).toBeUndefined();
+    expect(byId.get('draft')?.expiryCountdown).toBeUndefined();
+  });
+
   it('sums the length of the resolved snaps and samples the first cut as the cover', async () => {
     mockMovies.mockReturnValue([
       makeMovie({

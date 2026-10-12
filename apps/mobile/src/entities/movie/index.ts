@@ -68,6 +68,12 @@ export { MovieBgmCatalog } from './lib/movie-bgm';
 export { MovieStyleCatalog, movieStyleLabel, movieStyleOrDefault } from './lib/movie-style';
 export { movieJobRatio } from './lib/movie-generation';
 export {
+  MovieResultCountdownDays,
+  MovieResultRetentionDays,
+  movieResultDaysLeft,
+  movieResultExpiresAt,
+} from './lib/movie-result-expiry';
+export {
   CutTrimStepSec,
   MinCutSec,
   cutDurationSec,

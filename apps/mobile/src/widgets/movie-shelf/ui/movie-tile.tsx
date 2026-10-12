@@ -57,7 +57,7 @@ export function MovieTile({
     <Pressable
       accessibilityRole="button"
       accessibilityState={selecting ? { selected } : undefined}
-      accessibilityLabel={`${movie.title} · ${MovieStatusLabels[movie.status]} · ${formatSeconds(movie.totalSec)}`}
+      accessibilityLabel={`${movie.title} · ${MovieStatusLabels[movie.status]} · ${formatSeconds(movie.totalSec)}${movie.expiryCountdown ? ` · ${movie.expiryCountdown}` : ''}`}
       accessibilityHint={
         selecting
           ? '탭하면 선택하거나 해제해요'
@@ -122,6 +122,11 @@ export function MovieTile({
       </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
         {movie.dateLabel} · 컷 {movie.snapCount}
+        {movie.expiryCountdown ? (
+          <ThemedText type="small" themeColor="danger">
+            {` · ${movie.expiryCountdown}`}
+          </ThemedText>
+        ) : null}
       </ThemedText>
       {movie.status === 'failed' ? (
         <MovieFailureNotice

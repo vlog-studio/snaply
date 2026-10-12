@@ -1,4 +1,6 @@
-import { MovieResultRetentionDays, resultExpiry } from './result-expiry';
+import { MovieResultRetentionDays } from '@/entities/movie';
+
+import { resultExpiry } from './result-expiry';
 
 const DayMs = 24 * 60 * 60 * 1000;
 const renderedAt = new Date(2026, 9, 11, 9, 0).getTime();
