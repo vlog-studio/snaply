@@ -7,7 +7,7 @@ import type { Movie } from '@/entities/movie';
 import { FinishMovieConfirm } from '@/features/finish-movie';
 import type { PostOutcome } from '@/features/post-to-instagram';
 import { RenameMovieForm } from '@/features/rename-movie';
-import { ShareBlockMessages, type ShareBlock } from '@/features/share-movie';
+import { ShareBlockMessages, type InstagramHandoff, type ShareBlock } from '@/features/share-movie';
 import { formatSeconds } from '@/shared/lib/datetime';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
@@ -33,6 +33,9 @@ export type MovieActionsSheetProps = {
   postableVideoId?: string;
   /** A post went through (or is processing); the page says so. */
   onPosted: (outcome: PostOutcome) => void;
+  /** Posting by hand in the Instagram app — `InstagramPostStep`'s hand-off. */
+  onOpenInstagramApp: () => Promise<InstagramHandoff>;
+  handingOff: boolean;
   /** Actually deletes — the confirm step inside this sheet has been passed. */
   onConfirmDelete: () => void;
   onClose: () => void;
@@ -67,6 +70,8 @@ export function MovieActionsSheet({
   onShare,
   postableVideoId,
   onPosted,
+  onOpenInstagramApp,
+  handingOff,
   onConfirmDelete,
   onClose,
 }: MovieActionsSheetProps) {
@@ -110,6 +115,8 @@ export function MovieActionsSheet({
             close();
             onPosted(outcome);
           }}
+          onOpenInstagramApp={onOpenInstagramApp}
+          handingOff={handingOff}
         />
       ) : step === 'finish' ? (
         // 끝내기 (MOV-17) as a step here, for the same reason delete and rename

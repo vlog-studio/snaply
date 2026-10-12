@@ -3,6 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { MovieSelectionBar } from './movie-selection-bar';
 
 // The bar reads safe-area insets — a native answer a test has no provider for.
+// `features/share-movie` reaches the album adapter for its Instagram hand-off;
+// the native media library has no test double of its own.
+jest.mock('@/shared/lib/media-library', () => ({
+  requestAlbumPermission: jest.fn(),
+  saveVideoToAlbum: jest.fn(),
+}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));

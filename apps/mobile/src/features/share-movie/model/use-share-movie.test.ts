@@ -12,6 +12,14 @@ jest.mock('@/shared/lib/sharing', () => ({
   canShareFiles: () => mockCanShare(),
   shareFile: (uri: string, options: unknown) => mockShareFile(uri, options),
 }));
+const mockRequestAlbum = jest.fn<Promise<{ granted: boolean }>, []>();
+const mockSaveToAlbum = jest.fn<Promise<void>, [string]>();
+const mockOpenInstagram = jest.fn<Promise<void>, []>();
+jest.mock('@/shared/lib/media-library', () => ({
+  requestAlbumPermission: () => mockRequestAlbum(),
+  saveVideoToAlbum: (uri: string) => mockSaveToAlbum(uri),
+}));
+jest.mock('../lib/open-instagram', () => ({ openInstagram: () => mockOpenInstagram() }));
 jest.mock('../api/download-render-file', () => ({
   downloadRenderFile: (uri: string, cacheKey: string) => mockDownload(uri, cacheKey),
 }));
@@ -48,6 +56,64 @@ beforeEach(() => {
   mockCanShare.mockResolvedValue(true);
   mockShareFile.mockResolvedValue(undefined);
   mockDownload.mockImplementation((uri) => Promise.resolve(uri));
+  mockRequestAlbum.mockResolvedValue({ granted: true });
+  mockSaveToAlbum.mockResolvedValue(undefined);
+  mockOpenInstagram.mockResolvedValue(undefined);
+});
+
+// The way to Instagram that needs no Meta review and no tester role
+// (docs/decisions/instagram-app-handoff.md).
+describe('openInInstagram', () => {
+  it('saves the render to the album, then opens Instagram, and offers 끝내기', async () => {
+    mockDownload.mockResolvedValue('file:///cache/share-movie/m1-42.mp4');
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4?sig=abc')),
+    );
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.openInInstagram();
+    });
+
+    expect(outcome).toBe('opened');
+    expect(mockSaveToAlbum).toHaveBeenCalledWith('file:///cache/share-movie/m1-42.mp4');
+    expect(mockOpenInstagram).toHaveBeenCalledTimes(1);
+    expect(result.current.offered).toBe(true);
+    expect(result.current.handingOff).toBe(false);
+  });
+
+  it('does not open Instagram when the album is refused or the save fails', async () => {
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    mockRequestAlbum.mockResolvedValueOnce({ granted: false });
+    let refused;
+    await act(async () => {
+      refused = await result.current.openInInstagram();
+    });
+    mockSaveToAlbum.mockRejectedValueOnce(new Error('disk full'));
+    let failed;
+    await act(async () => {
+      failed = await result.current.openInInstagram();
+    });
+
+    expect([refused, failed]).toEqual(['blocked', 'failed']);
+    expect(mockOpenInstagram).not.toHaveBeenCalled();
+    expect(result.current.offered).toBe(false);
+  });
+
+  it('has nothing to hand over without a render file', async () => {
+    const { result } = await renderHook(() => useShareMovie(makeMovie(), resolved(undefined)));
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.openInInstagram();
+    });
+
+    expect(outcome).toBe('unavailable');
+    expect(mockRequestAlbum).not.toHaveBeenCalled();
+  });
 });
 
 describe('useShareMovie', () => {

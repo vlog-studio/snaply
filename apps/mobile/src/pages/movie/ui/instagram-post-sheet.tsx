@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useConnectSns } from '@/features/connect-sns';
 import { PostToInstagramConfirm, type PostOutcome } from '@/features/post-to-instagram';
+import { InstagramHandoffMessages, type InstagramHandoff } from '@/features/share-movie';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -15,6 +16,14 @@ export type InstagramPostStepProps = {
   videoId: string;
   onCancel: () => void;
   onPosted: (outcome: PostOutcome) => void;
+  /**
+   * Saves the movie to the album and opens the Instagram app — posting by hand,
+   * with no link, no Meta review and no tester role
+   * (docs/decisions/instagram-app-handoff.md). The page's `useShareMovie`.
+   */
+  onOpenInstagramApp: () => Promise<InstagramHandoff>;
+  /** The hand-off is saving the file. */
+  handingOff: boolean;
 };
 
 /**
@@ -35,10 +44,32 @@ export function InstagramPostStep({
   videoId,
   onCancel,
   onPosted,
+  onOpenInstagramApp,
+  handingOff,
 }: InstagramPostStepProps) {
   const instagram = useSnsConnection('instagram');
   const connecting = useConnectSns();
   const [now] = useState(Date.now);
+  const [handoffProblem, setHandoffProblem] = useState<string>();
+
+  // Offered under either state of the link: an account that cannot be linked
+  // (personal, or not among the app's testers while Meta review waits) still
+  // gets the movie to Instagram, and a linked one may prefer Instagram's own
+  // editor. The sheet closes once Instagram opens, and stays with the reason
+  // when the movie could not be saved.
+  const handoff = (
+    <InstagramHandoffRow
+      busy={handingOff}
+      problem={handoffProblem}
+      onPress={() => {
+        setHandoffProblem(undefined);
+        void onOpenInstagramApp().then((outcome) => {
+          if (outcome === 'opened') onCancel();
+          else setHandoffProblem(InstagramHandoffMessages[outcome]);
+        });
+      }}
+    />
+  );
 
   const linked = instagram.connection;
   const usable = linked !== undefined && !needsReconnect(linked, now);
@@ -52,24 +83,71 @@ export function InstagramPostStep({
   }
   if (usable) {
     return (
-      <PostToInstagramConfirm
-        movieId={movieId}
-        title={title}
-        videoId={videoId}
-        username={linked.username}
-        onCancel={onCancel}
-        onPosted={onPosted}
-      />
+      <View style={styles.step}>
+        <PostToInstagramConfirm
+          movieId={movieId}
+          title={title}
+          videoId={videoId}
+          username={linked.username}
+          onCancel={onCancel}
+          onPosted={onPosted}
+        />
+        {handoff}
+      </View>
     );
   }
   return (
-    <ConnectStep
-      reconnect={linked !== undefined}
-      pending={connecting.pending === 'connect'}
-      error={connecting.error}
-      onCancel={onCancel}
-      onConnect={() => void connecting.connect('instagram')}
-    />
+    <View style={styles.step}>
+      <ConnectStep
+        reconnect={linked !== undefined}
+        pending={connecting.pending === 'connect'}
+        error={connecting.error}
+        onCancel={onCancel}
+        onConnect={() => void connecting.connect('instagram')}
+      />
+      {handoff}
+    </View>
+  );
+}
+
+/** Posting by hand in the Instagram app — under the in-app post, as the way that always works. */
+function InstagramHandoffRow({
+  busy,
+  problem,
+  onPress,
+}: {
+  busy: boolean;
+  problem: string | undefined;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={[styles.handoff, { borderTopColor: theme.border }]}>
+      <ThemedText type="small" themeColor="textSecondary">
+        연결하지 않아도 올릴 수 있어요. 무비를 앨범에 저장하고 Instagram 앱을 열어요.
+      </ThemedText>
+      {problem ? (
+        <ThemedText type="small" themeColor="danger">
+          {problem}
+        </ThemedText>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Instagram 앱에서 올리기"
+        accessibilityState={{ disabled: busy, busy }}
+        disabled={busy}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.action,
+          styles.handoffAction,
+          { borderColor: theme.border, opacity: busy ? 0.6 : pressed ? 0.8 : 1 },
+        ]}
+      >
+        <ThemedText selectable={false} type="button">
+          {busy ? '앨범에 저장하는 중…' : 'Instagram 앱에서 올리기'}
+        </ThemedText>
+      </Pressable>
+    </View>
   );
 }
 
@@ -160,6 +238,12 @@ const styles = StyleSheet.create({
   loading: { paddingVertical: Spacing.six, alignItems: 'center' },
   step: { gap: Spacing.three },
   actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.one },
+  handoff: {
+    gap: Spacing.two,
+    paddingTop: Spacing.three,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  handoffAction: { flex: 0 },
   action: {
     flex: 1,
     minHeight: 52,

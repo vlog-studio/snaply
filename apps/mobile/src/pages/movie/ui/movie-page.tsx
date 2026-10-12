@@ -627,6 +627,8 @@ export function MoviePage({ movieId }: MoviePageProps) {
         }}
         postableVideoId={postableVideoId}
         onPosted={announcePost}
+        onOpenInstagramApp={sharing.openInInstagram}
+        handingOff={sharing.handingOff}
         onConfirmDelete={() => {
           setActionsOpen(false);
           // Leave first: a deleted movie renders this screen's not-found state,
@@ -680,6 +682,8 @@ export function MoviePage({ movieId }: MoviePageProps) {
           videoId={postableVideoId}
           onClose={() => setPostAsking(false)}
           onPosted={announcePost}
+          onOpenInstagramApp={sharing.openInInstagram}
+          handingOff={sharing.handingOff}
         />
       ) : null}
 

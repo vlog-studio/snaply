@@ -1,9 +1,11 @@
 import { useState } from 'react';
 
 import type { Movie } from '@/entities/movie';
+import { requestAlbumPermission, saveVideoToAlbum } from '@/shared/lib/media-library';
 import { canShareFiles, shareFile } from '@/shared/lib/sharing';
 
 import { downloadRenderFile } from '../api/download-render-file';
+import { openInstagram } from '../lib/open-instagram';
 
 /**
  * Why a movie cannot be handed to the share sheet.
@@ -65,6 +67,26 @@ export type MovieSharing = {
   offered: boolean;
   /** Opens the system share sheet on the rendered movie. */
   share: () => void;
+  /**
+   * Saves the rendered movie to the album and opens the Instagram app, for
+   * posting there by hand — the way to Instagram that needs no Meta review
+   * and no tester role (docs/decisions/instagram-app-handoff.md). Resolves how
+   * it ended so the caller can keep its sheet open on a failure; `opened`
+   * also counts as offered (the file is on the device now).
+   */
+  openInInstagram: () => Promise<InstagramHandoff>;
+  /** True from that press until Instagram opens or the save fails. */
+  handingOff: boolean;
+};
+
+/** How a hand-off to the Instagram app ended. */
+export type InstagramHandoff = 'opened' | 'blocked' | 'failed' | 'unavailable';
+
+/** What the sheet says when the hand-off could not happen. */
+export const InstagramHandoffMessages: Record<Exclude<InstagramHandoff, 'opened'>, string> = {
+  blocked: '무비를 앨범에 저장하려면 사진 권한이 필요해요.',
+  failed: '무비를 앨범에 저장하지 못했어요. 다시 시도해 주세요.',
+  unavailable: ShareBlockMessages['no-render'],
 };
 
 /**
@@ -93,6 +115,7 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
   const [failed, setFailed] = useState(false);
   // The render the sheet was last opened on, so the flag dies with the render.
   const [offeredFor, setOfferedFor] = useState<string>();
+  const [handingOff, setHandingOff] = useState(false);
   const renderKey = movie?.render ? `${movie.id}-${movie.render.renderedAt}` : undefined;
 
   const share = () => {
@@ -120,6 +143,28 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
     })();
   };
 
+  const openInInstagram = async (): Promise<InstagramHandoff> => {
+    if (!uri || !movie?.render) return 'unavailable';
+    if (handingOff) return 'failed';
+    const key = `${movie.id}-${movie.render.renderedAt}`;
+    setHandingOff(true);
+    try {
+      const permission = await requestAlbumPermission();
+      if (!permission.granted) return 'blocked';
+      const localUri = await downloadRenderFile(uri, key);
+      await saveVideoToAlbum(localUri);
+      // The file is the user's now — the same moment 공유 offers 끝내기 (MOV-17).
+      setOfferedFor(key);
+      await openInstagram();
+      return 'opened';
+    } catch (error) {
+      if (__DEV__) console.warn('[movie] instagram hand-off failed:', String(error));
+      return 'failed';
+    } finally {
+      setHandingOff(false);
+    }
+  };
+
   const blocked: ShareBlock | undefined = uri
     ? undefined
     : source.unresolved
@@ -132,5 +177,7 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
     failed,
     offered: renderKey !== undefined && offeredFor === renderKey,
     share,
+    openInInstagram,
+    handingOff,
   };
 }
