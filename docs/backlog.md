@@ -296,10 +296,6 @@ v3 는 **Movie export 에 붙인다** — `POST /edit-jobs` 는 2026-10-11 에 �
       사전 행과 그 `note`(`packages/shared-types/src/invalidation-vocabulary.json` — 폐기된 전제인 storage-and-subscription-policy §3
       을 아직 근거로 든다)를 고치거나 지운다. E-5(BGM 재현성)와 함께 본다
 - [ ] **팩을 긴급 차단(`retired`)할 때 사용자에게 무엇을 보일지** — [plans/asset-pack-manifest.md](./plans/asset-pack-manifest.md) §12
-- [ ] **편집 경로의 기본 처리 — 남은 것: 클립 간 색 맞춤 `grade.match`** — [decisions/auto-edit-draft.md](./decisions/auto-edit-draft.md#63-v1-툴과-나중으로-둔-툴) §6.3 이
-      스타일에 딸린 속성으로 두었으나 편집 워커(`apps/ai-worker/src/pipeline/`)에 없다. 시간 · 장소가 다른 스냅을 붙일 때 가장 눈에 띄는 차이다.
-      나머지(회전 검증 · 컷별 음량 · 마이크로 페이드 · `loudnorm` · `+faststart` · CRF)는 2026-10-12 에 넣었다 → progress 2026-10-12 "편집 결과물의 기본 처리".
-      BGM 덕킹(`sidechaincompress`)은 BGM 조달(A-7)과 함께 본다
 
 **완료 조건**: 위 선행 결정·조달 확정 → `editSpec` v3 확정(계약 `editSpecSchema` 와 `openapi.json` 을 같은
 변경에서 갱신하고, `parseEditSpec` 이 모르는 스펙을 v1 `일상` 으로 삼키는 폴백을 거절로 바꾼다 —
@@ -728,6 +724,7 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **A-1** 결과물 만료 안내 — 2026-10-11, 완성 알림 본문에 30일 · 감상 화면에 날짜(마지막 3일은 남은 날수) · 무비 알림을 켠 사용자에게 D-3 예고(NTF-10) → progress 2026-10-11 "끝내지 않은 무비의 만료를 알린다"
 - **A-1** 서버 전환 실기기 검증(① 업로드 뒤 초안 · ② 편집 PATCH · ③ 완성 푸시 · ④ 끝내기 · ⑤ 재설치 · ⑥ 계정 전환) — 2026-10-11, 마지막 ⑥ 을 에뮬레이터에서 화면 · 푸시(E-28 수정 빌드) 모두 확인하고 정리 뒤 다시 만들기의 크레딧도 봤다. MOV-2 · 17~19 · NTF-5 · 6 의 표기를 지우고(MOV-18 의 SNS 자동 판정은 같은 날 인스타 게시에서 봤다) NTF-8 은 남은 부분만 남겼다 → progress 2026-10-11 "서버 전환 실기기 검증을 마쳤다"
 - **A-9** 닉네임 수정 화면 · 아바타 — 2026-10-12, 나 탭의 이름을 눌러 닉네임을 고친다(`features/edit-nickname`). 아바타는 보여 줄 곳 · 업로드 경로가 없어 만들지 않는다(관심사는 A-9 에 남음) → progress 2026-10-12 "닉네임을 고칠 수 있다"
+- **A-7** 편집 경로의 기본 처리(회전 검증 · 컷별 음량 · 마이크로 페이드 · `loudnorm` · `+faststart` · CRF · 클립 간 색 맞춤) — 2026-10-12 → progress 2026-10-12 "편집 결과물의 기본 처리" · "컷 사이 색 맞춤" (BGM 덕킹은 A-7 BGM 조달과 함께)
 - **A-10** 앱 안 피드 · 재생성 버전 · 무비 길이 — 2026-10-12, 피드 없음 · 버전 없음(다시 만들기 전에 한 번 묻는다) · 최대 50초 → [product-concept.md](./decisions/product-concept.md) §7 · progress 2026-10-12 "제품 결정 셋 — 피드 · 버전 · 길이"
 - **A-10** 출력 비율 — 2026-10-12, 세로 9:16 하나로 두고 MOV-8 을 `구현됨` 으로 닫았다(필요해지면 1:1 부터) → [product-concept.md](./decisions/product-concept.md) §7 · progress 2026-10-12 "제품 결정 셋 — 피드 · 버전 · 길이"
 - **A-2** 광고 보상 정책 값(20크레딧 · 일일 5회 · 쿨다운 300초 · 세션 TTL 300초) — 2026-08-18 → progress 2026-08-18 "광고 보상 세션 수명·포기" · "광고 보상 정책 값 확정 — 20크레딧 · 일일 5회" · "광고 보상 쿨다운 300초 확정" · [ad-reward-credits.md](./decisions/ad-reward-credits.md) §7
