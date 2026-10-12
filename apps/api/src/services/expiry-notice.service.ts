@@ -83,8 +83,9 @@ function messageFor(daysBefore: number, count: number): { title: string; body: s
   const when = daysBefore === 1 ? '내일' : `${daysBefore}일 후`;
   return {
     title: '스냅 보관 기간이 곧 끝나요',
-    // 되돌릴 수 없다는 것과, 지금 무엇을 하면 되는지를 같이 말한다.
-    body: `${when} 스냅 ${count}개가 삭제돼요. 남기려면 무비로 만들어 주세요.`,
+    // 되돌릴 수 없다는 것과, 지금 무엇을 하면 되는지를 같이 말한다. 탭하면 앱이 그 스냅들을 앨범 저장용으로
+    // 골라 둔 채 라이브러리를 연다(SNAP-13).
+    body: `${when} 스냅 ${count}개가 삭제돼요. 앨범에 저장하거나 무비로 만들어 두세요.`,
   };
 }
 

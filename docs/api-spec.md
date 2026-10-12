@@ -321,7 +321,7 @@ FE 가 알아야 할 동작:
 |---|---|---|
 | 무비 완성 | `kind: movie_ready` · `movieId` · `videoId`(결과물) | 무비 생성이 끝났을 때. 본문이 결과물이 30일 뒤 사라진다는 것을 말한다(MOV-16). 전체·무비 알림 스위치가 켜져 있고 방해 금지 시간이 아닐 때만 — 그 밖에는 보내지 않고 버린다(NTF-6). 실패는 보내지 않는다. 무비 없이 `POST /edit-jobs` 로 만든 결과물도 보내지 않는다 |
 | 무비 만료 예고 | `kind: movie_expiry` · `daysBefore`(`"3"`) · `movieId`(한 편일 때만) | 끝내지 않은 결과물이 3일 뒤 사라질 때 하루 한 번 낮 배치가 보낸다(NTF-10). 전체·무비 알림 스위치가 켜져 있어야 한다. 한 사용자의 여러 편은 한 알림으로 묶고 그때는 `movieId` 가 없다 |
-| 스냅 만료 예고 | `kind: snap_expiry` · `daysBefore`(`"3"` · `"1"`) | 하루 한 번 낮에 도는 배치가 보낸다(SNAP-13, [expiry-notice-schedule.md](./decisions/expiry-notice-schedule.md)). 전체 스위치만 본다 — 종류별 스위치와 방해 금지 시간은 보지 않는다(NTF-9) |
+| 스냅 만료 예고 | `kind: snap_expiry` · `daysBefore`(`"3"` · `"1"`) | 본문은 "N일 후 스냅 N개가 삭제돼요. 앨범에 저장하거나 무비로 만들어 두세요." 하루 한 번 낮에 도는 배치가 보낸다(SNAP-13, [expiry-notice-schedule.md](./decisions/expiry-notice-schedule.md)). 전체 스위치만 본다 — 종류별 스위치와 방해 금지 시간은 보지 않는다(NTF-9) |
 | 위치 도착 | `locationId`(`kind` 없음) | `POST /notifications/geofence-enter` 가 `notified: true` 일 때(NTF-1~3) |
 
 ---
