@@ -192,23 +192,6 @@ MOV-16~19 다. 만료의 동작 구조(2단계 삭제 · 만료 스냅 식별 ·
 - [ ] **iOS 출시 전 — 앨범 저장의 iOS 확인** — "추가만" 사진 권한 질문과 보관함 저장, 거절한 뒤의 `설정에서 권한 켜기`.
       앱이 사진 전체 접근을 요청하지 않아도 App Store 정적 검사가 `NSPhotoLibraryUsageDescription` 을 요구하는지도
       본다(지금은 두 문구를 모두 넣었다)
-- [ ] **만료 전에 앨범 저장을 권하기** — 저장공간 검토(2026-09-29)에서 남은 권장안이다. 다른 기기에서 온 스냅과
-      이 기기에서만 삭제한 스냅은 보관 기간이 끝나면 받을 파일이 없어 만료 전에만 저장할 수 있다. 곧 끝나는 스냅
-      모아보기와 일괄 저장, 그리고 D-3 · D-1 예고 푸시(지금 문구는 "남기려면 무비로 만들어 주세요")를 거기로 잇는 안이다.
-      재생 화면에서도 남은 기간을 보이는 것(SNAP-13 `부분`)과 함께 정한다
-      ([snap-album-save-and-device-delete.md](./decisions/snap-album-save-and-device-delete.md) ①의 B)
-
-### A-6. 템플릿 기반 스냅 자동 추천 — 앱·백엔드 완료, 생산 활성화 대기
-
-템플릿으로 무비를 시작할 때 슬롯에 들어갈 스냅을 분석 결과 기반으로 고른다. A-3의 후속 항목이며
-방향·기각안은 [decisions/template-snap-recommendation.md](./decisions/template-snap-recommendation.md).
-
-**2026-08-19 완료 (1·2·3단계)**: 서버 카탈로그·추천 API·앱 연동까지 전부 구현됐다.
-현행 요구는 [specs/template-and-recommendation.md](./specs/template-and-recommendation.md),
-앱 동작은 [모바일 기능 문서](../apps/mobile/docs/features/movie-templates.md),
-검증 내역은 [progress.md](./progress.md).
-
-**남은 것**
 - [ ] **활성화**: `MOVIE_RECOMMENDATION_ENABLED` 는 **기본 꺼짐**이다. 켜는 조건은 A-3 과 같다 —
       팀 스냅 실측과 운영 모델 고정(A-3). 2026-09-29 옵트인 결정으로 법무 검토(D-2)는 켜는 조건에서 빠졌고,
       켜도 분석에 동의한 사용자에게만 돈다(REC-4). 켜지 않으면 추천 경로에서 분석이 돌지 않는다
@@ -738,6 +721,7 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **A-4** 촬영 스냅 해상도 하드코딩 해소(앱) — 2026-09-12 → progress 2026-09-12 "촬영 스냅 해상도 하드코딩 해소"(실기기 확인은 A-4 에 남음)
 - **A-4** reconcile 착수 전 제품 결정 셋 — 2026-09-27 → [snap-sync-across-devices.md](./decisions/snap-sync-across-devices.md)
 - **A-4** 3단계 reconcile(구현 · Android 실기기 검증) — 2026-09-27 → progress 2026-09-27 "스냅이 기기와 재설치를 넘어 보인다" · "스냅 reconcile 실기기 검증"
+- **A-4** 만료 전에 앨범 저장을 권하기 — 2026-10-12, 선택 모드의 여러 개 저장과 예고 알림 연결(곧 사라질 스냅을 골라 둔 채 연다, 문구에 앨범 저장)로 했다. 모아 보기 화면은 두지 않았다 → progress 2026-10-12 "만료 전에 앨범 저장을 권한다"
 - **A-4** 무비 컷의 `unavailable` 에 사유가 없다(SNAP-12) — 2026-10-07 → progress 2026-10-07 "무비 컷이 사라진 사유를 싣는다"
 - **A-4** 스냅 휴지통(삭제 유예) — 2026-10-07 → [decisions/snap-trash.md](./decisions/snap-trash.md) · progress 2026-10-07 "지운 스냅을 보관 기간이 끝날 때까지 되살린다"(실기기 확인은 A-4 에 남음)
 - **A-4** 자동 앨범 저장의 휴대폰 확인(SNAP-18 `구현됨`) — 2026-10-09 → progress 2026-10-09 "휴대폰 실기기 확인 — 알림 · 정리 · 앨범"
