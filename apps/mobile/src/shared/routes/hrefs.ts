@@ -33,6 +33,14 @@ export function draftPickerHref(): Href {
 }
 
 /**
+ * The snap library picking for the album, opened on the snaps an expiry notice
+ * is about (SNAP-13) — its tap lands here, the soon-to-go snaps already picked.
+ */
+export function expiringSnapsSaveHref(): Href {
+  return { pathname: '/snaps', params: { select: 'album', at: pickingRequest() } };
+}
+
+/**
  * A fresh token per picking request. The Snap tab stays mounted, and navigation
  * does not re-apply nested params equal to the ones it last had — so without it
  * the same row tapped a second time opens the tab browsing instead of picking.

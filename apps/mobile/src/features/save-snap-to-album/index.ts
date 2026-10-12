@@ -4,3 +4,8 @@ export { saveCapturedSnapToAlbum } from './model/save-captured-snap';
 export type { AlbumSaveOutcome } from './model/save-snap-to-album';
 export { useAlbumAutoSave, type AlbumAutoSave } from './model/use-album-auto-save';
 export { useSaveSnapToAlbum, type AlbumSaveState } from './model/use-save-snap-to-album';
+export {
+  albumBatchMessage,
+  useSaveSnapsToAlbum,
+  type AlbumBatchOutcome,
+} from './model/use-save-snaps-to-album';

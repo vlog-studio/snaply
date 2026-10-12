@@ -1,9 +1,6 @@
 import type { Href } from 'expo-router';
 
-import { movieHref } from '@/shared/routes';
-
-/** The snap library tab — where an expiry notice has to land (SNAP-13). */
-export const SnapLibraryHref: Href = '/snaps';
+import { expiringSnapsSaveHref, movieHref } from '@/shared/routes';
 
 /**
  * Where a tapped notification should take the user, from the data it carried.
@@ -24,7 +21,8 @@ export function notificationTarget(data: unknown): Href | undefined {
     case 'movie_expiry':
       return typeof movieId === 'string' && movieId.length > 0 ? movieHref(movieId) : undefined;
     case 'snap_expiry':
-      return SnapLibraryHref;
+      // The library, its soon-to-go snaps already picked for the album (SNAP-13).
+      return expiringSnapsSaveHref();
     default:
       return undefined;
   }

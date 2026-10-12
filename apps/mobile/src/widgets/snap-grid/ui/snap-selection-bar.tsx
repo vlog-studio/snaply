@@ -43,6 +43,11 @@ export type SnapSelectionBarProps = {
    * movie is not the place to delete originals out of the library.
    */
   onDelete?: () => void;
+  /**
+   * Saves the picks to the device's album (SNAP-17), beside 삭제. Omitted where
+   * saving is the confirm itself, or not this screen's to offer.
+   */
+  onSaveToAlbum?: () => void;
 };
 
 /**
@@ -63,6 +68,7 @@ export function SnapSelectionBar({
   onClear,
   onConfirm,
   onDelete,
+  onSaveToAlbum,
   onHeight,
   busy = false,
   confirmDisabled = false,
@@ -101,9 +107,11 @@ export function SnapSelectionBar({
         >
           {/* A target holding nothing yet (a movie about to be created) has no
               fill to report — its one fact is the cap. */}
-          {heldCount > 0
-            ? `${targetLabel} ${heldCount}/${capacity}${room === 0 ? ' · 가득 참' : ` · ${room}개 더`}`
-            : `${targetLabel} · 최대 ${capacity}개`}
+          {!Number.isFinite(capacity)
+            ? targetLabel
+            : heldCount > 0
+              ? `${targetLabel} ${heldCount}/${capacity}${room === 0 ? ' · 가득 참' : ` · ${room}개 더`}`
+              : `${targetLabel} · 최대 ${capacity}개`}
         </ThemedText>
       </View>
 
@@ -124,6 +132,25 @@ export function SnapSelectionBar({
               style={{ color: canChange ? theme.danger : theme.textSecondary }}
             >
               삭제
+            </ThemedText>
+          </Pressable>
+        ) : null}
+        {onSaveToAlbum ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${selectedCount}개 스냅 앨범에 저장`}
+            accessibilityState={{ disabled: !canChange }}
+            disabled={!canChange}
+            hitSlop={8}
+            onPress={onSaveToAlbum}
+            style={styles.textAction}
+          >
+            <ThemedText
+              selectable={false}
+              type="smallBold"
+              themeColor={canChange ? 'text' : 'textSecondary'}
+            >
+              저장
             </ThemedText>
           </Pressable>
         ) : null}

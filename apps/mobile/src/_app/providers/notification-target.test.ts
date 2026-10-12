@@ -1,6 +1,6 @@
 import { movieHref } from '@/shared/routes';
 
-import { notificationTarget, SnapLibraryHref } from './notification-target';
+import { notificationTarget } from './notification-target';
 
 describe('notificationTarget', () => {
   it.each([
@@ -13,8 +13,11 @@ describe('notificationTarget', () => {
 
   // An expiry notice that lands anywhere else has not told the user anything
   // they can act on (SNAP-13).
-  it('opens the library for an expiry notice', () => {
-    expect(notificationTarget({ kind: 'snap_expiry', daysBefore: '3' })).toEqual(SnapLibraryHref);
+  it('opens the library picking the soon-to-go snaps for the album', () => {
+    expect(notificationTarget({ kind: 'snap_expiry', daysBefore: '3' })).toMatchObject({
+      pathname: '/snaps',
+      params: { select: 'album' },
+    });
   });
 
   it.each([

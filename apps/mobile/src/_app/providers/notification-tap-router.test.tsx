@@ -3,7 +3,6 @@ import { act, render } from '@testing-library/react-native';
 import { movieHref } from '@/shared/routes';
 
 import { NotificationTapRouter } from './notification-tap-router';
-import { SnapLibraryHref } from './notification-target';
 
 const mockNavigate = jest.fn();
 let mockNavigatorKey: string | undefined = 'root';
@@ -64,13 +63,19 @@ describe('NotificationTapRouter', () => {
     expect(mockNavigate).toHaveBeenCalledWith(movieHref('m1'));
   });
 
-  // The whole point of an expiry notice is to reach the library (SNAP-13).
+  // The whole point of an expiry notice is to reach the library — its
+  // soon-to-go snaps picked for the album (SNAP-13).
   it('opens the library for an expiry notice', async () => {
     await render(<NotificationTapRouter />);
 
     await tapPush({ messageId: 'p2', data: { kind: 'snap_expiry', daysBefore: '1' } });
 
-    expect(mockNavigate).toHaveBeenCalledWith(SnapLibraryHref);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pathname: '/snaps',
+        params: expect.objectContaining({ select: 'album' }),
+      }),
+    );
   });
 
   // The failure notice is still presented by the app itself, and a push shown

@@ -18,7 +18,11 @@ import { useComposeMovie } from '@/features/compose-movie';
 import { canDeleteFromDevice, restorableAfterDelete, useDeleteSnaps } from '@/features/delete-snap';
 import { requestSnapReconcile } from '@/features/reconcile-snaps';
 import { useRestoreSnaps } from '@/features/restore-snap';
-import { useSaveSnapToAlbum } from '@/features/save-snap-to-album';
+import {
+  albumBatchMessage,
+  useSaveSnapToAlbum,
+  useSaveSnapsToAlbum,
+} from '@/features/save-snap-to-album';
 import { formatDuration, formatSeconds } from '@/shared/lib/datetime';
 import { movieHref } from '@/shared/routes';
 import { pickVideoFromLibrary } from '@/shared/lib/video-picker';
@@ -38,6 +42,7 @@ import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/wi
 
 import { draftConfirmation, useEditDraft } from '../model/use-edit-draft';
 import { playerAlbumAction } from '../model/player-album-action';
+import { expiringSnapIds } from '../model/expiring-snaps';
 import { snapExpiryCaption } from '../model/snap-expiry-caption';
 import { useMovieDeleteImpact } from '../model/use-movie-delete-impact';
 import {
@@ -50,14 +55,16 @@ import {
  * What a selection is for. `movie` — the user's own cut list, in pick order,
  * up to {@link MovieSnapLimit}. `draft` — material handed to the edit draft
  * (MOV-21), up to the draft's cap (`useEditDraft`'s `limit`), which chooses
- * among it.
+ * among it. `album` — copies for the device's album (SNAP-17), no cap; an
+ * expiry notice opens the library this way with its soon-to-go snaps picked
+ * (SNAP-13).
  */
-export type SelectionPurpose = 'movie' | 'draft';
+export type SelectionPurpose = 'movie' | 'draft' | 'album';
 
 export type SnapsPageProps = {
   /**
    * The studio sends the user here to pick: `?select=1` for a new movie,
-   * `?select=draft` for the edit draft.
+   * `?select=draft` for the edit draft; an expiry notice's tap, `?select=album`.
    */
   startSelecting?: SelectionPurpose;
   /**
@@ -108,6 +115,9 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
   // 되돌리기 can bring back (SNAP-20).
   const [deleted, setDeleted] = useState<{ message: string; videoIds: string[] }>();
   const albumSave = useSaveSnapToAlbum();
+  const albumBatch = useSaveSnapsToAlbum();
+  // What the last batch save made, once selection has closed behind it.
+  const [savedMessage, setSavedMessage] = useState<string>();
   const syncEntries = useSnapSyncEntries();
   const setTabBarHidden = useSetTabBarHidden();
   const isFocused = useIsFocused();
@@ -132,7 +142,12 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     reset: resetDraft,
     limit: draftLimit,
   } = useEditDraft();
-  const capacity = purpose === 'draft' ? draftLimit : MovieSnapLimit;
+  const capacity =
+    purpose === 'draft'
+      ? draftLimit
+      : purpose === 'album'
+        ? Number.POSITIVE_INFINITY
+        : MovieSnapLimit;
   const [playing, setPlaying] = useState<Snap>();
   const [playerOpenedAt, setPlayerOpenedAt] = useState(Date.now);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -145,7 +160,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
 
   // A new movie starts empty, so nothing in the library is "held" here — unlike
   // a movie's picker, where the movie's own cuts are.
-  const { picked, notice, toggle, drop, clear, reset, announce } = useSnapPicking({
+  const { picked, notice, toggle, drop, clear, reset, replace, announce } = useSnapPicking({
     heldIds: NoHeldIds,
     heldCount: 0,
     capacity,
@@ -256,6 +271,18 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     }
   }
 
+  // An expiry notice's tap opens the library on the snaps it is about, already
+  // picked. After the arrival, not during it: which snaps are about to go reads
+  // the clock. Once per arrival — later picks are the user's.
+  const preselectedArrival = useRef<string | undefined>(undefined);
+  const libraryIds = useMemo(() => days.flatMap((day) => day.snaps.map((snap) => snap.id)), [days]);
+  useEffect(() => {
+    if (startSelecting !== 'album' || !arrival || preselectedArrival.current === arrival) return;
+    if (!isHydrated) return;
+    preselectedArrival.current = arrival;
+    replace(expiringSnapIds(libraryIds, syncEntries, Date.now()));
+  }, [arrival, startSelecting, isHydrated, libraryIds, syncEntries, replace]);
+
   const confirmation =
     purpose === 'draft' ? draftConfirmation(draftState, picked, draftLimit) : undefined;
   const draftBusy = confirmation?.busy === true;
@@ -333,7 +360,25 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     }
   };
 
+  const pickedForSave = () =>
+    days.flatMap((day) => day.snaps).filter((snap) => picked.includes(snap.id));
+
+  const saveToAlbum = async () => {
+    const outcome = await albumBatch.saveAll(pickedForSave());
+    if (outcome.saved > 0 && !outcome.blocked && outcome.failed === 0) {
+      exitSelection();
+      setSavedMessage(albumBatchMessage(outcome));
+      return;
+    }
+    // Something stayed behind: keep the picks and say what happened, in the bar.
+    announce(albumBatchMessage(outcome));
+  };
+
   const confirmPicks = () => {
+    if (purpose === 'album') {
+      void saveToAlbum();
+      return;
+    }
     // Selection here also deletes, so an expired snap may be picked — but a
     // movie is made from the server's copies, and its copy is gone (SNAP-12).
     // It is taken out of the picks, which leaves the rest ready to confirm.
@@ -544,10 +589,19 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
           selectedCount={picked.length}
           heldCount={0}
           capacity={capacity}
-          targetLabel={purpose === 'draft' ? '자동 편집' : '새 무비'}
-          confirmLabel={confirmation?.label ?? '이 스냅으로 새 무비'}
+          targetLabel={
+            purpose === 'draft' ? '자동 편집' : purpose === 'album' ? '앨범에 저장' : '새 무비'
+          }
+          confirmLabel={
+            purpose === 'album'
+              ? albumBatch.saving
+                ? '저장하는 중…'
+                : '앨범에 저장'
+              : (confirmation?.label ?? '이 스냅으로 새 무비')
+          }
           notice={notice ?? confirmation?.notice}
-          busy={confirmation?.busy}
+          busy={confirmation?.busy || albumBatch.saving}
+          onSaveToAlbum={purpose === 'movie' ? () => void saveToAlbum() : undefined}
           confirmDisabled={confirmation?.disabled}
           onClear={clear}
           onConfirm={confirmPicks}
@@ -569,6 +623,12 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
         }
         action={playingAlbum?.action}
         onClose={closePlayer}
+      />
+
+      <Toast
+        message={savedMessage}
+        onDismiss={() => setSavedMessage(undefined)}
+        bottomOffset={tabBarHeight + Spacing.three}
       />
 
       <Toast

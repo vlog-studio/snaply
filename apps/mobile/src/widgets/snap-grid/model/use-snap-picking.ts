@@ -37,6 +37,11 @@ export type SnapPicking = {
   clear: () => void;
   /** Drops the picks and the notice — the state a screen leaves picking in. */
   reset: () => void;
+  /**
+   * Starts over with these picks, as many as the room allows — a screen that
+   * arrives knowing what to pick (the expiry notice's soon-to-go snaps).
+   */
+  replace: (snapIds: readonly string[]) => void;
   /** Says something about the picks that only the screen could know. */
   announce: (message: string | undefined) => void;
 };
@@ -94,5 +99,13 @@ export function useSnapPicking(target: SnapPickTarget): SnapPicking {
     setNotice(undefined);
   }, []);
 
-  return { picked, room, notice, toggle, drop, clear, reset, announce: setNotice };
+  const replace = useCallback(
+    (snapIds: readonly string[]) => {
+      setNotice(undefined);
+      setPicked(snapIds.slice(0, room));
+    },
+    [room],
+  );
+
+  return { picked, room, notice, toggle, drop, clear, reset, replace, announce: setNotice };
 }

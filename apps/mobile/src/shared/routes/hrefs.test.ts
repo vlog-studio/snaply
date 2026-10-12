@@ -1,4 +1,4 @@
-import { draftPickerHref, snapPickerHref } from './hrefs';
+import { draftPickerHref, expiringSnapsSaveHref, snapPickerHref } from './hrefs';
 
 type PickerHref = { pathname: string; params: { select: string; at: string } };
 
@@ -9,6 +9,7 @@ describe('picker hrefs', () => {
   it.each([
     ['a new movie', snapPickerHref, '1'],
     ['the edit draft', draftPickerHref, 'draft'],
+    ['the album, from an expiry notice', expiringSnapsSaveHref, 'album'],
   ])('asks for %s with a request no earlier one matches', (_name, href, select) => {
     const first = href() as PickerHref;
     const second = href() as PickerHref;
