@@ -40,8 +40,8 @@
 
 | 층 | 개념 | 원천 |
 |---|---|---|
-| 내용 | 장소(places) · 사물(objects) · 행동(actions) · 주제(topics) | 개념 사전 — 초안 [content-vocabulary-draft.json](../plans/content-vocabulary-draft.json) |
-| 내용 | **분위기(moods)** — 새로 넣는다. 분석은 이미 `moods` 를 내지만 사전에 없다 | 같은 사전 |
+| 내용 | 장소(places) · 사물(objects) · 행동(actions) · 주제(topics) | 개념 사전 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json) |
+| 내용 | **분위기(moods)** — 분석은 이미 `moods` 를 낸다. 사전 확정(2026-10-13)에서 6개를 넣었다 | 같은 사전 |
 | 편집 | 컷 역할 · 전환 · 스타일 프리셋 · 템플릿 슬롯 | [`cut-role-vocabulary.json`](../../packages/shared-types/src/cut-role-vocabulary.json) · [`transition-vocabulary.json`](../../packages/shared-types/src/transition-vocabulary.json) · `STYLE_PRESETS` · 서버 카탈로그 |
 | 사용자 | 취향 프로필 | DB(§4.1) |
 

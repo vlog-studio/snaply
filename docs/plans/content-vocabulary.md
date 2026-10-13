@@ -1,7 +1,7 @@
 # 스냅 내용 어휘 — 자유 문자열 매칭을 개념 사전으로 바꾸는 계획
 
 **작성일**: 2026-10-07
-**상태**: 제안 — 현행 사실이 아니다. 사전 초안은 [content-vocabulary-draft.json](content-vocabulary-draft.json)
+**상태**: 일부 구현 — 사전은 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json)으로 확정했다(2026-10-13, §6 의 3). 나머지 단계는 제안이다
 **원천**: 분석 결과의 장소·사물·행동·주제를 닫힌 개념 사전으로 바꾸는 방법과, 바꾸기 전후를 가르는 매칭 테스트(오탐·미탐)의
 계획. 미결은 [backlog.md](../backlog.md) A-6 에만 둔다
 **관련 문서**: [decisions/template-snap-recommendation.md](../decisions/template-snap-recommendation.md) §7 ·
@@ -81,10 +81,12 @@
 
 ---
 
-## 2. 사전 초안
+## 2. 사전
 
-[content-vocabulary-draft.json](content-vocabulary-draft.json). 채택 전에는 `packages/shared-types/src` 에 두지 않는다 — 워커의
-`tests/test_vocabulary.py` 가 그 디렉터리의 `*-vocabulary.json` 을 기동 필수 목록과 맞추므로, 두는 순간 워커가 검증하며 뜬다.
+[`packages/shared-types/src/content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json)(2026-10-13 확정, 이 절은
+초안 때의 설명이다). TS 로더는 `content-vocabulary.ts`, 정합성 테스트는 §5.2 의 두 파일이고, 워커는 기동 필수 목록(`pipeline/vocabulary.py`
+`REQUIRED`)에 넣어 사전 없이 뜨지 않는다. 확정하면서 `moods` 필드를 더했다 — 슬롯 매칭에는 쓰지 않고(`matchFields` 에 없다) 분위기 추론에만
+쓴다([agentic-ontology-rollout.md](agentic-ontology-rollout.md) §2.1).
 
 - **개념**은 필드(`places`·`objects`·`actions`·`topics`) 안에서 id 로 구분한다. `label` 하나와 `aliases`(같은 개념의 다른 표기)를
   가진다. places 의 `car`(차)와 objects 의 `tea`(차)는 필드가 달라 따로 있을 수 있다. 같은 필드 안에서 한 별칭은 한 개념에만 있다.

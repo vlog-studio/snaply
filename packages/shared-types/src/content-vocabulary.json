@@ -1,21 +1,19 @@
 {
-  "_note": "스냅 내용 어휘의 초안이다 — 계획 docs/plans/content-vocabulary.md. 채택 전에는 packages/shared-types/src 로 옮기지 않는다: 워커의 tests/test_vocabulary.py 가 그 디렉터리의 *-vocabulary.json 을 기동 필수 목록(REQUIRED)과 맞추므로, 옮기는 순간 워커가 이 파일을 검증하며 뜬다. 채택하면 content-vocabulary.json 으로 옮기고 TS 로더·정합성 테스트·REQUIRED 를 같은 변경에서 더한다.",
-
+  "_note": "스냅 내용의 개념 사전 — 분석의 자유 문자열(장소·사물·행동·주제·분위기)을 닫힌 개념으로 바꾼다. 원본은 이 파일 하나이고 API(packages/shared-types/src/content-vocabulary.ts)와 워커(tests/test_content_vocabulary.py)가 같은 규칙으로 검사한다. 정규화·매칭 규칙과 사례는 docs/plans/content-vocabulary.md §3·§4, 온톨로지로서의 쓰임은 docs/decisions/ontology-personalization.md. 개념을 바꾸면 contentVocabularyVersion 을 올린다 — 추천 재사용 키에 들어가 예전 결과가 돌아오지 않는다.",
   "contentVocabularyVersion": 1,
 
-  "_fieldsNote": "분석 결과의 목록 필드와 같은 이름이다. 개념 id 는 필드 안에서만 유일하다 — places 의 car(차)와 objects 의 tea(차)는 다른 개념이고, 매칭도 같은 필드끼리만 한다. moods 는 매칭에 쓰지 않아 넣지 않았다.",
-  "fields": ["places", "objects", "actions", "topics"],
+  "_fieldsNote": "분석 결과의 목록 필드와 같은 이름이다(워커 schema.py LIST_FIELDS). 개념 id 는 필드 안에서만 유일하다 — places 의 car(차)와 objects 의 tea(차)는 다른 개념이고, 매칭도 같은 필드끼리만 한다. matchFields 는 템플릿 슬롯 힌트(match_hints)가 쓰는 필드다. moods 는 슬롯 매칭에 쓰지 않고 분위기 추론에만 쓴다(ontology-personalization §3.2 의 evokes · suits).",
+  "fields": ["places", "objects", "actions", "topics", "moods"],
 
-  "_normalizeNote": "분석의 자유 문자열 하나를 개념 하나로 바꾸는 규칙(계획 §3). ① 앞뒤 공백을 지우고 연속 공백을 하나로 만든 값 전체가 별칭이면 그 개념. ② 아니면 공백으로 나눈 낱말을 오른쪽(한국어 명사구·동사구의 머리)부터 보며 처음 맞는 하나. 머리가 아닌 낱말은 별칭이 아니면 끝의 조사를 하나 떼어 남은 것이 별칭인지 본다 — 떼어 낸 결과가 별칭일 때만 받는다. 머리 낱말은 조사를 떼지 않는다(머리에는 조사가 거의 붙지 않고, 떼면 '강의'가 '강'이 된다). ③ 맞는 것이 없으면 사전 밖이다(매칭에 쓰지 않고 집계에만 남긴다). 부분 문자열은 보지 않는다. label 도 별칭으로 친다.",
-  "normalize": {
-    "particles": ["에서", "으로", "에게", "까지", "부터", "에", "을", "를", "이", "가", "은", "는", "과", "와", "의", "로", "도", "만"]
-  },
+  "matchFields": ["places", "objects", "actions", "topics"],
+
+  "_normalizeNote": "분석의 자유 문자열 하나를 개념 하나로 바꾸는 규칙(계획 §3). ① 앞뒤 공백을 지우고 연속 공백을 하나로 만든 값 전체가 별칭이면 그 개념. ② 아니면 끝 낱말로 끝나는 구(뒤쪽 낱말 묶음)를 긴 것부터 보아 별칭이면 그 개념 — 한국어 명사구·동사구는 머리가 끝에 온다('카페에 앉아 있기' → '앉아 있기'). ③ 아니면 나머지 낱말을 오른쪽부터 하나씩 보며 처음 맞는 하나. 머리가 아닌 낱말은 별칭이 아니면 끝의 조사를 하나 떼어 남은 것이 별칭인지 본다 — 떼어 낸 결과가 별칭일 때만 받는다. 머리 낱말은 조사를 떼지 않는다(머리에는 조사가 거의 붙지 않고, 떼면 '강의'가 '강'이 된다). ④ 맞는 것이 없으면 사전 밖이다(매칭에 쓰지 않고 집계에만 남긴다). 부분 문자열은 보지 않는다. label 도 별칭으로 친다.",
+  "normalize": { "particles": ["에서", "으로", "에게", "까지", "부터", "에", "을", "를", "이", "가", "은", "는", "과", "와", "의", "로", "도", "만"] },
 
   "_matchNote": "슬롯 힌트의 개념 H 와 스냅의 개념 A 를 잰다. A 가 H 이거나 H 의 하위 개념이면 narrower(카페는 가게다 — 가게 슬롯을 온전히 채운다), A 가 H 의 상위 개념이면 broader(가게라고만 했으면 카페일 수도 있다), 그 밖은 0. 힌트 하나의 점수는 스냅 개념 중 가장 높은 값이고, keyword 점수는 지금처럼 힌트 점수의 평균이다. broader 0.5 는 잠정값이다.",
   "match": { "exact": 1, "narrower": 1, "broader": 0.5 },
 
   "_roleNote": "roleAffinity 는 이 개념이 보이는 컷이 맡기 좋은 컷 역할(cut-role-vocabulary.json 의 역할 이름)이다. 하위 개념은 상위의 값을 물려받고, 자기 값이 있으면 그것을 쓴다. 매칭에는 쓰지 않는다 — edit-director 의 역할 판정을 바꾸는 계획 §6 의 단계에서 쓴다.",
-
   "concepts": {
     "places": {
       "home": { "label": "집", "aliases": ["자택", "우리 집"] },
@@ -25,32 +23,27 @@
       "kitchen": { "label": "주방", "parent": "home", "aliases": ["부엌"] },
       "office": { "label": "사무실", "aliases": ["회사", "사무 공간"] },
       "school": { "label": "학교", "aliases": ["교실", "강의실", "캠퍼스"] },
-
       "street": { "label": "거리", "roleAffinity": "establish", "aliases": ["길", "길거리", "도심"] },
       "alley": { "label": "골목", "parent": "street", "aliases": ["골목길"] },
       "residential_area": { "label": "주택가", "parent": "street", "aliases": ["동네"] },
       "road": { "label": "도로", "parent": "street", "aliases": ["차도", "고속도로", "교차로"] },
       "square": { "label": "광장", "parent": "street", "aliases": [] },
       "entrance": { "label": "입구", "aliases": ["출입구", "정문"] },
-
       "station": { "label": "역", "roleAffinity": "establish", "aliases": ["전철역"] },
       "subway_station": { "label": "지하철역", "parent": "station", "aliases": ["지하철 역"] },
       "train_station": { "label": "기차역", "parent": "station", "aliases": ["기차 역"] },
       "bus_stop": { "label": "버스 정류장", "parent": "station", "aliases": ["정류장", "버스정류장"] },
-
       "vehicle": { "label": "교통수단", "aliases": ["탈것"] },
       "train": { "label": "기차", "parent": "vehicle", "aliases": ["열차", "기차 안", "KTX"] },
       "bus": { "label": "버스", "parent": "vehicle", "aliases": ["버스 안"] },
       "car": { "label": "차", "parent": "vehicle", "aliases": ["자동차", "차 안", "택시"] },
       "subway": { "label": "지하철", "parent": "vehicle", "aliases": ["전철", "지하철 안"] },
-
       "shop": { "label": "가게", "aliases": ["상점", "매장", "점포"] },
       "cafe": { "label": "카페", "parent": "shop", "aliases": ["커피숍", "커피 전문점"] },
       "restaurant": { "label": "식당", "parent": "shop", "aliases": ["음식점", "레스토랑", "맛집", "분식집"] },
       "bakery": { "label": "빵집", "parent": "shop", "aliases": ["베이커리", "제과점"] },
       "convenience_store": { "label": "편의점", "parent": "shop", "aliases": [] },
       "market": { "label": "시장", "parent": "shop", "aliases": ["전통시장", "재래시장"] },
-
       "scenery": { "label": "풍경", "roleAffinity": "establish", "aliases": ["경치", "전망", "야경", "뷰"] },
       "viewpoint": { "label": "전망대", "parent": "scenery", "aliases": [] },
       "park": { "label": "공원", "parent": "scenery", "aliases": [] },
@@ -58,7 +51,6 @@
       "river": { "label": "강", "parent": "scenery", "aliases": ["강변", "한강", "하천", "개울"] },
       "sea": { "label": "바다", "parent": "scenery", "aliases": ["바닷가", "해변", "해수욕장", "해안"] },
       "mountain": { "label": "산", "parent": "scenery", "aliases": ["등산로", "산길"] },
-
       "tourist_spot": { "label": "관광지", "roleAffinity": "establish", "aliases": ["명소", "랜드마크"] },
       "exhibition": { "label": "전시", "parent": "tourist_spot", "aliases": ["전시장", "전시회", "미술관", "박물관", "갤러리"] }
     },
@@ -78,7 +70,6 @@
       "bedding": { "label": "이불", "aliases": ["침구", "담요", "베개"] },
       "lighting": { "label": "조명", "aliases": ["전등", "무드등", "스탠드"] },
       "menu": { "label": "메뉴판", "roleAffinity": "detail", "aliases": ["메뉴", "가격표", "칠판", "메뉴 보드"] },
-
       "drink": { "label": "음료", "roleAffinity": "detail", "aliases": ["음료수", "주스"] },
       "coffee": { "label": "커피", "parent": "drink", "aliases": ["아메리카노", "라떼", "카페라떼", "에스프레소", "카푸치노"] },
       "tea": { "label": "차", "parent": "drink", "aliases": ["녹차", "홍차"] },
@@ -89,7 +80,6 @@
       "tableware": { "label": "식기", "roleAffinity": "detail", "aliases": [] },
       "cup": { "label": "잔", "parent": "tableware", "aliases": ["컵", "머그", "머그잔", "유리잔", "텀블러"] },
       "bowl": { "label": "그릇", "parent": "tableware", "aliases": ["접시"] },
-
       "seat": { "label": "좌석", "aliases": ["자리"] },
       "chair": { "label": "의자", "parent": "seat", "aliases": [] },
       "sofa": { "label": "소파", "parent": "seat", "aliases": ["카우치"] },
@@ -98,7 +88,6 @@
       "hand": { "label": "손", "aliases": ["손가락"] },
       "person": { "label": "사람", "roleAffinity": "people", "aliases": ["인물", "행인"] },
       "child": { "label": "아이", "parent": "person", "aliases": ["어린이", "아기"] },
-
       "device": { "label": "전자기기", "aliases": ["기기"] },
       "smartphone": { "label": "스마트폰", "parent": "device", "aliases": ["휴대폰", "핸드폰"] },
       "tablet": { "label": "태블릿", "parent": "device", "aliases": [] },
@@ -131,6 +120,15 @@
       "food_spot": { "label": "맛집", "aliases": ["맛집 탐방", "먹방"] },
       "daily_life": { "label": "일상", "aliases": [] },
       "family": { "label": "가족", "aliases": ["육아"] }
+    },
+
+    "moods": {
+      "calm": { "label": "잔잔함", "aliases": ["잔잔한", "차분함", "차분한", "평온함", "평온한", "고요함", "고요한", "여유로움", "여유로운", "여유"] },
+      "cozy": { "label": "아늑함", "aliases": ["아늑한", "포근함", "포근한", "따뜻함", "따뜻한", "편안함", "편안한"] },
+      "refreshing": { "label": "청량함", "aliases": ["청량한", "청량", "상쾌함", "상쾌한", "시원함", "시원한"] },
+      "emotional": { "label": "감성", "aliases": ["감성적", "감성적인", "서정적", "서정적인", "낭만적", "낭만적인", "로맨틱"] },
+      "lively": { "label": "활기", "aliases": ["활기참", "활기찬", "신남", "신나는", "즐거움", "즐거운", "경쾌함", "경쾌한", "들뜬"] },
+      "nostalgic": { "label": "그리움", "aliases": ["향수", "아련함", "아련한", "추억"] }
     }
   }
 }
