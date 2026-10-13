@@ -188,8 +188,10 @@ export interface MovieNoticeOutcome {
 }
 
 /**
- * 예고 대상: 끝내지 않았고(MOV-17), 결과물이 아직 살아 있고, D-`daysBefore` 를 지났고, 그 예고를 아직 못 받은 무비.
+ * 예고 대상: 끝내지 않았고(MOV-17), 결과물이 완성돼 아직 살아 있고, D-`daysBefore` 를 지났고, 그 예고를 아직 못 받은 무비.
  * 결과물의 기준 시각은 정리 배치와 같은 `resultVideo.createdAt` 이다(`findExpiredMovieResults`).
+ * 생성을 시작하면 무비가 새 결과물 영상을 가리키고 실패하면 그 영상은 `failed` 로 남으므로, 완성(`done`)만 고른다 —
+ * 남길 파일이 없는 무비에 "저장하거나 게시해 주세요"를 보내지 않는다.
  */
 async function findDueMovies(daysBefore: number, now: Date) {
   return await getPrisma().movie.findMany({
@@ -198,6 +200,7 @@ async function findDueMovies(daysBefore: number, now: Date) {
       finishedAt: null,
       resultVideo: {
         deletedAt: null,
+        status: 'done',
         createdAt: {
           lte: cutoffFor(MOVIE_RESULT_RETENTION_DAYS - daysBefore, now),
           gt: cutoffFor(MOVIE_RESULT_RETENTION_DAYS, now),
