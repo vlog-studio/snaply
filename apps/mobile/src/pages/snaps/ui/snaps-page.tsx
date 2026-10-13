@@ -1,8 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
 import { useIsFocused, useRouter, useScrollToTop } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { MovieSnapLimit } from '@/entities/movie';
+import { MovieSnapLimit, movieDraftQueries } from '@/entities/movie';
 import {
   isSnapFileLocal,
   useExpiredSnapIds,
@@ -40,6 +41,7 @@ import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoPlayerModal } from '@/shared/ui/video-player-modal';
 import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/widgets/snap-grid';
 
+import { draftCostReadOut } from '../model/draft-cost';
 import { draftConfirmation, useEditDraft } from '../model/use-edit-draft';
 import { playerAlbumAction } from '../model/player-album-action';
 import { expiringSnapIds } from '../model/expiring-snaps';
@@ -285,6 +287,12 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
 
   const confirmation =
     purpose === 'draft' ? draftConfirmation(draftState, picked, draftLimit) : undefined;
+  // What the next draft costs (CRD-9) — asked only while picking for one.
+  const draftAllowance = useQuery({
+    ...movieDraftQueries.allowance(),
+    enabled: selecting && purpose === 'draft',
+  }).data;
+  const draftCost = purpose === 'draft' ? draftCostReadOut(draftAllowance) : undefined;
   const draftBusy = confirmation?.busy === true;
 
   const exitSelection = useCallback(() => {
@@ -590,7 +598,13 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
           heldCount={0}
           capacity={capacity}
           targetLabel={
-            purpose === 'draft' ? '자동 편집' : purpose === 'album' ? '앨범에 저장' : '새 무비'
+            purpose === 'draft'
+              ? draftCost
+                ? `자동 편집 · ${draftCost}`
+                : '자동 편집'
+              : purpose === 'album'
+                ? '앨범에 저장'
+                : '새 무비'
           }
           confirmLabel={
             purpose === 'album'

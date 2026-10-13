@@ -30,6 +30,8 @@ const reasonLabels: Record<string, string> = {
   store_refund_revoke: '환불로 회수',
   promo: '프로모션',
   ad_reward: '광고 보상',
+  draft_charge: '자동 편집',
+  draft_refund: '자동 편집 환급',
 };
 
 /**

@@ -11,7 +11,13 @@ import { useComposeMovie, type DraftRefusal } from '@/features/compose-movie';
 export type EditDraftState =
   | { kind: 'idle' }
   | { kind: 'busy' }
-  | { kind: 'failed'; refused: DraftRefusal; picks: readonly string[] };
+  | {
+      kind: 'failed';
+      refused: DraftRefusal;
+      picks: readonly string[];
+      /** With `credits`: what one draft costs, when the server said. */
+      required?: number;
+    };
 
 /** What confirming the picks does right now. */
 export type DraftConfirmation = {
@@ -88,6 +94,23 @@ export function draftConfirmation(
       action: 'draft',
     };
   }
+  if (refused === 'credits') {
+    // The free drafts are used and the balance cannot pay for one: asking again
+    // will not pass until it grows — the hand-made movie needs no draft.
+    const fits = picks.length <= MovieSnapLimit;
+    const required = state.kind === 'failed' ? state.required : undefined;
+    const need =
+      required === undefined
+        ? '크레딧이 모자라요.'
+        : `크레딧이 모자라요. 자동 편집 1번에 ${required}크레딧이 필요해요.`;
+    return {
+      label: '이 스냅으로 새 무비',
+      notice: fits ? need : `${need} 새 무비에는 ${MovieSnapLimit}개까지 넣을 수 있어요.`,
+      disabled: !fits,
+      busy: false,
+      action: 'snaps',
+    };
+  }
   if (refused === 'limit') {
     const fits = picks.length <= MovieSnapLimit;
     return {
@@ -127,7 +150,12 @@ export function useEditDraft() {
         const outcome = await startMovieFromDraft(picks);
         if (outcome?.refused) {
           if (outcome.max !== undefined) setLimit(outcome.max);
-          setState({ kind: 'failed', refused: outcome.refused, picks });
+          setState({
+            kind: 'failed',
+            refused: outcome.refused,
+            picks,
+            ...(outcome.shortfall ? { required: outcome.shortfall.required } : {}),
+          });
           return undefined;
         }
         setState({ kind: 'idle' });

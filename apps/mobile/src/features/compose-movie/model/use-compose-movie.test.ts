@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react-native';
+import { createElement, type ReactNode } from 'react';
 
 import type { Movie } from '@/entities/movie';
 import { ApiError } from '@/shared/api';
@@ -46,7 +48,21 @@ jest.mock('@/entities/movie', () => {
     useSetMovieArranger: () => mockSetMovieArranger,
     useBeginMovieJob: () => mockBeginMovieJob,
     useCancelMovieJob: () => mockCancelMovieJob,
+    movieDraftQueries: { all: () => ['movie-draft'] },
   };
+});
+
+// A real cache: a draft tells it the cost read-out and the balance are stale.
+// `gcTime: Infinity` schedules no garbage-collection timer, which would keep Jest waiting minutes after the suite.
+const newQueryClient = () => new QueryClient({ defaultOptions: { queries: { gcTime: Infinity } } });
+let queryClient = newQueryClient();
+const wrapper = ({ children }: { children: ReactNode }) =>
+  createElement(QueryClientProvider, { client: queryClient }, children);
+beforeEach(() => {
+  queryClient = newQueryClient();
+});
+afterEach(() => {
+  queryClient.clear();
 });
 jest.mock('@/entities/snap', () => ({
   useSnapIndex: () => new Map(mockSnapIndex()),
@@ -112,7 +128,7 @@ describe('startMovieFromSnaps', () => {
   it('creates a user-arranged draft from the picks in pick order', async () => {
     const created = makeMovie({ id: 'new' });
     mockCreateMovie.mockReturnValue(created);
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let movie;
     await act(async () => {
@@ -124,7 +140,7 @@ describe('startMovieFromSnaps', () => {
   });
 
   it('makes nothing from no picks', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let movie;
     await act(async () => {
@@ -136,7 +152,7 @@ describe('startMovieFromSnaps', () => {
   });
 
   it('refuses a batch past the movie cap whole rather than truncating it', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let movie;
     await act(async () => {
@@ -167,7 +183,7 @@ describe('startMovieFromDraft', () => {
   });
 
   async function draft(snapIds: string[]) {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
     let outcome;
     await act(async () => {
       outcome = await result.current.startMovieFromDraft(snapIds);
@@ -216,6 +232,38 @@ describe('startMovieFromDraft', () => {
     await draft(['early']);
 
     expect(mockRequestMovieDraft).toHaveBeenCalledWith([{ videoId: 'v-early' }], 'daily');
+  });
+
+  it('makes nothing when the balance cannot pay for a draft, keeping what it costs', async () => {
+    mockRequestMovieDraft.mockRejectedValue(
+      new ApiError('INSUFFICIENT_CREDITS', 'short', {
+        status: 402,
+        details: { required: 20, balance: 5 },
+      }),
+    );
+    const outcome = await draft(['early', 'late']);
+
+    expect(outcome).toEqual({ refused: 'credits', shortfall: { required: 20, balance: 5 } });
+    expect(mockCreateMovie).not.toHaveBeenCalled();
+  });
+
+  it('tells the cache the draft cost and the balance are stale once a draft lands', async () => {
+    queryClient.setQueryData(['movie-draft', 'allowance'], {
+      agent: true,
+      freeRemaining: 1,
+      nextCost: 0,
+    });
+    queryClient.setQueryData(['credit', 'balance'], { balance: 100, entries: [] });
+    mockRequestMovieDraft.mockResolvedValue({
+      cuts: [{ videoId: 'v-early' }],
+      leftOut: [],
+      unavailable: [],
+    });
+
+    await draft(['early', 'late']);
+
+    expect(queryClient.getQueryState(['movie-draft', 'allowance'])?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(['credit', 'balance'])?.isInvalidated).toBe(true);
   });
 
   it.each([
@@ -297,7 +345,7 @@ describe('startMovieFromDraft', () => {
 
 describe('startMovieFromTemplate', () => {
   it('creates an AI-arranged movie with the template’s look', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       result.current.startMovieFromTemplate({
@@ -316,7 +364,7 @@ describe('startMovieFromTemplate', () => {
   });
 
   it('makes nothing from a template with every slot empty', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let movie;
     await act(async () => {
@@ -334,7 +382,7 @@ describe('startMovieFromTemplate', () => {
 
 describe('saveCuts', () => {
   it('renumbers order to the list order and keeps each trim', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -352,7 +400,7 @@ describe('saveCuts', () => {
   });
 
   it('refuses an empty cut list', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -364,7 +412,7 @@ describe('saveCuts', () => {
   });
 
   it('refuses more cuts than a movie may hold', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
     const tooMany = Array.from({ length: 11 }, (_, order) => ({ snapId: `s${order}`, order }));
 
     let outcome;
@@ -378,7 +426,7 @@ describe('saveCuts', () => {
 
   it('refuses a generating movie, which a job owns right now', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'generating' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -391,7 +439,7 @@ describe('saveCuts', () => {
 
   it('lets a draft be edited, so the composition is settled before the run', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'draft' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       result.current.saveCuts('m1', [{ snapId: 's1', order: 0 }]);
@@ -402,7 +450,7 @@ describe('saveCuts', () => {
 
   it('lets a failed movie be edited, so a broken generation can be fixed', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'failed' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       result.current.saveCuts('m1', [{ snapId: 's1', order: 0 }]);
@@ -413,7 +461,7 @@ describe('saveCuts', () => {
 
   it('takes the order off the AI when the user rearranges an AI-arranged movie', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ arranger: 'ai' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       result.current.saveCuts('m1', [
@@ -427,7 +475,7 @@ describe('saveCuts', () => {
 
   it('leaves the AI its order when only a trim changed', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ arranger: 'ai' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       result.current.saveCuts('m1', [
@@ -441,7 +489,7 @@ describe('saveCuts', () => {
   });
 
   it('never writes an arranger for a movie that was already the user’s', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       result.current.saveCuts('m1', [
@@ -457,7 +505,7 @@ describe('saveCuts', () => {
 describe('setArranger', () => {
   it('hands the order back to the AI', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ arranger: 'user' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let applied;
     await act(async () => {
@@ -470,7 +518,7 @@ describe('setArranger', () => {
 
   it('refuses a movie a job owns right now', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'generating' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let applied;
     await act(async () => {
@@ -484,7 +532,7 @@ describe('setArranger', () => {
 
 describe('appendSnaps', () => {
   it('appends after the existing cuts', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -500,7 +548,7 @@ describe('appendSnaps', () => {
   });
 
   it('skips snaps the movie already holds', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -517,7 +565,7 @@ describe('appendSnaps', () => {
         snapRefs: Array.from({ length: 9 }, (_, order) => ({ snapId: `s${order}`, order })),
       }),
     );
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -531,7 +579,7 @@ describe('appendSnaps', () => {
 
 describe('saveStyle', () => {
   it('writes the settings it is given', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let applied;
     await act(async () => {
@@ -544,7 +592,7 @@ describe('saveStyle', () => {
 
   it('writes the settings of a draft, so the look is settled before the run', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'draft' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let applied;
     await act(async () => {
@@ -557,7 +605,7 @@ describe('saveStyle', () => {
 
   it('refuses a generating movie', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'generating' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let applied;
     await act(async () => {
@@ -572,7 +620,7 @@ describe('saveStyle', () => {
 describe('startGeneration', () => {
   it('hands a draft to a job', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'draft' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -585,7 +633,7 @@ describe('startGeneration', () => {
 
   it('runs a failed movie again', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'failed', error: '터졌어요' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       await result.current.startGeneration('m1');
@@ -596,7 +644,7 @@ describe('startGeneration', () => {
 
   it('refuses a movie with nothing to generate from', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ snapRefs: [] }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -608,7 +656,7 @@ describe('startGeneration', () => {
   });
 
   it('runs a finished movie again, which is what regeneration is', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -621,7 +669,7 @@ describe('startGeneration', () => {
 
   it('refuses a movie a job is already running on', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'generating' }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -643,7 +691,7 @@ describe('startGeneration', () => {
         ],
       }),
     );
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       await result.current.startGeneration('m1');
@@ -666,7 +714,7 @@ describe('startGeneration', () => {
         ],
       }),
     );
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       await result.current.startGeneration('m1');
@@ -687,7 +735,7 @@ describe('startGeneration', () => {
         ],
       }),
     );
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       await result.current.startGeneration('m1');
@@ -699,7 +747,7 @@ describe('startGeneration', () => {
 
   it('refuses a movie that is gone', async () => {
     mockGetMovieById.mockReturnValue(undefined);
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -722,7 +770,7 @@ describe('startGeneration', () => {
       order.push('export');
       return 'job-1';
     });
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     await act(async () => {
       await result.current.startGeneration('m1');
@@ -739,7 +787,7 @@ describe('startGeneration', () => {
     ['unsendable', 'failed', 'unreachable'],
   ] as const)('does not start a run when the movie is %s', async (_label, sent, refused) => {
     mockSendMovie.mockResolvedValue(sent);
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -763,7 +811,7 @@ describe('startGeneration', () => {
       s1: { status: 'uploaded', videoId: 'v1' },
       ...(entry ? { s2: entry } : null),
     } as Record<string, { status: string; videoId?: string }>);
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -787,7 +835,7 @@ describe('startGeneration', () => {
         '\uC0AC\uC6A9\uD560 \uC218 \uC5C6\uB294 \uCEF7\uC774 \uC788\uC2B5\uB2C8\uB2E4.';
       // 사용할 수 없는 컷이 있습니다.
       mockExportMovie.mockRejectedValue(new ApiError('generation_rejected', reason, { status }));
-      const { result } = await renderHook(() => useComposeMovie());
+      const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
       let outcome;
       await act(async () => {
@@ -814,7 +862,7 @@ describe('startGeneration', () => {
       }),
     );
     mockGeneratingMovies.mockReturnValue([makeMovie({ id: 'm2', status: 'generating' })]);
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -839,7 +887,7 @@ describe('startGeneration', () => {
       mockExportMovie.mockRejectedValue(
         new ApiError('GENERATION_IN_PROGRESS', 'busy', { status: 409, details: { movieId } }),
       );
-      const { result } = await renderHook(() => useComposeMovie());
+      const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
       let outcome;
       await act(async () => {
@@ -855,7 +903,7 @@ describe('startGeneration', () => {
     mockExportMovie.mockRejectedValue(
       new ApiError('GENERATION_IN_PROGRESS', 'busy', { status: 409, details: { movieId: 'm1' } }),
     );
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -867,7 +915,7 @@ describe('startGeneration', () => {
 
   it('reports a run the server says is already going as frozen', async () => {
     mockExportMovie.mockRejectedValue(new ApiError('CONFLICT', 'busy', { status: 409 }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -881,7 +929,7 @@ describe('startGeneration', () => {
   it('leaves the movie untouched when the request itself fails', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockExportMovie.mockRejectedValue(new ApiError('network_error', 'network'));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -906,7 +954,7 @@ describe('cancelGeneration', () => {
   });
 
   it('cancels the run on the server, then returns the movie to a draft', async () => {
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -923,7 +971,7 @@ describe('cancelGeneration', () => {
   it('leaves the movie generating when the request itself fails', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
     mockCancelEditJob.mockRejectedValue(new ApiError('network_error', 'network'));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -939,7 +987,7 @@ describe('cancelGeneration', () => {
   // already arriving through the runner, so there is nothing to change here.
   it('reports a run that finished first as settled, changing nothing', async () => {
     mockCancelEditJob.mockRejectedValue(new ApiError('CONFLICT', 'done', { status: 409 }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -954,7 +1002,7 @@ describe('cancelGeneration', () => {
   // the user asked for, so the movie goes back to a draft all the same.
   it('returns the movie to a draft when the backend has never heard of the job', async () => {
     mockCancelEditJob.mockRejectedValue(new ApiError('not_found', 'no job', { status: 404 }));
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {
@@ -970,7 +1018,7 @@ describe('cancelGeneration', () => {
     ['an unknown movie', undefined],
   ])('refuses %s without asking the server', async (_label, movie) => {
     mockGetMovieById.mockReturnValue(movie);
-    const { result } = await renderHook(() => useComposeMovie());
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
 
     let outcome;
     await act(async () => {

@@ -48,6 +48,7 @@ export {
   type MovieDraftSnap,
   type MovieDraftSnapKey,
 } from './api/request-movie-draft';
+export { movieDraftQueries, type MovieDraftAllowance } from './api/movie-draft-allowance';
 export { toMovieBody, type SnapIdResolver, type VideoIdResolver } from './api/movie.dto';
 export type { PendingWrite } from './lib/movie-sync';
 export { isAiArranged, sameArrangement } from './lib/movie-arrangement';

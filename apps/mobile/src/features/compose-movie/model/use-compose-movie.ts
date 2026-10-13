@@ -1,5 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
+import { creditQueries } from '@/entities/credit';
 import {
   MovieDraftSnapLimit,
   MovieSnapLimit,
@@ -8,6 +10,7 @@ import {
   getLatestMovieStyle,
   getMovieById,
   isAiArranged,
+  movieDraftQueries,
   movieStyleOrDefault,
   requestMovieDraft,
   sameArrangement,
@@ -60,10 +63,13 @@ export type CutsOutcome = {
  * `unavailable` — every snap handed over is one the server can no longer use
  * (deleted on another device or expired, or not ready); the same picks will
  * never pass, so the screen asks for others.
+ * `credits` — today's free drafts are used and the balance cannot pay for one
+ * (the server's `INSUFFICIENT_CREDITS`, spec CRD-9); asking again will not help
+ * until the balance grows, so the screen offers the hand-made path.
  * `unreachable` — no usable answer came back (offline, a server error, a snap
  * the server would not take); asking again may.
  */
-export type DraftRefusal = 'limit' | 'too-many' | 'unavailable' | 'unreachable';
+export type DraftRefusal = 'limit' | 'too-many' | 'unavailable' | 'credits' | 'unreachable';
 
 export type DraftOutcome =
   | { movie: Movie; refused?: undefined }
@@ -75,6 +81,8 @@ export type DraftOutcome =
        * The app's own cap ({@link MovieDraftSnapLimit}) is only its first guess.
        */
       max?: number;
+      /** With `credits`: what one draft costs and what the account holds, as the server stated them. */
+      shortfall?: CreditShortfall;
     };
 
 /**
@@ -241,6 +249,7 @@ export function useComposeMovie() {
   const setMovieArranger = useSetMovieArranger();
   const beginMovieJob = useBeginMovieJob();
   const cancelMovieJob = useCancelMovieJob();
+  const queryClient = useQueryClient();
 
   /**
    * Starts a draft straight from hand-picked snaps — the Snap tab's selection —
@@ -300,7 +309,13 @@ export function useComposeMovie() {
       try {
         proposal = await requestMovieDraft(snaps, style);
       } catch (error) {
+        // A refused draft may still have moved nothing — but a 402 means the
+        // free drafts are used up, which the read-out should say at once.
+        void queryClient.invalidateQueries({ queryKey: movieDraftQueries.all() });
         if (error instanceof ApiError && error.code === 'DRAFT_LIMIT') return { refused: 'limit' };
+        if (error instanceof ApiError && error.code === 'INSUFFICIENT_CREDITS') {
+          return { refused: 'credits', shortfall: readCreditShortfall(error) };
+        }
         if (error instanceof ApiError && error.code === 'TOO_MANY_SNAPS') {
           const max = readDraftSnapLimit(error);
           return max === undefined ? { refused: 'too-many' } : { refused: 'too-many', max };
@@ -337,6 +352,11 @@ export function useComposeMovie() {
         return snapId === undefined || windows.has(snapId) ? [] : [snapId];
       });
 
+      // A new draft may have used a free one or spent credits (CRD-9): the
+      // cost read-out and the balance are the server's to tell again.
+      void queryClient.invalidateQueries({ queryKey: movieDraftQueries.all() });
+      void queryClient.invalidateQueries({ queryKey: creditQueries.all() });
+
       const movie = createMovie({
         snapIds: cutSnapIds,
         arranger: 'ai',
@@ -346,7 +366,7 @@ export function useComposeMovie() {
       });
       return { movie };
     },
-    [createMovie, snapIndex],
+    [createMovie, snapIndex, queryClient],
   );
 
   /**

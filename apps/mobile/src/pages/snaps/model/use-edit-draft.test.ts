@@ -68,6 +68,21 @@ describe('draftConfirmation', () => {
     });
   });
 
+  it('offers the hand-made movie when the balance cannot pay for a draft, naming the cost', () => {
+    const state: EditDraftState = { kind: 'failed', refused: 'credits', picks, required: 20 };
+    expect(draftConfirmation(state, picks, Limit)).toMatchObject({
+      label: NewMovieLabel,
+      notice: '크레딧이 모자라요. 자동 편집 1번에 20크레딧이 필요해요.',
+      action: 'snaps',
+      disabled: false,
+    });
+  });
+
+  it('says the balance is short without a number when the server named none', () => {
+    const state: EditDraftState = { kind: 'failed', refused: 'credits', picks };
+    expect(draftConfirmation(state, picks, Limit).notice).toBe('크레딧이 모자라요.');
+  });
+
   it('cannot make the hand-made movie from more picks than a movie holds', () => {
     const many = snapIds(11);
     const state: EditDraftState = { kind: 'failed', refused: 'limit', picks: many };
@@ -152,6 +167,26 @@ describe('useEditDraft', () => {
 
     expect(result.current.state).toEqual({ kind: 'failed', refused: 'limit', picks });
     expect(made).toBeUndefined();
+  });
+
+  it('keeps what a draft costs when the balance was short', async () => {
+    mockStartMovieFromDraft.mockResolvedValue({
+      refused: 'credits',
+      shortfall: { required: 20, balance: 5 },
+    });
+    const picks = ['s1'];
+    const { result } = await renderHook(() => useEditDraft());
+
+    await act(async () => {
+      await result.current.start(picks);
+    });
+
+    expect(result.current.state).toEqual({
+      kind: 'failed',
+      refused: 'credits',
+      picks,
+      required: 20,
+    });
   });
 
   it('ignores a second tap while the first request is out — one movie, not two', async () => {
