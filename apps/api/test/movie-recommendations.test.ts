@@ -11,7 +11,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
 import { createConsentedUser } from './helpers/consent.js';
+import { CONTENT_VOCABULARY_VERSION } from '@vlog-studio/shared-types';
 import { ANALYSIS_VERSION } from '../src/services/video-analysis.service.js';
+import { candidateHashOf } from '../src/services/movie-recommendation.service.js';
 import {
   DAILY_RECOMMENDATION_LIMIT,
   MAX_CANDIDATES,
@@ -124,6 +126,25 @@ describe('POST /movie-recommendations', () => {
     const reversed = await request(user, { templateId: 'cafe', candidates: [...candidates].reverse() });
 
     expect(reversed.json().data.id).toBe(first.json().data.id);
+  });
+
+  it('개념 사전 버전이 바뀌면 같은 후보라도 재사용하지 않는다', async () => {
+    const user = await createConsentedUser(h);
+    const candidates = [await createSnap(user), await createSnap(user)];
+    // 사전을 바꾸기 전에 같은 후보로 만든 추천 — 예전 규칙으로 채점된 결과다.
+    await h.prisma.movieRecommendation.create({
+      data: {
+        userId: user.id,
+        templateId: 'cafe',
+        candidateHash: candidateHashOf('cafe', candidates, CONTENT_VOCABULARY_VERSION - 1),
+        status: 'done',
+      },
+    });
+
+    const res = await request(user, { templateId: 'cafe', candidates });
+
+    expect(res.statusCode).toBe(202);
+    expect(await h.prisma.movieRecommendation.count()).toBe(2);
   });
 
   it('템플릿이 다르면 다른 추천이다', async () => {

@@ -11,6 +11,7 @@
  * 건드릴 때는 반드시 원복한다 — 다음 테스트 파일이 같은 DB 를 그대로 물려받는다.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { CONTENT_MATCH_FIELDS, isContentConcept } from '@vlog-studio/shared-types';
 import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
 
 let h: Harness;
@@ -123,6 +124,30 @@ describe('GET /movie-templates', () => {
         where: { id: 'day' },
         data: { description: '오늘 하루를 4컷으로' },
       });
+    }
+  });
+});
+
+describe('movie_template_slots.match_hints', () => {
+  // 채점은 힌트를 개념 사전의 id 로 읽는다. 사전에 없는 id 는 오류 없이 0점이 되므로, 마이그레이션과 사전이
+  // 어긋나면 여기서만 드러난다(docs/plans/content-vocabulary.md §5.2).
+  it('uses only concept ids of the content vocabulary', async () => {
+    const slots = await h.prisma.movieTemplateSlot.findMany({
+      select: { templateId: true, slotId: true, matchHints: true },
+    });
+    expect(slots.length).toBeGreaterThan(0);
+
+    for (const slot of slots) {
+      const where = `${slot.templateId}/${slot.slotId}`;
+      const hints = slot.matchHints as Record<string, unknown>;
+      for (const key of Object.keys(hints)) {
+        expect([...CONTENT_MATCH_FIELDS, 'temporalPrior'], where).toContain(key);
+      }
+      for (const field of CONTENT_MATCH_FIELDS) {
+        for (const id of (hints[field] as unknown[] | undefined) ?? []) {
+          expect(isContentConcept(field, id), `${where} ${field}.${String(id)}`).toBe(true);
+        }
+      }
     }
   });
 });

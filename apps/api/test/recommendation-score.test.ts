@@ -57,8 +57,8 @@ describe('assignSlots', () => {
 
   it('키워드가 맞는 스냅을 시간 순서보다 앞세운다', () => {
     const slots: ScoringSlot[] = [
-      { slotId: 'front', position: 0, hints: { objects: ['간판'], temporalPrior: 0 } },
-      { slotId: 'drink', position: 1, hints: { objects: ['커피', '잔'], temporalPrior: 1 } },
+      { slotId: 'front', position: 0, hints: { objects: ['signboard'], temporalPrior: 0 } },
+      { slotId: 'drink', position: 1, hints: { objects: ['coffee', 'cup'], temporalPrior: 1 } },
     ];
     // 시간순으로는 커피가 먼저지만, 슬롯이 원하는 신호는 반대다.
     const candidates = [
@@ -72,13 +72,50 @@ describe('assignSlots', () => {
     expect(assigned.find((s) => s.slotId === 'drink')?.videoId).toBe('coffee');
   });
 
-  it('부분 문자열로 맞춘다 — 분석은 자유 문자열을 돌려준다', () => {
-    const slot: ScoringSlot = { slotId: 'alley', position: 0, hints: { places: ['골목'] } };
+  it('분석의 자유 문자열을 개념으로 바꿔 힌트 개념과 맞춘다', () => {
+    const slot: ScoringSlot = { slotId: 'alley', position: 0, hints: { places: ['alley'] } };
 
     const score = scorePair(slot, 1, candidate('x', 0, { places: ['좁은 골목길'] }), 1);
     const noMatch = scorePair(slot, 1, candidate('y', 0, { places: ['해변'] }), 1);
 
     expect(score - noMatch).toBeCloseTo(SCORE_WEIGHTS.keyword, 5);
+  });
+
+  it('하위 개념은 슬롯을 온전히 채우고, 상위 개념은 반만 채운다', () => {
+    const shop: ScoringSlot = { slotId: 'shop', position: 0, hints: { places: ['shop'] } };
+    const cafe: ScoringSlot = { slotId: 'cafe', position: 0, hints: { places: ['cafe'] } };
+    const empty = (slot: ScoringSlot) => scorePair(slot, 1, candidate('none', 0), 1);
+
+    // 카페는 가게다 — 가게 슬롯을 채운다.
+    expect(scorePair(shop, 1, candidate('x', 0, { places: ['커피숍'] }), 1) - empty(shop)).toBeCloseTo(
+      SCORE_WEIGHTS.keyword,
+      5,
+    );
+    // 가게라고만 했으면 카페일 수도 있다 — 잠정 0.5.
+    expect(scorePair(cafe, 1, candidate('y', 0, { places: ['가게'] }), 1) - empty(cafe)).toBeCloseTo(
+      SCORE_WEIGHTS.keyword * 0.5,
+      5,
+    );
+    // 형제(식당)는 맞지 않는다.
+    expect(scorePair(cafe, 1, candidate('z', 0, { places: ['음식점'] }), 1)).toBeCloseTo(empty(cafe), 5);
+  });
+
+  it('힌트마다 가장 잘 맞는 스냅 개념을 쓰고, 힌트 점수를 평균한다', () => {
+    const slot: ScoringSlot = { slotId: 'drink', position: 0, hints: { objects: ['coffee', 'cup'] } };
+    const empty = scorePair(slot, 1, candidate('none', 0), 1);
+
+    const half = scorePair(slot, 1, candidate('x', 0, { objects: ['아메리카노', '잔디'] }), 1);
+
+    expect(half - empty).toBeCloseTo(SCORE_WEIGHTS.keyword * 0.5, 5);
+  });
+
+  it('사전에 없는 힌트 id 는 맞지 않는다', () => {
+    const slot: ScoringSlot = { slotId: 's', position: 0, hints: { places: ['카페'] } };
+
+    const withValue = scorePair(slot, 1, candidate('x', 0, { places: ['카페'] }), 1);
+    const without = scorePair(slot, 1, candidate('y', 0), 1);
+
+    expect(withValue).toBeCloseTo(without, 5);
   });
 
   it('편집에 못 쓰는 스냅은 슬롯을 채우지 않고 이유와 함께 빠진다', () => {
@@ -123,8 +160,8 @@ describe('assignSlots', () => {
 
   it('한 스냅이 두 슬롯을 차지하지 않는다', () => {
     const slots: ScoringSlot[] = [
-      { slotId: 'a', position: 0, hints: { objects: ['커피'] } },
-      { slotId: 'b', position: 1, hints: { objects: ['커피'] } },
+      { slotId: 'a', position: 0, hints: { objects: ['coffee'] } },
+      { slotId: 'b', position: 1, hints: { objects: ['coffee'] } },
     ];
     const candidates = [candidate('one', 0, { objects: ['커피'] }), candidate('two', 1)];
 
@@ -166,18 +203,18 @@ describe('assignSlots', () => {
 describe('parseMatchHints', () => {
   it('시드가 넣는 형태를 그대로 읽는다', () => {
     const hints = parseMatchHints({
-      places: ['카페'],
-      objects: ['메뉴판'],
+      places: ['cafe'],
+      objects: ['menu'],
       actions: [],
-      topics: ['카페'],
+      topics: ['cafe'],
       temporalPrior: 0.2,
     });
 
     expect(hints).toEqual({
-      places: ['카페'],
-      objects: ['메뉴판'],
+      places: ['cafe'],
+      objects: ['menu'],
       actions: [],
-      topics: ['카페'],
+      topics: ['cafe'],
       temporalPrior: 0.2,
     });
   });
@@ -187,7 +224,7 @@ describe('parseMatchHints', () => {
     expect(parseMatchHints(null)).toEqual({});
     expect(parseMatchHints('nope')).toEqual({});
     expect(parseMatchHints({ places: 'cafe', temporalPrior: 'soon' })).toEqual({});
-    expect(parseMatchHints({ places: ['카페', 3] })).toEqual({ places: ['카페'] });
+    expect(parseMatchHints({ places: ['cafe', 3] })).toEqual({ places: ['cafe'] });
   });
 
   it('temporalPrior 를 0~1 로 가둔다', () => {
@@ -197,13 +234,13 @@ describe('parseMatchHints', () => {
 });
 
 /**
- * 지금 키워드 매칭(양방향 부분 문자열)의 오탐 · 미탐을 **현행 결과로** 고정한다.
+ * 부분 문자열 매칭이 만들던 오탐 · 미탐이 개념 매칭에서 사라졌는지 고정한다.
  *
- * 사례는 docs/plans/content-vocabulary.md §1 의 표다(오탐 16 · 미탐 12 · 유지 3). 개념 사전을 들이는
- * 변경에서 이 기대값이 뒤집히는 것이 그 변경의 증거다 — 어느 사례가 뒤집혔는지 diff 로 보이도록
- * `it.fails` 로 두지 않는다. 사례마다 사전 도입 뒤의 기대값(`then`)과 힌트가 옮겨 갈 개념 id 를 함께 적었다.
+ * 사례는 docs/plans/content-vocabulary.md §1 의 표다(오탐 16 · 미탐 12 · 유지 3). 사전 도입 전에는 같은 사례를
+ * 시드의 자유 문자열 힌트(`hint`)로 재어 `now` 를 고정했고, 사전을 들이는 변경에서 힌트를 개념 id(`concept`)로 바꾸고
+ * 기대값을 `then` 으로 뒤집었다. 사전을 되돌리면 `hint` · `now` 로 되돌린다.
  */
-describe('keyword matching — current substring rule', () => {
+describe('keyword matching — concept vocabulary', () => {
   type Field = 'places' | 'objects' | 'actions' | 'topics';
   interface Case {
     field: Field;
@@ -258,8 +295,8 @@ describe('keyword matching — current substring rule', () => {
   ];
 
   /** `scorePair` 의 키워드 몫만 꺼낸다 — 같은 슬롯에서 값이 없는 후보와의 차를 가중치로 나눈다. */
-  function keywordShare(field: Field, hint: string, value: string): number {
-    const slot: ScoringSlot = { slotId: 's', position: 0, hints: { [field]: [hint] } };
+  function keywordShare(field: Field, concept: string, value: string): number {
+    const slot: ScoringSlot = { slotId: 's', position: 0, hints: { [field]: [concept] } };
     const withValue = scorePair(slot, 1, candidate('x', 0, { [field]: [value] }), 1);
     const without = scorePair(slot, 1, candidate('y', 0), 1);
     return Math.round((withValue - without) / SCORE_WEIGHTS.keyword);
@@ -269,15 +306,15 @@ describe('keyword matching — current substring rule', () => {
     expect([falsePositives.length, misses.length, kept.length]).toEqual([16, 12, 3]);
   });
 
-  it.each(falsePositives)('false positive: $field "$hint" ← "$value"', (c) => {
-    expect(keywordShare(c.field, c.hint, c.value)).toBe(c.now);
+  it.each(falsePositives)('false positive no more: $field $concept ← "$value"', (c) => {
+    expect(keywordShare(c.field, c.concept, c.value)).toBe(c.then);
   });
 
-  it.each(misses)('miss: $field "$hint" ← "$value"', (c) => {
-    expect(keywordShare(c.field, c.hint, c.value)).toBe(c.now);
+  it.each(misses)('miss no more: $field $concept ← "$value"', (c) => {
+    expect(keywordShare(c.field, c.concept, c.value)).toBe(c.then);
   });
 
-  it.each(kept)('kept: $field "$hint" ← "$value"', (c) => {
-    expect(keywordShare(c.field, c.hint, c.value)).toBe(c.now);
+  it.each(kept)('still kept: $field $concept ← "$value"', (c) => {
+    expect(keywordShare(c.field, c.concept, c.value)).toBe(c.then);
   });
 });

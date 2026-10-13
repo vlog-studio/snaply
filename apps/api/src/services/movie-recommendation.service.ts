@@ -10,10 +10,11 @@
  * 후보를 고르는 쪽은 앱이다 — 서버는 스냅이 언제 어디서 찍혔는지 모른다(§6).
  */
 import { createHash } from 'node:crypto';
-import type {
-  MovieRecommendation,
-  MovieRecommendationExclusion,
-  MovieRecommendationStatus,
+import {
+  CONTENT_VOCABULARY_VERSION,
+  type MovieRecommendation,
+  type MovieRecommendationExclusion,
+  type MovieRecommendationStatus,
 } from '@vlog-studio/shared-types';
 import type { Prisma } from '@prisma/client';
 import { getPrisma } from '../db/client.js';
@@ -78,10 +79,17 @@ function toDto(row: RecommendationRow): MovieRecommendation {
 /**
  * 후보 집합의 지문. **순서를 정렬해서** 넣는다 — 같은 외출을 두 번 보낼 때 앱이 순서를 살짝
  * 다르게 만들었다는 이유로 재분석이 돌면 안 된다. 순서 자체는 행의 배열 컬럼에 남는다.
+ *
+ * 개념 사전 버전도 넣는다 — 사전을 바꾼 뒤 재사용 창(24시간) 동안 예전 규칙의 결과가 돌아오지 않게 한다
+ * (docs/plans/content-vocabulary.md §4). AI 편집 초안이 `EDIT_DIRECTOR_VERSION` 을 넣는 것과 같다.
  */
-function candidateHashOf(templateId: string, videoIds: readonly string[]): string {
+export function candidateHashOf(
+  templateId: string,
+  videoIds: readonly string[],
+  vocabularyVersion: number = CONTENT_VOCABULARY_VERSION,
+): string {
   return createHash('sha256')
-    .update(`${templateId}\n${[...videoIds].sort().join(',')}`)
+    .update(`${templateId}\n${[...videoIds].sort().join(',')}\nvocabulary:${vocabularyVersion}`)
     .digest('hex');
 }
 

@@ -8,9 +8,20 @@
  * 슬롯 이름은 사람에게 주는 촬영 지시이지 스냅 내용에 대한 주장이 아니다. 그래서 여기서
  * 계산하는 점수도 "이 스냅이 골목이다"가 아니라 **"이 슬롯 자리에 이 스냅을 놓는 게 낫다"**는
  * 상대 순위다.
+ *
+ * 키워드는 **개념**으로 맞춘다 — 슬롯 힌트는 개념 사전(`packages/shared-types/src/content-vocabulary.json`)의
+ * id 이고, 분석의 자유 문자열은 채점할 때 사전으로 개념을 찾는다. 규칙: docs/plans/content-vocabulary.md §3 · §4.
  */
+import {
+  contentMatchScore,
+  normalizeContentValues,
+  type ContentMatchField,
+} from '@vlog-studio/shared-types';
 
-/** 슬롯이 원하는 신호. `movie_template_slots.match_hints` 의 형태이며 전부 선택이다. */
+/**
+ * 슬롯이 원하는 신호. `movie_template_slots.match_hints` 의 형태이며 전부 선택이다.
+ * 목록의 값은 개념 사전의 개념 id 다(`places: ['cafe']`). 사전에 없는 id 는 맞지 않는다.
+ */
 export interface SlotMatchHints {
   places?: string[];
   objects?: string[];
@@ -81,7 +92,7 @@ export const SCORE_WEIGHTS = {
 /** 분석이 값을 주지 않았을 때 쓰는 중립값. 없다는 것이 나쁘다는 뜻은 아니다. */
 const NEUTRAL = 0.5;
 
-const HINT_FIELDS = ['places', 'objects', 'actions', 'topics'] as const;
+const HINT_FIELDS: readonly ContentMatchField[] = ['places', 'objects', 'actions', 'topics'];
 
 /**
  * jsonb 를 방어적으로 읽는다. 힌트는 시드가 넣지만, 형태가 어긋난 한 행이 추천 전체를
@@ -105,29 +116,24 @@ export function parseMatchHints(raw: unknown): SlotMatchHints {
 }
 
 /**
- * 힌트 한 조각이 분석 결과의 같은 이름 필드에 나타나는가.
- *
- * 형태소 분석 없이 양방향 부분 문자열로 본다 — 분석은 한국어 자유 문자열을 돌려주므로
- * `골목` 힌트는 `좁은 골목길` 에도 맞아야 하고, `카페` 값은 `카페 외관` 힌트에도 맞아야 한다.
+ * 힌트 개념 하나가 스냅의 개념들로 얼마나 채워지는가 — 그중 가장 높은 값.
+ * 같거나 스냅이 하위 개념이면 1(카페는 가게 슬롯을 채운다), 스냅이 상위 개념이면 0.5, 그 밖 0.
  */
-function matchesAny(hint: string, values: readonly string[]): boolean {
-  const needle = hint.trim();
-  if (needle.length === 0) return false;
-  return values.some((value) => {
-    const hay = value.trim();
-    return hay.length > 0 && (hay.includes(needle) || needle.includes(hay));
-  });
+function hintScore(field: ContentMatchField, hint: string, concepts: readonly string[]): number {
+  return concepts.reduce((best, concept) => Math.max(best, contentMatchScore(field, hint, concept)), 0);
 }
 
-/** 맞은 힌트 조각의 비율. 힌트가 없는 슬롯은 0 이고, 시간·화질로만 배정된다. */
+/** 힌트 점수의 평균. 힌트가 없는 슬롯은 0 이고, 시간·화질로만 배정된다. 사전 밖 분석값은 맞지 않는다. */
 function keywordScore(hints: SlotMatchHints, analysis: CandidateAnalysis): number {
   let total = 0;
   let matched = 0;
   for (const field of HINT_FIELDS) {
     const wanted = hints[field] ?? [];
+    if (wanted.length === 0) continue;
+    const concepts = normalizeContentValues(field, analysis[field]);
     for (const hint of wanted) {
       total += 1;
-      if (matchesAny(hint, analysis[field])) matched += 1;
+      matched += hintScore(field, hint, concepts);
     }
   }
   return total === 0 ? 0 : matched / total;

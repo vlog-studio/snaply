@@ -143,7 +143,10 @@ score = 0.50 × keyword + 0.20 × visualQuality.score
       + 0.20 × temporal + 0.10 × (confidence ?? 0.5)
 ```
 
-- `keyword` — `matchHints` 의 배열과 분석 결과의 같은 이름 필드를 부분 문자열로 대조한 비율
+- `keyword` — `matchHints` 의 개념 id 마다 분석 결과의 같은 이름 필드에서 가장 잘 맞는 개념의 점수(같거나 하위 1 · 상위 0.5 · 그 밖 0)를
+  낸 평균. 분석의 자유 문자열은 채점할 때 개념 사전([`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json))으로
+  개념을 찾는다 — 2026-10-13 까지는 힌트와 분석값을 양방향 부분 문자열로 대조한 비율이었고, 오탐 · 미탐 때문에 바꿨다
+  ([plans/content-vocabulary.md](../plans/content-vocabulary.md) §1 · §3 · §4). 추천 재사용 키에 사전 버전이 들어간다
 - `temporal` — 슬롯의 `temporalPrior`(외출 안 정규화 위치)와 스냅 위치의 차이, `1 - |Δ|`
 - 게이트 — `usableForEdit=false` 는 배정 대상에서 제외하고, 남는 슬롯은 비워 둔다
 - 배정 — 점수 내림차순 greedy, 1스냅 1슬롯
