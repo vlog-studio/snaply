@@ -3112,3 +3112,26 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
   Instagram 연결 → 무비 → Instagram에 게시 → 연결 해제)를 넣었다. Facebook 로그인은 "아니요". 검수 전용 이메일 계정은 오너가 Supabase 대시보드에서
   만들었고(비밀번호는 오너 관리), 에뮬레이터에서 갤러리 테스트 영상으로 스냅 4개를 가져와 자동 편집으로 완성 무비(9초)를 하나 만들어 두었다 — 2026-11-11
   에 만료된다.
+
+## 2026-10-13 — 개념 사전 확정(backlog A-13 1단계)
+
+온톨로지 착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 1단계. 방법과 테스트는
+[plans/content-vocabulary.md](./plans/content-vocabulary.md) §5 · §6, 결정은 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md).
+사용자에게 보이는 변화는 없다 — 템플릿 추천의 슬롯 배정만 바뀌고, 추천은 아직 스위치(`MOVIE_RECOMMENDATION_ENABLED`)로 꺼져 있다.
+
+- **현행 고정(§6 의 1, `2d85505`)** — 계획 §1 의 오탐 16 · 미탐 12 · 유지 3 을 지금 규칙(양방향 부분 문자열)의 결과로
+  `recommendation-score.test.ts` 에 고정하고, 사례마다 옮겨 갈 개념 id 와 도입 뒤 기대값을 같이 적었다.
+- **사전 확정(§6 의 3, `280c574`)** — 초안을 `packages/shared-types/src/content-vocabulary.json` 으로 옮기고 초안 파일을 지웠다. 분석이 이미 내는
+  `moods` 를 개념 6개(잔잔함 · 아늑함 · 청량함 · 감성 · 활기 · 그리움)로 더했다 — 슬롯 매칭에는 쓰지 않아 `matchFields` 와 구분한다. 규모는
+  places 37 · objects 37 · actions 13 · topics 8 · moods 6. TS 로더(`content-vocabulary.ts`)와 정합성 테스트를 API(`content-vocabulary.test.ts`)와
+  워커(`tests/test_content_vocabulary.py` — 필드가 분석 스키마 `LIST_FIELDS` 와 같은지 포함)에 두고, 워커의 기동 필수 사전(`REQUIRED`)에 넣었다.
+- **개념 매칭(§6 의 4, `a39cbc9`)** — 채점(`score-slots.ts`)이 분석의 자유 문자열을 사전으로 정규화하고, 힌트 개념과 같거나 하위면 1 · 상위면 0.5 ·
+  그 밖 0 의 평균을 키워드 점수로 쓴다. 정규화 규칙에 하나를 더했다 — 머리 낱말로 끝나는 여러 낱말 별칭(`카페에 앉아 있기` → `앉아 있기`)을
+  낱말 하나보다 먼저 본다. 시드 힌트 20슬롯은 마이그레이션 `20261013000000_content_vocabulary_match_hints` 의 `UPDATE` 로 개념 id 로 옮겼고(계획
+  §2.1 의 표 그대로, `temporalPrior` 는 그대로), 카탈로그의 힌트가 모두 사전에 있는지 `movie-templates.test.ts` 가 본다. 추천 재사용 키
+  (`candidateHashOf`)에 사전 버전을 넣었다. §5.1 의 31사례는 도입 뒤 값으로 뒤집혀 모두 통과한다. 결정 문서
+  [template-snap-recommendation.md](./decisions/template-snap-recommendation.md) §7 의 `keyword` 정의를 고쳤다.
+- **검증** — `npm test -w apps/api` 42파일 714건, 워커 `unittest discover` 238건, `npm run verify:mobile` 189 스위트 1483건, API · shared-types 린트와
+  타입체크.
+- **하지 않은 것** — §6 의 2(§5.4 실측)는 A-3 의 팀 스냅 실측을 기다린다. 그래서 고른 사례 밖에서 개념 매칭이 부분 문자열보다 나은지는 아직 모른다
+  (backlog A-6 "개념 매칭의 실측 확인"). `topics` 확장은 3단계(관심사, A-9)로 남겼다.

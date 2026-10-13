@@ -197,10 +197,12 @@ MOV-16~19 다. 만료의 동작 구조(2단계 삭제 · 만료 스냅 식별 ·
       켜도 분석에 동의한 사용자에게만 돈다(REC-4). 켜지 않으면 추천 경로에서 분석이 돌지 않는다
 - [ ] **상한 값 재조정**: 추천 상한(REC-3, [specs/template-and-recommendation.md](./specs/template-and-recommendation.md))은
       잠정값이다. A-3 의 단가 실측이 나오면 `apps/api/src/services/recommendation/recommendation-policy.ts` 의 숫자만 바꾼다
-- [ ] **키워드 매칭의 오탐·미탐** — 슬롯 힌트와 분석값을 부분 문자열로 맞춰 `담` 이 `담요` 에 맞고 `커피` 가 `아메리카노` 에
-      맞지 않는다(개발 DB 분석 7건에서도 맞은 3쌍 중 2쌍이 오탐). 개념 사전으로 바꾸는 계획과 테스트 순서는
-      [plans/content-vocabulary.md](./plans/content-vocabulary.md) — 현행 고정 테스트(§5.1) → A-3 실측에 매칭 채점을 얹기(§5.4) → 도입.
-      **완료 조건**: 도입 기준(§5.4)을 넘은 사전과 규칙이 들어가거나, 실측으로 들이지 않기로 정한다
+- [ ] **개념 매칭의 실측 확인** — 2026-10-13 키워드 매칭을 부분 문자열에서 개념 사전 매칭으로 바꿨다(A-13 1단계, progress 2026-10-13).
+      계획([plans/content-vocabulary.md](./plans/content-vocabulary.md))의 순서는 실측(§5.4) 뒤 도입이었지만, 온톨로지 착수 순서에 따라 실측보다
+      먼저 들였다 — 고른 사례(오탐 16 · 미탐 12)는 모두 고쳐졌지만 모델이 실제로 내는 값에서 얼마나 맞는지는 모른다. A-3 의 팀 스냅 실측에
+      §5.4 를 얹어 필드별 사전 안 비율 · 규칙별 오탐 · 놓친 쌍 · 사전 밖 값 상위를 잰다.
+      **완료 조건**: 개념 매칭의 오탐이 부분 문자열보다 적고 놓친 쌍이 많지 않음을 확인하고, 사전 밖 값 상위로 사전을 고친다(버전을 올린다).
+      기준을 못 넘으면 사전과 규칙을 고친다
 - [ ] **추천이 쓰이는 곳 결정** — 지금은 템플릿 슬롯에만 쓰인다. 선택지와 권장은
       [plans/snap-analysis-recommendation-rollout.md](./plans/snap-analysis-recommendation-rollout.md) §4.3.
       **2026-09-28**: 고른 스냅으로 AI 편집 초안을 만드는 쓰임(§4.3 (b)를 넓힌 것)이 오너 결정으로 열렸다 — A-11.
@@ -323,11 +325,12 @@ e2e 실검증.
 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md), 스펙 ACC-5 · PRF-1 · PRF-3). 그 전까지의 경위(2026-09-26 보류 ·
 2026-10-12 `준비 중` 유지)는 [progress.md](./progress.md) 2026-09-26 과 ACC-5 에 있다.
 
-**왜 막혀 있는지**: 고를 개념이 아직 없다 — 개념 사전이 계획 초안이고 `topics` 가 8개뿐이다(A-13).
+**왜 막혀 있는지**: 개념 사전은 2026-10-13 확정했지만(A-13 1단계) `topics` 가 8개뿐이라 관심사로 고르기에 모자란다.
 
 **완료 조건** (스펙 ACC-5):
 
-- [ ] `topics` 를 관심사로 고를 만큼 늘린다(A-13 의 사전 확정과 같은 변경)
+- [ ] `topics` 를 관심사로 고를 만큼 늘린다 — 사전 확정(A-13 1단계)에서는 늘리지 않았다. 착수 계획
+      [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 3단계(관심사)에서 한다. 늘리면 `contentVocabularyVersion` 을 올린다
 - [ ] `PATCH /auth/me` 의 `interests` 를 사전의 `topics` id 로 검증한다 — 계약 `packages/shared-types/src/contract/auth.ts` · `openapi.json` · `docs/api-spec.md`.
       이미 저장된 자유 문자열을 어떻게 옮길지(버릴지 · 사전으로 정규화할지) 함께 정한다
 - [ ] 앱 나 탭의 `준비 중` 을 걷고 선택 화면을 만든다 — 기능 문서 `apps/mobile/docs/features/me.md`
@@ -394,18 +397,19 @@ AI 편집 초안을 LLM 에이전트가 계획하고 기존 디렉터를 툴로 
 
 **의존**: A-13(개념 · 취향) · A-3(분석 활성화 — 분석 툴은 동의한 사용자에게만).
 
-### A-13. 온톨로지 개인화 — 결정, 미구현
+### A-13. 온톨로지 개인화 — 1단계(개념 사전) 구현, 나머지 미구현
 
 스냅 내용과 사용자 취향을 같은 개념 체계로 표현하고, 취향을 행동에서 배워 추천 · 템플릿 순서 · AI 편집 초안에 반영한다(2026-10-13 결정 —
 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md), 스펙 PRF-1~PRF-4). 착수 순서는
 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 1 · 2 · 4 · 5 · 8단계.
 
-**왜 막혀 있는지**: 개념 사전이 계획 초안([plans/content-vocabulary.md](./plans/content-vocabulary.md))이고, 사전 밖 비율을 재는 실측이 A-3 의
-팀 스냅 실측에 얹혀 있다.
+**진행**: 2026-10-13 1단계(개념 사전 확정)를 넣었다 — 사전 `packages/shared-types/src/content-vocabulary.json`(`moods` 포함), 템플릿 추천의
+개념 매칭, 시드 힌트 마이그레이션, 재사용 키의 사전 버전(progress 2026-10-13). 다음은 2단계(관계)다.
+
+**남은 막힘**: 사전 밖 비율을 재는 실측이 A-3 의 팀 스냅 실측에 얹혀 있다(A-6 "개념 매칭의 실측 확인").
 
 **완료 조건**:
 
-- [ ] 개념 사전 확정 — [plans/content-vocabulary.md](./plans/content-vocabulary.md) §6 의 1~4 와 `moods` 추가
 - [ ] 관계 `typicallyAt` · `evokes` · `suits` 와 정합성 테스트
 - [ ] 취향 프로필 — DB 표(`schema.prisma` 공유 파일, [team.md](./team.md) §2) · 신호 수집 · 갱신 · 상위 전파 · 시간 감쇠 · 파기(동의 철회 ·
       계정 삭제 · 관심사 해제). 개인정보처리방침의 분석 고지에 취향의 취급(스냅 삭제 뒤에도 합산값이 남는다)을 적는다(D-2)
@@ -780,6 +784,7 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **A-11** 초안 제안 API 와 선택 단계(`POST /movie-drafts`, edit-director) — 2026-10-01 → progress 2026-10-01 "편집 초안 제안 API"
 - **A-11** 앱의 진입 경로와 흐름(스튜디오 `스냅 골라 자동 편집`, 에뮬레이터 확인) — 2026-10-01 → progress 2026-10-01 "앱: 자동 편집" · "자동 편집 에뮬레이터 확인"
 - **A-11** 실기기 확인(초안 → 구간·전환 수정 → 생성한 결과물이 편집 화면과 같다) — 2026-10-01 → progress 2026-10-01 "자동 편집 실기기 확인"
+- **A-13** 개념 사전 확정(1단계 — 현행 고정 테스트 · `content-vocabulary.json` 과 `moods` · 개념 매칭 · 힌트 마이그레이션 · 재사용 키의 사전 버전) — 2026-10-13 → progress 2026-10-13 "개념 사전 확정"
 - **B-3** `AuthUser.email` 추가 — 2026-10-11, 추가하지 않고 닫았다. 결제 고객 생성(Checkout)이 IAP 전환으로 사라져 이메일이 필요한 기능이 없다. 필요한 기능이 생기면 공동 소유 합의(`plugins/auth.ts`)로 다시 연다
 - **B-4** `notification_logs` 보관 정책 — 2026-10-11, 위치 알림 이력만 7일 뒤 만료 정리 배치(04:00, ④)가 지운다(`GEOFENCE_LOG_RETENTION_DAYS`). 만료 예고 이력은 같은 예고를 두 번 보내지 않는 근거라 지우지 않는다 → progress 2026-10-11 "개발 합의 항목 정리 — B-2 · B-3 · B-4"
 - **B-5** API 계약 스키마 우선 1~5단계 — 2026-09-05 → progress 2026-09-05 "API 계약을 스키마 우선으로 — Zod 계약 패키지" · [api-contract-schema-first.md](./decisions/api-contract-schema-first.md)(남은 다듬기는 B-5)

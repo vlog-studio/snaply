@@ -1,7 +1,8 @@
 # 스냅 내용 어휘 — 자유 문자열 매칭을 개념 사전으로 바꾸는 계획
 
 **작성일**: 2026-10-07
-**상태**: 일부 구현 — 사전은 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json)으로 확정했다(2026-10-13, §6 의 3). 나머지 단계는 제안이다
+**상태**: 일부 구현 — §6 의 1 · 3 · 4 를 2026-10-13 에 넣었다(사전 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json) · 개념 매칭 ·
+힌트 마이그레이션). §6 의 2(§5.4 실측)는 A-3 을 기다리고, 5~7 은 제안이다
 **원천**: 분석 결과의 장소·사물·행동·주제를 닫힌 개념 사전으로 바꾸는 방법과, 바꾸기 전후를 가르는 매칭 테스트(오탐·미탐)의
 계획. 미결은 [backlog.md](../backlog.md) A-6 에만 둔다
 **관련 문서**: [decisions/template-snap-recommendation.md](../decisions/template-snap-recommendation.md) §7 ·
@@ -237,6 +238,10 @@
 ---
 
 ## 6. 착수 순서
+
+> **2026-10-13**: 1 · 3 · 4 를 넣었다 — 2(실측)보다 먼저다. 온톨로지 착수 순서([agentic-ontology-rollout.md](agentic-ontology-rollout.md) §1 의
+> 1단계)가 사전을 실측 전에 확정하기로 했기 때문이고, §5.4 의 도입 기준은 실측이 나온 뒤에 사후로 확인한다(backlog A-6).
+> 정규화 규칙은 확정하면서 하나를 더했다 — 머리 낱말로 끝나는 여러 낱말 별칭(`앉아 있기`)을 낱말 하나보다 먼저 본다(사전 `_normalizeNote`).
 
 1. **§5.1 현행 고정 테스트** — 제품 코드를 바꾸지 않는다. 지금 할 수 있다
 2. **§5.4 실측** — A-3 의 팀 스냅 실측과 같이 돌린다. 사전 밖 값으로 초안을 고친다
