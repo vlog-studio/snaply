@@ -602,6 +602,9 @@ model Movie {
   /// 현재는 9:16 뿐이지만, 다른 비율이 생겨도 기존 무비가 자기 비율을 지키도록 저장한다.
   ratio       String        @default("9:16") @db.VarChar(10)
   arranger    MovieArranger @default(user)
+  /// AI 편집 에이전트가 이 무비의 초안에서 정한 분위기 — 개념 사전 `moods` 의 id(specs MOV-25). AI 가 고르는 전환이 이 분위기에
+  /// 어울리는 쪽으로 기운다. 초안 없이 만든 무비 · 에이전트가 정하지 않은 초안이면 NULL 이고 지금의 규칙 그대로다.
+  mood        String?       @db.VarChar(20)
 
   /// 살아 있는 결과물 하나(movie-export-policy ②: 누적이 아니라 교체).
   /// 끝내기(MOV-17)나 30일 상한(MOV-16)으로 파일이 사라지면 NULL 로 돌아간다.

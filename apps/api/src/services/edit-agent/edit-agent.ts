@@ -14,6 +14,7 @@ import {
   MOVIE_CLIP_MAX,
   contentConcept,
   contentMatchScore,
+  normalizeContentValue,
   isContentField,
   type ContentField,
   type StylePreset,
@@ -25,6 +26,8 @@ import {
   type DraftCandidate,
   type DraftResult,
 } from '../edit-director.js';
+import { transitionsSuiting } from '../taste/taste-affinity.js';
+import { styleTransitionKinds } from '../transition-director.js';
 import type { AgentModel, AgentToolCall, AgentToolSpec } from './agent-model.js';
 import {
   EDIT_AGENT_ANALYSIS_LIMIT,
@@ -61,6 +64,10 @@ export interface AgentPlan {
   model: string;
   intent: string | null;
   flow: string[];
+  /**
+   * 무비의 분위기 — 개념 사전 `moods` 의 id. `pick_transitions` 로 정한 것이 우선이고, 없으면 submit 의 값이 사전에 있을 때만.
+   * 이 초안으로 무비를 만들면 `movies.mood` 로 옮겨져 전환을 고르는 비중이 된다(transition-director `agentSuits`).
+   */
   mood: string | null;
   /** 디렉터에 넘긴 최종 조절값. 초점은 개념과, 그때 그 개념이 보이던 스냅 key 를 함께 둔다(분석이 나중에 늘어도 같게). */
   direction: { focus: string[]; focusKeys: string[]; maxCuts: number | null };
@@ -107,7 +114,8 @@ const INSTRUCTIONS = `당신은 짧은 세로 브이로그 앱 Snaply 의 편집
 2. 계획 — 장면 흐름(도입 · 본론 · 마무리)과 초점 개념, 알맞은 컷 수를 정한다.
 3. select_cuts 로 컷을 고른다. 컷 · 구간의 실제 값은 규칙 디렉터가 정하고, 당신은 초점(focus)과 컷 수(maxCuts) · 목표 길이(targetSeconds)만 정한다.
 4. 결과의 review 가 통과하지 않으면 파라미터를 바꿔 다시 부른다(재시도는 정해진 횟수까지).
-5. submit_draft 로 의도와 장면 흐름을 남기고 끝낸다. 반드시 submit_draft 로 끝낸다.
+5. pick_transitions 로 무비 전체의 분위기를 정한다. 컷 사이 전환은 규칙 디렉터가 스타일 안에서 고르고, 그 분위기에 어울리는 전환을 더 자주 쓴다.
+6. submit_draft 로 의도와 장면 흐름을 남기고 끝낸다. 반드시 submit_draft 로 끝낸다.
 
 규칙:
 - 사용자에게 보이는 문장을 쓰지 않는다. 의도와 흐름은 짧은 한국어 명사구로 적는다.
@@ -154,6 +162,28 @@ const TOOL_ANALYZE: AgentToolSpec = {
     properties: { snaps: { type: 'array', items: { type: 'string' }, description: '스냅 별칭(s1 …)' } },
   },
 };
+
+const TOOL_TRANSITIONS: AgentToolSpec = {
+  name: 'pick_transitions',
+  description:
+    '무비 전체의 분위기를 정한다. 컷 사이 전환은 스타일 안에서 규칙이 고르고, 이 분위기에 어울리는 전환을 더 자주 쓴다. select_cuts 뒤에 한 번 부른다.',
+  parameters: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['mood'],
+    properties: {
+      mood: { type: 'string', description: '분위기 개념 id(moods:…)' },
+    },
+  },
+};
+
+/** 분위기 개념 — `moods:calm` 이든 `calm` 이든(사전의 표현 `잔잔한` 도) 사전의 id 로. 사전에 없으면 `null`. */
+function parseMood(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const bare = value.startsWith('moods:') ? value.slice('moods:'.length) : value;
+  if (contentConcept('moods', bare)) return bare;
+  return normalizeContentValue('moods', bare) ?? null;
+}
 
 const TOOL_SUBMIT: AgentToolSpec = {
   name: 'submit_draft',
@@ -224,7 +254,13 @@ export async function runEditAgent(input: AgentInput): Promise<{ result: DraftRe
     taste: input.taste.map((entry) => ({ concept: `${entry.field}:${entry.concept}`, weight: round(entry.weight) })),
   };
 
-  const tools = [TOOL_SELECT, ...(input.content ? [TOOL_FIND] : []), ...(input.analyze ? [TOOL_ANALYZE] : []), TOOL_SUBMIT];
+  const tools = [
+    TOOL_SELECT,
+    ...(input.content ? [TOOL_FIND] : []),
+    ...(input.analyze ? [TOOL_ANALYZE] : []),
+    TOOL_TRANSITIONS,
+    TOOL_SUBMIT,
+  ];
   const transcript = input.model.start(JSON.stringify(context));
   const steps: AgentPlan['steps'] = [];
   // 툴이 바꾸는 상태 — 루프와 툴이 함께 본다.
@@ -232,8 +268,9 @@ export async function runEditAgent(input: AgentInput): Promise<{ result: DraftRe
     selections: number;
     analyzed: number;
     last: { result: DraftResult; direction: AgentPlan['direction'] } | null;
+    mood: string | null;
     submitted: { intent: string; flow: string[]; mood: string | null } | null;
-  } = { selections: 0, analyzed: 0, last: null, submitted: null };
+  } = { selections: 0, analyzed: 0, last: null, mood: null, submitted: null };
 
   const select = (args: Record<string, unknown>) => {
     if (state.selections > EDIT_AGENT_MAX_RETRIES) {
@@ -311,6 +348,23 @@ export async function runEditAgent(input: AgentInput): Promise<{ result: DraftRe
     return { requested: requested.map((key) => aliasOf.get(key)), note: '결과는 다음 초안부터 쓰인다. 이번 초안은 지금 있는 개념으로 만든다.' };
   };
 
+  const transitions = (args: Record<string, unknown>) => {
+    if (state.last === null) return { error: '먼저 select_cuts 로 컷을 골라라.' };
+    const mood = parseMood(args.mood);
+    if (mood === null) return { error: '사전에 없는 분위기다. "moods:id" 로 다시.' };
+    state.mood = mood;
+    const suits = transitionsSuiting([mood]);
+    const favored = styleTransitionKinds(input.stylePreset).filter((kind) => suits.has(kind));
+    return {
+      mood: `moods:${mood}`,
+      favored: [...new Set(favored)],
+      note:
+        favored.length > 0
+          ? '이 전환을 더 자주 쓴다. 장면이 바뀌는 경계는 스타일 규칙 그대로다.'
+          : '이 스타일에는 이 분위기에 맞는 전환이 없어 스타일 기본대로 간다.',
+    };
+  };
+
   const run = async (call: AgentToolCall): Promise<unknown> => {
     let args: Record<string, unknown>;
     try {
@@ -325,6 +379,8 @@ export async function runEditAgent(input: AgentInput): Promise<{ result: DraftRe
         return input.content ? find(args) : { error: '쓸 수 없는 툴이다.' };
       case 'analyze_snaps':
         return input.analyze ? analyze(args) : { error: '쓸 수 없는 툴이다.' };
+      case 'pick_transitions':
+        return transitions(args);
       case 'submit_draft':
         state.submitted = {
           intent: typeof args.intent === 'string' ? args.intent.slice(0, 200) : '',
@@ -377,7 +433,7 @@ export async function runEditAgent(input: AgentInput): Promise<{ result: DraftRe
       model: input.model.name,
       intent: final?.intent ?? null,
       flow: final?.flow ?? [],
-      mood: final?.mood ?? null,
+      mood: state.mood ?? parseMood(final?.mood),
       direction,
       steps,
       usage,

@@ -4,8 +4,7 @@
  * 앱은 신호를 따로 보내지 않는다 — 서버가 이미 받는 것(초안 제안 · 무비 저장 전후 · 생성 완료)을 비교해 낸다. 그래서 신호는
  * "사용자가 무엇을 했는가"가 아니라 **서버에 닿은 결과의 차이**다. 기기에서 넣었다 뺀 컷처럼 서버에 오기 전에 끝난 일은 모른다.
  */
-import { getPrisma } from '../../db/client.js';
-import { DRAFT_REUSE_WINDOW_MS } from '../movie-draft.service.js';
+import { findMovieDraft } from '../movie-draft.service.js';
 import { contentSignalsOf, type TasteSignal } from './taste.service.js';
 import { TASTE_SIGNAL_STRENGTH } from './taste-policy.js';
 
@@ -20,44 +19,23 @@ export interface MovieShape {
   }>;
 }
 
-interface StoredDraftResult {
-  cuts?: Array<{ videoId?: string }>;
-  excluded?: Array<{ videoId?: string }>;
-}
-
 /**
  * AI 초안으로 만든 무비가 처음 서버에 올라왔을 때 — 그 초안과 비교한다. 남긴 컷 · 다시 넣은 빠진 스냅은 +, 지운 컷은 −.
- *
- * 무비는 초안을 가리키지 않는다(앱이 제안으로 무비를 만든다). 그래서 재사용 창 안의 가장 최근 초안 중 **무비의 컷을 모두 담은**
- * 것(제안했거나 뺐던 스냅)을 그 무비의 초안으로 본다. 맞는 초안이 없으면 신호를 내지 않는다 — 틀린 비교보다 없는 편이 낫다.
+ * 무비의 초안은 `findMovieDraft` 로 찾는다. 맞는 초안이 없으면 신호를 내지 않는다 — 틀린 비교보다 없는 편이 낫다.
  */
 export async function draftComparisonSignals(
   userId: string,
   clipVideoIds: readonly string[],
   now: Date = new Date(),
 ): Promise<TasteSignal[]> {
-  if (clipVideoIds.length === 0) return [];
-  const drafts = await getPrisma().movieDraft.findMany({
-    where: { userId, createdAt: { gte: new Date(now.getTime() - DRAFT_REUSE_WINDOW_MS) } },
-    orderBy: { createdAt: 'desc' },
-    select: { result: true },
-  });
+  const draft = await findMovieDraft(userId, clipVideoIds, now);
+  if (draft === null) return [];
   const inMovie = new Set(clipVideoIds);
-  for (const draft of drafts) {
-    const result = draft.result as StoredDraftResult;
-    const cuts = (result.cuts ?? []).flatMap((cut) => (cut.videoId ? [cut.videoId] : []));
-    const excluded = (result.excluded ?? []).flatMap((snap) => (snap.videoId ? [snap.videoId] : []));
-    const offered = new Set([...cuts, ...excluded]);
-    if (!cuts.some((id) => inMovie.has(id)) || ![...inMovie].every((id) => offered.has(id))) continue;
-
-    const kept = [...inMovie];
-    const removed = cuts.filter((id) => !inMovie.has(id));
-    return [
-      ...(await contentSignalsOf(userId, kept, TASTE_SIGNAL_STRENGTH.picked)),
-      ...(await contentSignalsOf(userId, removed, TASTE_SIGNAL_STRENGTH.unwanted)),
-    ];
-  }
-  return [];
+  const removed = draft.cuts.filter((id) => !inMovie.has(id));
+  return [
+    ...(await contentSignalsOf(userId, [...inMovie], TASTE_SIGNAL_STRENGTH.picked)),
+    ...(await contentSignalsOf(userId, removed, TASTE_SIGNAL_STRENGTH.unwanted)),
+  ];
 }
 
 /** 경계 하나의 키 — 같은 두 컷이 이어진 경계를 저장 전후에서 맞춘다. */

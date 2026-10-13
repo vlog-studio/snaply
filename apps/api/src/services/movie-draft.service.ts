@@ -58,6 +58,45 @@ export const DRAFT_REUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 type SnapInput = MovieDraftBody['snaps'][number];
 
+interface StoredDraftResult {
+  cuts?: Array<{ videoId?: string }>;
+  excluded?: Array<{ videoId?: string }>;
+}
+
+/** 무비의 초안으로 본 것 — 제안의 컷 · 뺀 스냅(업로드된 것만)과 에이전트 계획. */
+export interface MatchedDraft {
+  cuts: string[];
+  excluded: string[];
+  plan: unknown;
+}
+
+/**
+ * 이 컷으로 만든 무비의 초안. 무비는 초안을 가리키지 않는다(앱이 제안으로 무비를 만든다). 그래서 재사용 창 안의 가장 최근 초안 중
+ * **무비의 컷을 모두 담은**(제안했거나 뺐던 스냅) 것을 그 무비의 초안으로 본다. 맞는 것이 없으면 `null` — 틀린 짝보다 없는 편이 낫다.
+ */
+export async function findMovieDraft(
+  userId: string,
+  clipVideoIds: readonly string[],
+  now: Date = new Date(),
+): Promise<MatchedDraft | null> {
+  if (clipVideoIds.length === 0) return null;
+  const drafts = await getPrisma().movieDraft.findMany({
+    where: { userId, createdAt: { gte: new Date(now.getTime() - DRAFT_REUSE_WINDOW_MS) } },
+    orderBy: { createdAt: 'desc' },
+    select: { result: true, plan: true },
+  });
+  const inMovie = new Set(clipVideoIds);
+  for (const draft of drafts) {
+    const result = draft.result as StoredDraftResult;
+    const cuts = (result.cuts ?? []).flatMap((cut) => (cut.videoId ? [cut.videoId] : []));
+    const excluded = (result.excluded ?? []).flatMap((snap) => (snap.videoId ? [snap.videoId] : []));
+    const offered = new Set([...cuts, ...excluded]);
+    if (!cuts.some((id) => inMovie.has(id)) || ![...inMovie].every((id) => offered.has(id))) continue;
+    return { cuts, excluded, plan: draft.plan };
+  }
+  return null;
+}
+
 /**
  * 저장하는 제안 — 응답에서 `unavailable` · `chargedCredits` 를 뺀 것. 둘은 요청마다 붙인다 — `unavailable` 은 그때의 스냅 상태로,
  * `chargedCredits` 는 이번 요청에 쓴 크레딧으로(재사용한 제안은 0).

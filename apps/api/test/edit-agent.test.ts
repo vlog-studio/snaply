@@ -139,7 +139,7 @@ describe('runEditAgent', () => {
 
     await runEditAgent({ ...input(model), analyze: null });
 
-    expect(model.seen.tools[0]).toEqual(['select_cuts', 'submit_draft']);
+    expect(model.seen.tools[0]).toEqual(['select_cuts', 'pick_transitions', 'submit_draft']);
     expect(JSON.parse(model.seen.message).snaps[0].concepts).toBeUndefined();
     expect(model.seen.results[0]).toEqual({ error: '쓸 수 없는 툴이다.' });
   });
@@ -179,6 +179,34 @@ describe('runEditAgent', () => {
 
     expect(model.seen.results[0]).toEqual({ error: '인자가 JSON 이 아니다.' });
     expect(result.cuts).toHaveLength(3);
+  });
+
+  it('picks the movie mood for the transitions, only after choosing cuts and only from the vocabulary', async () => {
+    const { input } = setup({ stylePreset: '감성' });
+    const pick = (mood: string) => ({ name: 'pick_transitions', args: { mood } });
+    const model = scripted([
+      () => [pick('moods:nostalgic')],
+      () => [select([], 4)],
+      () => [pick('moods:gloomy'), pick('moods:nostalgic')],
+      () => [submit],
+    ]);
+
+    const { plan } = await runEditAgent(input(model));
+
+    const [early, , unknown, picked] = model.seen.results;
+    expect(early).toEqual({ error: '먼저 select_cuts 로 컷을 골라라.' });
+    expect(unknown).toEqual({ error: '사전에 없는 분위기다. "moods:id" 로 다시.' });
+    // 감성의 후보(crossfade · dip) 중 그리움에 어울리는 것.
+    expect(picked).toMatchObject({ mood: 'moods:nostalgic', favored: ['crossfade', 'dip'] });
+    // 정한 분위기가 submit 의 값보다 앞선다.
+    expect(plan.mood).toBe('nostalgic');
+  });
+
+  it('keeps a submitted mood only when the vocabulary knows it', async () => {
+    const { input } = setup();
+    const withMood = (mood: string) => ({ name: 'submit_draft', args: { intent: '하루', flow: [], mood } });
+    expect((await runEditAgent(input(scripted([() => [withMood('moods:잔잔한')]])))).plan.mood).toBe('calm');
+    expect((await runEditAgent(input(scripted([() => [withMood('gloomy')]])))).plan.mood).toBeNull();
   });
 
   it('uses the plain rules when the agent submits without choosing', async () => {

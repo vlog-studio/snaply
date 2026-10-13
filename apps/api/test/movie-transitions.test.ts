@@ -14,6 +14,7 @@ import { Queue } from 'bullmq';
 import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
 import { createRedisConnection } from '../src/lib/redis.js';
 import { pickTransitions } from '../src/services/transition-director.js';
+import { transitionsSuiting } from '../src/services/taste/taste-affinity.js';
 
 let h: Harness;
 
@@ -312,5 +313,81 @@ describe('생성(export)은 경계 전환을 editSpec v3 로 보낸다', () => {
       expect(await legacy.getJob(jobId)).toBeUndefined();
       await queued?.remove();
     });
+  });
+});
+
+describe('에이전트가 정한 분위기(MOV-25)', () => {
+  /** 이 컷들을 제안한 에이전트 초안 — 계획에 분위기가 있다. */
+  async function draftFor(user: TestUser, cuts: string[], mood: string | null) {
+    await h.prisma.movieDraft.create({
+      data: {
+        userId: user.id,
+        stylePreset: '감성',
+        snapHash: crypto.randomUUID().replace(/-/g, ''),
+        complete: true,
+        mode: 'agent',
+        result: { stylePreset: '감성', cuts: cuts.map((videoId) => ({ videoId })), excluded: [] },
+        plan: { mood },
+      },
+    });
+  }
+
+  async function moodOf(movieId: string) {
+    return (await h.prisma.movie.findUniqueOrThrow({ where: { id: movieId }, select: { mood: true } })).mood;
+  }
+
+  it('AI 초안으로 만든 무비는 그 초안의 분위기를 받고, 어울리는 전환을 더 뽑는다 — 다시 골라도 따른다', async () => {
+    const user = await h.createUser();
+    const ids = [await createSnap(user), await createSnap(user), await createSnap(user), await createSnap(user)];
+    await draftFor(user, ids, 'nostalgic');
+
+    const res = await createMovie(user, {
+      stylePreset: '감성',
+      arranger: 'ai',
+      clips: ids.map((videoId) => ({ videoId })),
+    });
+
+    expect(res.statusCode).toBe(201);
+    const movieId = res.json().data.id as string;
+    expect(await moodOf(movieId)).toBe('nostalgic');
+    const snaps = await h.prisma.video.findMany({ where: { id: { in: ids } } });
+    const timeOf = new Map(snaps.map((snap) => [snap.id, (snap.capturedAt ?? snap.createdAt).getTime()]));
+    const expected = (videoIds: string[]) =>
+      pickTransitions({
+        movieId,
+        stylePreset: '감성',
+        agentSuits: transitionsSuiting(['nostalgic']),
+        boundaries: videoIds.slice(0, -1).map((from, index) => ({
+          fromVideoId: from,
+          toVideoId: videoIds[index + 1]!,
+          fromCapturedAt: timeOf.get(from)!,
+          toCapturedAt: timeOf.get(videoIds[index + 1]!)!,
+        })),
+      }).map((transition) => ({ ...transition, owner: 'ai' }));
+    expect(transitions(res)).toEqual([...expected(ids), null]);
+
+    // 컷을 바꿔 다시 저장해도 분위기는 무비에 남아 AI 경계가 따른다.
+    const reordered = [ids[2]!, ids[0]!, ids[3]!];
+    const patched = await patchMovie(user, movieId, { clips: reordered.map((videoId) => ({ videoId })) });
+    expect(patched.statusCode).toBe(200);
+    // `ai` 정렬은 촬영순으로 놓으므로 저장된 순서로 기대값을 낸다.
+    const saved = (patched.json().data.clips as ClipDto[]).map((clip) => clip.videoId);
+    expect(saved).toHaveLength(3);
+    expect(transitions(patched)).toEqual([...expected(saved), null]);
+    expect(await moodOf(movieId)).toBe('nostalgic');
+  });
+
+  it('맞는 초안이 없거나, 사람이 짠 무비거나, 사전에 없는 분위기면 분위기가 없다', async () => {
+    const user = await h.createUser();
+    const ids = [await createSnap(user), await createSnap(user)];
+    const other = await createSnap(user);
+    await draftFor(user, [ids[0]!, other], 'calm'); // ids[1] 을 담지 않은 초안
+    await draftFor(user, [ids[0]!, ids[1]!], 'gloomy');
+
+    const noMatch = await createMovie(user, { arranger: 'ai', clips: [{ videoId: ids[0]! }, { videoId: ids[1]! }] });
+    const byHand = await createMovie(user, { arranger: 'user', clips: [{ videoId: ids[0]! }, { videoId: other }] });
+
+    expect(await moodOf(noMatch.json().data.id)).toBeNull();
+    expect(await moodOf(byHand.json().data.id)).toBeNull();
   });
 });

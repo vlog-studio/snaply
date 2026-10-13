@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  contentConcept,
   DEFAULT_FIT_MODE,
   DEFAULT_OUTPUT_PROFILE,
   MOVIE_CLIP_MAX,
@@ -24,6 +25,7 @@ import { getPrisma } from '../db/client.js';
 import { AppError } from '../lib/errors.js';
 import { captureException } from '../lib/sentry.js';
 import { createEditJob } from './edit-job.service.js';
+import { findMovieDraft } from './movie-draft.service.js';
 import { deleteObject } from './storage.service.js';
 import { pickTransitions, type TransitionTaste } from './transition-director.js';
 import { emitTasteSignals, readTasteProfile } from './taste/taste.service.js';
@@ -85,6 +87,8 @@ interface MovieRow {
   captions: boolean;
   ratio: string;
   arranger: string;
+  /** 에이전트가 초안에서 정한 분위기(개념 사전 `moods` id) — 전환을 고르는 비중이다(MOV-25). */
+  mood: string | null;
   resultVideoId: string | null;
   finishedAt: Date | null;
   createdAt: Date;
@@ -109,6 +113,7 @@ const SELECT = {
   captions: true,
   ratio: true,
   arranger: true,
+  mood: true,
   resultVideoId: true,
   finishedAt: true,
   createdAt: true,
@@ -267,6 +272,12 @@ function toUserTransition(input: { kind: TransitionKind; durationMs?: number }):
   }
 }
 
+/** 저장된 에이전트 계획의 분위기 — 사전에 있는 `moods` id 일 때만. 규칙만의 초안 · 예전 계획이면 `null`. */
+function moodOfPlan(plan: unknown): string | null {
+  if (typeof plan !== 'object' || plan === null || !('mood' in plan) || typeof plan.mood !== 'string') return null;
+  return contentConcept('moods', plan.mood) ? plan.mood : null;
+}
+
 /**
  * AI 가 경계마다 고른 전환(컷 순서대로, `clips.length - 1` 개). 촬영 시각을 보므로 스냅을 한 번 읽는다 —
  * 없으면 업로드 시각으로 대신한다(SNAP-10, `resolveClips` 의 정렬과 같은 기준).
@@ -276,6 +287,8 @@ async function directTransitions(params: {
   movieId: string;
   stylePreset: StylePreset;
   clips: ResolvedClip[];
+  /** 에이전트가 초안에서 정한 무비의 분위기 — 어울리는 전환을 모든 경계에서 더 뽑는다. */
+  mood?: string | null;
 }): Promise<Transition[]> {
   if (params.clips.length < 2) return [];
   const videoIds = [...new Set(params.clips.map((clip) => clip.videoId))];
@@ -311,6 +324,7 @@ async function directTransitions(params: {
     stylePreset: params.stylePreset,
     taste,
     boundarySuits,
+    ...(params.mood ? { agentSuits: transitionsSuiting([params.mood]) } : {}),
     boundaries: params.clips.slice(0, -1).map((clip, index) => {
       const next = params.clips[index + 1]!;
       return {
@@ -489,7 +503,12 @@ export async function createMovie(params: {
   const clips = params.clips ? await resolveClips({ ...params, clips: params.clips, arranger }) : [];
   // id 를 먼저 정한다 — AI 의 전환 시드가 무비 id 에서 나온다.
   const movieId = params.id ?? randomUUID();
-  const aiTransitions = await directTransitions({ userId: params.userId, movieId, stylePreset, clips });
+  // AI 초안으로 만든 무비면 그 초안의 에이전트가 정한 분위기를 무비에 옮긴다 — 전환은 계속 AI 몫이고, 다시 골라도 같은 분위기를 따른다.
+  const mood =
+    arranger === 'ai' && clips.length > 0
+      ? moodOfPlan((await findMovieDraft(params.userId, clips.map((clip) => clip.videoId)))?.plan)
+      : null;
+  const aiTransitions = await directTransitions({ userId: params.userId, movieId, stylePreset, clips, mood });
 
   const created = await getPrisma().movie.create({
     data: {
@@ -499,6 +518,7 @@ export async function createMovie(params: {
       stylePreset,
       captions: params.captions ?? false,
       arranger,
+      mood,
       clips: { create: clipCreateData(clips, aiTransitions) },
     },
     select: SELECT,
@@ -576,7 +596,9 @@ export async function updateMovie(params: {
         ? resolvedFromRows(current.clips)
         : undefined;
   const aiTransitions =
-    clips === undefined ? [] : await directTransitions({ userId: params.userId, movieId: current.id, stylePreset, clips });
+    clips === undefined
+      ? []
+      : await directTransitions({ userId: params.userId, movieId: current.id, stylePreset, clips, mood: current.mood });
 
   const updated = await getPrisma().movie.update({
     where: { id: current.id },

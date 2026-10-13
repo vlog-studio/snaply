@@ -6,7 +6,7 @@
 /**
  * 프롬프트 · 툴 정의의 버전. 바꾸면 올린다 — 초안 재사용 키에 들어가, 바뀐 에이전트가 하루 동안 예전 초안에 가려지지 않는다.
  */
-export const EDIT_AGENT_PROMPT_VERSION = 1;
+export const EDIT_AGENT_PROMPT_VERSION = 2;
 
 /** 에이전트 모델의 기본값. `EDIT_AGENT_MODEL` 로 바꾼다. 이미지를 보지 않으므로 저가 모델부터 잰다(착수 계획 §2.3). */
 export const DEFAULT_EDIT_AGENT_MODEL = 'gpt-5.6-luna';
@@ -28,3 +28,9 @@ export const EDIT_AGENT_TASTE_TOP = 8;
 
 /** 검토가 허용하는 목표 길이 초과 비율 — 목표의 이만큼까지는 통과다. */
 export const EDIT_AGENT_LENGTH_TOLERANCE = 1.2;
+
+/**
+ * 에이전트가 정한 분위기(`movies.mood`)에 어울리는 전환의 배율 — 경계 두 컷의 분위기(`TASTE_MOOD_BOOST`)보다 강하다. 에이전트는 무비 전체의 의도를
+ * 보고 정했기 때문이다. 스타일의 후보 밖으로는 나가지 않는다(transition-director 의 `tasted`).
+ */
+export const EDIT_AGENT_MOOD_BOOST = 2;

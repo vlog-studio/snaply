@@ -135,7 +135,7 @@ describe('스타일의 경향', () => {
 describe('taste', () => {
   function sampleWith(
     stylePreset: '감성' | '여행' | '일상',
-    options: Pick<Parameters<typeof pickTransitions>[0], 'taste' | 'boundarySuits'>,
+    options: Pick<Parameters<typeof pickTransitions>[0], 'taste' | 'boundarySuits' | 'agentSuits'>,
     movies = 400,
   ): string[] {
     return Array.from({ length: movies }, (_, m) =>
@@ -177,5 +177,15 @@ describe('taste', () => {
     // 일상은 같은 장면 안에서 바로 넘기기만 쓴다 — 겹쳐 녹이기를 좋아해도 일상의 성격은 그대로다.
     const kinds = sampleWith('일상', { taste: { crossfade: 1, hardcut: -1 } });
     expect(new Set(kinds)).toEqual(new Set(['hardcut']));
+  });
+
+  it('draws more of what suits the mood the agent picked, on every boundary, inside the style', () => {
+    const before = share(sample('감성'), 'dip');
+    // 감성 · 스타일 후보(crossfade · dip) 중 dip 만 어울린다고 하면 dip 이 늘고, 후보 밖의 flash 는 여전히 없다.
+    const kinds = sampleWith('감성', { agentSuits: new Set(['dip', 'flash']) });
+    expect(share(kinds, 'dip')).toBeGreaterThan(before + 0.1);
+    expect(kinds).not.toContain('flash');
+    // 비우면 아무것도 바뀌지 않는다.
+    expect(sampleWith('감성', { agentSuits: new Set() })).toEqual(sample('감성'));
   });
 });

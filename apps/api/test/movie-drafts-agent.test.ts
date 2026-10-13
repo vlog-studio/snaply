@@ -159,7 +159,7 @@ describe('POST /movie-drafts — agent', () => {
 
     await requestDraft(user, ids);
 
-    expect(model.seen.tools[0]).toEqual(['select_cuts', 'submit_draft']);
+    expect(model.seen.tools[0]).toEqual(['select_cuts', 'pick_transitions', 'submit_draft']);
     expect(model.seen.message).not.toContain('places:');
   });
 
