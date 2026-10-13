@@ -3402,3 +3402,13 @@ CI 에는 키가 없어 통과했다.
   (`CREDIT_SIGNUP_BONUS` 와 같은 방식). 테스트는 지금처럼 각본 모델을 끼운다.
 - **검증** — `harness-safety.test.ts` 에 "편집 에이전트는 실제 모델을 부르지 않는다"(Prisma 를 불러온 뒤에도 키가 비어 있다)를 더했고 수정 전
   실패. 개인 키가 든 `.env` 그대로 `npm test -w apps/api` 48개 파일 812건 통과(37초) · typecheck · lint.
+
+## 2026-10-13 (이어서) — 만들지 못한 무비에는 결과물 만료 예고를 보내지 않는다(backlog E-33 닫음)
+
+10-11 ~ 10-12 main 리뷰에서 찾았다. 무비 결과물 만료 예고(NTF-10)의 대상 쿼리(`expiry-notice.service.ts` `findDueMovies`)가 결과물 영상의
+상태를 보지 않았다. 생성을 시작하면 무비가 새 결과물 영상을 가리키고(`movie.service.ts` export), 실패하면 워커가 그 영상을 `failed` 로만
+바꾸고 지우지 않는다(`ai-worker/src/db.py`). 그래서 만들지 못한 무비에도 27일 뒤 "남기려면 저장하거나 게시해 주세요"가 가고, 탭하면 실패한
+무비가 열렸다.
+
+- **고침** — 결과물이 완성(`status: 'done'`)된 무비만 고른다. 스펙 NTF-10 에 "만들지 못한 무비에는 보내지 않는다"를 더했다.
+- **검증** — `expiry-notice.test.ts` 에 "만들지 못한 무비에는 보내지 않는다"를 더했고 수정 전 실패. `npm test -w apps/api` 48개 파일 813건 · typecheck · lint.
