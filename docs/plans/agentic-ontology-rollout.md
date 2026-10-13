@@ -1,7 +1,7 @@
 # Agentic · Ontology 착수 계획 — 개념 사전에서 AI 편집 에이전트까지
 
 **작성일**: 2026-10-13
-**상태**: 일부 구현 — 1 · 2 · 4 · 5 · 8단계(개념 사전 · 관계 · 취향 프로필 · 취향 반영 · 발표용 내보내기)를 2026-10-13 에 넣었다(progress 2026-10-13). 3 · 6 · 7단계는 제안이다
+**상태**: 일부 구현 — 1 · 2 · 4 · 5 · 6 · 8단계(개념 사전 · 관계 · 취향 프로필 · 취향 반영 · AI 편집 에이전트 · 발표용 내보내기)를 2026-10-13 에 넣었다(progress 2026-10-13). 3 · 7단계는 제안이다
 **원천**: [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md)와 [decisions/ontology-personalization.md](../decisions/ontology-personalization.md)를
 구현하는 단계와 순서, 단계마다 바뀌는 곳. 미결 작업은 [backlog.md](../backlog.md) A-12 · A-13 · A-9 에만 둔다
 **관련 문서**: [content-vocabulary.md](content-vocabulary.md) · [snap-analysis-recommendation-rollout.md](snap-analysis-recommendation-rollout.md) ·
@@ -60,6 +60,9 @@
 - 에이전트 모델은 분석 모델과 따로 둔다(환경변수 — `apps/api/src/env-spec.ts` 에 먼저 선언). 이미지를 보지 않으므로 저가 모델부터 잰다.
 - 에이전트에 보내는 것은 개념 id · 신호 요약 · 촬영 간격 · 취향 상위 개념뿐이다 — 프레임 · 분석 원문 요약은 보내지 않는다.
 - 실측할 것: 초안 1회의 호출 수 · 토큰 · 지연 · 폴백 비율. 결정 문서 §5.1 의 추정을 이 값으로 바꾼다.
+- **구현(2026-10-13)**: 툴은 `select_cuts` · `find_snaps` · `analyze_snaps` · `submit_draft` 넷이다. 결정 §3.2 의 `pick_transitions` 는 초안 응답에 전환이
+  없어(무비를 만들 때 서버가 고른다) 계약 · 앱 변경과 함께 하고, `pick_music` · `pick_style` 은 BGM 조달 · 스타일 기본값 뒤로 미뤘다(backlog A-12).
+  `select_cuts` 가 디렉터에 넘기는 조절값은 초점(스냅 점수 가산)과 컷 수 상한이고, 실측값은 초안 기록의 `plan.usage` 에 남는다.
 
 ### 2.4 나중에 붙는 것 — 스티커(얼굴 · 손 앵커)
 

@@ -354,9 +354,6 @@ e2e 실검증.
       [edit-director.md](./decisions/edit-director.md) §2 를 고친다. 이때 점수·거르기의 `quality` 에 밝기를 넣을지도 정한다 —
       지금은 선명도(`log1p(sharpness)`)만 쓰고 밝기는 어둠 문턱값에만 쓴다(같은 문서 §4)
 
-- [ ] **초안의 vision 분석** — 초안 1회에 분석을 최대 12개 요청하고 늦게 도착한 결과를 다음 초안에 얹기로
-      정했지만([auto-edit-draft.md](./decisions/auto-edit-draft.md) §5) 구현되지 않았다 — `apps/api/src/services/movie-draft.service.ts`
-      는 신호만 계산하고 분석을 요청하지 않는다. 켜는 조건은 A-3 · REC-4 를 따른다
 
 **완료 조건에 넣지 않는 후속**: "다시 편집"은 v1 에 두지 않았다([auto-edit-draft.md](./decisions/auto-edit-draft.md) §5).
 붙일 때는 시드 `attempt` 를 올려 `ai` 값만 다시 고른다.
@@ -370,25 +367,30 @@ e2e 실검증.
       초안은 AI 가 고른 역할 순서가 된다. 지금 슬롯도 대부분 들어간다(출발 · 도착 → `establish`, 가게 · 메뉴판 · 음료 → `detail`,
       한 컷 → `hook`, 돌아오는 길 · 마무리 → `closer`)
 
-**완료 조건**: 문턱값이 실측으로 정해져 결정 문서 §2 가 고쳐지고 초안의 vision 분석이 붙으면 MOV-21 이
+**완료 조건**: 문턱값이 실측으로 정해져 결정 문서 §2 가 고쳐지면(초안의 vision 분석은 2026-10-13 에이전트의 `analyze_snaps` 로 붙었다 — A-12) MOV-21 이
 `구현됨` 이 된다(실기기 확인은 2026-10-01 에 끝났다).
 
 **의존**: 컷 타이밍의 기준(A-7 "컷 타이밍의 기준을 컷마다")과 역할을 싣는 `timeline.cuts[].role`(A-7 editSpec v3).
 분석을 쓰는 부분은 A-3 의 활성화 조건과 분석 동의(REC-4)를 따른다.
 
-### A-12. AI 편집 에이전트 — 결정, 미구현
+### A-12. AI 편집 에이전트 — 6단계(에이전트) 구현, 운영 첫 확인 · 전환 · 과금(7단계) 남음
 
 AI 편집 초안을 LLM 에이전트가 계획하고 기존 디렉터를 툴로 부른다. 초안은 하루 3회 무료, 그 뒤 1회 20크레딧(2026-10-13 결정 —
 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md), 스펙 MOV-25 · CRD-9 · MOV-21). 착수 순서는
 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 6 · 7단계.
 
-**왜 막혀 있는지**: 에이전트의 툴 · 검토가 개념 위에서 돈다 — 개념 사전과 취향 프로필(A-13)이 먼저다.
+**진행**: 2026-10-13 6단계를 넣었다 — 에이전트 루프 · 툴(`select_cuts` · `find_snaps` · `analyze_snaps` · `submit_draft`) · 규칙 검토와 재시도 ·
+계획 저장(`movie_drafts.mode` · `plan`) · 폴백 · 시간 상한, `EDIT_AGENT_MODEL`(progress 2026-10-13 "AI 편집 에이전트"). 운영 API 는 분석 워커와
+같은 시크릿을 읽어 이미 `OPENAI_API_KEY` 를 받는다 — 배포하면 바로 켜진다([deployment-aws.md](./deployment-aws.md) §2).
 
 **완료 조건**:
 
-- [ ] 디렉터를 툴로 감싸고 에이전트 루프 · 규칙 검토 · 계획 저장 · 폴백 · 시간 상한을 넣는다(MOV-25). 초안이 vision 분석을 요청하는
-      일(A-11 "초안의 vision 분석")을 `analyze_snaps` 툴로 함께 닫는다
-- [ ] 에이전트 모델 환경변수를 `apps/api/src/env-spec.ts` · `.env.example` 에 선언하고, 운영(Secrets Manager)에서 누가 넣는지 정한다
+- [ ] **운영 첫 확인** — 실제 모델(`gpt-5.6-luna`)로 한 번도 돌려 보지 않았다(로컬 `.env` 에 키가 없다 — 테스트는 각본 모델). 배포 뒤 초안을
+      하나 만들어 `movie_drafts.mode` 가 `agent` 이고 `plan` 에 의도 · 툴 호출 · 토큰이 남는지 본다. `fallback` 이면 `plan.error` 로 원인을 본다
+      (모델 이름 · 툴 스키마 거절 등). 실패해도 사용자는 규칙 초안을 받는다
+- [ ] **에이전트가 전환을 고른다**(MOV-25 의 넷째) — 초안 응답에 전환이 없어 무비를 만들 때 서버가 고른다(지금은 취향 · 분위기를 반영하는 규칙,
+      PRF-3). 에이전트가 고르려면 초안 계약(`contract/movie-drafts.ts`)에 경계별 전환을 더하고 앱이 무비를 만들 때 그 전환을 `ai` 주인으로 보내야
+      한다 — 계약 · 앱 · 기능 문서. `pick_music` · `pick_style` 은 BGM 조달(A-7)과 스타일 기본값(A-13) 뒤
 - [ ] 초안 과금 — 무료 3회 · 20크레딧 예약 → 확정 · 폴백과 재사용은 차감 없음 · 남은 무료 횟수를 응답과 앱에 보인다(CRD-9).
       계약 `contract/movie-drafts.ts` · `openapi.json` · `docs/api-spec.md` · 기능 문서 `apps/mobile/docs/features/` 의 초안 문서
 - [ ] **잠정값 실측** — 반복 상한(2) · 시간 상한(20초) · 에이전트 모델 · 초안 1회의 호출 수 · 토큰 · 지연 · 폴백 비율. 결정 문서 §5.1 의

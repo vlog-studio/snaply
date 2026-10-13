@@ -3218,3 +3218,32 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 - **테스트** — 변환을 순수 함수(`scripts/ontology/build.mjs` · `html.mjs`)로 두고 `npm run ontology:test`(node:test 6건): 개념마다 한 번 · 라벨 ·
   관계, 파일이 쓰는 IRI 가 모두 선언됨, 리터럴 이스케이프, 없는 대상을 가리키는 관계 거절, 그래프 엣지의 양 끝이 모두 노드, `</script>` 가 든
   데이터로 페이지가 깨지지 않음. CI 에는 넣지 않았다(루트 스크립트를 도는 잡이 없다).
+
+## 2026-10-13 (이어서) — AI 편집 에이전트(backlog A-12 6단계)
+
+착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 6단계, 결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md),
+요구 MOV-25(`결정·미구현` → `부분`). 8단계 배포는 배포 잡이 대기 없이 돌아 끝났다(CI · Deploy 성공, `/health` `db=connected`).
+
+- **구조(`82efa3d`, `apps/api/src/services/edit-agent/`)** — `POST /movie-drafts` 가 OpenAI Responses API 의 함수 툴로 에이전트를 돌린다(분석 워커와
+  같은 API, `store: false`, 추론 항목은 암호화된 채로 되돌린다). 에이전트는 넘긴 스냅의 개념 · 촬영 간격 · 신호 요약 · 스타일 · 취향 상위 8개로
+  의도를 추론하고 툴을 부른다 — `select_cuts`(규칙 디렉터를 초점 · 컷 수로 실행하고 규칙 검토를 함께 돌려준다), `find_snaps`(개념과 그 하위 개념이
+  보이는 스냅 — 온톨로지 검색), `analyze_snaps`(분석 요청, 초안 1회 12개까지, 기다리지 않는다), `submit_draft`(의도 · 장면 흐름 · 분위기).
+  검토는 초점 개념이 컷에 있는가 · 목표 길이(1.2배까지)를 넘지 않는가 · 컷이 너무 적지 않은가이고, 재시도는 2회, 모델 왕복은 8회, 시간은 20초가
+  상한이다(모두 잠정, `agent-policy.ts`).
+- **판단은 에이전트, 실행은 규칙** — 디렉터(`edit-director.ts`)에 조절값 둘을 더했다: 초점 스냅의 점수 가산(묶음 안에서 앞선다, 거르기 · 중복은
+  그대로)과 컷 수 상한. 생략하면 지금과 같아 규칙 버전은 올리지 않았다.
+- **보내는 것** — 개념 id · 신호 요약 · 촬영 간격(분) · 별칭(`s1` …)뿐이다. 스냅 id · 프레임 · 분석 원문은 보내지 않는다. 분석에 동의하지 않은
+  사용자는 개념이 없고 `find_snaps` · `analyze_snaps` 도 없다(`analyze_snaps` 는 분석 스위치도 켜져 있어야 한다).
+- **기록과 재현** — `movie_drafts` 에 `mode`(`agent` · `rules` · `fallback`)와 `plan`(의도 · 흐름 · 툴 호출과 결과 요약 · 디렉터에 넘긴 조절값 · 왕복 수 ·
+  토큰 · 지연)을 더했다(마이그레이션 `20261013020000_add_movie_draft_agent_plan`). 계획의 조절값을 다시 실행하면 같은 초안이다(`replayDraftPlan`,
+  테스트로 고정). 재사용 키에 에이전트 프롬프트 버전 · 모델 · 사전 · 취향 규칙 버전을 넣었다.
+- **폴백** — 키가 없으면 지금처럼 규칙만(`rules`). 모델 오류 · 시간 초과 · 고른 것 없이 끝남이면 규칙으로 만들고(`fallback`, `plan.error`) 그 초안은
+  재사용하지 않는다. 응답 모양은 그대로라 앱은 바뀌지 않는다 — 앱은 요청 동안 `편집하는 중…` 을 보이고 타임아웃을 두지 않는다(기능 문서 `studio.md`).
+- **환경** — `EDIT_AGENT_MODEL`(선택, 기본 `gpt-5.6-luna`)을 선언했다. `OPENAI_API_KEY` 는 이제 API 도 읽는다 — 운영 API 는 분석 워커와 같은 시크릿을
+  읽어 이미 키가 있으므로 배포하면 켜진다([deployment-aws.md](./deployment-aws.md) §2).
+- **함께 닫은 것** — A-11 "초안의 vision 분석"(`analyze_snaps`).
+- **하지 않은 것** — 실제 모델 호출: 로컬 `.env` 에 키가 없어 실제 모델로 돌려 보지 못했다. 테스트는 각본 모델이다(backlog A-12 "운영 첫 확인").
+  전환 고르기: 초안 응답에 전환이 없어 계약 · 앱 변경이 필요하다(A-12). 과금 · 남은 무료 횟수: 7단계.
+- **검증** — `edit-agent.test.ts`(루프 10건: 계획 저장과 재실행, 별칭만 보냄, 검토 실패와 재시도 상한, 하위 개념 검색, 동의 없는 사용자의 툴 제한,
+  분석 요청 대상과 상한, 고장 난 인자, 고르지 않고 끝냄, 모델 오류 · 시간 초과), `movie-drafts-agent.test.ts`(API 5건: 응답 모양 · 계획 저장 · 재사용 ·
+  폴백과 재사용 안 함 · 미동의 · 키 없음), `edit-director.test.ts` 조절값 4건, `npm test -w apps/api` 47파일 784건, API 린트 · 타입체크.
