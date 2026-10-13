@@ -3200,3 +3200,21 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
   슬롯을 채우고, 싫어하는 전환도 확률이 절반일 뿐 뽑힌다(PRF-2).
 - **검증** — `taste-affinity.test.ts` 9건, `transition-director.test.ts` 취향 4건, `recommendation-score.test.ts` 취향 3건, `taste.test.ts` 반영 4건(취향
   없는 사용자에게서는 빠지는 스냅이 바다를 좋아하는 사용자에게서만 자리를 얻는 비교 포함), `npm test -w apps/api` 45파일 765건, API 린트 · 타입체크.
+
+## 2026-10-13 (이어서) — 발표용 온톨로지 내보내기(backlog A-13 8단계)
+
+착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 8단계. 5단계 배포는 AWS 배포 잡이 러너가 온라인 · 유휴인데도
+71분 동안 대기열에 머물러(GitHub 배정 누락으로 본다) 그 실행을 취소하고 배포 잡만 다시 돌려 끝냈다(CI · Deploy 성공, `/health` `db=connected`).
+
+- **명령(`1b94263`)** — `npm run ontology:export` 가 shared-types 를 빌드한 뒤 `dist/ontology/` 에 두 파일을 만든다. 원천은 JSON 사전이라 결과는
+  커밋하지 않는다([decisions/ontology-personalization.md](./decisions/ontology-personalization.md) §3.3). ONBOARDING §4 에 넣었다.
+  - `snaply-ontology.ttl` — OWL 온톨로지. 필드마다 클래스(Place · Object · Action · Topic · Mood ⊂ ContentConcept, Transition · StylePreset · CutRole),
+    개념은 그 클래스의 개체이자 SKOS 개념(`prefLabel` · `altLabel` · `notation` · `broader`), 관계는 객체 속성(`typicallyAt` · `evokes` ·
+    `suitsTransition` · `suitsStyle` · `roleAffinity`, 도메인 · 범위 포함). 사전의 "물려받기"는 펼치지 않고 적힌 값만 낸다.
+  - `snaply-ontology.html` — 그래프 페이지(vis-network 9.1.9, CDN). 노드 109개 · 관계 127개, 필드별 색 범례, 관계 종류별 켜고 끄기, 개념 찾기.
+- **확인** — 만든 Turtle 을 RDF 파서(`rdflib`)로 읽어 트리플 979개가 파싱되고 카페 → 가게(`broader`) · 커피 → 카페(`typicallyAt`) · 잔잔함 →
+  crossfade(`suitsTransition`)가 들어 있음을 봤다. 그래프 페이지는 내장 브라우저에서 1280×800 으로 열어 분위기를 가운데로 장소 · 사물 · 전환 ·
+  스타일이 이어지는 것을 봤다(관계 없는 개념이 멀리 흩어져 가운데로 모으는 힘을 키우고 배치 뒤 화면에 맞추도록 고쳤다).
+- **테스트** — 변환을 순수 함수(`scripts/ontology/build.mjs` · `html.mjs`)로 두고 `npm run ontology:test`(node:test 6건): 개념마다 한 번 · 라벨 ·
+  관계, 파일이 쓰는 IRI 가 모두 선언됨, 리터럴 이스케이프, 없는 대상을 가리키는 관계 거절, 그래프 엣지의 양 끝이 모두 노드, `</script>` 가 든
+  데이터로 페이지가 깨지지 않음. CI 에는 넣지 않았다(루트 스크립트를 도는 잡이 없다).
