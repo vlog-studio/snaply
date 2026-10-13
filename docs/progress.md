@@ -3135,3 +3135,20 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
   타입체크.
 - **하지 않은 것** — §6 의 2(§5.4 실측)는 A-3 의 팀 스냅 실측을 기다린다. 그래서 고른 사례 밖에서 개념 매칭이 부분 문자열보다 나은지는 아직 모른다
   (backlog A-6 "개념 매칭의 실측 확인"). `topics` 확장은 3단계(관심사, A-9)로 남겼다.
+
+## 2026-10-13 (이어서) — 개념 사이의 관계(backlog A-13 2단계)
+
+착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 2단계. 1단계는 main 에 푸시해 AWS 배포까지 끝냈다
+(CI · Deploy 성공, `/health` `db=connected`). 관계는 아직 아무 채점에도 쓰지 않는다 — 취향 반영(5단계)과 AI 편집 에이전트가 쓴다.
+
+- **사전(`62406ca`)** — [decisions/ontology-personalization.md](./decisions/ontology-personalization.md) §3.2 의 세 관계를 개념별 필드로 더했다.
+  `typicallyAt`(objects · actions → places, 사물 19 · 행동 6 — 커피 → 카페, 타기 → 교통수단), `evokes`(places · objects · actions → moods, 장소 15 ·
+  사물 9 · 행동 6 — 바다 → 청량함, 노을 → 감성), `suits`(moods → 전환 kind · 스타일 프리셋, 앞일수록 더 어울린다 — 잔잔함 → crossfade, 활기 →
+  zoompunch). `typicallyAt` · `evokes` 는 `roleAffinity` 처럼 하위 개념이 상위 값을 물려받는다(케이크 → 디저트의 카페 · 빵집). 모든 분위기가
+  `suits` 를 가져 스냅 개념 → 분위기 → 전환 · 스타일의 사슬이 끊기지 않는다. 관계 값은 잠정이다 — 시연 데이터로 다시 본다(A-13 잠정값).
+- **사전 버전은 올리지 않았다** — 관계는 매칭에 쓰지 않아 추천 결과가 바뀌지 않는다. 관계를 채점에 쓰기 시작하면 그때 함께 올린다(사전 `_note`).
+- **조회 함수** — `contentTypicalPlaces` · `contentEvokedMoods` · `contentMoodSuits`(`packages/shared-types/src/content-vocabulary.ts`).
+- **정합성 테스트** — API(`content-vocabulary.test.ts`)와 워커(`tests/test_content_vocabulary.py`): 아는 키만 쓴다 · 관계마다 놓일 수 있는 필드와
+  가리키는 필드 · 목록이 비지 않고 중복이 없다 · 모든 분위기가 `suits` 를 갖고 전환은 전환 사전의 kind, 스타일은 `STYLE_PRESETS`(API 만) ·
+  상위에서 물려받는 값을 그대로 다시 적지 않는다. 마지막 검사가 광장(`square`)의 `evokes` 가 상위 거리와 같은 것을 잡아 지웠다.
+- **검증** — `npm test -w apps/api` 42파일 722건, 워커 `unittest discover` 통과, `npm run verify:mobile` 1483건, API 타입체크 · shared-types 린트.

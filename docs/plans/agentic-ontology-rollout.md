@@ -1,7 +1,7 @@
 # Agentic · Ontology 착수 계획 — 개념 사전에서 AI 편집 에이전트까지
 
 **작성일**: 2026-10-13
-**상태**: 일부 구현 — 1단계(개념 사전 확정)를 2026-10-13 에 넣었다(progress 2026-10-13). 2단계부터는 제안이다
+**상태**: 일부 구현 — 1단계(개념 사전 확정)와 2단계(관계)를 2026-10-13 에 넣었다(progress 2026-10-13). 3단계부터는 제안이다
 **원천**: [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md)와 [decisions/ontology-personalization.md](../decisions/ontology-personalization.md)를
 구현하는 단계와 순서, 단계마다 바뀌는 곳. 미결 작업은 [backlog.md](../backlog.md) A-12 · A-13 · A-9 에만 둔다
 **관련 문서**: [content-vocabulary.md](content-vocabulary.md) · [snap-analysis-recommendation-rollout.md](snap-analysis-recommendation-rollout.md) ·

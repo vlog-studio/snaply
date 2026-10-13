@@ -59,7 +59,8 @@
 | `suits` | 잔잔함 → `crossfade` · 신남 → `zoompunch` | 전환 · 스타일 선택 |
 | 슬롯 힌트(`match_hints`) | cafe/sip → cafe · cup · drink | 템플릿 매칭(자유 문자열을 개념 id 로 바꾼다) |
 
-`parent` 는 트리로 둔다(상위 개념은 하나). 실내 · 실외처럼 장소가 아닌 속성은 개념 관계가 아니라 별도 속성으로 푼다 —
+관계의 원천은 개념 사전 파일이다(`content-vocabulary.json` 의 개념별 필드 — `typicallyAt` · `evokes` 는 하위 개념이 상위 값을 물려받는다,
+2026-10-13). `parent` 는 트리로 둔다(상위 개념은 하나). 실내 · 실외처럼 장소가 아닌 속성은 개념 관계가 아니라 별도 속성으로 푼다 —
 [plans/content-vocabulary.md](../plans/content-vocabulary.md) §7 의 "상위 개념을 여럿 둔다(DAG)" 기각과 같은 이유다.
 
 ### 3.3 형식 — JSON 이 원천이다
