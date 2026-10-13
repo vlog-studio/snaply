@@ -8,6 +8,12 @@ import {
   parseInstagramSignedRequest,
 } from '../services/sns.service.js';
 
+/**
+ * 연결 해제 · 데이터 삭제 콜백 본문의 상한. Meta 가 보내는 것은 `signed_request` 하나(수백 바이트)다.
+ * 인증 없이 열린 주소라, 서명을 확인하기 전에 본문을 읽는 일이 본문 크기에 묶이지 않게 작게 막는다.
+ */
+const SIGNED_REQUEST_BODY_LIMIT = 16 * 1024;
+
 interface VerifyQuery {
   'hub.mode'?: string;
   'hub.verify_token'?: string;
@@ -91,7 +97,10 @@ export async function snsWebhookRoutes(app: FastifyInstance): Promise<void> {
   // 연동을 지운다(SNS-9). Meta 는 응답 본문을 보지 않는다.
   app.post<{ Body: unknown }>(
     '/sns/instagram/deauthorize',
-    { schema: { tags: ['sns'], summary: '인스타그램 연결 해제 콜백' } },
+    {
+      bodyLimit: SIGNED_REQUEST_BODY_LIMIT,
+      schema: { tags: ['sns'], summary: '인스타그램 연결 해제 콜백' },
+    },
     async (request, reply) => {
       const platformUserId = parseInstagramSignedRequest(signedRequestFrom(request.body));
       if (!platformUserId) {
@@ -111,7 +120,10 @@ export async function snsWebhookRoutes(app: FastifyInstance): Promise<void> {
   // 지우는 범위는 Meta 에서 받은 데이터뿐이다 — Snaply 계정은 남는다(SNS-9).
   app.post<{ Body: unknown }>(
     '/sns/instagram/data-deletion',
-    { schema: { tags: ['sns'], summary: '인스타그램 데이터 삭제 요청' } },
+    {
+      bodyLimit: SIGNED_REQUEST_BODY_LIMIT,
+      schema: { tags: ['sns'], summary: '인스타그램 데이터 삭제 요청' },
+    },
     async (request, reply) => {
       const platformUserId = parseInstagramSignedRequest(signedRequestFrom(request.body));
       if (!platformUserId) {
@@ -155,13 +167,40 @@ export async function snsWebhookRoutes(app: FastifyInstance): Promise<void> {
  */
 function signedRequestFrom(body: unknown): string {
   const text = Buffer.isBuffer(body) ? body.toString('utf8') : typeof body === 'string' ? body : '';
-  const multipart = /name="signed_request"\r?\n(?:[^\r\n]*\r?\n)*?\r?\n([^\r\n]+)/.exec(text);
-  if (multipart?.[1]) {
-    return multipart[1].trim();
+  const multipart = multipartField(text, 'signed_request');
+  if (multipart) {
+    return multipart;
   }
   const json = /"signed_request"\s*:\s*"([^"]+)"/.exec(text);
   if (json?.[1]) {
     return json[1];
   }
   return new URLSearchParams(text).get('signed_request') ?? '';
+}
+
+/**
+ * multipart 본문에서 `name` 파트의 값(첫 줄). 파트 머리는 빈 줄에서 끝나고 그 다음 줄이 값이다.
+ *
+ * 정규식으로 머리 줄을 건너뛰면 `name="..."` 이 되풀이된 본문에서 시간이 본문 크기의 제곱으로 늘어
+ * 서명을 확인하기도 전에 서버가 멈췄다(2026-10-13 리뷰 — 88KB 에 0.4초, 1MB 면 약 50초). 그래서 앞에서부터
+ * 한 번만 훑는다.
+ */
+function multipartField(text: string, name: string): string | undefined {
+  const marker = `name="${name}"`;
+  const at = text.indexOf(marker);
+  if (at < 0) return undefined;
+  const valueStart = afterBlankLine(text, at + marker.length);
+  if (valueStart < 0) return undefined;
+  const lineEnd = text.indexOf('\n', valueStart);
+  const value = (lineEnd < 0 ? text.slice(valueStart) : text.slice(valueStart, lineEnd)).trim();
+  return value || undefined;
+}
+
+/** `from` 뒤 첫 빈 줄(`\n\n` 또는 `\n\r\n`)이 끝나는 위치. 없으면 -1. */
+function afterBlankLine(text: string, from: number): number {
+  const lf = text.indexOf('\n\n', from);
+  const crlf = text.indexOf('\n\r\n', from);
+  if (lf < 0 && crlf < 0) return -1;
+  if (crlf < 0 || (lf >= 0 && lf < crlf)) return lf + 2;
+  return crlf + 3;
 }
