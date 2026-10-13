@@ -3329,3 +3329,20 @@ A-9 를 main 에 푸시해 AWS 배포(CI · Deploy 성공, `/interest-topics` �
   위에 `자동 편집 -20`(그 아래 `무비 만들기 -100` · `가입 보너스 +500`). 운영 서버에서 에이전트 초안 · 무료 횟수 · 예약과 확정 · 원장 문구가 이어서 동작한다.
 - **보지 못한 것** — 잔액 부족 문구(잔액이 20 아래인 계정이 없다 — 테스트로는 고정, A-12 에 남김), 휴대폰.
 - **남긴 것** — 검수 전용 계정에 확인용 초안 무비가 몇 개 더 생겼고(`무비 10-13 …`), 크레딧이 380 이다. 검수용 완성 무비 `무비 10-12` 는 그대로다.
+
+## 2026-10-13 (이어서) — 에이전트가 전환을 고른다(backlog A-12)
+
+MOV-25 의 넷째 툴(결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md) §3.2). 오너가 고른 방식(나) — 에이전트는 무비의 **분위기**를 정하고, 경계별
+전환은 서버가 그 분위기를 따라 고른다. 계약 · 앱 변경이 없어 새 테스터 빌드가 필요 없다.
+
+- **에이전트** — 새 툴 `pick_transitions(mood)`. `select_cuts` 뒤에만 받고, 개념 사전 `moods` 의 id(`moods:calm` · `calm` · 표현 `잔잔한`)만 받는다. 고른
+  스타일의 후보 중 그 분위기에 어울리는 전환(`favored`)을 돌려준다. 계획의 `mood` 는 이 툴의 값이 우선이고, 없으면 `submit_draft` 의 값이 사전에 있을
+  때만 남는다(전에는 아무 문자열). 프롬프트 버전 2 — 초안 재사용 키가 바뀌어 예전 초안이 돌아오지 않는다.
+- **무비** — `movies.mood`(마이그레이션 `20261013040000_add_movie_mood`). `arranger: ai` 무비를 만들 때 그 무비의 초안(재사용 창 안의 가장 최근 초안 중 컷을
+  모두 담은 것 — 취향 신호의 짝짓기를 `findMovieDraft` 로 뽑아 함께 쓴다)의 `plan.mood` 를 옮긴다. 응답에는 드러나지 않는다.
+- **전환** — transition-director 의 `agentSuits` — 같은 장면 안의 모든 경계에서 어울리는 전환의 비중을 `EDIT_AGENT_MOOD_BOOST`(잠정 2)배. 스타일의 후보
+  밖으로는 나가지 않는다(일상은 그대로 `hardcut`). 컷 · 스타일을 바꿔 다시 골라도 무비의 분위기를 따른다.
+- **검증** — `edit-agent.test.ts`(선택 전 거절 · 사전 밖 거절 · 감성의 `favored` · 툴 값이 submit 보다 앞섬 · submit 의 사전 밖 값은 버림),
+  `transition-director.test.ts`(분위기가 dip 비중을 올리고 후보 밖 flash 는 없음 · 비우면 그대로), `movie-transitions.test.ts`(초안의 분위기가 무비에 남고
+  생성 · 재저장의 AI 경계가 따름 · 맞는 초안이 없거나 사람이 짠 무비거나 사전 밖이면 없음), `npm test -w apps/api` 48파일 804건, `npm run lint -w apps/api`.
+- **하지 않은 것** — 운영에서 에이전트가 실제로 `pick_transitions` 를 부르는지(다음 초안부터 `movie_drafts.plan->'steps'` 로 본다), `pick_music` · `pick_style`(A-12).
