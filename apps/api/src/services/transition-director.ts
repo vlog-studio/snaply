@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 import { validateTransition, type StylePreset, type Transition } from '@vlog-studio/shared-types';
+import { TASTE_MOOD_BOOST, TASTE_TRANSITION_BASE } from './taste/taste-policy.js';
 
 /**
  * AI 가 경계마다 고르는 전환(specs/movie.md MOV-22). 규칙과 근거는 docs/decisions/transition-director.md.
@@ -74,6 +75,25 @@ function unit(movieId: string, boundary: DirectorBoundary, occurrence: number): 
   return Number(top >> 11n) / 2 ** 53;
 }
 
+/**
+ * 취향(PRF-3)으로 스타일의 가중치를 조정한다 — 사용자가 좋아한 전환은 `밑^w` 배, 경계의 분위기에 어울리는 전환(`suits`)은
+ * `TASTE_MOOD_BOOST` 배. **스타일이 고른 후보 밖으로는 나가지 않고**, 비선호도 0 이 되지 않는다(PRF-2) — 스타일의 성격을 지키고
+ * 취향은 그 안의 비중만 바꾼다.
+ */
+function tasted(
+  weighted: Array<[Transition, number]>,
+  taste: TransitionTaste | undefined,
+  suits: ReadonlySet<string> | undefined,
+): Array<[Transition, number]> {
+  if (taste === undefined && (suits === undefined || suits.size === 0)) return weighted;
+  return weighted.map(([transition, weight]) => [
+    transition,
+    weight *
+      TASTE_TRANSITION_BASE ** Math.min(1, Math.max(-1, taste?.[transition.kind] ?? 0)) *
+      (suits?.has(transition.kind) ? TASTE_MOOD_BOOST : 1),
+  ]);
+}
+
 function draw(weighted: Array<[Transition, number]>, u: number): Transition {
   const total = weighted.reduce((sum, [, weight]) => sum + weight, 0);
   let edge = 0;
@@ -84,11 +104,19 @@ function draw(weighted: Array<[Transition, number]>, u: number): Transition {
   return weighted[weighted.length - 1]![0];
 }
 
-/** 경계마다(컷 순서대로) AI 가 고른 전환. */
+/** 전환 kind 별 사용자 취향(−1~1). */
+export type TransitionTaste = Partial<Record<Transition['kind'], number>>;
+
+/**
+ * 경계마다(컷 순서대로) AI 가 고른 전환. `taste` · `boundarySuits`(경계마다 두 컷의 분위기에 어울리는 kind)를 주면 같은 장면 안의
+ * 경계를 뽑는 비중에 반영한다 — 장면 전환 · 첫 경계의 스타일 규칙은 그대로다. 없으면 지금과 같은 전환이 나온다.
+ */
 export function pickTransitions(params: {
   movieId: string;
   stylePreset: StylePreset;
   boundaries: DirectorBoundary[];
+  taste?: TransitionTaste;
+  boundarySuits?: ReadonlyArray<ReadonlySet<string>>;
 }): Transition[] {
   const rule = STYLE_RULES[params.stylePreset];
   const seen = new Map<string, number>();
@@ -104,6 +132,9 @@ export function pickTransitions(params: {
     if (index === 0 && rule.opening !== undefined) {
       return rule.opening;
     }
-    return draw(rule.weighted, unit(params.movieId, boundary, occurrence));
+    return draw(
+      tasted(rule.weighted, params.taste, params.boundarySuits?.[index]),
+      unit(params.movieId, boundary, occurrence),
+    );
   });
 }

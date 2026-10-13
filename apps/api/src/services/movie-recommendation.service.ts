@@ -22,8 +22,9 @@ import { AppError } from '../lib/errors.js';
 import { captureException } from '../lib/sentry.js';
 import { isSnapAnalysisEnabled, requireAnalysisConsent } from './analysis-consent.service.js';
 import { ANALYSIS_VERSION, requestAnalysis } from './video-analysis.service.js';
-import { contentSignalsOf, emitTasteSignals } from './taste/taste.service.js';
-import { TASTE_SIGNAL_STRENGTH } from './taste/taste-policy.js';
+import { contentSignalsOf, emitTasteSignals, readTasteProfile } from './taste/taste.service.js';
+import { TASTE_POLICY_VERSION, TASTE_SIGNAL_STRENGTH } from './taste/taste-policy.js';
+import { buildTasteLookup, snapAffinity } from './taste/taste-affinity.js';
 import {
   DAILY_RECOMMENDATION_LIMIT,
   MAX_CANDIDATES,
@@ -84,16 +85,20 @@ function toDto(row: RecommendationRow): MovieRecommendation {
  * 후보 집합의 지문. **순서를 정렬해서** 넣는다 — 같은 외출을 두 번 보낼 때 앱이 순서를 살짝
  * 다르게 만들었다는 이유로 재분석이 돌면 안 된다. 순서 자체는 행의 배열 컬럼에 남는다.
  *
- * 개념 사전 버전도 넣는다 — 사전을 바꾼 뒤 재사용 창(24시간) 동안 예전 규칙의 결과가 돌아오지 않게 한다
- * (docs/plans/content-vocabulary.md §4). AI 편집 초안이 `EDIT_DIRECTOR_VERSION` 을 넣는 것과 같다.
+ * 개념 사전 버전과 취향 규칙 버전도 넣는다 — 사전이나 취향을 읽는 규칙을 바꾼 뒤 재사용 창(24시간) 동안 예전 규칙의 결과가
+ * 돌아오지 않게 한다(docs/plans/content-vocabulary.md §4, decisions/ontology-personalization.md §7). AI 편집 초안이
+ * `EDIT_DIRECTOR_VERSION` 을 넣는 것과 같다. 사용자의 취향 값은 넣지 않는다 — 이유는 `TASTE_POLICY_VERSION`.
  */
 export function candidateHashOf(
   templateId: string,
   videoIds: readonly string[],
   vocabularyVersion: number = CONTENT_VOCABULARY_VERSION,
+  tastePolicyVersion: number = TASTE_POLICY_VERSION,
 ): string {
   return createHash('sha256')
-    .update(`${templateId}\n${[...videoIds].sort().join(',')}\nvocabulary:${vocabularyVersion}`)
+    .update(
+      `${templateId}\n${[...videoIds].sort().join(',')}\nvocabulary:${vocabularyVersion}\ntaste:${tastePolicyVersion}`,
+    )
     .digest('hex');
 }
 
@@ -324,6 +329,7 @@ async function scoreIfReady(row: RecommendationRow): Promise<RecommendationRow> 
       places: true,
       objects: true,
       actions: true,
+      moods: true,
       visualQualityScore: true,
       usableForEdit: true,
       confidence: true,
@@ -341,11 +347,14 @@ async function scoreIfReady(row: RecommendationRow): Promise<RecommendationRow> 
     return row;
   }
 
+  // 취향이 맞는 스냅을 조금 앞세운다(PRF-3). 취향이 없으면 0 이라 지금의 배정 그대로다.
+  const taste = buildTasteLookup(await readTasteProfile(row.userId));
   const candidates: ScoringCandidate[] = row.candidateVideoIds.map((videoId, index) => {
     const analysis = byVideoId.get(videoId);
     return {
       videoId,
       index,
+      taste: analysis?.status === 'done' && !taste.isEmpty() ? snapAffinity(taste, analysis) : 0,
       // 실패했거나 시한 안에 못 끝낸 분석은 똑같이 "쓸 정보가 없다"로 다룬다.
       analysis:
         analysis?.status === 'done'

@@ -17,6 +17,7 @@ export async function movieTemplateRoutes(app: FastifyInstance): Promise<void> {
         summary: '무비 템플릿 카탈로그 조회',
         description: [
           '사용자가 "템플릿으로 시작"할 때 고를 수 있는 무비의 형태들을 정렬 순서대로 준다.',
+          '사용자 취향(PRF-3)이 있으면 슬롯이 그 취향과 맞는 템플릿이 앞에 온다 — 같은 카탈로그라도 사용자마다 순서가 다를 수 있다.',
           '내린 템플릿(`retiredAt`)은 제외된다.',
           '',
           '**앱은 이 응답을 캐시하고, 실패하면 내장 카탈로그로 폴백한다.** 그래서 이 API 가 죽어도',
@@ -30,8 +31,8 @@ export async function movieTemplateRoutes(app: FastifyInstance): Promise<void> {
         ].join('\n'),
       },
     },
-    async () => {
-      const data = await listMovieTemplates();
+    async (request) => {
+      const data = await listMovieTemplates(request.user.id);
       return ok(data);
     },
   );

@@ -17,6 +17,8 @@ import {
   normalizeContentValues,
   type ContentMatchField,
 } from '@vlog-studio/shared-types';
+// 위 합(SCORE_WEIGHTS)에 더하는 취향 항(`ScoringCandidate.taste`)의 가중치 — 잠정값이라 원천은 taste-policy.ts 다.
+import { TASTE_RECOMMENDATION_WEIGHT } from '../taste/taste-policy.js';
 
 /**
  * 슬롯이 원하는 신호. `movie_template_slots.match_hints` 의 형태이며 전부 선택이다.
@@ -54,6 +56,11 @@ export interface ScoringCandidate {
   index: number;
   /** 분석이 없거나 실패했으면 null. */
   analysis: CandidateAnalysis | null;
+  /**
+   * 이 스냅에 대한 사용자 취향(−1~1, PRF-3). 없으면 0 — 취향이 없는 사용자는 지금의 점수 그대로다. 스냅마다 하나라
+   * 어느 슬롯에 놓일지보다 **어느 스냅이 슬롯을 얻는지**(후보가 슬롯보다 많을 때)를 바꾼다. 비선호는 빼지 않고 낮출 뿐이다.
+   */
+  taste?: number;
 }
 
 export interface SlotAssignment {
@@ -166,7 +173,8 @@ export function scorePair(
     SCORE_WEIGHTS.keyword * keywordScore(slot.hints, analysis) +
     SCORE_WEIGHTS.quality * clamp01(analysis.visualQualityScore ?? NEUTRAL) +
     SCORE_WEIGHTS.temporal * temporalScore(prior, candidate.index, candidateCount) +
-    SCORE_WEIGHTS.confidence * clamp01(analysis.confidence ?? NEUTRAL);
+    SCORE_WEIGHTS.confidence * clamp01(analysis.confidence ?? NEUTRAL) +
+    TASTE_RECOMMENDATION_WEIGHT * Math.min(1, Math.max(-1, candidate.taste ?? 0));
 
   return clamp01(score);
 }

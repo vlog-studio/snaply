@@ -18,6 +18,7 @@ import {
   type ScoringCandidate,
   type ScoringSlot,
 } from '../src/services/recommendation/score-slots.js';
+import { TASTE_RECOMMENDATION_WEIGHT } from '../src/services/taste/taste-policy.js';
 
 function analysis(over: Partial<CandidateAnalysis> = {}): CandidateAnalysis {
   return {
@@ -197,6 +198,37 @@ describe('assignSlots', () => {
 
     expect(assigned[0]).toMatchObject({ videoId: 'only' });
     expect(assigned[0]?.score ?? 0).toBeGreaterThan(0);
+  });
+});
+
+describe('assignSlots — taste (PRF-3)', () => {
+  it('gives the slot to the snap the user likes when the rest ties', () => {
+    const slots = plainSlots(1);
+    const candidates: ScoringCandidate[] = [
+      { ...candidate('plain', 0), taste: 0 },
+      { ...candidate('liked', 0), taste: 0.8 },
+    ];
+
+    expect(assignSlots(slots, candidates).slots[0]).toMatchObject({ videoId: 'liked' });
+  });
+
+  it('only lowers a disliked snap — it still fills a slot nothing else wants', () => {
+    const { slots: assigned, excluded } = assignSlots(plainSlots(1), [{ ...candidate('disliked', 0), taste: -1 }]);
+
+    expect(assigned[0]).toMatchObject({ videoId: 'disliked' });
+    expect(excluded).toEqual([]);
+  });
+
+  it('scores exactly as before without taste', () => {
+    const slot: ScoringSlot = { slotId: 's', position: 0, hints: { places: ['cafe'] } };
+    // 점수가 상한(1)에 닿지 않는 후보 — 키워드가 맞지 않는다.
+    const plain = candidate('x', 0, { places: ['해변'] });
+
+    expect(scorePair(slot, 1, { ...plain, taste: 0 }, 1)).toBe(scorePair(slot, 1, plain, 1));
+    expect(scorePair(slot, 1, { ...plain, taste: 1 }, 1) - scorePair(slot, 1, plain, 1)).toBeCloseTo(
+      TASTE_RECOMMENDATION_WEIGHT,
+      10,
+    );
   });
 });
 

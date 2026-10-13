@@ -5,6 +5,7 @@ import {
   DEFAULT_OUTPUT_PROFILE,
   MOVIE_CLIP_MAX,
   MOVIE_CLIP_MIN,
+  TRANSITION_KINDS,
   type CursorPaginated,
   type Movie,
   type MovieArranger,
@@ -24,8 +25,10 @@ import { AppError } from '../lib/errors.js';
 import { captureException } from '../lib/sentry.js';
 import { createEditJob } from './edit-job.service.js';
 import { deleteObject } from './storage.service.js';
-import { pickTransitions } from './transition-director.js';
-import { emitTasteSignals } from './taste/taste.service.js';
+import { pickTransitions, type TransitionTaste } from './transition-director.js';
+import { emitTasteSignals, readTasteProfile } from './taste/taste.service.js';
+import { buildTasteLookup, moodsOfAnalysis, transitionsSuiting } from './taste/taste-affinity.js';
+import { ANALYSIS_VERSION } from './video-analysis.service.js';
 import {
   draftComparisonSignals,
   finishedMovieSignals,
@@ -269,21 +272,45 @@ function toUserTransition(input: { kind: TransitionKind; durationMs?: number }):
  * 없으면 업로드 시각으로 대신한다(SNAP-10, `resolveClips` 의 정렬과 같은 기준).
  */
 async function directTransitions(params: {
+  userId: string;
   movieId: string;
   stylePreset: StylePreset;
   clips: ResolvedClip[];
 }): Promise<Transition[]> {
   if (params.clips.length < 2) return [];
-  const snaps = await getPrisma().video.findMany({
-    where: { id: { in: [...new Set(params.clips.map((clip) => clip.videoId))] } },
-    select: { id: true, capturedAt: true, createdAt: true },
-  });
+  const videoIds = [...new Set(params.clips.map((clip) => clip.videoId))];
+  const [snaps, analyses, profile] = await Promise.all([
+    getPrisma().video.findMany({
+      where: { id: { in: videoIds } },
+      select: { id: true, capturedAt: true, createdAt: true },
+    }),
+    // 경계의 분위기 — 있는 분석만 쓴다(분석은 동의 아래에서만 있다). 분석을 새로 부르지 않는다.
+    getPrisma().videoAnalysis.findMany({
+      where: { videoId: { in: videoIds }, userId: params.userId, analysisVersion: ANALYSIS_VERSION, status: 'done' },
+      select: { videoId: true, places: true, objects: true, actions: true, topics: true, moods: true },
+    }),
+    readTasteProfile(params.userId),
+  ]);
   const timeOf = new Map(
     snaps.map((snap) => [snap.id, (snap.capturedAt ?? snap.createdAt).getTime()]),
+  );
+  // 취향(PRF-3) — 사용자가 좋아한 전환과, 경계의 두 컷이 자아내는 분위기에 어울리는 전환을 조금 더 뽑는다.
+  const lookup = buildTasteLookup(profile);
+  const taste = Object.fromEntries(
+    TRANSITION_KINDS.map((kind) => [kind, lookup.weightOf('transition', kind)]),
+  ) as TransitionTaste;
+  const moodsOf = new Map(analyses.map((analysis) => [analysis.videoId, moodsOfAnalysis(analysis)]));
+  const boundarySuits = params.clips.slice(0, -1).map((clip, index) =>
+    transitionsSuiting([
+      ...(moodsOf.get(clip.videoId) ?? []),
+      ...(moodsOf.get(params.clips[index + 1]!.videoId) ?? []),
+    ]),
   );
   return pickTransitions({
     movieId: params.movieId,
     stylePreset: params.stylePreset,
+    taste,
+    boundarySuits,
     boundaries: params.clips.slice(0, -1).map((clip, index) => {
       const next = params.clips[index + 1]!;
       return {
@@ -462,7 +489,7 @@ export async function createMovie(params: {
   const clips = params.clips ? await resolveClips({ ...params, clips: params.clips, arranger }) : [];
   // id 를 먼저 정한다 — AI 의 전환 시드가 무비 id 에서 나온다.
   const movieId = params.id ?? randomUUID();
-  const aiTransitions = await directTransitions({ movieId, stylePreset, clips });
+  const aiTransitions = await directTransitions({ userId: params.userId, movieId, stylePreset, clips });
 
   const created = await getPrisma().movie.create({
     data: {
@@ -549,7 +576,7 @@ export async function updateMovie(params: {
         ? resolvedFromRows(current.clips)
         : undefined;
   const aiTransitions =
-    clips === undefined ? [] : await directTransitions({ movieId: current.id, stylePreset, clips });
+    clips === undefined ? [] : await directTransitions({ userId: params.userId, movieId: current.id, stylePreset, clips });
 
   const updated = await getPrisma().movie.update({
     where: { id: current.id },

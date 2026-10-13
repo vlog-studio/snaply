@@ -9,6 +9,11 @@
 **관련 문서**: [specs/movie.md](../specs/movie.md) MOV-6 · MOV-22 · [auto-edit-draft.md](auto-edit-draft.md) §2.3 · §6 ·
 [edit-spec-v3.md](edit-spec-v3.md) §5 · 툴 계획(보관) [archive/edit-recipe-tools.md](../archive/edit-recipe-tools.md)
 
+> **후속 결정**(2026-10-13): 같은 장면 안의 가중치 뽑기(`weighted`)에 사용자 취향을 더한다 — 좋아한 전환은 `2^w` 배, 경계의 두 컷이
+> 자아내는 분위기에 어울리는 전환(개념 사전 `suits`)은 1.5배(잠정, `taste-policy.ts`). **스타일의 후보 밖으로는 나가지 않고**(일상은
+> 바로 넘기기 그대로), 장면 전환 · 첫 경계 규칙도 그대로다. 취향은 입력이 하나 는 것이라 "같은 입력이면 같은 전환"은 지켜진다
+> → [ontology-personalization.md](ontology-personalization.md) §7 · specs PRF-3
+
 ---
 
 ## 0. 전제 — 고를 수 있는 전환과 겹침형의 여분 프레임

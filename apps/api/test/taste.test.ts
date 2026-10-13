@@ -326,3 +326,67 @@ describe('forgetting (PRF-4)', () => {
     expect(weightOf(await readTasteProfile(user.id), 'places', 'cafe')).toBeCloseTo(once(1), 6);
   });
 });
+
+/** 행을 직접 넣는다 — 반영 규칙만 보려고 신호 경로를 건너뛴다. */
+async function setTaste(user: TestUser, field: string, concept: string, weight: number) {
+  await h.prisma.userTaste.create({
+    data: { userId: user.id, field, concept, source: 'derived', weight, evidence: 1, updatedAt: new Date() },
+  });
+}
+
+describe('reflecting taste (PRF-3)', () => {
+  async function templateOrder(user: TestUser): Promise<string[]> {
+    const res = await h.app.inject({ method: 'GET', url: '/movie-templates', headers: user.auth });
+    return res.json().data.templates.map((template: { id: string }) => template.id);
+  }
+
+  it('keeps the catalog order for a user without taste', async () => {
+    const user = await h.createUser();
+    expect(await templateOrder(user)).toEqual(['walk', 'day', 'cafe', 'trip']);
+  });
+
+  it('brings forward the templates whose slots match what the user likes', async () => {
+    const user = await h.createUser();
+    await setTaste(user, 'places', 'cafe', 0.8);
+
+    expect((await templateOrder(user))[0]).toBe('cafe');
+  });
+
+  it('only pushes a disliked template back — it stays in the list', async () => {
+    const user = await h.createUser();
+    await setTaste(user, 'topics', 'walk', -0.9);
+
+    const order = await templateOrder(user);
+    expect(order).toHaveLength(4);
+    expect(order[order.length - 1]).toBe('walk');
+  });
+
+  it('lets a liked snap take a slot it would lose without taste', async () => {
+    // 후보 6개 · 슬롯 4개(day). 네 번째 후보(위치 0.6)는 시간만으로는 자리가 없다 — 바다를 좋아하는 사용자에게서만 자리를 얻는다.
+    async function recommend(user: TestUser): Promise<{ chosen: string[]; snaps: string[] }> {
+      const at = new Date('2026-10-01T00:00:00Z');
+      const snaps = await Promise.all(
+        [0, 1, 2, 3, 4, 5].map((i) => createSnap(user, { places: [i === 3 ? '해변' : '주차장'] }, at)),
+      );
+      const { id } = (
+        await h.app.inject({
+          method: 'POST',
+          url: '/movie-recommendations',
+          headers: user.auth,
+          payload: { templateId: 'day', candidates: snaps },
+        })
+      ).json().data;
+      const data = (await h.app.inject({ method: 'GET', url: `/movie-recommendations/${id}`, headers: user.auth })).json()
+        .data;
+      return { chosen: data.slots.map((slot: { videoId: string | null }) => slot.videoId), snaps };
+    }
+
+    const without = await recommend(await createConsentedUser(h));
+    expect(without.chosen).not.toContain(without.snaps[3]);
+
+    const fan = await createConsentedUser(h);
+    await setTaste(fan, 'places', 'sea', 0.9);
+    const withTaste = await recommend(fan);
+    expect(withTaste.chosen).toContain(withTaste.snaps[3]);
+  });
+});

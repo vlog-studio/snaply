@@ -130,3 +130,52 @@ describe('스타일의 경향', () => {
     expect(pickTransitions({ movieId: 'm', stylePreset: '감성', boundaries: [] })).toEqual([]);
   });
 });
+
+/** 취향(PRF-3) — 스타일이 고른 후보 안에서 비중만 바뀐다. */
+describe('taste', () => {
+  function sampleWith(
+    stylePreset: '감성' | '여행' | '일상',
+    options: Pick<Parameters<typeof pickTransitions>[0], 'taste' | 'boundarySuits'>,
+    movies = 400,
+  ): string[] {
+    return Array.from({ length: movies }, (_, m) =>
+      pickTransitions({ movieId: `movie-${m}`, stylePreset, boundaries: sameScene(4), ...options }).slice(1),
+    )
+      .flat()
+      .map((transition) => transition.kind);
+  }
+
+  it('changes nothing when the user has no taste', () => {
+    const boundaries = sameScene(6);
+    const plain = pickTransitions({ movieId: 'm', stylePreset: '감성', boundaries });
+    const neutral = pickTransitions({
+      movieId: 'm',
+      stylePreset: '감성',
+      boundaries,
+      taste: { crossfade: 0, dip: 0 },
+      boundarySuits: boundaries.map(() => new Set<string>()),
+    });
+    expect(neutral).toEqual(plain);
+  });
+
+  it('draws a liked transition more often and a disliked one less, but still draws it', () => {
+    const before = share(sample('감성'), 'dip');
+    const kinds = sampleWith('감성', { taste: { dip: 1, crossfade: -1 } });
+    expect(share(kinds, 'dip')).toBeGreaterThan(before + 0.2);
+    // 비선호는 빼지 않고 뒤로 미룰 뿐이다(PRF-2).
+    expect(share(kinds, 'crossfade')).toBeGreaterThan(0);
+  });
+
+  it('draws more of what suits the boundary’s mood', () => {
+    const before = share(sample('여행'), 'zoompunch');
+    const lively = new Set(['zoompunch', 'flash', 'hardcut']);
+    const kinds = sampleWith('여행', { boundarySuits: [lively, new Set(['zoompunch']), new Set(['zoompunch'])] });
+    expect(share(kinds, 'zoompunch')).toBeGreaterThan(before);
+  });
+
+  it('never leaves the style’s own candidates', () => {
+    // 일상은 같은 장면 안에서 바로 넘기기만 쓴다 — 겹쳐 녹이기를 좋아해도 일상의 성격은 그대로다.
+    const kinds = sampleWith('일상', { taste: { crossfade: 1, hardcut: -1 } });
+    expect(new Set(kinds)).toEqual(new Set(['hardcut']));
+  });
+});

@@ -241,7 +241,7 @@ FE 가 알아야 할 동작:
 [specs/template-and-recommendation.md](./specs/template-and-recommendation.md) §템플릿 ·
 배경: [decisions/template-snap-recommendation.md](./decisions/template-snap-recommendation.md)
 
-- `GET /movie-templates` 🔒 — 내리지 않은 템플릿을 정렬 순서대로.
+- `GET /movie-templates` 🔒 — 내리지 않은 템플릿을 정렬 순서대로. 사용자 취향(PRF-3)이 있으면 슬롯 개념이 취향과 맞는 템플릿이 앞에 온다 — 사용자마다 순서가 다를 수 있고, 취향이 없으면 카탈로그 순서 그대로다.
   - **앱은 응답을 캐시하고, 실패하면 내장 카탈로그로 폴백한다.** 캐시 갱신 판단은 `updatedAt`.
   - 템플릿 `id` 와 슬롯 `id` 는 앱의 내장 폴백 카탈로그와 **같은 값**이어야 한다.
   - `style` 은 무비·편집 요청이 받는 스타일 프리셋(`STYLE_PRESETS`) 이름 그대로. 서버가 새 프리셋을 추가했는데 앱이 모를 수 있으므로 **모르는 프리셋의 템플릿은 앱이 건너뛴다** — 서버는 거르지 않는다.
