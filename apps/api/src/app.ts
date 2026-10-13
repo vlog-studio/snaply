@@ -25,6 +25,7 @@ import { videoAnalysisRoutes } from './routes/video-analyses.js';
 import { editJobRoutes } from './routes/edit-jobs.js';
 import { movieRoutes } from './routes/movies.js';
 import { movieTemplateRoutes } from './routes/movie-templates.js';
+import { interestTopicRoutes } from './routes/interest-topics.js';
 import { movieDraftRoutes } from './routes/movie-drafts.js';
 import { movieRecommendationRoutes } from './routes/movie-recommendations.js';
 import { locationRoutes } from './routes/locations.js';
@@ -182,6 +183,7 @@ export async function buildApp(
   await app.register(editJobRoutes);
   await app.register(movieRoutes);
   await app.register(movieTemplateRoutes);
+  await app.register(interestTopicRoutes);
   await app.register(movieRecommendationRoutes);
   await app.register(movieDraftRoutes);
   await app.register(locationRoutes);

@@ -52,7 +52,8 @@ export async function readTasteProfile(userId: string, now: Date = new Date()): 
     field: row.field as TasteField,
     concept: row.concept,
     source: row.source as TasteEntry['source'],
-    weight: decayedWeight(row.weight, row.updatedAt, now),
+    // 관심사(`explicit`)는 사용자가 고른 것이라 옅어지지 않는다 — 해제할 때 지운다.
+    weight: row.source === 'explicit' ? row.weight : decayedWeight(row.weight, row.updatedAt, now),
     evidence: row.evidence,
   }));
 }

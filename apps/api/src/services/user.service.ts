@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { getPrisma } from '../db/client.js';
 import { captureException } from '../lib/sentry.js';
 import { grantSignupBonus } from './credit.service.js';
+import { knownInterests, requireKnownInterests, syncInterestTastes } from './interest.service.js';
 
 const UNIQUE_VIOLATION = 'P2002';
 
@@ -94,7 +95,7 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
     id: user.id,
     nickname: user.nickname,
     avatarUrl: user.avatarUrl,
-    interests: user.interests,
+    interests: knownInterests(user.interests),
     notificationEnabled: user.notificationEnabled,
     locationNotificationEnabled: user.locationNotificationEnabled,
     movieNotificationEnabled: user.movieNotificationEnabled,
@@ -115,12 +116,29 @@ export interface ProfileUpdate {
 }
 
 export async function updateProfile(userId: string, patch: ProfileUpdate): Promise<UserProfile> {
-  await getPrisma().user.update({
+  // 관심사는 개념 사전의 주제만 받고(ACC-5), 취향 프로필의 관심사 행을 같은 트랜잭션에서 맞춘다(PRF-1 · PRF-4).
+  const interests = patch.interests !== undefined ? requireKnownInterests(patch.interests) : undefined;
+  await getPrisma().$transaction(async (tx) => {
+    await updateUserRow(tx, userId, patch, interests);
+    if (interests !== undefined) await syncInterestTastes(tx, userId, interests);
+  });
+
+  // update 직후 항상 존재하므로 non-null 단언 대신 재조회 결과를 그대로 반환
+  return (await getProfile(userId))!;
+}
+
+async function updateUserRow(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  patch: ProfileUpdate,
+  interests: string[] | undefined,
+): Promise<void> {
+  await tx.user.update({
     where: { id: userId },
     data: {
       ...(patch.nickname !== undefined ? { nickname: patch.nickname } : {}),
       ...(patch.avatarUrl !== undefined ? { avatarUrl: patch.avatarUrl } : {}),
-      ...(patch.interests !== undefined ? { interests: patch.interests } : {}),
+      ...(interests !== undefined ? { interests } : {}),
       ...(patch.notificationEnabled !== undefined
         ? { notificationEnabled: patch.notificationEnabled }
         : {}),
@@ -134,9 +152,6 @@ export async function updateProfile(userId: string, patch: ProfileUpdate): Promi
       ...(patch.quietEnd !== undefined ? { quietEnd: patch.quietEnd } : {}),
     },
   });
-
-  // update 직후 항상 존재하므로 non-null 단언 대신 재조회 결과를 그대로 반환
-  return (await getProfile(userId))!;
 }
 
 /**

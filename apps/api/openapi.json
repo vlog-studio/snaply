@@ -64,7 +64,8 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "고른 관심사 — 개념 사전 `topics` 의 id(`GET /interest-topics`). 사전에 없는 예전 값은 빠진다."
           },
           "notificationEnabled": {
             "type": "boolean",
@@ -1267,6 +1268,23 @@
           "slots"
         ]
       },
+      "InterestTopicInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "개념 id ('cafe' 처럼). `interests` 에 넣는 값"
+          },
+          "label": {
+            "type": "string",
+            "description": "사람에게 보이는 이름 (예: 카페)"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
+      },
       "MovieDraftInput": {
         "type": "object",
         "properties": {
@@ -1527,7 +1545,8 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "고른 관심사 — 개념 사전 `topics` 의 id(`GET /interest-topics`). 사전에 없는 예전 값은 빠진다."
           },
           "notificationEnabled": {
             "type": "boolean",
@@ -2758,6 +2777,24 @@
         ],
         "additionalProperties": false
       },
+      "InterestTopic": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "개념 id ('cafe' 처럼). `interests` 에 넣는 값"
+          },
+          "label": {
+            "type": "string",
+            "description": "사람에게 보이는 이름 (예: 카페)"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "additionalProperties": false
+      },
       "MovieDraft": {
         "type": "object",
         "properties": {
@@ -3289,6 +3326,7 @@
                     "maxLength": 2048
                   },
                   "interests": {
+                    "description": "관심사 — `GET /interest-topics` 의 id 만 받는다(아니면 400). 통째로 바꾼다 — 빈 배열이면 모두 해제.",
                     "maxItems": 20,
                     "type": "array",
                     "items": {
@@ -3357,7 +3395,43 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiError"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "unknown": {
+                          "description": "`UNKNOWN_INTEREST` 일 때 — 고를 수 없는 관심사 값",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "error"
+                  ],
+                  "additionalProperties": false
                 }
               }
             }
@@ -7464,6 +7538,131 @@
                       "required": [
                         "updatedAt",
                         "templates"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "purgeAfter": {
+                          "description": "ACCOUNT_PENDING_DELETION — 이 시각 이전에는 POST /auth/me/restore 로 복구 가능",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/interest-topics": {
+      "get": {
+        "summary": "관심사로 고를 수 있는 주제",
+        "tags": [
+          "auth"
+        ],
+        "description": "개념 사전의 주제(topics)를 사전 순서로 준다(specs ACC-5). 앱은 이 목록을 그대로 보이고,\n고른 `id` 를 `PATCH /auth/me` 의 `interests` 로 보낸다. 고른 관심사는 사용자 취향의 출발점이 되어\n템플릿 순서 · 추천 · AI 편집 초안에 반영된다(PRF-1 · PRF-3).",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "topics": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/InterestTopic"
+                          },
+                          "description": "사전 순서"
+                        }
+                      },
+                      "required": [
+                        "topics"
                       ],
                       "additionalProperties": false
                     }

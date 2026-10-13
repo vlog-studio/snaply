@@ -49,3 +49,9 @@ export const TASTE_MOOD_BOOST = 1.5;
 
 /** 템플릿 순서를 바꾸는 취향 차이의 최소값 — 이보다 작으면 카탈로그 순서를 지킨다. */
 export const TASTE_TEMPLATE_EPSILON = 0.01;
+
+/**
+ * 관심사(`explicit` 행)의 가중치. 사용자가 고른 것이라 시간이 지나도 옅어지지 않고, 해제하면 행을 지운다(결정 §4.2 · §5).
+ * 행동에서 배운 값(`derived`)과 더해 읽는다 — 행동이 반대로 쌓이면 관심사의 무게를 넘을 수 있다.
+ */
+export const TASTE_INTEREST_WEIGHT = 0.5;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AUTHENTICATED_ERROR_RESPONSES, apiErrorSchema, apiSuccess } from './common.js';
+import { AUTHENTICATED_ERROR_RESPONSES, apiErrorSchema, apiErrorWith, apiSuccess } from './common.js';
 import { defineRoute } from './define-route.js';
 
 export const userProfileSchema = z
@@ -8,7 +8,9 @@ export const userProfileSchema = z
     id: z.uuid(),
     nickname: z.string().nullable(),
     avatarUrl: z.string().nullable(),
-    interests: z.array(z.string()),
+    interests: z
+      .array(z.string())
+      .describe('고른 관심사 — 개념 사전 `topics` 의 id(`GET /interest-topics`). 사전에 없는 예전 값은 빠진다.'),
     notificationEnabled: z.boolean().describe('푸시 전체 스위치. 끄면 종류와 무관하게 오지 않는다.'),
     locationNotificationEnabled: z.boolean().describe('위치 도착 알림을 받을지. 새 계정은 꺼짐.'),
     movieNotificationEnabled: z.boolean().describe('무비 완성 알림을 받을지. 새 계정은 꺼짐.'),
@@ -21,7 +23,11 @@ export type UserProfile = z.infer<typeof userProfileSchema>;
 export const patchMeBodySchema = z.object({
   nickname: z.string().min(1).max(50).optional(),
   avatarUrl: z.string().max(2048).nullable().optional(),
-  interests: z.array(z.string().max(30)).max(20).optional(),
+  interests: z
+    .array(z.string().max(30))
+    .max(20)
+    .optional()
+    .describe('관심사 — `GET /interest-topics` 의 id 만 받는다(아니면 400). 통째로 바꾼다 — 빈 배열이면 모두 해제.'),
   notificationEnabled: z
     .boolean()
     .optional()
@@ -78,7 +84,12 @@ export const patchMe = defineRoute({
     body: patchMeBodySchema,
     response: {
       200: apiSuccess(userProfileSchema),
-      400: apiErrorSchema,
+      400: apiErrorWith({
+        unknown: z
+          .array(z.string())
+          .optional()
+          .describe('`UNKNOWN_INTEREST` 일 때 — 고를 수 없는 관심사 값'),
+      }),
       ...AUTHENTICATED_ERROR_RESPONSES,
     },
   },

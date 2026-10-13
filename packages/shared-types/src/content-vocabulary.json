@@ -1,6 +1,6 @@
 {
   "_note": "스냅 내용의 개념 사전 — 분석의 자유 문자열(장소·사물·행동·주제·분위기)을 닫힌 개념으로 바꾼다. 원본은 이 파일 하나이고 API(packages/shared-types/src/content-vocabulary.ts)와 워커(tests/test_content_vocabulary.py)가 같은 규칙으로 검사한다. 정규화·매칭 규칙과 사례는 docs/plans/content-vocabulary.md §3·§4, 온톨로지로서의 쓰임은 docs/decisions/ontology-personalization.md. 개념 · 별칭 · 매칭 규칙을 바꾸면 contentVocabularyVersion 을 올린다(관계는 매칭에 쓰지 않아 올리지 않는다 — 관계를 채점에 쓰기 시작하면 그때부터 함께 올린다) — 추천 재사용 키에 들어가 예전 결과가 돌아오지 않는다.",
-  "contentVocabularyVersion": 1,
+  "contentVocabularyVersion": 2,
 
   "_fieldsNote": "분석 결과의 목록 필드와 같은 이름이다(워커 schema.py LIST_FIELDS). 개념 id 는 필드 안에서만 유일하다 — places 의 car(차)와 objects 의 tea(차)는 다른 개념이고, 매칭도 같은 필드끼리만 한다. matchFields 는 템플릿 슬롯 힌트(match_hints)가 쓰는 필드다. moods 는 슬롯 매칭에 쓰지 않고 분위기 추론에만 쓴다(ontology-personalization §3.2 의 evokes · suits).",
   "fields": ["places", "objects", "actions", "topics", "moods"],
@@ -120,7 +120,17 @@
       "sightseeing": { "label": "관광", "parent": "travel", "aliases": ["투어"] },
       "food_spot": { "label": "맛집", "aliases": ["맛집 탐방", "먹방"] },
       "daily_life": { "label": "일상", "aliases": [] },
-      "family": { "label": "가족", "aliases": ["육아"] }
+      "family": { "label": "가족", "aliases": ["육아"] },
+      "friends": { "label": "친구", "aliases": ["친구들", "모임"] },
+      "date": { "label": "데이트", "aliases": ["연인", "커플"] },
+      "pet": { "label": "반려동물", "aliases": ["강아지", "고양이", "반려견", "반려묘"] },
+      "nature": { "label": "자연", "aliases": ["풍경 감상", "등산", "캠핑"] },
+      "exercise": { "label": "운동", "aliases": ["헬스", "러닝", "산책 운동", "스포츠"] },
+      "cooking": { "label": "요리", "aliases": ["집밥", "홈쿡", "베이킹"] },
+      "shopping": { "label": "쇼핑", "aliases": ["장보기", "구매"] },
+      "art": { "label": "전시 · 예술", "aliases": ["전시 관람", "미술", "예술"] },
+      "performance": { "label": "공연", "aliases": ["콘서트", "페스티벌", "축제", "뮤지컬"] },
+      "study": { "label": "공부 · 작업", "aliases": ["공부", "작업", "독서", "업무"] }
     },
 
     "moods": {
