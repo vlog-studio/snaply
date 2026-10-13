@@ -3361,3 +3361,18 @@ MOV-25 의 넷째 툴(결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-ag
 - **운영 확인** — 배포(CI · Deploy 성공) 뒤 같은 계정 · 스냅 4개로 초안을 다시 만들었다(무비 `무비 10-13 (8)`). 계획은 `agent` · 프롬프트 버전 3 · 툴 `select_cuts` →
   `pick_transitions` → `submit_draft`, 왕복 3 · 8.7초 · 입력 3,951 · 출력 322 토큰, `plan.mood` · `movies.mood` 모두 `calm`. 분위기를 한 번에 골랐다.
 
+## 2026-10-13 (이어서) — 취향이 권하는 스타일(backlog A-13)
+
+PRF-3 의 마지막 반영처(`부분` → `구현됨`). 오너가 고른 방식(가) — 서버가 권하는 스타일을 계약에 더하고 앱이 근거가 없을 때 쓴다.
+
+- **서버** — 프로필(`GET` · `PATCH /auth/me`)에 `recommendedStyle`(`감성` · `여행` · `일상` · `null`). 규칙은 `taste-affinity.ts` 의 `recommendedStyle` —
+  스타일 취향에 좋아하는 분위기가 어울리는 스타일(사전 `suits.styles`)을 `TASTE_RELATION_RATIO`(0.5)만큼 더한 점수의 최고가 `TASTE_STYLE_MIN`(0.15,
+  잠정 — 스타일을 한 번 바꾼 것 0.1 로는 안 되고 그 스타일로 한 편 완성한 0.2 면 된다) 이상일 때만. 계약 · `openapi.json` · `api-spec.md`.
+- **앱** — `entities/movie` 의 `movieStyleQueries.recommended()`(`GET /auth/me` 의 그 필드만, 5분 stale). `useComposeMovie` 가 읽어 자동 편집은
+  최근에 손댄 무비의 스타일 → 권하는 스타일 → `일상`, 직접 고른 스냅의 새 무비는 권하는 스타일 → `일상`(전에는 늘 `일상`). 템플릿은 템플릿의 스타일 그대로.
+  기능 문서 `studio.md` · `snaps.md` · `movie.md`.
+- **검증** — `taste-affinity.test.ts`(근거 없음 · 한 번 바꾼 정도는 null · 완성한 스타일 · 분위기에서 오는 스타일 · 싫은 분위기는 무시), `interests.test.ts`
+  (새 계정 null → 취향이 생기면 `여행`, PATCH 응답도), 앱 `recommended-style.test.ts` · `use-compose-movie.test.ts`(권하는 스타일로 시작 · 자동 편집은 최근
+  무비가 먼저). `npm test -w apps/api` 48파일 808건, `npm run verify:mobile` 194 스위트 1515건(끝에 "Jest did not exit" 경고가 한 번 났고 다시 돌리면 나지 않았다).
+- **하지 않은 것** — 에뮬레이터 확인(새 테스터 빌드가 필요하다). 검수 계정은 완성 무비가 일상 한 편이라 권하는 스타일이 `일상`이거나 없을 것이다.
+
