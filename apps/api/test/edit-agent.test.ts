@@ -187,15 +187,18 @@ describe('runEditAgent', () => {
     const model = scripted([
       () => [pick('moods:nostalgic')],
       () => [select([], 4)],
-      () => [pick('moods:gloomy'), pick('moods:nostalgic')],
+      () => [pick('moods:gloomy'), pick('moods:nostalgic'), pick('moods:calm')],
       () => [submit],
     ]);
 
     const { plan } = await runEditAgent(input(model));
 
-    const [early, , unknown, picked] = model.seen.results;
+    const [early, , unknown, picked, again] = model.seen.results as Array<{ error?: string }>;
     expect(early).toEqual({ error: '먼저 select_cuts 로 컷을 골라라.' });
-    expect(unknown).toEqual({ error: '사전에 없는 분위기다. "moods:id" 로 다시.' });
+    // 틀리면 고를 수 있는 id 를 알려 준다 — 툴 정의에도 같은 목록이 있다.
+    expect(unknown!.error).toContain('moods:cozy');
+    // 한 번 정하면 다시 고르지 않는다 — 왕복을 늘리지 않게.
+    expect(again!.error).toContain('이미 moods:nostalgic');
     // 감성의 후보(crossfade · dip) 중 그리움에 어울리는 것.
     expect(picked).toMatchObject({ mood: 'moods:nostalgic', favored: ['crossfade', 'dip'] });
     // 정한 분위기가 submit 의 값보다 앞선다.

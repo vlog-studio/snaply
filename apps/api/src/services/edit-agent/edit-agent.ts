@@ -13,6 +13,7 @@
 import {
   MOVIE_CLIP_MAX,
   contentConcept,
+  contentConceptIds,
   contentMatchScore,
   normalizeContentValue,
   isContentField,
@@ -163,16 +164,19 @@ const TOOL_ANALYZE: AgentToolSpec = {
   },
 };
 
+/** 고를 수 있는 분위기 — 툴 정의에 목록으로 둔다. 분석에 동의하지 않은 사용자는 스냅에 분위기가 없어 에이전트가 id 를 지어낸다(2026-10-13 운영). */
+const MOOD_CHOICES = contentConceptIds('moods').map((id) => `moods:${id}`);
+
 const TOOL_TRANSITIONS: AgentToolSpec = {
   name: 'pick_transitions',
   description:
-    '무비 전체의 분위기를 정한다. 컷 사이 전환은 스타일 안에서 규칙이 고르고, 이 분위기에 어울리는 전환을 더 자주 쓴다. select_cuts 뒤에 한 번 부른다.',
+    '무비 전체의 분위기를 정한다. 컷 사이 전환은 스타일 안에서 규칙이 고르고, 이 분위기에 어울리는 전환을 더 자주 쓴다. select_cuts 뒤에 한 번만 부른다 — submit_draft 와 같은 차례에 불러도 된다.',
   parameters: {
     type: 'object',
     additionalProperties: false,
     required: ['mood'],
     properties: {
-      mood: { type: 'string', description: '분위기 개념 id(moods:…)' },
+      mood: { type: 'string', enum: MOOD_CHOICES, description: '분위기 개념 id' },
     },
   },
 };
@@ -195,7 +199,7 @@ const TOOL_SUBMIT: AgentToolSpec = {
     properties: {
       intent: { type: 'string', description: '어떤 날인가(짧은 명사구)' },
       flow: { type: 'array', items: { type: 'string' }, description: '장면 흐름(도입 · 본론 · 마무리 순)' },
-      mood: { type: ['string', 'null'], description: '분위기 개념 id(moods:…) 또는 null' },
+      mood: { type: ['string', 'null'], description: `분위기 개념 id(${MOOD_CHOICES.join(' · ')}) 또는 null` },
     },
   },
 };
@@ -350,19 +354,14 @@ export async function runEditAgent(input: AgentInput): Promise<{ result: DraftRe
 
   const transitions = (args: Record<string, unknown>) => {
     if (state.last === null) return { error: '먼저 select_cuts 로 컷을 골라라.' };
+    if (state.mood !== null) return { error: `분위기는 이미 moods:${state.mood} 로 정했다. submit_draft 하라.` };
     const mood = parseMood(args.mood);
-    if (mood === null) return { error: '사전에 없는 분위기다. "moods:id" 로 다시.' };
+    if (mood === null) return { error: `사전에 없는 분위기다. 다음 중 하나로: ${MOOD_CHOICES.join(', ')}` };
     state.mood = mood;
     const suits = transitionsSuiting([mood]);
     const favored = styleTransitionKinds(input.stylePreset).filter((kind) => suits.has(kind));
-    return {
-      mood: `moods:${mood}`,
-      favored: [...new Set(favored)],
-      note:
-        favored.length > 0
-          ? '이 전환을 더 자주 쓴다. 장면이 바뀌는 경계는 스타일 규칙 그대로다.'
-          : '이 스타일에는 이 분위기에 맞는 전환이 없어 스타일 기본대로 간다.',
-    };
+    // 이 스타일에서 바뀌는 것이 없어도 분위기는 남는다 — 무비의 의도이고, 스타일을 바꾸면 그때 따른다. 다시 고르게 하지 않는다.
+    return { mood: `moods:${mood}`, favored: [...new Set(favored)], note: '정했다. submit_draft 하라.' };
   };
 
   const run = async (call: AgentToolCall): Promise<unknown> => {
