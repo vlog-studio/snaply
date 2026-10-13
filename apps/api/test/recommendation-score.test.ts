@@ -195,3 +195,89 @@ describe('parseMatchHints', () => {
     expect(parseMatchHints({ temporalPrior: -2 }).temporalPrior).toBe(0);
   });
 });
+
+/**
+ * 지금 키워드 매칭(양방향 부분 문자열)의 오탐 · 미탐을 **현행 결과로** 고정한다.
+ *
+ * 사례는 docs/plans/content-vocabulary.md §1 의 표다(오탐 16 · 미탐 12 · 유지 3). 개념 사전을 들이는
+ * 변경에서 이 기대값이 뒤집히는 것이 그 변경의 증거다 — 어느 사례가 뒤집혔는지 diff 로 보이도록
+ * `it.fails` 로 두지 않는다. 사례마다 사전 도입 뒤의 기대값(`then`)과 힌트가 옮겨 갈 개념 id 를 함께 적었다.
+ */
+describe('keyword matching — current substring rule', () => {
+  type Field = 'places' | 'objects' | 'actions' | 'topics';
+  interface Case {
+    field: Field;
+    /** 지금 시드에 있는 힌트. */
+    hint: string;
+    /** 사전 도입 뒤 그 힌트가 옮겨 갈 개념 id (계획 §2.1). */
+    concept: string;
+    value: string;
+    /** 1 = 키워드 몫이 맞음, 0 = 맞지 않음. */
+    now: 0 | 1;
+    then: 0 | 1;
+  }
+
+  const falsePositives: Case[] = [
+    { field: 'places', hint: '집', concept: 'home', value: '맛집', now: 1, then: 0 },
+    { field: 'places', hint: '강', concept: 'river', value: '강의실', now: 1, then: 0 },
+    { field: 'places', hint: '역', concept: 'station', value: '역사 박물관', now: 1, then: 0 },
+    { field: 'places', hint: '산', concept: 'mountain', value: '공원 산책로', now: 1, then: 0 },
+    { field: 'places', hint: '차', concept: 'car', value: '주차장', now: 1, then: 0 },
+    { field: 'objects', hint: '잔', concept: 'cup', value: '잔디', now: 1, then: 0 },
+    { field: 'objects', hint: '손', concept: 'hand', value: '손님', now: 1, then: 0 },
+    { field: 'objects', hint: '담', concept: 'wall', value: '담요', now: 1, then: 0 },
+    { field: 'objects', hint: '문', concept: 'door', value: '신문', now: 1, then: 0 },
+    { field: 'objects', hint: '창', concept: 'window', value: '창고', now: 1, then: 0 },
+    { field: 'objects', hint: '나무', concept: 'tree', value: '나무 테이블', now: 1, then: 0 },
+    { field: 'actions', hint: '들', concept: 'hold', value: '친구들과 대화하기', now: 1, then: 0 },
+    { field: 'actions', hint: '타', concept: 'ride', value: '기타 연주하기', now: 1, then: 0 },
+    { field: 'actions', hint: '보', concept: 'look_around', value: '보고서 작성하기', now: 1, then: 0 },
+    { field: 'actions', hint: '보', concept: 'look_around', value: '스마트폰 보기', now: 1, then: 0 },
+    { field: 'actions', hint: '돌아', concept: 'walk', value: '주변 돌아보기', now: 1, then: 0 },
+  ];
+
+  const misses: Case[] = [
+    { field: 'objects', hint: '커피', concept: 'coffee', value: '아메리카노', now: 0, then: 1 },
+    { field: 'objects', hint: '커피', concept: 'coffee', value: '라떼', now: 0, then: 1 },
+    { field: 'objects', hint: '디저트', concept: 'dessert', value: '마카롱', now: 0, then: 1 },
+    { field: 'places', hint: '카페', concept: 'cafe', value: '커피숍', now: 0, then: 1 },
+    { field: 'places', hint: '바다', concept: 'sea', value: '바닷가', now: 0, then: 1 },
+    { field: 'places', hint: '바다', concept: 'sea', value: '해변', now: 0, then: 1 },
+    { field: 'places', hint: '식당', concept: 'restaurant', value: '음식점', now: 0, then: 1 },
+    { field: 'places', hint: '가게', concept: 'shop', value: '편의점', now: 0, then: 1 },
+    { field: 'places', hint: '가게', concept: 'shop', value: '빵집', now: 0, then: 1 },
+    { field: 'places', hint: '풍경', concept: 'scenery', value: '야경', now: 0, then: 1 },
+    { field: 'actions', hint: '걷', concept: 'walk', value: '산책하기', now: 0, then: 1 },
+    { field: 'actions', hint: '먹', concept: 'eat', value: '식사하기', now: 0, then: 1 },
+  ];
+
+  const kept: Case[] = [
+    { field: 'places', hint: '골목', concept: 'alley', value: '좁은 골목길', now: 1, then: 1 },
+    { field: 'objects', hint: '커피', concept: 'coffee', value: '아이스 커피', now: 1, then: 1 },
+    { field: 'actions', hint: '마시', concept: 'drink', value: '커피 마시기', now: 1, then: 1 },
+  ];
+
+  /** `scorePair` 의 키워드 몫만 꺼낸다 — 같은 슬롯에서 값이 없는 후보와의 차를 가중치로 나눈다. */
+  function keywordShare(field: Field, hint: string, value: string): number {
+    const slot: ScoringSlot = { slotId: 's', position: 0, hints: { [field]: [hint] } };
+    const withValue = scorePair(slot, 1, candidate('x', 0, { [field]: [value] }), 1);
+    const without = scorePair(slot, 1, candidate('y', 0), 1);
+    return Math.round((withValue - without) / SCORE_WEIGHTS.keyword);
+  }
+
+  it('counts the cases of the plan table', () => {
+    expect([falsePositives.length, misses.length, kept.length]).toEqual([16, 12, 3]);
+  });
+
+  it.each(falsePositives)('false positive: $field "$hint" ← "$value"', (c) => {
+    expect(keywordShare(c.field, c.hint, c.value)).toBe(c.now);
+  });
+
+  it.each(misses)('miss: $field "$hint" ← "$value"', (c) => {
+    expect(keywordShare(c.field, c.hint, c.value)).toBe(c.now);
+  });
+
+  it.each(kept)('kept: $field "$hint" ← "$value"', (c) => {
+    expect(keywordShare(c.field, c.hint, c.value)).toBe(c.now);
+  });
+});
