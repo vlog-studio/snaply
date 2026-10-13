@@ -3376,3 +3376,16 @@ PRF-3 의 마지막 반영처(`부분` → `구현됨`). 오너가 고른 방식
   무비가 먼저). `npm test -w apps/api` 48파일 808건, `npm run verify:mobile` 194 스위트 1515건(끝에 "Jest did not exit" 경고가 한 번 났고 다시 돌리면 나지 않았다).
 - **하지 않은 것** — 에뮬레이터 확인(새 테스터 빌드가 필요하다). 검수 계정은 완성 무비가 일상 한 편이라 권하는 스타일이 `일상`이거나 없을 것이다.
 
+## 2026-10-13 (이어서) — 인스타그램 삭제 콜백이 큰 본문에 멈추지 않는다(backlog E-31 닫음)
+
+10-11 ~ 10-12 main 변경 리뷰에서 찾았다. 인증 없이 열린 `POST /sns/instagram/deauthorize` · `/data-deletion` 이 `signed_request` 를
+꺼내는 multipart 정규식(`name="signed_request"\r?\n(?:[^\r\n]*\r?\n)*?\r?\n…`)은 `name="signed_request"` 를 되풀이한 본문에서 시간이
+본문 크기의 제곱으로 늘었다 — 서명을 확인하기 **전에** 돈다. node 로 재면 22KB 25ms · 44KB 101ms · 88KB 402ms 이고, Fastify 기본 상한
+1MiB 를 채운 요청 한 건이면 이벤트 루프가 약 50초 멈춘다. 공모전 서버는 공개 주소라 누구든 보낼 수 있다.
+
+- **고침** — 두 라우트에 본문 상한 16KB(`bodyLimit`, 넘으면 읽기 전에 413 — Meta 가 보내는 것은 수백 바이트의 `signed_request` 하나다)를
+  걸고, multipart 는 정규식 대신 `indexOf` 로 앞에서부터 한 번만 훑는다(파트 머리 뒤 첫 빈 줄의 다음 줄이 값). 같은 본문이 88KB 에 0.2ms,
+  4MB 에 4.6ms 다(JSON 정규식 · urlencoded 파싱 포함). [api-spec.md](./api-spec.md)의 "urlencoded 로 온다"를 받는 형식 넷과 상한으로 고쳤다.
+- **검증** — `npm test -w apps/api` 48개 파일 811건 · typecheck · lint. 테스트는 로컬 `apps/api/.env` 의 `OPENAI_API_KEY` 를 비우고 돌렸다 —
+  비우지 않으면 편집 에이전트가 실제 모델을 불러 `movie-drafts.test.ts` 의 제안 순서 한 건이 실패한다(CI 에는 키가 없어 통과한다). 새 테스트 셋(파트 머리에 줄이 더 있는 multipart · 큰 본문은 413 이고 아무것도 지우지 않음 ·
+  한도 안에서 이름만 되풀이한 본문은 400) 중 413 사례는 수정 전 실패(옛 코드는 66KB 를 정규식으로 다 읽고 400).

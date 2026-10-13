@@ -855,6 +855,58 @@ describe('인스타그램 연결 해제 · 데이터 삭제 요청 (SNS-9)', () 
     expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
   });
 
+  it('multipart 파트 머리에 줄이 더 있어도 값을 꺼낸다', async () => {
+    const user = await connectedUser(BIG_ID);
+    const boundary = '----meta';
+    const payload =
+      `--${boundary}\r\nContent-Disposition: form-data; name="signed_request"\r\n` +
+      `Content-Type: text/plain; charset=utf-8\r\n\r\n` +
+      `${signedRequest(BIG_ID)}\r\n--${boundary}--\r\n`;
+
+    const res = await h.app.inject({
+      method: 'POST',
+      url: '/sns/instagram/deauthorize',
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+      payload,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  // 인증 없는 주소라 서명을 확인하기 전에 본문을 읽는다. `name="signed_request"` 를 되풀이한 본문에서 옛 정규식은
+  // 본문 크기의 제곱만큼 걸려 1MB 한 건에 서버가 약 50초 멈췄다(2026-10-13 리뷰). 큰 본문은 읽기 전에 막는다.
+  it('큰 본문은 서명을 보기 전에 413 으로 막고 아무것도 지우지 않는다', async () => {
+    const user = await connectedUser(BIG_ID);
+    const payload = 'name="signed_request"\n'.repeat(3000); // 약 66KB
+
+    for (const url of ['/sns/instagram/deauthorize', '/sns/instagram/data-deletion']) {
+      const res = await h.app.inject({
+        method: 'POST',
+        url,
+        headers: { 'content-type': 'text/plain' },
+        payload,
+      });
+      expect(res.statusCode).toBe(413);
+    }
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it('한도 안에서 필드 이름만 되풀이한 본문은 400 이다', async () => {
+    const payload = 'name="signed_request"\n'.repeat(600); // 약 13KB
+
+    const started = performance.now();
+    const res = await h.app.inject({
+      method: 'POST',
+      url: '/sns/instagram/deauthorize',
+      headers: { 'content-type': 'text/plain' },
+      payload,
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
   it('모르는 사용자여도 확인 코드를 돌려준다(이미 지운 경우)', async () => {
     const res = await post('/sns/instagram/data-deletion', signedRequest('999'));
 
