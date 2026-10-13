@@ -319,22 +319,15 @@ e2e 실검증.
 `https://<project-ref>.supabase.co/auth/v1/callback`·카카오 로그인 ON·동의항목) → Supabase Kakao 프로바이더
 활성화 → 앱 버튼 추가(#32 참고) → 개발 빌드에서 실제 로그인 확인 → 스펙 ACC-1 갱신.
 
-### A-9. 관심사 부활 — 앱은 아직 `준비 중`
+### A-9. 관심사 — 구현됨, 에뮬레이터 · 기기 확인 남음
 
-관심사는 온톨로지의 `topics` 개념에서 고르고, 사용자 취향의 출발점이 된다(2026-10-13 결정 —
-[decisions/ontology-personalization.md](./decisions/ontology-personalization.md), 스펙 ACC-5 · PRF-1 · PRF-3). 그 전까지의 경위(2026-09-26 보류 ·
-2026-10-12 `준비 중` 유지)는 [progress.md](./progress.md) 2026-09-26 과 ACC-5 에 있다.
+관심사는 개념 사전의 `topics` 에서 고르고 사용자 취향의 출발점이 된다(2026-10-13 결정 —
+[decisions/ontology-personalization.md](./decisions/ontology-personalization.md), 스펙 ACC-5 · PRF-1 · PRF-3). 2026-10-13 서버(주제 18개 ·
+`GET /interest-topics` · `interests` 검증 · 취향의 관심사 행)와 앱(나 탭 행 · `/settings/interests`)을 넣었다(progress 2026-10-13 "관심사").
 
-**왜 막혀 있는지**: 개념 사전은 2026-10-13 확정했지만(A-13 1단계) `topics` 가 8개뿐이라 관심사로 고르기에 모자란다.
-
-**완료 조건** (스펙 ACC-5):
-
-- [ ] `topics` 를 관심사로 고를 만큼 늘린다 — 사전 확정(A-13 1단계)에서는 늘리지 않았다. 착수 계획
-      [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 3단계(관심사)에서 한다. 늘리면 `contentVocabularyVersion` 을 올린다
-- [ ] `PATCH /auth/me` 의 `interests` 를 사전의 `topics` id 로 검증한다 — 계약 `packages/shared-types/src/contract/auth.ts` · `openapi.json` · `docs/api-spec.md`.
-      이미 저장된 자유 문자열을 어떻게 옮길지(버릴지 · 사전으로 정규화할지) 함께 정한다
-- [ ] 앱 나 탭의 `준비 중` 을 걷고 선택 화면을 만든다 — 기능 문서 `apps/mobile/docs/features/me.md`
-- [ ] 관심사가 취향 프로필(`user_tastes`, A-13 4단계)의 `explicit` 행이 된다 — 고르면 +, 해제하면 그 행을 지운다(PRF-4)
+- [ ] **앱 확인** — 새 테스터 빌드로 에뮬레이터에서 관심사를 고르고 해제해, 나 탭 행의 읽어 주기와 템플릿 순서(카페를 고르면 `카페 한 곳` 이
+      스튜디오 카드의 동점 처리에서 앞선다)를 본다. 예전 빌드가 기기에 남긴 관심사 태그는 옮기지 않았다 — 필요해지면 그때 정한다.
+      **완료 조건**: 에뮬레이터에서 고르기 · 해제 · 실패 문구를 보면 닫는다
 
 ### A-11. AI 편집 초안 — 구현됨, 문턱값 실측 남음
 
@@ -790,6 +783,7 @@ A-7 의 비트 싱크가 들어오면 컷 지점까지 달라져 피해가 커�
 - **A-11** 실기기 확인(초안 → 구간·전환 수정 → 생성한 결과물이 편집 화면과 같다) — 2026-10-01 → progress 2026-10-01 "자동 편집 실기기 확인"
 - **A-11** 초안의 vision 분석 — 2026-10-13, 에이전트의 `analyze_snaps` 로 붙었다 → progress 2026-10-13 "AI 편집 에이전트"
 - **A-12** 에이전트(6단계 — 툴 · 검토 · 재시도 · 계획 저장 · 폴백 · 시간 상한)와 운영 첫 확인(실제 모델로 `agent` 모드) — 2026-10-13 → progress 2026-10-13 "AI 편집 에이전트" · "에이전트 운영 확인"
+- **A-9** 관심사(서버 — 주제 18개 · `GET /interest-topics` · `interests` 검증 · 취향의 관심사 행, 앱 — 나 탭 행 · 관심사 화면) — 2026-10-13 → progress 2026-10-13 "관심사". 앱 확인은 A-9 에 남김
 - **A-13** 개념 사전 확정(1단계 — 현행 고정 테스트 · `content-vocabulary.json` 과 `moods` · 개념 매칭 · 힌트 마이그레이션 · 재사용 키의 사전 버전) — 2026-10-13 → progress 2026-10-13 "개념 사전 확정"
 - **A-13** 관계 `typicallyAt` · `evokes` · `suits` 와 정합성 테스트(2단계) — 2026-10-13 → progress 2026-10-13 "개념 사이의 관계"
 - **A-13** 취향 프로필(4단계 — `user_tastes` · 신호 수집 · 갱신 · 상위 전파 · 시간 감쇠 · 동의 철회 · 계정 삭제 파기, 개인정보처리방침 고지) — 2026-10-13 → progress 2026-10-13 "취향 프로필". 관심사 해제의 파기는 A-9
