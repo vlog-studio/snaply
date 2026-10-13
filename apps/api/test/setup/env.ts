@@ -60,3 +60,8 @@ process.env.REVENUECAT_WEBHOOK_AUTH_TOKEN = 'test-webhook-token';
 // 가입 보너스도 호출 시점에 읽힌다. 개인 .env 가 로컬 export 용으로 값을 켜두면
 // (README 가 권하는 설정) 크레딧 잔액 단언이 전부 어긋난다 — 0 으로 고정한다.
 process.env.CREDIT_SIGNUP_BONUS = '0';
+
+// 편집 에이전트(services/edit-agent)는 OpenAI 키가 있으면 호출 시점에 실제 모델을 부른다 — 실행마다 과금되고 제안이
+// 그때그때 달라진다. 지우면 Prisma 의 dotenv 가 개인 .env 값으로 되살리므로(hermetic.ts) 빈 값으로 박아 둔다.
+// 테스트는 각본 모델을 끼운다(setEditAgentModelForTests).
+process.env.OPENAI_API_KEY = '';

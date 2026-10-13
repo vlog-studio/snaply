@@ -3387,5 +3387,18 @@ PRF-3 의 마지막 반영처(`부분` → `구현됨`). 오너가 고른 방식
   걸고, multipart 는 정규식 대신 `indexOf` 로 앞에서부터 한 번만 훑는다(파트 머리 뒤 첫 빈 줄의 다음 줄이 값). 같은 본문이 88KB 에 0.2ms,
   4MB 에 4.6ms 다(JSON 정규식 · urlencoded 파싱 포함). [api-spec.md](./api-spec.md)의 "urlencoded 로 온다"를 받는 형식 넷과 상한으로 고쳤다.
 - **검증** — `npm test -w apps/api` 48개 파일 811건 · typecheck · lint. 테스트는 로컬 `apps/api/.env` 의 `OPENAI_API_KEY` 를 비우고 돌렸다 —
-  비우지 않으면 편집 에이전트가 실제 모델을 불러 `movie-drafts.test.ts` 의 제안 순서 한 건이 실패한다(CI 에는 키가 없어 통과한다). 새 테스트 셋(파트 머리에 줄이 더 있는 multipart · 큰 본문은 413 이고 아무것도 지우지 않음 ·
+  비우지 않으면 편집 에이전트가 실제 모델을 불러 `movie-drafts.test.ts` 의 제안 순서 한 건이 실패한다(CI 에는 키가 없어 통과한다 — 바로 아래 E-32 로 고쳤다). 새 테스트 셋(파트 머리에 줄이 더 있는 multipart · 큰 본문은 413 이고 아무것도 지우지 않음 ·
   한도 안에서 이름만 되풀이한 본문은 400) 중 413 사례는 수정 전 실패(옛 코드는 66KB 를 정규식으로 다 읽고 400).
+
+## 2026-10-13 (이어서) — API 테스트가 개인 OpenAI 키로 실제 모델을 부르지 않는다(backlog E-32 닫음)
+
+E-31 을 검증하다 찾았다. 편집 에이전트(`services/edit-agent/agent-runtime.ts`)는 `OPENAI_API_KEY` 가 있으면 **호출 시점에** 실제 모델을
+부르는데, 테스트 설정이 이 키를 비우지 않았다. 그래서 키를 넣어 둔 개인 `apps/api/.env` 로 `npm test -w apps/api` 를 돌리면 초안 테스트가
+회사 키로 실제 모델을 불렀다 — 실행마다 과금되고(`movie-drafts.test.ts` 한 파일에 103초), 제안 순서가 그때그때 달라 한 건이 실패했다.
+CI 에는 키가 없어 통과했다.
+
+- **고침** — `test/setup/env.ts` 가 `OPENAI_API_KEY` 를 빈 값으로 박는다. 다른 외부 키처럼 지우기만 하면(`hermetic.ts`) `@prisma/client` 의
+  dotenv 가 개인 `.env` 값으로 되살린다 — 다른 키는 설정을 한 번 읽어 두지만 에이전트는 부를 때마다 환경을 읽는다. 빈 값은 dotenv 가 덮지 않는다
+  (`CREDIT_SIGNUP_BONUS` 와 같은 방식). 테스트는 지금처럼 각본 모델을 끼운다.
+- **검증** — `harness-safety.test.ts` 에 "편집 에이전트는 실제 모델을 부르지 않는다"(Prisma 를 불러온 뒤에도 키가 비어 있다)를 더했고 수정 전
+  실패. 개인 키가 든 `.env` 그대로 `npm test -w apps/api` 48개 파일 812건 통과(37초) · typecheck · lint.
