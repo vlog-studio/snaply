@@ -3346,3 +3346,16 @@ MOV-25 의 넷째 툴(결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-ag
   `transition-director.test.ts`(분위기가 dip 비중을 올리고 후보 밖 flash 는 없음 · 비우면 그대로), `movie-transitions.test.ts`(초안의 분위기가 무비에 남고
   생성 · 재저장의 AI 경계가 따름 · 맞는 초안이 없거나 사람이 짠 무비거나 사전 밖이면 없음), `npm test -w apps/api` 48파일 804건, `npm run lint -w apps/api`.
 - **하지 않은 것** — 운영에서 에이전트가 실제로 `pick_transitions` 를 부르는지(다음 초안부터 `movie_drafts.plan->'steps'` 로 본다), `pick_music` · `pick_style`(A-12).
+
+## 2026-10-13 (이어서) — 분위기 id 를 툴에 목록으로(backlog A-12)
+
+위 항목을 배포(CI · Deploy 성공)하고 에뮬레이터 검수 계정(분석 미동의 · 일상 · 스냅 4개)으로 초안을 만들었다. 무비 `무비 10-13 (7)` 이 열렸고, 오너가 운영 DB 에서
+본 계획은 `agent` · 툴 `select_cuts` → `pick_transitions` ×4 → `submit_draft`, 왕복 6 · 15.8초 · 입력 9,055 · 출력 774 토큰(전 버전 초안은 왕복 2 · 약 5초 ·
+약 1,800 토큰). `pick_transitions` 의 앞 세 번은 `style:일상` · `moods:casual` · `moods:일상` 으로 거절됐고 네 번째 `moods:cozy` 가 들어가
+`plan.mood` · `movies.mood` 모두 `cozy` — 저장 경로는 끝까지 동작했다. 원인은 분석에 동의하지 않은 계정은 스냅에 분위기가 없어 에이전트가 id 를 본 적이
+없다는 것이다.
+
+- **고침** — 분위기 id 를 `pick_transitions` 의 `enum`(strict 스키마라 모델이 목록 밖을 내지 못한다)과 `submit_draft` 의 설명에 넣었다. 툴은 한 번만 받고(두 번째는
+  거절), 스타일에서 바뀌는 전환이 없어도 "정했다"로만 답한다(다시 고르게 하지 않는다). 틀린 값의 거절에도 목록을 붙인다. 프롬프트 버전 3.
+- **검증** — `edit-agent.test.ts`(틀린 값의 거절에 목록 · 두 번째 호출 거절), `npm test -w apps/api` 48파일 804건, lint.
+
