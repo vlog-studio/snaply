@@ -3358,4 +3358,6 @@ MOV-25 의 넷째 툴(결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-ag
 - **고침** — 분위기 id 를 `pick_transitions` 의 `enum`(strict 스키마라 모델이 목록 밖을 내지 못한다)과 `submit_draft` 의 설명에 넣었다. 툴은 한 번만 받고(두 번째는
   거절), 스타일에서 바뀌는 전환이 없어도 "정했다"로만 답한다(다시 고르게 하지 않는다). 틀린 값의 거절에도 목록을 붙인다. 프롬프트 버전 3.
 - **검증** — `edit-agent.test.ts`(틀린 값의 거절에 목록 · 두 번째 호출 거절), `npm test -w apps/api` 48파일 804건, lint.
+- **운영 확인** — 배포(CI · Deploy 성공) 뒤 같은 계정 · 스냅 4개로 초안을 다시 만들었다(무비 `무비 10-13 (8)`). 계획은 `agent` · 프롬프트 버전 3 · 툴 `select_cuts` →
+  `pick_transitions` → `submit_draft`, 왕복 3 · 8.7초 · 입력 3,951 · 출력 322 토큰, `plan.mood` · `movies.mood` 모두 `calm`. 분위기를 한 번에 골랐다.
 
