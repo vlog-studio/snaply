@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-import { AUTHENTICATED_ERROR_RESPONSES, apiErrorWith, apiSuccess } from './common.js';
+import {
+  AUTHENTICATED_ERROR_RESPONSES,
+  apiErrorWith,
+  apiSuccess,
+  paymentRequiredErrorSchema,
+} from './common.js';
 import { defineRoute } from './define-route.js';
 import { stylePresetSchema } from './vocab.js';
 
@@ -61,6 +66,12 @@ export const movieDraftSchema = z
       .describe(
         '넘긴 스냅 중 서버가 더는 쓸 수 없는 자기 스냅 — 지워졌거나(다른 기기에서 지움 · 보관 기간 만료) 준비되지 않았다. 나머지로 초안을 만들고, 이 스냅은 `cuts` 에도 `excluded` 에도 넣지 않는다(다시 넣을 수 없으므로). 넘긴 스냅이 모두 이렇다면 `cuts` 가 비어 있다. 남의 id 는 여기 오지 않고 요청 전체가 403 이다.',
       ),
+    chargedCredits: z
+      .int()
+      .min(0)
+      .describe(
+        '이 초안에 쓴 크레딧(CRD-9). 무료 횟수 안이거나, 에이전트가 끝까지 만들지 못했거나(규칙만의 초안), 전에 만든 초안을 돌려준 경우 0 이다.',
+      ),
   })
   .meta({ id: 'MovieDraft' });
 export type MovieDraft = z.infer<typeof movieDraftSchema>;
@@ -77,6 +88,34 @@ export const requestMovieDraft = defineRoute({
     response: {
       200: apiSuccess(movieDraftSchema),
       400: draftSnapLimitErrorSchema,
+      // 무료 횟수를 넘겼고 잔액이 모자라면 `INSUFFICIENT_CREDITS` + `required` · `balance`(CRD-9). 초안은 시작하지 않는다.
+      402: paymentRequiredErrorSchema,
+      ...AUTHENTICATED_ERROR_RESPONSES,
+    },
+  },
+});
+
+/** 다음 초안이 무료인지, 아니면 얼마인지(specs CRD-9) — 앱이 요청 전에 보인다. */
+export const movieDraftAllowanceSchema = z
+  .object({
+    agent: z
+      .boolean()
+      .describe('AI 에이전트가 초안을 만드는가. 아니면(서버에 모델이 없다) 초안은 늘 무료이고 횟수도 세지 않는다'),
+    freeLimit: z.int().min(0).describe('최근 24시간의 무료 횟수'),
+    freeRemaining: z.int().min(0).describe('그중 남은 횟수'),
+    cost: z.int().min(0).describe('무료 횟수를 넘긴 초안 1번의 크레딧'),
+    nextCost: z.int().min(0).describe('다음 초안에 쓸 크레딧 — 무료면 0'),
+    dailyRemaining: z.int().min(0).describe('최근 24시간 상한(유료 포함) 중 남은 횟수'),
+  })
+  .meta({ id: 'MovieDraftAllowance' });
+export type MovieDraftAllowance = z.infer<typeof movieDraftAllowanceSchema>;
+
+export const getMovieDraftAllowance = defineRoute({
+  method: 'GET',
+  path: '/movie-drafts/allowance',
+  schema: {
+    response: {
+      200: apiSuccess(movieDraftAllowanceSchema),
       ...AUTHENTICATED_ERROR_RESPONSES,
     },
   },

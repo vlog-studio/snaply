@@ -16,6 +16,14 @@
 /** Movie export 1회의 차감량. 확정값 — 기본 단위 그 자체다. */
 export const MOVIE_EXPORT_COST = 100;
 
+/**
+ * AI 편집 초안(specs CRD-9) — 최근 24시간에 이만큼은 무료이고, 그 뒤로는 1번에 `EDIT_DRAFT_COST`.
+ * 에이전트가 끝까지 만든 초안만 센다(폴백 · 재사용 · 에이전트를 못 쓰는 규칙 초안은 무료이고 세지 않는다).
+ * 근거는 decisions/ai-edit-agent.md §5 — 20 은 보상형 광고 1번(ADR-1)과 같다.
+ */
+export const FREE_EDIT_DRAFTS_PER_DAY = 3;
+export const EDIT_DRAFT_COST = 20;
+
 export interface CreditPack {
   /** 스토어 상품 ID. 양 스토어에 같은 ID로 등록한다. */
   productId: string;

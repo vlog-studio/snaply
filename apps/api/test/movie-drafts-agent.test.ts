@@ -12,6 +12,7 @@ import { scripted } from './helpers/scripted-agent.js';
 import { SIGNALS_VERSION } from '../src/services/edit-director.js';
 import { ANALYSIS_VERSION } from '../src/services/video-analysis.service.js';
 import { setEditAgentModelForTests } from '../src/services/edit-agent/agent-runtime.js';
+import { EDIT_DRAFT_COST, FREE_EDIT_DRAFTS_PER_DAY } from '../src/services/billing/credit-policy.js';
 
 let h: Harness;
 
@@ -88,7 +89,7 @@ const select = (focus: string[], maxCuts: number | null) => ({ name: 'select_cut
 const submit = { name: 'submit_draft', args: { intent: '카페에 들른 하루', flow: ['도입', '카페', '마무리'], mood: null } };
 
 describe('POST /movie-drafts — agent', () => {
-  it('makes the draft with the agent, in the same response shape, and keeps the plan', async () => {
+  it('makes the draft with the agent and keeps the plan', async () => {
     const user = await createConsentedUser(h);
     const ids = [
       await createSnap(user, 0, ['거리']),
@@ -103,7 +104,8 @@ describe('POST /movie-drafts — agent', () => {
 
     expect(res.statusCode).toBe(200);
     const data = res.json().data;
-    expect(Object.keys(data).sort()).toEqual(['cuts', 'excluded', 'stylePreset', 'unavailable']);
+    expect(Object.keys(data).sort()).toEqual(['chargedCredits', 'cuts', 'excluded', 'stylePreset', 'unavailable']);
+    expect(data.chargedCredits).toBe(0); // 첫 초안은 무료다(CRD-9)
     expect(data.cuts).toHaveLength(3);
     expect(data.cuts.map((cut: { videoId: string }) => cut.videoId)).toContain(ids[1]);
     const row = await h.prisma.movieDraft.findFirstOrThrow({ where: { userId: user.id } });
@@ -171,5 +173,110 @@ describe('POST /movie-drafts — agent', () => {
     expect(res.statusCode).toBe(200);
     const row = await h.prisma.movieDraft.findFirstOrThrow({ where: { userId: user.id } });
     expect(row).toMatchObject({ mode: 'rules', plan: null });
+  });
+});
+
+/** 원장의 합계 — 잔액. */
+async function balanceOf(user: TestUser): Promise<number> {
+  const agg = await h.prisma.creditLedger.aggregate({ _sum: { delta: true }, where: { userId: user.id } });
+  return agg._sum.delta ?? 0;
+}
+
+async function grant(user: TestUser, credits: number) {
+  await h.prisma.creditLedger.create({ data: { userId: user.id, delta: credits, reason: 'promo' } });
+}
+
+function allowance(user: TestUser) {
+  return h.app.inject({ method: 'GET', url: '/movie-drafts/allowance', headers: user.auth });
+}
+
+/** 매번 다른 스냅 집합의 초안 — 재사용되지 않게. */
+async function freshDraft(user: TestUser, minute: number) {
+  return requestDraft(user, [await createSnap(user, minute), await createSnap(user, minute + 5)]);
+}
+
+describe('POST /movie-drafts — charge (CRD-9)', () => {
+  it('makes the first agent drafts of the day free, then charges each one', async () => {
+    const user = await h.createUser();
+    await grant(user, 100);
+    setEditAgentModelForTests(() => scripted([() => [submit]]));
+
+    for (let i = 0; i < FREE_EDIT_DRAFTS_PER_DAY; i += 1) {
+      const res = await freshDraft(user, i * 10);
+      expect(res.json().data.chargedCredits).toBe(0);
+    }
+    expect((await allowance(user)).json().data).toMatchObject({ freeRemaining: 0, nextCost: EDIT_DRAFT_COST });
+
+    const paid = await freshDraft(user, 100);
+
+    expect(paid.json().data.chargedCredits).toBe(EDIT_DRAFT_COST);
+    expect(await balanceOf(user)).toBe(100 - EDIT_DRAFT_COST);
+    const row = await h.prisma.movieDraft.findFirstOrThrow({ where: { userId: user.id }, orderBy: { createdAt: 'desc' } });
+    expect(row.chargedCredits).toBe(EDIT_DRAFT_COST);
+  });
+
+  it('refuses with 402 before calling the agent when the balance is short', async () => {
+    const user = await h.createUser();
+    let started = 0;
+    setEditAgentModelForTests(() => {
+      const model = scripted([() => [submit]]);
+      const start = model.start.bind(model);
+      model.start = (message) => {
+        started += 1;
+        return start(message);
+      };
+      return model;
+    });
+    for (let i = 0; i < FREE_EDIT_DRAFTS_PER_DAY; i += 1) await freshDraft(user, i * 10);
+    const before = started;
+
+    const res = await freshDraft(user, 100);
+
+    expect(res.statusCode).toBe(402);
+    expect(res.json().error).toMatchObject({ code: 'INSUFFICIENT_CREDITS', required: EDIT_DRAFT_COST, balance: 0 });
+    expect(started).toBe(before);
+    expect(await h.prisma.movieDraft.count({ where: { userId: user.id } })).toBe(FREE_EDIT_DRAFTS_PER_DAY);
+  });
+
+  it('gives the credits back when the agent fails and the draft comes from the rules', async () => {
+    const user = await h.createUser();
+    await grant(user, 100);
+    setEditAgentModelForTests(() => scripted([() => [submit]]));
+    for (let i = 0; i < FREE_EDIT_DRAFTS_PER_DAY; i += 1) await freshDraft(user, i * 10);
+    setEditAgentModelForTests(() => scripted([() => Promise.reject(new Error('model down'))]));
+
+    const res = await freshDraft(user, 100);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.chargedCredits).toBe(0);
+    expect(await balanceOf(user)).toBe(100);
+    const reasons = (await h.prisma.creditLedger.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'asc' } })).map(
+      (row) => row.reason,
+    );
+    expect(reasons).toEqual(['promo', 'draft_charge', 'draft_refund']);
+  });
+
+  it('does not count fallback, reused or rules-only drafts against the free ones', async () => {
+    const user = await h.createUser();
+    setEditAgentModelForTests(() => scripted([() => Promise.reject(new Error('model down'))]));
+    await freshDraft(user, 0);
+    setEditAgentModelForTests(() => null);
+    await freshDraft(user, 10);
+    setEditAgentModelForTests(() => scripted([() => [submit]]));
+    const ids = [await createSnap(user, 20), await createSnap(user, 25)];
+    await requestDraft(user, ids);
+    const again = await requestDraft(user, ids);
+
+    expect(again.json().data.chargedCredits).toBe(0);
+    expect((await allowance(user)).json().data).toMatchObject({ agent: true, freeRemaining: FREE_EDIT_DRAFTS_PER_DAY - 1, nextCost: 0 });
+  });
+
+  it('reads as always free when the server has no agent', async () => {
+    const user = await h.createUser();
+    setEditAgentModelForTests(() => null);
+
+    const data = (await allowance(user)).json().data;
+
+    expect(data).toMatchObject({ agent: false, freeRemaining: FREE_EDIT_DRAFTS_PER_DAY, nextCost: 0, cost: EDIT_DRAFT_COST });
   });
 });

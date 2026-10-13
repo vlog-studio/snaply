@@ -1,13 +1,16 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   CONTENT_VOCABULARY_VERSION,
   MAX_DRAFT_SNAPS,
   type MovieDraft,
+  type MovieDraftAllowance,
   type MovieDraftBody,
   type StylePreset,
 } from '@vlog-studio/shared-types';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { getPrisma } from '../db/client.js';
+import { CREDIT_REASON, EDIT_DRAFT_COST, FREE_EDIT_DRAFTS_PER_DAY } from './billing/credit-policy.js';
+import { assertCreditsForExport } from './credit.service.js';
 import { AppError } from '../lib/errors.js';
 import { captureException } from '../lib/sentry.js';
 import { enqueueSignals, type SignalsEnqueueOutcome } from '../queue/rendition-queue.js';
@@ -56,9 +59,10 @@ export const DRAFT_REUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
 type SnapInput = MovieDraftBody['snaps'][number];
 
 /**
- * 저장하는 제안 — 응답에서 `unavailable` 을 뺀 것. `unavailable` 은 요청마다 그때의 스냅 상태로 붙인다(재사용한 제안에도).
+ * 저장하는 제안 — 응답에서 `unavailable` · `chargedCredits` 를 뺀 것. 둘은 요청마다 붙인다 — `unavailable` 은 그때의 스냅 상태로,
+ * `chargedCredits` 는 이번 요청에 쓴 크레딧으로(재사용한 제안은 0).
  */
-type StoredDraft = Omit<MovieDraft, 'unavailable'>;
+type StoredDraft = Omit<MovieDraft, 'unavailable' | 'chargedCredits'>;
 
 function keyOf(snap: SnapInput): string {
   return 'videoId' in snap ? snap.videoId : snap.localId;
@@ -126,7 +130,7 @@ export async function requestDraft(params: {
   const usable = snaps.filter((snap) => !('videoId' in snap) || !gone.has(snap.videoId));
   if (usable.length === 0) {
     // 고를 것이 없다. 비용도 없으므로 기록하지 않고 횟수에도 세지 않는다.
-    return { stylePreset, cuts: [], excluded: [], unavailable };
+    return { stylePreset, cuts: [], excluded: [], unavailable, chargedCredits: 0 };
   }
 
   const now = Date.now();
@@ -149,7 +153,8 @@ export async function requestDraft(params: {
     select: { result: true },
   });
   if (reusable) {
-    return { ...(reusable.result as unknown as StoredDraft), unavailable };
+    // 재사용은 비용이 없다(CRD-9).
+    return { ...(reusable.result as unknown as StoredDraft), unavailable, chargedCredits: 0 };
   }
 
   // 한도는 새 초안에만 건다. 재사용은 비용이 없다. 여기서는 계산을 아끼는 빠른 거절이고, 집행은 기록할 때 잠금 안에서 한다.
@@ -159,6 +164,12 @@ export async function requestDraft(params: {
   if (recent >= DAILY_DRAFT_LIMIT) {
     throw draftLimitError();
   }
+
+  // 과금(CRD-9) — 에이전트가 만들 초안이 무료 횟수를 넘겼으면 먼저 예약한다. 잔액이 모자라면 402 로, 에이전트를 부르기 전에 멈춘다.
+  // 끝까지 만들면 확정이고(행에 남긴다), 에이전트가 실패해 규칙으로 만들거나 기록이 실패하면 돌려준다.
+  const draftId = randomUUID();
+  const charge = agent ? await draftCharge(params.userId, windowStart) : 0;
+  if (charge > 0) await reserveDraftCredits(params.userId, draftId, charge);
 
   const [signalRows, analysisRows] = await Promise.all([
     prisma.videoSignals.findMany({ where: { videoId: { in: uploadedIds }, signalsVersion: SIGNALS_VERSION } }),
@@ -245,17 +256,83 @@ export async function requestDraft(params: {
     excluded: direction.excluded.map((key) => (uploaded.has(key) ? { videoId: key } : { localId: key })),
   };
 
-  await recordDraft(params.userId, windowStart, {
-    stylePreset,
-    snapHash,
-    complete: waiting === 0,
-    result: draft as unknown as Prisma.InputJsonValue,
-    mode,
-    ...(plan !== null ? { plan: plan as unknown as Prisma.InputJsonValue } : {}),
-  });
+  const charged = mode === 'agent' ? charge : 0;
+  if (charge > 0 && charged === 0) await refundDraftCredits(params.userId, draftId, charge);
+  try {
+    await recordDraft(params.userId, windowStart, {
+      id: draftId,
+      stylePreset,
+      snapHash,
+      complete: waiting === 0,
+      result: draft as unknown as Prisma.InputJsonValue,
+      mode,
+      chargedCredits: charged,
+      ...(plan !== null ? { plan: plan as unknown as Prisma.InputJsonValue } : {}),
+    });
+  } catch (err) {
+    // 하루 상한에 동시 요청이 걸렸다 — 초안을 주지 않으므로 비용도 돌려준다.
+    if (charged > 0) await refundDraftCredits(params.userId, draftId, charged);
+    throw err;
+  }
   // 초안에 넘긴 스냅은 약한 선호 신호다(PRF-1). 새 제안에서만 낸다 — 재사용은 같은 요청의 반복이라 근거가 늘지 않는다.
   emitTasteSignals(params.userId, () => contentSignalsOf(params.userId, uploadedIds, TASTE_SIGNAL_STRENGTH.candidate));
-  return { ...draft, unavailable };
+  return { ...draft, unavailable, chargedCredits: charged };
+}
+
+/** 최근 24시간에 쓴 무료 초안 — 에이전트가 끝까지 만들었고 비용이 없었던 것(CRD-9). */
+function countFreeDrafts(userId: string, windowStart: Date): Promise<number> {
+  return getPrisma().movieDraft.count({
+    where: { userId, mode: 'agent', chargedCredits: 0, createdAt: { gte: windowStart } },
+  });
+}
+
+/** 다음 에이전트 초안의 비용 — 무료 횟수 안이면 0. */
+async function draftCharge(userId: string, windowStart: Date): Promise<number> {
+  return (await countFreeDrafts(userId, windowStart)) >= FREE_EDIT_DRAFTS_PER_DAY ? EDIT_DRAFT_COST : 0;
+}
+
+/**
+ * 초안 비용을 예약한다 — 무비 생성과 같이 유저 행을 잠그고 잔액을 본 뒤 원장에 차감을 남긴다(모자라면 402 `INSUFFICIENT_CREDITS`).
+ * 원장 행이 어느 초안의 것인지 `movieDraftId` 로 남기고, 그 초안의 비용 · 환급은 한 번씩뿐이다(unique).
+ *
+ * 무료 횟수는 잠그지 않고 센다 — 동시에 온 두 요청이 같은 남은 무료 1번을 보고 둘 다 무료가 될 수 있다. 하루 상한(잠금 안에서 센다)이
+ * 그 범위를 묶고, 크레딧을 잘못 빼는 쪽으로는 틀리지 않으므로 받아들였다.
+ */
+async function reserveDraftCredits(userId: string, movieDraftId: string, cost: number): Promise<void> {
+  await getPrisma().$transaction(async (tx) => {
+    await assertCreditsForExport(tx, { userId, cost });
+    await tx.creditLedger.create({ data: { userId, delta: -cost, reason: CREDIT_REASON.draftCharge, movieDraftId } });
+  });
+}
+
+/** 예약한 비용을 돌려준다. 같은 초안에 두 번 불려도 한 번만 남는다(unique). */
+async function refundDraftCredits(userId: string, movieDraftId: string, cost: number): Promise<void> {
+  try {
+    await getPrisma().creditLedger.create({
+      data: { userId, delta: cost, reason: CREDIT_REASON.draftRefund, movieDraftId },
+    });
+  } catch (err) {
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002')) throw err;
+  }
+}
+
+/** 다음 초안이 무료인지, 아니면 얼마인지(CRD-9) — 앱이 요청 전에 보인다. */
+export async function getDraftAllowance(userId: string): Promise<MovieDraftAllowance> {
+  const windowStart = new Date(Date.now() - DRAFT_REUSE_WINDOW_MS);
+  const agent = resolveEditAgentModel() !== null;
+  const [freeUsed, recent] = await Promise.all([
+    countFreeDrafts(userId, windowStart),
+    getPrisma().movieDraft.count({ where: { userId, createdAt: { gte: windowStart } } }),
+  ]);
+  const freeRemaining = agent ? Math.max(0, FREE_EDIT_DRAFTS_PER_DAY - freeUsed) : FREE_EDIT_DRAFTS_PER_DAY;
+  return {
+    agent,
+    freeLimit: FREE_EDIT_DRAFTS_PER_DAY,
+    freeRemaining,
+    cost: EDIT_DRAFT_COST,
+    nextCost: agent && freeRemaining === 0 ? EDIT_DRAFT_COST : 0,
+    dailyRemaining: Math.max(0, DAILY_DRAFT_LIMIT - recent),
+  };
 }
 
 /**

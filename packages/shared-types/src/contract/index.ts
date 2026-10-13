@@ -43,7 +43,7 @@ import {
 import { cancelEditJob, getEditJob } from './edit-jobs.js';
 import { getHealth } from './health.js';
 import { listNearbyLocations, reportGeofenceEnter } from './locations.js';
-import { requestMovieDraft } from './movie-drafts.js';
+import { getMovieDraftAllowance, requestMovieDraft } from './movie-drafts.js';
 import { getMovieRecommendation, requestMovieRecommendation } from './movie-recommendations.js';
 import { getMovieTemplates } from './movie-templates.js';
 import { getInterestTopics } from './interest-topics.js';
@@ -113,6 +113,7 @@ export const apiContract = {
   requestMovieRecommendation,
   getMovieRecommendation,
   requestMovieDraft,
+  getMovieDraftAllowance,
   listNearbyLocations,
   reportGeofenceEnter,
   listSnsConnections,

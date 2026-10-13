@@ -148,6 +148,10 @@ export const CREDIT_REASON = {
   storeRefundRevoke: 'store_refund_revoke',
   promo: 'promo',
   adReward: 'ad_reward',
+  /** AI 편집 초안 1번(CRD-9) — 무료 횟수를 넘긴 초안. */
+  draftCharge: 'draft_charge',
+  /** 에이전트가 끝까지 만들지 못해 돌려준 초안 비용. */
+  draftRefund: 'draft_refund',
 } as const;
 export const CREDIT_REASONS = Object.values(CREDIT_REASON) as [CreditReason, ...CreditReason[]];
 export type CreditReason = (typeof CREDIT_REASON)[keyof typeof CREDIT_REASON];

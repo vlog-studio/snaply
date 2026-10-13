@@ -410,6 +410,8 @@ model MovieDraft {
   /// 누가 만들었나(specs MOV-25) — `agent`(에이전트가 끝까지 돌았다) · `rules`(에이전트를 쓸 수 없다 — 키 없음) ·
   /// `fallback`(에이전트가 실패해 규칙으로 만들었다). `fallback` 은 재사용하지 않는다 — 일시적 실패가 하루 동안 남지 않게.
   mode        String   @default("rules") @db.VarChar(10)
+  /// 이 초안에 쓴 크레딧(CRD-9) — 무료면 0. 무료 횟수는 `mode = agent` 이고 이 값이 0 인 행을 센다.
+  chargedCredits Int   @default(0) @map("charged_credits")
   /// 에이전트의 계획(의도 · 툴 호출 · 디렉터에 넘긴 조절값 · 토큰과 지연) — 다시 실행하면 같은 초안이다(decisions/ai-edit-agent.md §4).
   plan        Json?
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -543,11 +545,13 @@ model CreditLedger {
   userId     String   @map("user_id") @db.Uuid
   /// +지급 / -차감. 단위는 100크레딧 = Movie export 1회 (credit-policy.ts)
   delta      Int
-  /// purchase | signup_bonus | export_reserve | export_refund | store_refund_revoke | promo | ad_reward
+  /// purchase | signup_bonus | export_reserve | export_refund | store_refund_revoke | promo | ad_reward | draft_charge | draft_refund
   reason     String   @db.VarChar(30)
   purchaseId String?  @map("purchase_id") @db.Uuid
   editJobId  String?  @map("edit_job_id") @db.Uuid
   adRewardId String?  @map("ad_reward_id") @db.Uuid
+  /// AI 편집 초안의 비용 · 환급(CRD-9). FK 를 두지 않는다 — 분석 동의 철회가 초안 기록을 지워도 원장은 남아야 한다.
+  movieDraftId String? @map("movie_draft_id") @db.Uuid
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -561,6 +565,8 @@ model CreditLedger {
   /// 위와 같은 장치. 한 보상 세션은 `ad_reward` 행을 최대 하나만 만든다 — SSV 재전송이
   /// transaction_id unique 를 비껴가더라도 여기서 두 번째 지급이 막힌다.
   @@unique([adRewardId, reason])
+  /// 같은 장치. 한 초안의 비용 · 환급은 한 번씩뿐이다.
+  @@unique([movieDraftId, reason])
   @@index([userId, createdAt])
   @@map("credit_ledger")
 }

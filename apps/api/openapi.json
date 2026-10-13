@@ -963,7 +963,9 @@
               "export_refund",
               "store_refund_revoke",
               "promo",
-              "ad_reward"
+              "ad_reward",
+              "draft_charge",
+              "draft_refund"
             ],
             "description": "앱이 내역 화면 문구를 매핑하는 값. 닫힌 집합이다."
           },
@@ -1389,13 +1391,67 @@
               ]
             },
             "description": "넘긴 스냅 중 서버가 더는 쓸 수 없는 자기 스냅 — 지워졌거나(다른 기기에서 지움 · 보관 기간 만료) 준비되지 않았다. 나머지로 초안을 만들고, 이 스냅은 `cuts` 에도 `excluded` 에도 넣지 않는다(다시 넣을 수 없으므로). 넘긴 스냅이 모두 이렇다면 `cuts` 가 비어 있다. 남의 id 는 여기 오지 않고 요청 전체가 403 이다."
+          },
+          "chargedCredits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "이 초안에 쓴 크레딧(CRD-9). 무료 횟수 안이거나, 에이전트가 끝까지 만들지 못했거나(규칙만의 초안), 전에 만든 초안을 돌려준 경우 0 이다."
           }
         },
         "required": [
           "stylePreset",
           "cuts",
           "excluded",
-          "unavailable"
+          "unavailable",
+          "chargedCredits"
+        ]
+      },
+      "MovieDraftAllowanceInput": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "boolean",
+            "description": "AI 에이전트가 초안을 만드는가. 아니면(서버에 모델이 없다) 초안은 늘 무료이고 횟수도 세지 않는다"
+          },
+          "freeLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "최근 24시간의 무료 횟수"
+          },
+          "freeRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "그중 남은 횟수"
+          },
+          "cost": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "무료 횟수를 넘긴 초안 1번의 크레딧"
+          },
+          "nextCost": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "다음 초안에 쓸 크레딧 — 무료면 0"
+          },
+          "dailyRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "최근 24시간 상한(유료 포함) 중 남은 횟수"
+          }
+        },
+        "required": [
+          "agent",
+          "freeLimit",
+          "freeRemaining",
+          "cost",
+          "nextCost",
+          "dailyRemaining"
         ]
       },
       "MovieRecommendationInput": {
@@ -2464,7 +2520,9 @@
               "export_refund",
               "store_refund_revoke",
               "promo",
-              "ad_reward"
+              "ad_reward",
+              "draft_charge",
+              "draft_refund"
             ],
             "description": "앱이 내역 화면 문구를 매핑하는 값. 닫힌 집합이다."
           },
@@ -2904,13 +2962,68 @@
               "additionalProperties": false
             },
             "description": "넘긴 스냅 중 서버가 더는 쓸 수 없는 자기 스냅 — 지워졌거나(다른 기기에서 지움 · 보관 기간 만료) 준비되지 않았다. 나머지로 초안을 만들고, 이 스냅은 `cuts` 에도 `excluded` 에도 넣지 않는다(다시 넣을 수 없으므로). 넘긴 스냅이 모두 이렇다면 `cuts` 가 비어 있다. 남의 id 는 여기 오지 않고 요청 전체가 403 이다."
+          },
+          "chargedCredits": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "이 초안에 쓴 크레딧(CRD-9). 무료 횟수 안이거나, 에이전트가 끝까지 만들지 못했거나(규칙만의 초안), 전에 만든 초안을 돌려준 경우 0 이다."
           }
         },
         "required": [
           "stylePreset",
           "cuts",
           "excluded",
-          "unavailable"
+          "unavailable",
+          "chargedCredits"
+        ],
+        "additionalProperties": false
+      },
+      "MovieDraftAllowance": {
+        "type": "object",
+        "properties": {
+          "agent": {
+            "type": "boolean",
+            "description": "AI 에이전트가 초안을 만드는가. 아니면(서버에 모델이 없다) 초안은 늘 무료이고 횟수도 세지 않는다"
+          },
+          "freeLimit": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "최근 24시간의 무료 횟수"
+          },
+          "freeRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "그중 남은 횟수"
+          },
+          "cost": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "무료 횟수를 넘긴 초안 1번의 크레딧"
+          },
+          "nextCost": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "다음 초안에 쓸 크레딧 — 무료면 0"
+          },
+          "dailyRemaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "최근 24시간 상한(유료 포함) 중 남은 횟수"
+          }
+        },
+        "required": [
+          "agent",
+          "freeLimit",
+          "freeRemaining",
+          "cost",
+          "nextCost",
+          "dailyRemaining"
         ],
         "additionalProperties": false
       },
@@ -8121,7 +8234,7 @@
         "tags": [
           "movies"
         ],
-        "description": "넘긴 스냅 중 쓸 것을 고르고(못 쓰는 것·중복은 뺀다), 촬영순으로 놓고, 컷마다 구간을 자른 **제안**을 돌려준다.\n**무비를 만들지 않는다** — 앱이 이 컷들로 무비를 만들고(`POST /movies`, `arranger: ai`, 컷마다\n`trimOwner: ai`) 업로드가 끝나면 지금처럼 보낸다. 전환은 그때 서버가 고른다.\n\n**업로드되지 않은 스냅도 넘긴다**(`localId` + `capturedAt`). 빼지 않고 촬영 시각 자리에 구간 없이 놓는다.\n업로드됐지만 신호가 아직 없는 스냅도 같다 — 서버가 신호 계산을 적재해 두고 다음 요청부터 쓴다.\n\n**기다리지 않는다.** 응답이 곧 결과다. 분석에 동의하지 않았거나 분석이 꺼져 있어도 초안은 나온다.\n\n**크레딧을 차감하지 않는다.** 비용은 상한으로 막는다 — 한 번에 스냅\n**30개**(넘으면 400 `TOO_MANY_SNAPS` + `max`), 최근 24시간 **10번**\n(넘으면 429 `DRAFT_LIMIT`). 같은 스타일 · 같은 스냅 집합이 24시간 안에 다시 오면 같은 제안을 돌려주고\n횟수에 세지 않는다.\n\n`excluded` 는 넣지 않은 스냅이다. **이유는 주지 않는다** — 앱은 개수를 알리고 다시 넣을 수 있게 한다.\n\n`unavailable` 은 넘긴 자기 스냅 중 지워졌거나 준비되지 않아 서버가 쓸 수 없는 것이다. 나머지로 초안을 만들고, 모두\n그렇다면 `cuts` 가 비어 있다(기록하지 않고 횟수에 세지 않는다). 남의 스냅이 섞이면 어느 것인지 알리지 않고 403 이다.",
+        "description": "넘긴 스냅 중 쓸 것을 고르고(못 쓰는 것·중복은 뺀다), 촬영순으로 놓고, 컷마다 구간을 자른 **제안**을 돌려준다.\n**무비를 만들지 않는다** — 앱이 이 컷들로 무비를 만들고(`POST /movies`, `arranger: ai`, 컷마다\n`trimOwner: ai`) 업로드가 끝나면 지금처럼 보낸다. 전환은 그때 서버가 고른다.\n\n**업로드되지 않은 스냅도 넘긴다**(`localId` + `capturedAt`). 빼지 않고 촬영 시각 자리에 구간 없이 놓는다.\n업로드됐지만 신호가 아직 없는 스냅도 같다 — 서버가 신호 계산을 적재해 두고 다음 요청부터 쓴다.\n\n**분석을 기다리지 않는다.** 응답이 곧 결과다 — AI 에이전트가 계획하는 동안(수 초, 길어야 20초) 걸린다(MOV-25).\n분석에 동의하지 않았거나 분석이 꺼져 있어도 초안은 나온다.\n\n**과금**(CRD-9): 에이전트가 만든 초안은 최근 24시간 **3번까지 무료**이고, 그 뒤로는 1번에\n**20크레딧**이다. 잔액이 모자라면 402 `INSUFFICIENT_CREDITS` + `required` · `balance` 로 시작하지 않는다.\n에이전트가 끝까지 만들지 못해 규칙으로 만든 초안은 돌려주고, 쓴 크레딧은 응답의 `chargedCredits` 다. 다음 초안의 비용은\n`GET /movie-drafts/allowance`.\n\n**상한**: 한 번에 스냅 **30개**(넘으면 400 `TOO_MANY_SNAPS` + `max`), 최근 24시간 **10번**\n(유료 포함, 넘으면 429 `DRAFT_LIMIT`). 같은 스타일 · 같은 스냅 집합이 24시간 안에 다시 오면 같은 제안을 돌려주고\n횟수에도 비용에도 세지 않는다.\n\n`excluded` 는 넣지 않은 스냅이다. **이유는 주지 않는다** — 앱은 개수를 알리고 다시 넣을 수 있게 한다.\n\n`unavailable` 은 넘긴 자기 스냅 중 지워졌거나 준비되지 않아 서버가 쓸 수 없는 것이다. 나머지로 초안을 만들고, 모두\n그렇다면 `cuts` 가 비어 있다(기록하지 않고 횟수에 세지 않는다). 남의 스냅이 섞이면 어느 것인지 알리지 않고 403 이다.",
         "requestBody": {
           "required": true,
           "content": {
@@ -8256,6 +8369,167 @@
                   "required": [
                     "success",
                     "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "required": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "balance": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "purgeAfter": {
+                          "description": "ACCOUNT_PENDING_DELETION — 이 시각 이전에는 POST /auth/me/restore 로 복구 가능",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movie-drafts/allowance": {
+      "get": {
+        "summary": "다음 편집 초안의 비용",
+        "tags": [
+          "movies"
+        ],
+        "description": "AI 에이전트가 만드는 초안은 최근 24시간 3번까지 무료이고 그 뒤로 1번에 20크레딧이다(CRD-9).\n앱은 초안을 요청하기 전에 남은 무료 횟수(`freeRemaining`)나 이번 비용(`nextCost`)을 보인다. 서버에 에이전트가 없으면\n(`agent: false`) 초안은 늘 무료이고 횟수도 세지 않는다.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MovieDraftAllowance"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
                   ],
                   "additionalProperties": false
                 }
