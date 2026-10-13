@@ -15,8 +15,15 @@ import {
   CONTENT_FIELDS,
   CONTENT_MATCH_FIELDS,
   CONTENT_VOCABULARY_VERSION,
+  CONTENT_EVOKES_FIELDS,
+  CONTENT_TYPICALLY_AT_FIELDS,
   CUT_ROLES,
+  STYLE_PRESETS,
+  TRANSITION_KINDS,
   contentConceptIds,
+  contentEvokedMoods,
+  contentMoodSuits,
+  contentTypicalPlaces,
   contentConceptLineage,
   contentMatchScore,
   isContentConcept,
@@ -32,6 +39,9 @@ interface ConceptEntry {
   parent?: string;
   roleAffinity?: string;
   aliases: string[];
+  typicallyAt?: string[];
+  evokes?: string[];
+  suits?: { transitions: string[]; styles: string[] };
 }
 
 interface VocabularyFile {
@@ -225,5 +235,108 @@ describe('contentMatchScore', () => {
     expect(contentMatchScore('actions', 'walk', 'look_around')).toBe(0);
     expect(contentMatchScore('places', 'cafe', 'tea')).toBe(0);
     expect(contentMatchScore('places', '카페', 'cafe')).toBe(0);
+  });
+});
+
+/** 개념 사이의 관계 — 사전 `_relationsNote` · decisions/ontology-personalization.md §3.2. 매칭에는 쓰지 않는다. */
+describe('content vocabulary relations', () => {
+  const KEYS = ['label', 'parent', 'roleAffinity', 'aliases', 'typicallyAt', 'evokes', 'suits'];
+
+  function expectDistinctList(list: unknown, where: string): asserts list is string[] {
+    expect(Array.isArray(list), where).toBe(true);
+    expect((list as string[]).length, where).toBeGreaterThan(0);
+    expect(new Set(list as string[]).size, where).toBe((list as string[]).length);
+  }
+
+  it('declares no keys beyond the known ones', () => {
+    for (const field of vocabulary.fields) {
+      for (const [id, concept] of entries(field)) {
+        for (const key of Object.keys(concept)) expect(KEYS, `${field}.${id}`).toContain(key);
+      }
+    }
+  });
+
+  it('puts typicallyAt only on objects and actions, pointing at places', () => {
+    for (const field of vocabulary.fields) {
+      for (const [id, concept] of entries(field)) {
+        if (concept.typicallyAt === undefined) continue;
+        const where = `${field}.${id}`;
+        expect(CONTENT_TYPICALLY_AT_FIELDS as readonly string[], where).toContain(field);
+        expectDistinctList(concept.typicallyAt, where);
+        for (const place of concept.typicallyAt) expect(isContentConcept('places', place), `${where} → ${place}`).toBe(true);
+      }
+    }
+  });
+
+  it('puts evokes only on places, objects and actions, pointing at moods', () => {
+    for (const field of vocabulary.fields) {
+      for (const [id, concept] of entries(field)) {
+        if (concept.evokes === undefined) continue;
+        const where = `${field}.${id}`;
+        expect(CONTENT_EVOKES_FIELDS as readonly string[], where).toContain(field);
+        expectDistinctList(concept.evokes, where);
+        for (const mood of concept.evokes) expect(isContentConcept('moods', mood), `${where} → ${mood}`).toBe(true);
+      }
+    }
+  });
+
+  it('gives every mood, and only moods, the transitions and styles it suits', () => {
+    for (const field of vocabulary.fields) {
+      for (const [id, concept] of entries(field)) {
+        const where = `${field}.${id}`;
+        if (field !== 'moods') {
+          expect(concept.suits, where).toBeUndefined();
+          continue;
+        }
+        // 분위기 → 전환 · 스타일의 사슬이 끊기지 않게, 모든 분위기가 갖는다.
+        expect(concept.suits, where).toBeDefined();
+        expectDistinctList(concept.suits!.transitions, `${where}.transitions`);
+        expectDistinctList(concept.suits!.styles, `${where}.styles`);
+        for (const kind of concept.suits!.transitions) {
+          expect(TRANSITION_KINDS as readonly string[], where).toContain(kind);
+        }
+        for (const style of concept.suits!.styles) expect(STYLE_PRESETS as readonly string[], where).toContain(style);
+      }
+    }
+  });
+
+  it('does not repeat what a concept already inherits', () => {
+    for (const field of vocabulary.fields) {
+      for (const [id, concept] of entries(field)) {
+        if (concept.parent === undefined) continue;
+        for (const key of ['typicallyAt', 'evokes'] as const) {
+          if (concept[key] === undefined) continue;
+          const fromParent =
+            key === 'typicallyAt'
+              ? contentTypicalPlaces(field as 'objects', concept.parent)
+              : contentEvokedMoods(field as 'places', concept.parent);
+          expect(concept[key], `${field}.${id}.${key}`).not.toEqual(fromParent);
+        }
+      }
+    }
+  });
+
+  it('inherits typicallyAt and evokes from the nearest ancestor that has them', () => {
+    expect(contentTypicalPlaces('objects', 'coffee')).toEqual(['cafe']);
+    expect(contentTypicalPlaces('objects', 'cake')).toEqual(['cafe', 'bakery']);
+    expect(contentTypicalPlaces('objects', 'chair')).toEqual([]);
+    expect(contentEvokedMoods('places', 'sea')).toEqual(['refreshing']);
+    expect(contentEvokedMoods('places', 'trail')).toEqual(['calm']);
+    expect(contentEvokedMoods('places', 'viewpoint')).toEqual(['emotional']);
+    expect(contentEvokedMoods('objects', 'child')).toEqual(['lively']);
+  });
+
+  it('answers nothing for fields a relation does not belong to', () => {
+    expect(contentTypicalPlaces('places', 'cafe')).toEqual([]);
+    expect(contentEvokedMoods('topics', 'cafe')).toEqual([]);
+    expect(contentMoodSuits('nowhere')).toBeUndefined();
+  });
+
+  it('chains a snap concept to transitions through its mood', () => {
+    // 잔잔함 → crossfade · 신남 → zoompunch (결정 문서의 예).
+    const [mood] = contentEvokedMoods('places', 'river');
+    expect(mood).toBe('calm');
+    expect(contentMoodSuits(mood!)?.transitions[0]).toBe('crossfade');
+    expect(contentMoodSuits('lively')?.transitions[0]).toBe('zoompunch');
   });
 });

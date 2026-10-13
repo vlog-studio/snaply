@@ -21,12 +21,29 @@ export type ContentField = (typeof CONTENT_FIELDS)[number];
 export const CONTENT_MATCH_FIELDS = ['places', 'objects', 'actions', 'topics'] as const;
 export type ContentMatchField = (typeof CONTENT_MATCH_FIELDS)[number];
 
+/** 분위기에 어울리는 전환(`transition-vocabulary.json` 의 kind)과 스타일 프리셋, 앞일수록 더 어울린다. */
+export interface ContentMoodSuits {
+  transitions: string[];
+  styles: string[];
+}
+
 export interface ContentConcept {
   label: string;
   parent?: string;
   roleAffinity?: string;
   aliases: string[];
+  /** objects · actions 만. 흔히 보이는 places 개념. */
+  typicallyAt?: string[];
+  /** places · objects · actions 만. 자아내는 moods 개념. */
+  evokes?: string[];
+  /** moods 만. */
+  suits?: ContentMoodSuits;
 }
+
+/** `typicallyAt` 을 가질 수 있는 필드. */
+export const CONTENT_TYPICALLY_AT_FIELDS = ['objects', 'actions'] as const;
+/** `evokes` 를 가질 수 있는 필드. */
+export const CONTENT_EVOKES_FIELDS = ['places', 'objects', 'actions'] as const;
 
 const CONCEPTS = vocabulary.concepts as unknown as Record<ContentField, Record<string, ContentConcept>>;
 
@@ -128,4 +145,28 @@ export function contentMatchScore(field: ContentField, hint: string, snap: strin
   if (contentConceptLineage(field, snap).includes(hint)) return vocabulary.match.narrower;
   if (contentConceptLineage(field, hint).includes(snap)) return vocabulary.match.broader;
   return 0;
+}
+
+/** 자기부터 위로 올라가며 처음 값이 있는 개념의 값 — 하위 개념은 상위의 값을 물려받는다(사전 `_relationsNote`). */
+function inherited(field: ContentField, id: string, key: 'typicallyAt' | 'evokes'): readonly string[] {
+  for (const ancestor of contentConceptLineage(field, id)) {
+    const value = contentConcept(field, ancestor)?.[key];
+    if (value !== undefined) return value;
+  }
+  return [];
+}
+
+/** 이 개념이 흔히 보이는 places 개념(`typicallyAt`, 물려받기 포함). 커피 → 카페. */
+export function contentTypicalPlaces(field: ContentField, id: string): readonly string[] {
+  return (CONTENT_TYPICALLY_AT_FIELDS as readonly string[]).includes(field) ? inherited(field, id, 'typicallyAt') : [];
+}
+
+/** 이 개념이 자아내는 moods 개념(`evokes`, 물려받기 포함). 바다 → 청량함. */
+export function contentEvokedMoods(field: ContentField, id: string): readonly string[] {
+  return (CONTENT_EVOKES_FIELDS as readonly string[]).includes(field) ? inherited(field, id, 'evokes') : [];
+}
+
+/** 분위기에 어울리는 전환 · 스타일(`suits`). 사전 밖 분위기면 `undefined`. */
+export function contentMoodSuits(mood: string): ContentMoodSuits | undefined {
+  return contentConcept('moods', mood)?.suits;
 }

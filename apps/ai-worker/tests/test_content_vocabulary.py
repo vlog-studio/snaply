@@ -13,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from pipeline import cut_role, vocabulary  # noqa: E402
+from pipeline import cut_role, transition, vocabulary  # noqa: E402
 from pipeline.video_analysis.schema import LIST_FIELDS  # noqa: E402
 
 VOCABULARY_FILE = "content-vocabulary.json"
@@ -61,6 +61,59 @@ class ContentVocabularyTest(unittest.TestCase):
             for concept_id, concept in concepts.items():
                 if "roleAffinity" in concept:
                     self.assertIn(concept["roleAffinity"], cut_role.ROLE_NAMES, f"{field}.{concept_id}")
+
+
+
+class ContentRelationsTest(unittest.TestCase):
+    """개념 사이의 관계(사전 `_relationsNote`). 스타일 프리셋 이름은 API 계약에만 있어 API 테스트가 본다."""
+
+    KEYS = {"label", "parent", "roleAffinity", "aliases", "typicallyAt", "evokes", "suits"}
+
+    def _lists(self, key: str):
+        for field, concepts in CONCEPTS.items():
+            for concept_id, concept in concepts.items():
+                if key in concept:
+                    yield field, concept_id, concept[key]
+
+    def assert_distinct_list(self, value, where: str) -> None:
+        self.assertIsInstance(value, list, where)
+        self.assertTrue(value, where)
+        self.assertEqual(len(set(value)), len(value), where)
+
+    def test_concepts_declare_only_known_keys(self) -> None:
+        for field, concepts in CONCEPTS.items():
+            for concept_id, concept in concepts.items():
+                self.assertLessEqual(set(concept), self.KEYS, f"{field}.{concept_id}")
+
+    def test_typically_at_points_from_objects_and_actions_to_places(self) -> None:
+        for field, concept_id, places in self._lists("typicallyAt"):
+            where = f"{field}.{concept_id}"
+            self.assertIn(field, ("objects", "actions"), where)
+            self.assert_distinct_list(places, where)
+            for place in places:
+                self.assertIn(place, CONCEPTS["places"], where)
+
+    def test_evokes_points_at_moods(self) -> None:
+        for field, concept_id, moods in self._lists("evokes"):
+            where = f"{field}.{concept_id}"
+            self.assertIn(field, ("places", "objects", "actions"), where)
+            self.assert_distinct_list(moods, where)
+            for mood in moods:
+                self.assertIn(mood, CONCEPTS["moods"], where)
+
+    def test_every_mood_suits_known_transitions(self) -> None:
+        for field, concepts in CONCEPTS.items():
+            for concept_id, concept in concepts.items():
+                where = f"{field}.{concept_id}"
+                if field != "moods":
+                    self.assertNotIn("suits", concept, where)
+                    continue
+                suits = concept.get("suits")
+                self.assertIsInstance(suits, dict, where)
+                self.assert_distinct_list(suits["transitions"], where)
+                self.assert_distinct_list(suits["styles"], where)
+                for kind in suits["transitions"]:
+                    self.assertIn(kind, transition.KIND_NAMES, where)
 
 
 if __name__ == "__main__":
