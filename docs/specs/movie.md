@@ -2,7 +2,7 @@
 
 **작성일**: 2026-09-02
 **상태**: 현행 — 무비 요구사항의 원천
-**관련 문서**: [decisions/movie-model.md](../decisions/movie-model.md) · [decisions/movie-cleanup-after-export.md](../decisions/movie-cleanup-after-export.md) · [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) · [apps/mobile/docs/features/movie.md](../../apps/mobile/docs/features/movie.md) · 표기 규칙은 [README.md](README.md)
+**관련 문서**: [decisions/movie-model.md](../decisions/movie-model.md) · [decisions/movie-cleanup-after-export.md](../decisions/movie-cleanup-after-export.md) · [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) · [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md) · [apps/mobile/docs/features/movie.md](../../apps/mobile/docs/features/movie.md) · 표기 규칙은 [README.md](README.md)
 
 ## 무비 모델
 
@@ -43,12 +43,14 @@
   (`apps/api/src/services/movie-draft.service.ts`). 거르기·중복 문턱값이 잠정값이다) — 사용자가 넘긴 **스냅 여러 개**(촬영했거나 가져온 스냅)로 AI 가
   **고칠 수 있는 무비 초안**을 만든다. AI 는 쓸 스냅을 고르고(못 쓰는 것·중복은 뺀다), 순서를 정하고,
   컷마다 구간을 자르고, 컷 사이 전환을 고른다. 결과는 렌더된 영상이 아니라 일반 무비 초안이며,
-  사용자는 보고 고친 뒤 생성한다(MOV-7). 초안을 받는 데는 **크레딧을 쓰지 않는다.** 컷 수는 MOV-5 를
+  사용자는 보고 고친 뒤 생성한다(MOV-7). 초안은 **하루 3번까지 무료이고 그 뒤로는 크레딧을 쓴다**(CRD-9 — 2026-10-13 결정,
+  지금은 아직 무료다). 초안을 만드는 방식은 MOV-25 다. 컷 수는 MOV-5 를
   따른다. 사용자가 분석에 동의하지 않았거나 분석이 꺼져 있어도 초안은 만들어진다 — 분석은 초안을 낫게 할
   뿐 조건이 아니다(REC-4·ANA-5). 근거는 [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) §5.
   - 한 번에 넘길 수 있는 스냅은 **최대 30개**, 초안은 **최근 24시간에 10번**까지다. 넘으면 서버가 거절한다.
     초안 1회가 vision 분석에 보내는 스냅은 **최대 12개**다(잠정값 — 단가 실측 A-3 뒤 다시 정한다).
-  - 초안은 **기다리지 않고 바로** 나온다. vision 분석 결과는 나중에 도착하면 사용자가 손대지 않은 값에만 얹는다.
+  - 초안은 **분석을 기다리지 않는다.** 이미 있는 분석만 쓰고, 이번에 요청한 분석이 늦게 끝나면 다음 초안에 쓴다(분석은 스냅마다
+    남는다). 초안이 나오기까지는 에이전트가 계획하는 동안(수 초) 걸린다(MOV-25 — 2026-10-13 결정. 지금은 바로 나온다).
   - **업로드가 끝나지 않은 스냅도 넣는다.** 빼거나 구간을 고르지 않고 촬영 순서 자리에 둔다.
   - 넣지 않은 스냅이 있으면 **개수를 알리고, 그 스냅을 다시 넣을 수 있게** 한다. 이유는 보여주지 않는다.
   - 넘긴 스냅 중 서버에서 이미 지워졌거나 아직 쓸 수 없는 스냅은 초안에서 빠지고 다시 넣기를 권하지 않는다. 나머지로 초안을
@@ -72,6 +74,15 @@
     [`transition-vocabulary.json`](../../packages/shared-types/src/transition-vocabulary.json)이 원천이다.
   - 겹쳐 녹이는 전환도 컷 구간 밖의 여분 프레임을 쓰므로, 사용자가 자른 구간은 전부 보이고 무비 길이는
     컷 길이의 합이다.
+- **MOV-25** `결정·미구현`(2026-10-13 결정, backlog A-12) — AI 편집 초안은 **AI 에이전트가 계획해서** 만든다. 에이전트는 넘긴 스냅의
+  내용 · 촬영 흐름 · 고른 스타일 · 사용자 취향(PRF-1)으로 그날이 어떤 날인지 추론하고, 장면 흐름(도입 · 본론 · 마무리)을 계획하고,
+  컷 고르기 · 전환 고르기 같은 편집 도구를 불러 초안을 만든 뒤, 결과가 계획에 맞는지 스스로 점검해 다시 시도한다. 근거는
+  [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md).
+  - 사용자는 요청 문장을 쓰지 않는다 — 스냅을 넘기고 스타일을 고르는 지금의 화면 그대로다.
+  - 에이전트가 정하는 것은 MOV-21 의 넷(쓸 스냅 · 순서 · 구간 · 전환)이고, 사용자가 고친 값은 덮지 않는다(MOV-22).
+  - 같은 초안을 다시 렌더하면 같은 결과가 나온다 — 에이전트의 계획을 초안과 함께 남긴다.
+  - 에이전트가 실패하거나 시간 안에 끝나지 않으면 규칙만으로 초안을 만든다. 그 초안에는 크레딧을 쓰지 않는다(CRD-9).
+  - 분석에 동의하지 않은 사용자도 에이전트가 만든다 — 스냅 내용을 보지 않고 촬영 흐름 · 스타일 · 관심사로만 계획한다(ANA-5).
 
 ## 생성 (AI 편집)
 

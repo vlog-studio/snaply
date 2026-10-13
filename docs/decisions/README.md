@@ -45,6 +45,8 @@
 | [transition-director.md](transition-director.md) | 고를 수 있는 전환 v1 다섯과 겹침형의 여분 프레임 규칙. AI 가 경계마다 전환을 고르는 규칙 — 스타일 경향 · 30분 장면 전환 · 두 컷을 키로 한 시드. 여분이 없어 들어가지 않는 `crossfade` 는 `dip` 으로 | 완료(2026-10-01, 편집 화면의 선택·미리보기 포함 — Galaxy 실기기 확인) |
 | [edit-director.md](edit-director.md) | AI 편집 초안이 스냅을 고르고 자르는 규칙 — 극단만 거르기(절반 한도) · 10분 안의 중복 · 10컷을 넘으면 촬영 흐름을 묶음으로 나눠 고르기 · 촬영순 · 스타일별 컷 길이와 겹침용 여분 | 구현됨(2026-10-01) — 문턱값은 잠정 |
 | [auto-edit-draft.md](auto-edit-draft.md) | 고른 스냅 여러 개로 AI 가 고칠 수 있는 무비 초안을 만든다 — 결과는 렌더가 아닌 초안, 구간·경계별 전환까지 사용자가 고친다. 편집 툴마다 정할 것(툴 카드)과 v1 범위 | 구현됨(2026-10-01, `POST /movie-drafts` · 앱의 자동 편집, Galaxy 실기기 확인) — 거르기·중복 문턱값은 잠정(A-11). §6.3 의 기본 처리·색 맞춤은 A-7 |
+| [ai-edit-agent.md](ai-edit-agent.md) | AI 편집 초안을 LLM 에이전트가 만든다 — 의도 추론 → 계획 → 기존 디렉터를 툴로 호출 → 검토 · 재시도, 판단은 에이전트 · 실행은 규칙(시드), 계획을 저장해 재현, 실패 시 규칙 폴백. 초안은 하루 3회 무료 뒤 1회 20크레딧(2026-10-13, 공모전 주제 Agentic AI) | 결정·미구현(A-12) |
+| [ontology-personalization.md](ontology-personalization.md) | 스냅 내용과 취향을 같은 개념 체계(온톨로지)로 — JSON 사전이 원천(OWL/Turtle 은 내보내기), 관심사 부활(`topics`), 행동에서 배우는 개념별 취향(조금씩 · 음수는 감점 · 시간 감쇠), 분석은 요청 시점 유지, 스냅 삭제 시 합산값 유지 · 동의 철회 시 파기, 이유 노출 보류(2026-10-13, 공모전 주제 Ontology AI) | 결정·미구현(A-13 · A-9) |
 | [ad-reward-credits.md](ad-reward-credits.md) | 보상형 광고 크레딧 지급 규칙 | 완료, 기본 꺼짐(C-6) |
 | [snap-retention-period.md](snap-retention-period.md) | 스냅 서버 보관은 기간 기준 — 업로드 후 15일 만료 (구독 혜택으로 연장할지는 미확정, A-2) | 완료(서버 2026-09-09 · 앱 만료 표시 2026-09-27). 용량 한도 존치는 A-2 |
 | [expiry-notice-schedule.md](expiry-notice-schedule.md) | 스냅 만료 예고는 삭제 전 두 번, 정리 배치와 분리된 낮 시간 배치가 보낸다 | 완료(서버 2026-09-09). 앱의 남은 기간 표시는 SNAP-13 |

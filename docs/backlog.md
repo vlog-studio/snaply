@@ -317,22 +317,21 @@ e2e 실검증.
 `https://<project-ref>.supabase.co/auth/v1/callback`·카카오 로그인 ON·동의항목) → Supabase Kakao 프로바이더
 활성화 → 앱 버튼 추가(#32 참고) → 개발 빌드에서 실제 로그인 확인 → 스펙 ACC-1 갱신.
 
-### A-9. 관심사의 쓰임새 — 앱은 `준비 중`
+### A-9. 관심사 부활 — 앱은 아직 `준비 중`
 
-**왜 막혀 있는지**: 관심사를 읽는 곳이 없어, 앱은 고르는 화면을 걷고 나 탭에 `준비 중` 으로 두었다
-([progress.md](./progress.md) 2026-09-26). 무엇에 쓸지는 스냅 분석 추천 계획의 4단계에서 정한다
-([plans/snap-analysis-recommendation-rollout.md](./plans/snap-analysis-recommendation-rollout.md) §4.4 — 출처와
-소비처의 선택지). 추천이 어디에 쓰일지(A-6 "추천이 쓰이는 곳 결정")가 정해진 뒤에 아래 첫 항목을 정한다.
+관심사는 온톨로지의 `topics` 개념에서 고르고, 사용자 취향의 출발점이 된다(2026-10-13 결정 —
+[decisions/ontology-personalization.md](./decisions/ontology-personalization.md), 스펙 ACC-5 · PRF-1 · PRF-3). 그 전까지의 경위(2026-09-26 보류 ·
+2026-10-12 `준비 중` 유지)는 [progress.md](./progress.md) 2026-09-26 과 ACC-5 에 있다.
 
-**2026-10-12 결정**: 관심사는 보류하고 나 탭의 `관심사 · 준비 중` 줄은 **남긴다** — 개발되지 않았다는 것이 보여야 한다.
-분석 · 추천(A-3 · A-6)을 켤 때 아래를 정한다. 같은 날 닉네임 수정은 넣었고, 아바타는 보여 줄 곳이 없어 만들지 않기로 했다(ACC-5).
+**왜 막혀 있는지**: 고를 개념이 아직 없다 — 개념 사전이 계획 초안이고 `topics` 가 8개뿐이다(A-13).
 
 **완료 조건** (스펙 ACC-5):
 
-- [ ] 관심사가 무엇을 바꾸는지와 관심사의 출처를 정한다 — 계획 §4.4 의 선택지에 더해, 원래 의도는
-      위치 알림 장소 고르기였다
-- [ ] 그 소비처를 구현하고, 앱이 선택을 `PATCH /auth/me` 의 `interests` 로 보낸다
-- [ ] 나 탭의 `준비 중` 을 걷고 편집 화면을 되살린다(되살릴 화면은 계획 §4.4)
+- [ ] `topics` 를 관심사로 고를 만큼 늘린다(A-13 의 사전 확정과 같은 변경)
+- [ ] `PATCH /auth/me` 의 `interests` 를 사전의 `topics` id 로 검증한다 — 계약 `packages/shared-types/src/contract/auth.ts` · `openapi.json` · `docs/api-spec.md`.
+      이미 저장된 자유 문자열을 어떻게 옮길지(버릴지 · 사전으로 정규화할지) 함께 정한다
+- [ ] 앱 나 탭의 `준비 중` 을 걷고 선택 화면을 만든다 — 기능 문서 `apps/mobile/docs/features/me.md`
+- [ ] 관심사가 취향 프로필의 `explicit` 행이 된다(A-13)
 
 ### A-11. AI 편집 초안 — 구현됨, 문턱값 실측 남음
 
@@ -373,6 +372,48 @@ e2e 실검증.
 
 **의존**: 컷 타이밍의 기준(A-7 "컷 타이밍의 기준을 컷마다")과 역할을 싣는 `timeline.cuts[].role`(A-7 editSpec v3).
 분석을 쓰는 부분은 A-3 의 활성화 조건과 분석 동의(REC-4)를 따른다.
+
+### A-12. AI 편집 에이전트 — 결정, 미구현
+
+AI 편집 초안을 LLM 에이전트가 계획하고 기존 디렉터를 툴로 부른다. 초안은 하루 3회 무료, 그 뒤 1회 20크레딧(2026-10-13 결정 —
+[decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md), 스펙 MOV-25 · CRD-9 · MOV-21). 착수 순서는
+[plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 6 · 7단계.
+
+**왜 막혀 있는지**: 에이전트의 툴 · 검토가 개념 위에서 돈다 — 개념 사전과 취향 프로필(A-13)이 먼저다.
+
+**완료 조건**:
+
+- [ ] 디렉터를 툴로 감싸고 에이전트 루프 · 규칙 검토 · 계획 저장 · 폴백 · 시간 상한을 넣는다(MOV-25). 초안이 vision 분석을 요청하는
+      일(A-11 "초안의 vision 분석")을 `analyze_snaps` 툴로 함께 닫는다
+- [ ] 에이전트 모델 환경변수를 `apps/api/src/env-spec.ts` · `.env.example` 에 선언하고, 운영(Secrets Manager)에서 누가 넣는지 정한다
+- [ ] 초안 과금 — 무료 3회 · 20크레딧 예약 → 확정 · 폴백과 재사용은 차감 없음 · 남은 무료 횟수를 응답과 앱에 보인다(CRD-9).
+      계약 `contract/movie-drafts.ts` · `openapi.json` · `docs/api-spec.md` · 기능 문서 `apps/mobile/docs/features/` 의 초안 문서
+- [ ] **잠정값 실측** — 반복 상한(2) · 시간 상한(20초) · 에이전트 모델 · 초안 1회의 호출 수 · 토큰 · 지연 · 폴백 비율. 결정 문서 §5.1 의
+      추정을 실측으로 바꾼다
+- [ ] 무료 3회 · 20크레딧 값을 실측 단가와 크레딧 판매가(A-2 · C-1)로 다시 본다
+
+**의존**: A-13(개념 · 취향) · A-3(분석 활성화 — 분석 툴은 동의한 사용자에게만).
+
+### A-13. 온톨로지 개인화 — 결정, 미구현
+
+스냅 내용과 사용자 취향을 같은 개념 체계로 표현하고, 취향을 행동에서 배워 추천 · 템플릿 순서 · AI 편집 초안에 반영한다(2026-10-13 결정 —
+[decisions/ontology-personalization.md](./decisions/ontology-personalization.md), 스펙 PRF-1~PRF-4). 착수 순서는
+[plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 1 · 2 · 4 · 5 · 8단계.
+
+**왜 막혀 있는지**: 개념 사전이 계획 초안([plans/content-vocabulary.md](./plans/content-vocabulary.md))이고, 사전 밖 비율을 재는 실측이 A-3 의
+팀 스냅 실측에 얹혀 있다.
+
+**완료 조건**:
+
+- [ ] 개념 사전 확정 — [plans/content-vocabulary.md](./plans/content-vocabulary.md) §6 의 1~4 와 `moods` 추가
+- [ ] 관계 `typicallyAt` · `evokes` · `suits` 와 정합성 테스트
+- [ ] 취향 프로필 — DB 표(`schema.prisma` 공유 파일, [team.md](./team.md) §2) · 신호 수집 · 갱신 · 상위 전파 · 시간 감쇠 · 파기(동의 철회 ·
+      계정 삭제 · 관심사 해제). 개인정보처리방침의 분석 고지에 취향의 취급(스냅 삭제 뒤에도 합산값이 남는다)을 적는다(D-2)
+- [ ] 취향 반영 — 템플릿 정렬 · 추천 가중 · 전환 · 스타일 기본값(PRF-3), 재사용 키에 사전 · 취향 버전
+- [ ] **잠정값** — 신호 강도(0.3 · 0.5 · 1.0 · −0.5 · ±0.5) · 학습률(0.2) · 감쇠 속도 · 상위 전파 비율을 시연 데이터로 다시 본다
+- [ ] 발표용 그래프 시각화 · OWL/Turtle 내보내기 스크립트(`scripts/`, 명령을 만들면 ONBOARDING §4)
+
+**의존**: A-3(내용 개념은 분석이 있어야 생긴다). 관심사는 A-9.
 
 ---
 

@@ -11,6 +11,9 @@
 > (`MOVIE_RECOMMENDATION_ENABLED`)는 그대로 두고, 켜져도 분석에 동의한 사용자에게만 추천이 돈다 — §8 의 "법무 검토"
 > 선행 조건을 대체한다 → [snap-content-analysis.md](snap-content-analysis.md) §6.1
 
+> **후속 결정**(2026-10-13): 점수화의 키워드 몫을 개념 사전(온톨로지) 매칭으로 바꾸고 사용자 취향 가중을 더한다. 추천 경로에 모델 호출을
+> 더하지 않는다는 §7 은 그대로다 → [ontology-personalization.md](ontology-personalization.md) §7
+
 ---
 
 ## 1. 무엇을 정했나

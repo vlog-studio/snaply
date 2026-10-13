@@ -11,6 +11,10 @@
 [`score-slots.ts`](../../apps/api/src/services/recommendation/score-slots.ts) ·
 [`prompt.py`](../../apps/ai-worker/src/pipeline/video_analysis/prompt.py)
 
+> **후속 결정**(2026-10-13): 이 사전을 온톨로지의 내용 층으로 채택하는 방향과 §6 의 7(관심사를 `topics` 에서 고른다)이
+> [decisions/ontology-personalization.md](../decisions/ontology-personalization.md)에서 정해졌다. §7 의 "RDF/OWL · 그래프 DB 기각"은 그대로이고,
+> 발표용 OWL/Turtle 은 이 사전에서 만든 내보내기다. 착수 순서는 [agentic-ontology-rollout.md](agentic-ontology-rollout.md)
+
 ---
 
 ## 0. 범위

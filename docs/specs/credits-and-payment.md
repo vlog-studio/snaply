@@ -2,7 +2,7 @@
 
 **작성일**: 2026-09-02
 **상태**: 현행 — 과금 요구사항의 원천
-**관련 문서**: [decisions/credit-payment-model.md](../decisions/credit-payment-model.md) · [decisions/payment-channel-iap.md](../decisions/payment-channel-iap.md) · [decisions/storage-and-subscription-policy.md](../decisions/storage-and-subscription-policy.md) · [decisions/ad-reward-credits.md](../decisions/ad-reward-credits.md) · [apps/mobile/docs/features/credits-and-rewarded-ads.md](../../apps/mobile/docs/features/credits-and-rewarded-ads.md) · 표기 규칙은 [README.md](README.md)
+**관련 문서**: [decisions/credit-payment-model.md](../decisions/credit-payment-model.md) · [decisions/payment-channel-iap.md](../decisions/payment-channel-iap.md) · [decisions/storage-and-subscription-policy.md](../decisions/storage-and-subscription-policy.md) · [decisions/ad-reward-credits.md](../decisions/ad-reward-credits.md) · [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md) · [apps/mobile/docs/features/credits-and-rewarded-ads.md](../../apps/mobile/docs/features/credits-and-rewarded-ads.md) · 표기 규칙은 [README.md](README.md)
 
 ## 과금 모델
 
@@ -34,6 +34,16 @@
   켤 수 있다. **AWS 공모전 서버는 500**(무비 5편)을 준다(2026-10-09, 공모전 동안 테스터가 결제 ·
   광고 없이 무비를 만들 수 있게 — [backlog.md](../backlog.md) B-8). 계정마다 **한 번만** 들어가고,
   수량을 켜기 전에 가입한 계정도 다음 요청에서 한 번 받는다.
+
+## AI 편집 초안
+
+- **CRD-9** `결정·미구현`(2026-10-13 결정, backlog A-12 — 지금은 초안이 모두 무료다) — AI 편집 초안(MOV-21 · MOV-25)은 **하루 3번까지
+  무료**이고, 그 뒤로는 **1번에 20크레딧**을 쓴다. 최근 24시간 10번 상한(MOV-21)은 유료 초안을 포함해 그대로다. 근거는
+  [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md) §5.
+  - 크레딧은 **에이전트가 끝까지 만든 초안에만** 쓴다. 에이전트가 실패해 규칙만으로 만든 초안과, 같은 입력이라 전에 만든 초안을
+    돌려준 경우에는 쓰지 않는다.
+  - 무비 생성(MOV-10)과 같이 예약했다가 초안이 나오면 확정하고, 실패하면 돌려준다. 잔액이 모자라면 초안을 시작하지 않는다.
+  - 무료로 남은 횟수와 이번 초안에 쓸 크레딧은 초안을 요청하기 전에 보인다.
 
 ## 보상형 광고
 

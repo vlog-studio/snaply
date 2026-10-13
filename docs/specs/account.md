@@ -2,7 +2,7 @@
 
 **작성일**: 2026-09-02
 **상태**: 현행 — 계정·프로필 요구사항의 원천
-**관련 문서**: [decisions/account-deletion.md](../decisions/account-deletion.md) · [apps/mobile/docs/features/authentication.md](../../apps/mobile/docs/features/authentication.md) · 표기 규칙은 [README.md](README.md)
+**관련 문서**: [decisions/account-deletion.md](../decisions/account-deletion.md) · [decisions/ontology-personalization.md](../decisions/ontology-personalization.md) · [apps/mobile/docs/features/authentication.md](../../apps/mobile/docs/features/authentication.md) · 표기 규칙은 [README.md](README.md)
 
 ## 가입과 로그인
 
@@ -17,14 +17,16 @@
 
 ## 프로필
 
-- **ACC-5** `부분`(빠진 것: 관심사 — 보류) — 사용자는 **닉네임**을 고칠 수 있다: 나 탭의 이름을 누르면 바꾸는 시트가 열리고
+- **ACC-5** `부분`(빠진 것: 관심사 — 2026-10-13 결정 · 미구현) — 사용자는 **닉네임**을 고칠 수 있다: 나 탭의 이름을 누르면 바꾸는 시트가 열리고
   (1~50자, 앞뒤 공백 없이), 저장한 이름이 나 탭에 보인다. 정한 적이 없으면 로그인 계정의 이름을 보인다. 서버(`PATCH /auth/me`)는
   아바타 · 관심사도 받지만 둘은 앱에서 고치지 않는다(2026-10-12 오너 결정):
   - **아바타** — 보여 줄 곳이 없다(나 탭은 이름의 첫 글자를 그리고, 남에게 보이는 화면(피드)은 두지 않는다). 올릴 서버 경로도 없다.
     보여 줄 곳이 생기면 그때 정한다.
-  - **관심사** — 앱도 서버도 읽는 곳이 없어 보류한다. 무엇을 바꾸는지는 분석 · 추천(backlog A-3 · A-6)을 켤 때 정하고, 그때까지
-    나 탭에 `준비 중` 으로 **남겨 둔다** — 개발되지 않았다는 것이 보여야 한다(2026-09-26 · 2026-10-12 오너 결정). 남은 일은
-    [backlog.md](../backlog.md) A-9.
+  - **관심사** — 사용자는 나 탭에서 **관심사를 고르고 바꿀 수 있다.** 고를 수 있는 것은 서버의 개념 사전에 있는 주제(카페 · 여행 등)이고
+    자유 입력은 받지 않는다. 고른 관심사는 사용자 취향의 출발점이 되어 템플릿 순서 · 추천 · AI 편집 초안에 반영된다(PRF-1 · PRF-3).
+    관심사를 하나도 고르지 않아도 모든 기능이 동작한다(2026-10-13 오너 결정 — 근거는
+    [decisions/ontology-personalization.md](../decisions/ontology-personalization.md)). 만들기 전까지 나 탭은 `준비 중` 그대로다.
+    남은 일은 [backlog.md](../backlog.md) A-9.
 - **ACC-6** `구현됨` — 스냅·무비 라이브러리는 로그인 계정별로 격리된다. 기기에서 계정을
   전환하면 이전 계정의 데이터가 보이지 않는다.
 
