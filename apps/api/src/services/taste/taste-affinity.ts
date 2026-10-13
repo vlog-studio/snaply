@@ -8,12 +8,15 @@ import {
   contentEvokedMoods,
   contentMoodSuits,
   contentTypicalPlaces,
+  contentConceptIds,
   normalizeContentValues,
   CONTENT_FIELDS,
+  STYLE_PRESETS,
   type ContentField,
+  type StylePreset,
 } from '@vlog-studio/shared-types';
 import type { TasteField } from './taste-math.js';
-import { TASTE_PROPAGATION_RATIO, TASTE_RELATION_RATIO } from './taste-policy.js';
+import { TASTE_PROPAGATION_RATIO, TASTE_RELATION_RATIO, TASTE_STYLE_MIN } from './taste-policy.js';
 
 export interface TasteLookup {
   weightOf(field: TasteField, concept: string): number;
@@ -94,3 +97,20 @@ export function moodsOfAnalysis(analysis: AnalysisValues): string[] {
 export function transitionsSuiting(moods: readonly string[]): Set<string> {
   return new Set(moods.flatMap((mood) => contentMoodSuits(mood)?.transitions ?? []));
 }
+
+/**
+ * 이 사용자에게 권하는 스타일(PRF-3) — 스타일 취향에, 좋아하는 분위기가 어울리는 스타일(`suits.styles`)을 `TASTE_RELATION_RATIO` 만큼 더한 점수가
+ * 가장 큰 것. 그 점수가 `TASTE_STYLE_MIN` 에 못 미치면 `null` — 권할 근거가 없으면 앱의 기본값(일상)을 쓴다. 동점이면 `STYLE_PRESETS` 순서.
+ */
+export function recommendedStyle(lookup: TasteLookup): StylePreset | null {
+  const moods = contentConceptIds('moods');
+  let best: { style: StylePreset; score: number } | null = null;
+  for (const style of STYLE_PRESETS) {
+    const suited = moods.filter((mood) => contentMoodSuits(mood)?.styles.includes(style));
+    const fromMoods = suited.reduce((sum, mood) => sum + Math.max(0, lookup.weightOf('moods', mood)), 0);
+    const score = lookup.weightOf('style', style) + TASTE_RELATION_RATIO * fromMoods;
+    if (best === null || score > best.score) best = { style, score };
+  }
+  return best !== null && best.score >= TASTE_STYLE_MIN ? best.style : null;
+}
+

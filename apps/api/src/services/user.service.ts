@@ -4,6 +4,8 @@ import { getPrisma } from '../db/client.js';
 import { captureException } from '../lib/sentry.js';
 import { grantSignupBonus } from './credit.service.js';
 import { knownInterests, requireKnownInterests, syncInterestTastes } from './interest.service.js';
+import { readTasteProfile } from './taste/taste.service.js';
+import { buildTasteLookup, recommendedStyle } from './taste/taste-affinity.js';
 
 const UNIQUE_VIOLATION = 'P2002';
 
@@ -90,6 +92,7 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
   if (!user) {
     return null;
   }
+  const taste = buildTasteLookup(await readTasteProfile(userId));
 
   return {
     id: user.id,
@@ -101,6 +104,7 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
     movieNotificationEnabled: user.movieNotificationEnabled,
     quietStart: user.quietStart,
     quietEnd: user.quietEnd,
+    recommendedStyle: recommendedStyle(taste),
   };
 }
 

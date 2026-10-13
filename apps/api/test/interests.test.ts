@@ -133,3 +133,21 @@ describe('interests in the taste profile', () => {
     expect((await order())[0]).toBe('cafe');
   });
 });
+
+describe('recommendedStyle on the profile (PRF-3)', () => {
+  it('is null for a new user and the style the taste points to once there is one', async () => {
+    const user = await h.createUser();
+    const me = () => h.app.inject({ method: 'GET', url: '/auth/me', headers: user.auth });
+    expect((await me()).json().data.recommendedStyle).toBeNull();
+
+    await h.prisma.userTaste.create({
+      data: { userId: user.id, field: 'style', concept: '여행', source: 'derived', weight: 0.4, evidence: 2, updatedAt: new Date() },
+    });
+
+    expect((await me()).json().data.recommendedStyle).toBe('여행');
+    // PATCH 의 응답도 같은 프로필이다.
+    const patched = await h.app.inject({ method: 'PATCH', url: '/auth/me', headers: user.auth, payload: { nickname: '취향' } });
+    expect(patched.json().data.recommendedStyle).toBe('여행');
+  });
+});
+

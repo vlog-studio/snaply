@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AUTHENTICATED_ERROR_RESPONSES, apiErrorSchema, apiErrorWith, apiSuccess } from './common.js';
 import { defineRoute } from './define-route.js';
+import { stylePresetSchema } from './vocab.js';
 
 export const userProfileSchema = z
   .object({
@@ -16,6 +17,11 @@ export const userProfileSchema = z
     movieNotificationEnabled: z.boolean().describe('무비 완성 알림을 받을지. 새 계정은 꺼짐.'),
     quietStart: z.int().min(0).max(23).describe('방해 금지 시작 시각(KST, 0-23).'),
     quietEnd: z.int().min(0).max(23).describe('방해 금지 종료 시각(KST, 0-23). 시작과 같으면 없음.'),
+    recommendedStyle: stylePresetSchema
+      .nullable()
+      .describe(
+        '취향으로 권하는 스타일(PRF-3) — 앱은 새 무비의 스타일을 정할 근거가 없을 때 쓴다. 권할 근거가 없으면 null(앱의 기본값). 읽기 전용.',
+      ),
   })
   .meta({ id: 'UserProfile' });
 export type UserProfile = z.infer<typeof userProfileSchema>;

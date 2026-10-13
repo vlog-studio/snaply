@@ -32,6 +32,9 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 - `PATCH /auth/me` 🔒 — 보낸 필드만 바뀐다. `avatarUrl: null` 은 지우기다. `interests` 는 `GET /interest-topics` 의 id 만 받고(아니면 400
   `UNKNOWN_INTEREST` + 틀린 값 `unknown`), 통째로 바꾼다 — 빈 배열이면 모두 해제. 고른 관심사는 사용자 취향의 출발점이 된다(ACC-5 · PRF-1).
   `GET /auth/me` 의 `interests` 는 사전에 있는 값만 돌려준다(예전 빌드가 저장한 자유 문자열은 빠진다).
+- 프로필의 `recommendedStyle`(읽기 전용, 2026-10-13) — 취향이 권하는 스타일 프리셋(`감성` · `여행` · `일상`) 또는 `null`(권할 근거가 없다). 앱은 새 무비의 스타일을
+  정할 근거가 없을 때 쓴다(PRF-3). 규칙은 `taste-affinity.ts` 의 `recommendedStyle` — 스타일 취향 + 좋아하는 분위기가 어울리는 스타일(`suits.styles`) × 0.5,
+  최고점이 0.15 미만이면 `null`.
 - `GET /interest-topics` 🔒 — 관심사로 고를 수 있는 주제(개념 사전의 `topics`)를 사전 순서로 `{ id, label }` 목록으로 준다.
   **알림 설정(전체 스위치 · 종류별 스위치 · 방해 금지 시간)이 사는 곳이다** — 필드는 계약, 기본값은
   [NTF-7](./specs/notifications.md). 서버가 원천이라 앱은 기기에 사본을 두지 않는다. 전체를 끄면 종류와 무관하게 아무것도

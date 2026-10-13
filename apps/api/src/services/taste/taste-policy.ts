@@ -47,6 +47,10 @@ export const TASTE_TRANSITION_BASE = 2;
 /** 경계의 분위기(`suits`)에 어울리는 전환의 배율. */
 export const TASTE_MOOD_BOOST = 1.5;
 
+/** 스타일을 권하는 데 필요한 최소 점수(`recommendedStyle`) — 스타일을 한 번 바꾼 것(0.2 × 0.5)으로는 권하지 않고,
+ * 그 스타일로 무비를 한 편 완성하면(0.2 × 1.0) 권한다. */
+export const TASTE_STYLE_MIN = 0.15;
+
 /** 템플릿 순서를 바꾸는 취향 차이의 최소값 — 이보다 작으면 카탈로그 순서를 지킨다. */
 export const TASTE_TEMPLATE_EPSILON = 0.01;
 

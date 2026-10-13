@@ -6,6 +6,7 @@ import {
   buildTasteLookup,
   conceptAffinity,
   moodsOfAnalysis,
+  recommendedStyle,
   snapAffinity,
   transitionsSuiting,
 } from '../src/services/taste/taste-affinity.js';
@@ -71,3 +72,23 @@ describe('moods and the transitions they suit', () => {
     expect(transitionsSuiting([]).size).toBe(0);
   });
 });
+
+describe('recommendedStyle', () => {
+  it('recommends nothing without enough to go by', () => {
+    expect(recommendedStyle(lookup())).toBeNull();
+    // 스타일을 한 번 바꾼 정도(0.1)로는 권하지 않는다.
+    expect(recommendedStyle(lookup(['style', '여행', 0.1]))).toBeNull();
+  });
+
+  it('recommends the style the user keeps finishing movies in', () => {
+    expect(recommendedStyle(lookup(['style', '여행', 0.2]))).toBe('여행');
+    expect(recommendedStyle(lookup(['style', '여행', 0.2], ['style', '감성', 0.4]))).toBe('감성');
+  });
+
+  it('adds the styles the liked moods suit, and ignores disliked moods', () => {
+    // 그리움(nostalgic)은 감성에 어울린다 — 0.4 × 비율 0.5 = 0.2.
+    expect(recommendedStyle(lookup(['moods', 'nostalgic', 0.4]))).toBe('감성');
+    expect(recommendedStyle(lookup(['moods', 'nostalgic', -1], ['style', '일상', 0.2]))).toBe('일상');
+  });
+});
+
