@@ -4,6 +4,7 @@ import {
   CUT_ROLES,
   DEFAULT_CUT_ROLE,
   MOVIE_CLIP_MAX,
+  MOVIE_CLIP_MIN,
   cutRolesAllowedAt,
   isCutRoleJudgeable,
   type CutRole,
@@ -65,6 +66,12 @@ const ROLE_LENGTH_FACTOR: Partial<Record<CutRole, number>> = { hook: 0.75, close
 
 /** §4 점수 가중치. */
 const SCORE_WEIGHTS = { quality: 0.5, motion: 0.3, speech: 0.2 } as const;
+
+/**
+ * 에이전트가 고른 초점(`DirectionParams.focusKeys`)이 보이는 스냅에 더하는 점수. 위 가중치의 합(1)과 같아, 같은 묶음 안에서는
+ * 초점 스냅이 거의 언제나 이긴다. 거르기 · 중복을 통과한 스냅에만 더하므로 못 쓸 스냅을 되살리지는 않는다(decisions/ai-edit-agent.md §3.2).
+ */
+export const FOCUS_SCORE_BONUS = 1;
 
 /** §7 구간 창이 움직이는 단위이자 창이 놓이는 격자 — 앱의 트림 단위(`CutTrimStepSec`)와 같아야 한다. */
 const WINDOW_STEP_MS = 100;
@@ -342,12 +349,29 @@ export function chooseRange(
   return { startMs: best, endMs: best + length };
 }
 
+/**
+ * AI 편집 에이전트가 디렉터에 넘기는 조절값(decisions/ai-edit-agent.md §3.2). 둘 다 없으면 규칙만의 초안과 같다 — 에이전트는
+ * 디렉터의 규칙 **안에서** 고를 수 있는 값만 바꾼다.
+ */
+export interface DirectionParams {
+  /** 초점 개념이 보이는 스냅의 key. 묶음 안에서 앞선다(`FOCUS_SCORE_BONUS`). */
+  focusKeys?: ReadonlySet<string>;
+  /** 컷 수 상한. `MOVIE_CLIP_MIN`~`MOVIE_CLIP_MAX` 로 자른다. */
+  maxCuts?: number;
+}
+
 /** 넘긴 스냅으로 초안을 만든다(§1 의 여섯 단계). */
 export function directDraft(params: {
   seedRoot: string;
   stylePreset: StylePreset;
   candidates: DraftCandidate[];
+  direction?: DirectionParams;
 }): DraftResult {
+  const focus = params.direction?.focusKeys;
+  const maxCuts = Math.min(
+    MOVIE_CLIP_MAX,
+    Math.max(MOVIE_CLIP_MIN, Math.floor(params.direction?.maxCuts ?? MOVIE_CLIP_MAX)),
+  );
   const examinedCandidates = params.candidates.filter((c) => c.uploaded && c.signals !== null);
   const qualityOf = normalizer(examinedCandidates.map((c) => Math.log1p(c.signals!.sharpness)));
   const motionOf = normalizer(examinedCandidates.map((c) => mean(c.signals!.motion)));
@@ -364,7 +388,8 @@ export function directDraft(params: {
     const score =
       SCORE_WEIGHTS.quality * quality +
       SCORE_WEIGHTS.motion * motionOf(motionMean) +
-      SCORE_WEIGHTS.speech * (signals.speech.length > 0 ? 1 : 0);
+      SCORE_WEIGHTS.speech * (signals.speech.length > 0 ? 1 : 0) +
+      (focus?.has(candidate.key) ? FOCUS_SCORE_BONUS : 0);
     return { candidate, index, score, quality, motionMean };
   });
 
@@ -385,13 +410,13 @@ export function directDraft(params: {
   }
 
   let chosen: Scored[];
-  if (fixed.length >= MOVIE_CLIP_MAX) {
+  if (fixed.length >= maxCuts) {
     // 검사 없는 스냅만으로 넘친다 — 그것들끼리 나눠 고르고 먼저 찍은 것이 이긴다.
-    const picked = buckets(fixed, MOVIE_CLIP_MAX).map((group) => group[0]!);
+    const picked = buckets(fixed, maxCuts).map((group) => group[0]!);
     excluded.push(...fixed.filter((item) => !picked.includes(item)), ...pool);
     chosen = picked;
   } else {
-    const slots = MOVIE_CLIP_MAX - fixed.length;
+    const slots = maxCuts - fixed.length;
     let picked = pool;
     if (pool.length > slots) {
       const pick = better(params.seedRoot);

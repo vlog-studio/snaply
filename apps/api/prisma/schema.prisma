@@ -407,6 +407,11 @@ model MovieDraft {
   complete    Boolean
   // 응답 그대로({ stylePreset, cuts, excluded }).
   result      Json
+  /// 누가 만들었나(specs MOV-25) — `agent`(에이전트가 끝까지 돌았다) · `rules`(에이전트를 쓸 수 없다 — 키 없음) ·
+  /// `fallback`(에이전트가 실패해 규칙으로 만들었다). `fallback` 은 재사용하지 않는다 — 일시적 실패가 하루 동안 남지 않게.
+  mode        String   @default("rules") @db.VarChar(10)
+  /// 에이전트의 계획(의도 · 툴 호출 · 디렉터에 넘긴 조절값 · 토큰과 지연) — 다시 실행하면 같은 초안이다(decisions/ai-edit-agent.md §4).
+  plan        Json?
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  CONTENT_VOCABULARY_VERSION,
   MAX_DRAFT_SNAPS,
   type MovieDraft,
   type MovieDraftBody,
@@ -19,9 +20,19 @@ import {
   type DraftCandidate,
   type DraftSignals,
 } from './edit-director.js';
-import { ANALYSIS_VERSION } from './video-analysis.service.js';
-import { contentSignalsOf, emitTasteSignals } from './taste/taste.service.js';
-import { TASTE_SIGNAL_STRENGTH } from './taste/taste-policy.js';
+import { ANALYSIS_VERSION, requestAnalysis } from './video-analysis.service.js';
+import { activeAnalysisConsentWhere, isSnapAnalysisEnabled } from './analysis-consent.service.js';
+import { contentSignalsOf, emitTasteSignals, readTasteProfile } from './taste/taste.service.js';
+import { TASTE_POLICY_VERSION, TASTE_SIGNAL_STRENGTH } from './taste/taste-policy.js';
+import { conceptsOfAnalysis, moodsOfAnalysis } from './taste/taste-affinity.js';
+import type { AgentModel } from './edit-agent/agent-model.js';
+import {
+  EDIT_AGENT_PROMPT_VERSION,
+  EDIT_AGENT_TASTE_TOP,
+  EDIT_AGENT_TIME_LIMIT_MS,
+} from './edit-agent/agent-policy.js';
+import { resolveEditAgentModel } from './edit-agent/agent-runtime.js';
+import { EditAgentError, runEditAgent, type SnapConcepts } from './edit-agent/edit-agent.js';
 
 /**
  * AI 편집 초안의 제안(specs/movie.md MOV-21). 고르는 규칙은 `edit-director.ts`, 상한은
@@ -54,15 +65,19 @@ function keyOf(snap: SnapInput): string {
 }
 
 /**
- * (규칙 버전, 스타일, 스냅 집합)의 해시. 업로드되지 않은 스냅은 촬영 시각까지 넣는다 — 시각이 바뀌면 자리가 바뀐다.
- * 규칙 버전이 들어가야 규칙을 고친 뒤 같은 요청이 예전 제안을 재사용하지 않는다.
+ * (규칙 버전, 에이전트, 스타일, 스냅 집합)의 해시. 업로드되지 않은 스냅은 촬영 시각까지 넣는다 — 시각이 바뀌면 자리가 바뀐다.
+ * 규칙 버전이 들어가야 규칙을 고친 뒤 같은 요청이 예전 제안을 재사용하지 않는다. 에이전트의 프롬프트 버전 · 모델과 개념 사전 ·
+ * 취향 규칙 버전도 넣는다(decisions/ai-edit-agent.md §4) — 에이전트를 켜고 끄거나 바꾸면 예전 초안이 돌아오지 않는다.
  */
-function snapHashOf(stylePreset: StylePreset, snaps: SnapInput[]): string {
+function snapHashOf(stylePreset: StylePreset, snaps: SnapInput[], agent: AgentModel | null): string {
   const parts = snaps
     .map((snap) => ('videoId' in snap ? `v:${snap.videoId}` : `l:${snap.localId}@${Date.parse(snap.capturedAt)}`))
     .sort();
+  const agentKey = agent ? `agent:${EDIT_AGENT_PROMPT_VERSION}:${agent.name}` : 'agent:off';
   return createHash('sha256')
-    .update(`edit-director:${EDIT_DIRECTOR_VERSION}:signals:${SIGNALS_VERSION}\n${stylePreset}\n${parts.join(',')}`)
+    .update(
+      `edit-director:${EDIT_DIRECTOR_VERSION}:signals:${SIGNALS_VERSION}:${agentKey}:vocabulary:${CONTENT_VOCABULARY_VERSION}:taste:${TASTE_POLICY_VERSION}\n${stylePreset}\n${parts.join(',')}`,
+    )
     .digest('hex');
 }
 
@@ -118,10 +133,18 @@ export async function requestDraft(params: {
   const windowStart = new Date(now - DRAFT_REUSE_WINDOW_MS);
   // 쓸 수 있는 스냅만으로 따진다 — 초안은 그것만의 함수다. 그래서 스냅 하나가 나중에 사라져도 그 스냅을 담은 예전 제안은
   // 재사용되지 않는다(집합이 달라진다).
-  const snapHash = snapHashOf(stylePreset, usable);
+  const agent = resolveEditAgentModel();
+  const snapHash = snapHashOf(stylePreset, usable, agent);
 
+  // 에이전트가 실패해 규칙으로 만든 초안(`fallback`)은 재사용하지 않는다 — 일시적 실패가 하루 동안 남지 않게.
   const reusable = await prisma.movieDraft.findFirst({
-    where: { userId: params.userId, snapHash, complete: true, createdAt: { gte: windowStart } },
+    where: {
+      userId: params.userId,
+      snapHash,
+      complete: true,
+      mode: { not: 'fallback' },
+      createdAt: { gte: windowStart },
+    },
     orderBy: { createdAt: 'desc' },
     select: { result: true },
   });
@@ -149,6 +172,8 @@ export async function requestDraft(params: {
         places: true,
         objects: true,
         actions: true,
+        topics: true,
+        moods: true,
       },
     }),
   ]);
@@ -196,10 +221,14 @@ export async function requestDraft(params: {
     };
   });
 
-  const direction = directDraft({
-    seedRoot: draftSeedRoot(params.userId, usable.map(keyOf)),
+  const seedRoot = draftSeedRoot(params.userId, usable.map(keyOf));
+  const { direction, mode, plan } = await direct({
+    userId: params.userId,
+    agent,
+    seedRoot,
     stylePreset,
     candidates,
+    analyses: analysisRows,
   });
   const uploaded = new Set(uploadedIds);
   const draft: StoredDraft = {
@@ -221,10 +250,89 @@ export async function requestDraft(params: {
     snapHash,
     complete: waiting === 0,
     result: draft as unknown as Prisma.InputJsonValue,
+    mode,
+    ...(plan !== null ? { plan: plan as unknown as Prisma.InputJsonValue } : {}),
   });
   // 초안에 넘긴 스냅은 약한 선호 신호다(PRF-1). 새 제안에서만 낸다 — 재사용은 같은 요청의 반복이라 근거가 늘지 않는다.
   emitTasteSignals(params.userId, () => contentSignalsOf(params.userId, uploadedIds, TASTE_SIGNAL_STRENGTH.candidate));
   return { ...draft, unavailable };
+}
+
+/**
+ * 초안을 정한다 — 에이전트를 쓸 수 있으면 에이전트로(MOV-25), 아니면 규칙만으로. 에이전트가 실패하거나 시간 상한을 넘기면
+ * 규칙으로 돌아간다(`fallback`) — 초안은 언제나 나온다.
+ *
+ * 분석에 동의한 사용자만 개념(`content`)과 분석 툴을 받는다(ANA-5, decisions/ai-edit-agent.md §3.4). 이미 있는 분석은 동의 아래
+ * 만든 것이지만(철회하면 지운다), 개념 툴을 열지는 지금의 동의로 정한다.
+ */
+async function direct(params: {
+  userId: string;
+  agent: AgentModel | null;
+  seedRoot: string;
+  stylePreset: StylePreset;
+  candidates: DraftCandidate[];
+  analyses: Array<{ videoId: string; places: string[]; objects: string[]; actions: string[]; topics: string[]; moods: string[] }>;
+}): Promise<{ direction: ReturnType<typeof directDraft>; mode: 'agent' | 'rules' | 'fallback'; plan: unknown }> {
+  const rules = () => directDraft({ seedRoot: params.seedRoot, stylePreset: params.stylePreset, candidates: params.candidates });
+  if (params.agent === null) return { direction: rules(), mode: 'rules', plan: null };
+
+  const prisma = getPrisma();
+  const [consent, profile] = await Promise.all([
+    prisma.userConsent.findFirst({ where: activeAnalysisConsentWhere(params.userId), select: { id: true } }),
+    readTasteProfile(params.userId),
+  ]);
+  const content =
+    consent === null
+      ? null
+      : new Map<string, SnapConcepts>(
+          params.analyses.map((analysis) => [
+            analysis.videoId,
+            { concepts: conceptsOfAnalysis(analysis), moods: moodsOfAnalysis(analysis) },
+          ]),
+        );
+  const taste = profile
+    .filter((entry) => entry.weight !== 0)
+    .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
+    .slice(0, EDIT_AGENT_TASTE_TOP)
+    .map(({ field, concept, weight }) => ({ field, concept, weight }));
+  const analyze =
+    consent !== null && isSnapAnalysisEnabled()
+      ? async (videoIds: string[]) => {
+          const requested: string[] = [];
+          for (const videoId of videoIds) {
+            try {
+              await requestAnalysis({ userId: params.userId, videoId });
+              requested.push(videoId);
+            } catch (err) {
+              // 분석할 수 없는 스냅(실패가 굳은 것 등)은 건너뛴다 — 초안은 지금 있는 개념으로 만든다.
+              if (!(err instanceof AppError)) captureException(err, { videoId, phase: 'edit-agent-analyze' });
+            }
+          }
+          return requested;
+        }
+      : null;
+
+  try {
+    const { result, plan } = await runEditAgent({
+      model: params.agent,
+      seedRoot: params.seedRoot,
+      stylePreset: params.stylePreset,
+      candidates: params.candidates,
+      content,
+      taste,
+      analyze,
+      deadline: Date.now() + EDIT_AGENT_TIME_LIMIT_MS,
+    });
+    return { direction: result, mode: 'agent', plan };
+  } catch (err) {
+    const reason = err instanceof EditAgentError ? err.reason : 'model';
+    if (!(err instanceof EditAgentError)) captureException(err, { userId: params.userId, phase: 'edit-agent' });
+    return {
+      direction: rules(),
+      mode: 'fallback',
+      plan: { model: params.agent.name, error: reason, ...(err instanceof EditAgentError && err.usage ? { usage: err.usage } : {}) },
+    };
+  }
 }
 
 function draftLimitError(): AppError {

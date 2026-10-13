@@ -228,7 +228,13 @@ export const ENV_VARS = [
     required: false,
     origin: 'shared',
     description:
-      'vision 분석 키. 분석 워커만 소비하며 API 서버는 읽지 않는다. 없으면 분석 워커가 기동 단계에서 실패한다',
+      'OpenAI 키. 분석 워커(vision 분석)와 API 서버(AI 편집 에이전트, MOV-25)가 읽는다. 없으면 분석 워커는 기동 단계에서 실패하고, API 는 정상 기동하되 AI 편집 초안을 규칙만으로 만든다',
+  },
+  {
+    key: 'EDIT_AGENT_MODEL',
+    required: false,
+    origin: 'shared',
+    description: 'AI 편집 에이전트 모델(MOV-25, decisions/ai-edit-agent.md). 기본 gpt-5.6-luna — 잠정값, 실측 뒤 고정한다(backlog A-12)',
   },
   {
     key: 'OPENAI_VISION_MODEL',

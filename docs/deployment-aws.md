@@ -84,6 +84,9 @@ aws secretsmanager put-secret-value --profile dweax-snaply --secret-id dweax/ser
   ```
 
   서버 쪽이 비어 있어도 `DIFFERENT` 다 — 빈 키면 `analysis-worker` 가 기동 단계에서 종료한다(§6).
+- **같은 키를 API 도 읽는다(2026-10-13~).** AI 편집 초안의 에이전트(MOV-25)가 이 키로 OpenAI 를 부른다 — API 는 분석 워커와 같은
+  시크릿 파일을 읽으므로 따로 넣을 것이 없다. 키가 비면 API 는 정상 기동하고 초안을 규칙만으로 만든다(`movie_drafts.mode` 가 `rules`).
+  에이전트 모델은 `EDIT_AGENT_MODEL`(선택, 기본 `gpt-5.6-luna` — 잠정값)이다. 바꾸면 API 재기동만으로 반영된다(배포 불필요).
 - **넣지 않는 키**: compose 가 정한다 — `DATABASE_URL` · `DIRECT_URL` · `REDIS_URL` · `NODE_ENV` · `API_PORT` ·
   `TRUST_PROXY`. S3 키 · `S3_ENDPOINT` · `S3_PUBLIC_ENDPOINT` · `CLOUDFRONT_DOMAIN` 은 넣어도 ""로 덮인다 — 이 서버는
   인스턴스 역할로만 S3 에 붙는다.

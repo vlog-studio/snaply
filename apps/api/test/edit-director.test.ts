@@ -348,3 +348,40 @@ describe('§3·§7 구간', () => {
     expect(range.endMs).toBeLessThanOrEqual(3000 - CUT_LENGTHS.일상.spare);
   });
 });
+
+/** 에이전트가 넘기는 조절값(decisions/ai-edit-agent.md §3.2). 없으면 규칙만의 초안과 같다. */
+describe('조절값 — 초점 · 컷 수', () => {
+  const twelve = () => Array.from({ length: 12 }, (_, i) => snap(`s${i}`, i));
+  const direct = (candidates: DraftCandidate[], direction?: Parameters<typeof directDraft>[0]['direction']) =>
+    directDraft({ seedRoot: draftSeedRoot('user-1', candidates.map((c) => c.key)), stylePreset: '일상', candidates, direction });
+
+  it('조절값이 없으면 지금과 같다', () => {
+    const candidates = twelve();
+    expect(direct(candidates, {})).toEqual(direct(candidates));
+  });
+
+  it('컷 수 상한을 지키고 촬영 흐름 전체에서 고른다', () => {
+    const result = direct(twelve(), { maxCuts: 4 });
+    expect(result.cuts).toHaveLength(4);
+    expect(result.excluded).toHaveLength(8);
+    // 앞 · 뒤 묶음에서 하나씩 — 흐름의 처음과 끝이 남는다.
+    expect(Number(result.cuts[0]!.key.slice(1))).toBeLessThan(3);
+    expect(Number(result.cuts[3]!.key.slice(1))).toBeGreaterThan(8);
+  });
+
+  it('초점 스냅이 같은 묶음의 다른 스냅을 이긴다', () => {
+    const candidates = twelve();
+    const plain = direct(candidates, { maxCuts: 4 });
+    const loser = candidates.find((c) => !plain.cuts.some((cut) => cut.key === c.key) && Number(c.key.slice(1)) < 3)!;
+
+    const focused = direct(candidates, { maxCuts: 4, focusKeys: new Set([loser.key]) });
+
+    expect(focused.cuts.map((cut) => cut.key)).toContain(loser.key);
+  });
+
+  it('초점이어도 거르기는 그대로다 — 못 쓸 스냅을 되살리지 않는다', () => {
+    const candidates = [snap('dark', 0, { brightness: 0.01 }), snap('a', 1), snap('b', 2), snap('c', 3)];
+    const result = direct(candidates, { focusKeys: new Set(['dark']) });
+    expect(result.excluded).toContain('dark');
+  });
+});
