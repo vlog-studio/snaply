@@ -55,6 +55,20 @@
 - 에이전트에 보내는 것은 개념 id · 신호 요약 · 촬영 간격 · 취향 상위 개념뿐이다 — 프레임 · 분석 원문 요약은 보내지 않는다.
 - 실측할 것: 초안 1회의 호출 수 · 토큰 · 지연 · 폴백 비율. 결정 문서 §5.1 의 추정을 이 값으로 바꾼다.
 
+### 2.4 나중에 붙는 것 — 스티커(얼굴 · 손 앵커)
+
+이 계획의 단계가 아니다. 스티커는 트렌드 편집 파이프라인([trend-editing-pipeline.md](trend-editing-pipeline.md))의 일이고, 남은 일과 막힌 이유
+(스티커 에셋 조달 — [decisions/sticker-asset-sourcing.md](../decisions/sticker-asset-sourcing.md) 결정 대기)는 [backlog.md](../backlog.md) A-7 에 있다.
+얼굴 · 손 인식(MediaPipe — `stage-vocabulary.json` 의 `visual-reader`, [`anchor-vocabulary.json`](../../packages/shared-types/src/anchor-vocabulary.json))은
+설계만 있고 **구현되지 않았다**.
+
+붙일 때의 연결점만 적어 둔다. 그 파이프라인의 "어디에는 MediaPipe, 무엇을은 LLM" 분담이 이 계획의 구조와 그대로 맞는다.
+
+- **에이전트 툴** — `place_sticker` 를 툴 목록([decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md) §3.2)에 더한다. 위치(앵커)는 MediaPipe 가,
+  어느 컷에 어떤 스티커를 붙일지는 에이전트가 정한다. 실제 배치 값은 다른 툴처럼 규칙과 시드가 정한다.
+- **온톨로지 관계** — 스티커(또는 스티커 팩)를 내용 개념 · 분위기에 잇는 관계를 사전에 더한다(예: `dessert` → 하트, 청량 → 물방울).
+- **취향** — 사용자가 지우거나 바꾼 스티커를 편집 취향 신호로 받는다([decisions/ontology-personalization.md](../decisions/ontology-personalization.md) §4.2 의 전환 · 스타일과 같은 방식).
+
 ## 3. 공모전 시연 범위
 
 마감 일정이 정해지면 이 표에서 자른다. 에이전트(6)를 보이려면 1 · 4 · 6 이 최소이고, 온톨로지를 보이려면 1 · 2 · 8 이 최소다.
