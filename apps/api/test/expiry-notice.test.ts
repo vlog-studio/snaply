@@ -267,17 +267,18 @@ describe('종류별 스위치가 없다', () => {
 });
 
 describe('무비 결과물 만료 예고 (NTF-10)', () => {
-  /** 결과물이 `ageDays` 일 전에 만들어진 무비. */
+  /** 결과물이 `ageDays` 일 전에 만들어진 무비. `resultStatus` 는 그 결과물 영상의 상태(기본 완성). */
   async function movieWithResultDaysAgo(
     userId: string,
     ageDays: number,
     fields: { title?: string; finishedAt?: Date; deletedAt?: Date } = {},
+    resultStatus = 'done',
   ) {
     const result = await h.prisma.video.create({
       data: {
         userId,
         kind: 'result',
-        status: 'done',
+        status: resultStatus,
         originalUrls: [],
         createdAt: new Date(now.getTime() - ageDays * DAY_MS),
       },
@@ -315,6 +316,18 @@ describe('무비 결과물 만료 예고 (NTF-10)', () => {
     await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS + 1);
     await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 2, { finishedAt: now });
     await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 2, { deletedAt: now });
+
+    const outcome = await sendMovieExpiryNotices({ logger, now, apply: true });
+
+    expect(outcome.notified).toBe(0);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  // 생성을 시작하면 무비가 새 결과물 영상을 가리키고, 실패하면 그 영상은 `failed` 로 남는다. 저장할 파일이 없는데
+  // "남기려면 저장하거나 게시해 주세요"가 갔다(2026-10-13 리뷰).
+  it('만들지 못한 무비에는 보내지 않는다 — 남길 파일이 없다', async () => {
+    const user = await movieUser();
+    await movieWithResultDaysAgo(user.id, MOVIE_RESULT_RETENTION_DAYS - 2, {}, 'failed');
 
     const outcome = await sendMovieExpiryNotices({ logger, now, apply: true });
 

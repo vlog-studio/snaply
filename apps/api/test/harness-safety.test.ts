@@ -11,6 +11,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { resolveEditAgentModel } from '../src/services/edit-agent/agent-runtime.js';
 import { assertTestDatabase } from './helpers/harness.js';
 import { ADMIN_DATABASE_URL, TEST_DATABASE_URL, TEST_DB_NAME } from './setup/constants.js';
 
@@ -35,5 +36,15 @@ describe('assertTestDatabase', () => {
     } finally {
       await client.$disconnect();
     }
+  });
+});
+
+describe('외부 모델 격리', () => {
+  // 개인 .env 의 OpenAI 키가 남아 있으면 편집 에이전트가 테스트 중에 실제 모델을 불렀다 — 실행마다 과금되고,
+  // 제안 순서가 그때그때 달라 movie-drafts 의 단언이 깨졌다(2026-10-13, CI 에는 키가 없어 통과했다).
+  // 지운 값은 Prisma 의 dotenv 가 되살리므로, @prisma/client 를 불러온 뒤인 여기서도 비어 있어야 한다.
+  it('편집 에이전트는 실제 모델을 부르지 않는다', () => {
+    expect(process.env.OPENAI_API_KEY).toBe('');
+    expect(resolveEditAgentModel()).toBeNull();
   });
 });

@@ -438,7 +438,8 @@ FE 가 알아야 할 동작:
 | `POST /sns/instagram/data-deletion` | 데이터 삭제 요청. 연동과 게시 이력의 Instagram 값을 지우고 `{ "url", "confirmation_code" }` |
 | `GET /sns/instagram/data-deletion/status?code=` | 사용자가 여는 상태 페이지(HTML). 위조된 코드는 404 |
 
-둘 다 `application/x-www-form-urlencoded` 의 `signed_request`(`base64url(HMAC-SHA256).base64url(payload)`, 키는
-`INSTAGRAM_APP_SECRET`)로 오고, 서명이 틀리면 400 이며 아무것도 지우지 않는다. 사용자는 payload 의 `user_id` 로
+둘 다 본문의 `signed_request`(`base64url(HMAC-SHA256).base64url(payload)`, 키는 `INSTAGRAM_APP_SECRET`)로 온다. 데이터 삭제는
+`application/x-www-form-urlencoded` 로 오지만 연결 해제는 다른 형식으로 와(2026-10-11 실측) urlencoded · multipart · `text/plain` ·
+JSON 어느 것이든 꺼낸다. 본문은 16KB 까지다 — 인증 없는 주소라 넘으면 읽기 전에 413 이다. 서명이 틀리면 400 이며 아무것도 지우지 않는다. 사용자는 payload 의 `user_id` 로
 찾는다 — Instagram 로그인에서는 이 값이 프로페셔널 계정 ID(`/me` 의 `user_id`)이고(2026-10-11 실측), 연동 때 같은 값을
 `platform_user_id` 에 저장한다. 모르는 사용자여도 200 과 확인 코드를 준다. Snaply 계정은 지우지 않는다. 계약 레지스트리 밖이다.
