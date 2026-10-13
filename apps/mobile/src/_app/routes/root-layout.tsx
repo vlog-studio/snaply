@@ -150,6 +150,7 @@ function RootStack() {
         <Stack.Screen name="settings/notifications" options={{ title: '알림' }} />
         <Stack.Screen name="settings/analysis" options={{ title: '스냅 분석' }} />
         <Stack.Screen name="settings/album" options={{ title: '앨범 저장' }} />
+        <Stack.Screen name="settings/interests" options={{ title: '관심사' }} />
         <Stack.Screen name="settings/theme" options={{ title: '화면 테마' }} />
         <Stack.Screen name="settings/social" options={{ title: '소셜 연결' }} />
         {/* Where the backend sends the browser back to after linking an SNS

@@ -11,6 +11,11 @@ import { useClearSession, useCurrentUser } from '@/entities/session';
 import { useSnaps } from '@/entities/snap';
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useAnalysisConsent } from '@/features/analysis-consent';
+import {
+  interestReadOut,
+  useChosenInterests,
+  useInterestTopics,
+} from '@/features/choose-interests';
 import { EditNicknameSheet, useNickname } from '@/features/edit-nickname';
 import { useNotificationPreferences } from '@/features/notification-settings';
 import { useAlbumAutoSaveEnabled } from '@/features/save-snap-to-album';
@@ -73,6 +78,8 @@ export function MePage() {
         ? 'Instagram 다시 연결 필요'
         : `Instagram ${instagram.connection.username ? `@${instagram.connection.username}` : '연결됨'}`;
   const notificationPreferences = useNotificationPreferences();
+  // Blank until both the choice and the topic names have arrived (spec ACC-5).
+  const interests = interestReadOut(useChosenInterests(), useInterestTopics().topics);
   const albumAutoSave = useAlbumAutoSaveEnabled();
   const themeMode = useThemeMode();
   const creditBalance = useQuery(creditQueries.balance());
@@ -200,11 +207,16 @@ export function MePage() {
           onPress={() => router.push('/settings/album')}
         />
         <RowDivider />
-        {/* 준비 중, and a row with nothing behind it: nothing reads interests yet
-            — the app never sends them and the server's arrival push does not
-            consult them — so a picker would promise personalization that never
-            happens. The same placeholder the capture reminders use. */}
-        <SettingRow icon="heart-outline" title="관심사" sub="준비 중" subLines={1} />
+        {/* The topics the account likes (spec ACC-5); they order the templates and
+            feed the recommendation and the edit draft (PRF-3). */}
+        <SettingRow
+          icon="heart-outline"
+          title="관심사"
+          sub={interests}
+          subLines={1}
+          right={<Chevron />}
+          onPress={() => router.push('/settings/interests')}
+        />
         <RowDivider />
         {/* Instagram can be linked here and a finished movie posted to it
             (SNS-8, 2026-10-11); the row reads the link. TikTok has no link to

@@ -1,10 +1,9 @@
 /**
- * The interest tags the app offers. Mirrors the backend `users.interests`
- * concept (free-form text[]); this curated set can be extended without a schema
- * change.
+ * The interest tags an earlier build offered, kept on the device only.
  *
- * Nothing reads a selection yet — the app never sent one, and the server's
- * location push does not consult it — so the 나 tab shows 관심사 as 준비 중 with
- * no picker (backlog A-9). Kept for when something does.
+ * Superseded: the interests a user chooses now are the account's, chosen from
+ * the server's topics on `/settings/interests` (`features/choose-interests`,
+ * spec ACC-5). Nothing reads these tags any more, and they are not uploaded —
+ * they stay so a store persisted by that build still loads.
  */
 export const INTEREST_OPTIONS = ['여행', '일상', '카페', '맛집', '감성'] as const;

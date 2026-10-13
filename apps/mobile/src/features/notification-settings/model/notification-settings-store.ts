@@ -19,9 +19,10 @@ import type { NotificationPreferences } from './notification-preferences';
  * backend field. They live here so the 나 tab's controls survive remounts and
  * restarts instead of silently resetting.
  *
- * `interests` is kept the same way: a choice made in an earlier build, which
- * nothing reads — the 나 tab shows 관심사 as 준비 중 with no picker until
- * something consumes it (backlog A-9). It is not cleared, so it can come back.
+ * `interests` is kept the same way: device-only tags an earlier build offered.
+ * Nothing reads them — the interests a user chooses now are the account's
+ * (`features/choose-interests`, spec ACC-5) — and they are not uploaded; the
+ * field stays so a store persisted by that build still loads.
  */
 
 export type ReminderWindowId = 'morning' | 'lunch' | 'evening';

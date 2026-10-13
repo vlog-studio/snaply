@@ -74,6 +74,20 @@ jest.mock('@/features/save-snap-to-album', () => ({
   useAlbumAutoSaveEnabled: () => mockAlbumAutoSave,
 }));
 
+// The read-out's wording is `interestReadOut`'s own test; here only that the row shows it.
+jest.mock('@/features/choose-interests', () => ({
+  interestReadOut: () => '카페 · 여행',
+  useChosenInterests: () => ['cafe', 'travel'],
+  useInterestTopics: () => ({
+    topics: [
+      { id: 'cafe', label: '카페' },
+      { id: 'travel', label: '여행' },
+    ],
+    failed: false,
+    retry: () => {},
+  }),
+}));
+
 const interestsTitle = '\uAD00\uC2EC\uC0AC'; // 관심사
 const comingSoon = '\uC900\uBE44 \uC911'; // 준비 중
 const socialTitle = '\uC18C\uC15C \uC5F0\uACB0'; // 소셜 연결
@@ -107,9 +121,6 @@ describe('MePage', () => {
     });
   });
 
-  // Nothing reads interests yet, so a picker would promise personalization
-  // that never happens (spec ACC-5, backlog A-9): the row states 준비 중 and is
-  // not a way into anything.
   // ACC-5: the name is the way to change it, and a saved nickname wins over
   // the sign-in identity's name.
   it('shows the nickname once set and opens the sheet from the name', async () => {
@@ -128,12 +139,14 @@ describe('MePage', () => {
     expect(screen.getByText('tester@example.com')).toBeOnTheScreen();
   });
 
-  it('shows \uAD00\uC2EC\uC0AC as a \uC900\uBE44 \uC911 placeholder that opens nothing', async () => {
+  // ACC-5: the row reads the chosen interests and opens the screen that changes them.
+  it('reads 관심사 as the chosen topics and opens its screen', async () => {
     await renderPage();
 
-    expect(screen.getByText(interestsTitle)).toBeTruthy();
-    expect(screen.getByText(comingSoon)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: interestsTitle })).toBeNull();
+    expect(screen.getByText('카페 · 여행')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: interestsTitle }));
+
+    expect(mockPush).toHaveBeenCalledWith('/settings/interests');
   });
 
   // Instagram can be linked (SNS-8); the row reads the link and opens its screen.
@@ -224,7 +237,7 @@ describe('MePage', () => {
     });
     await renderPage();
 
-    expect(screen.getAllByText(comingSoon).length).toBeGreaterThan(1);
+    expect(screen.getByText(comingSoon)).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: analysisTitle })).toBeNull();
   });
 });
