@@ -3296,3 +3296,26 @@ A-9 를 main 에 푸시해 AWS 배포(CI · Deploy 성공, `/interest-topics` �
   다시 껐다).
 - **보지 못한 것** — 휴대폰 · iOS. 템플릿 카드 순서의 변화는 이 계정에서 보이지 않는다 — 앱은 채울 수 있는 정도로 먼저 정렬하고 서버 순서는 동점에만
   쓴다(서버 순서는 `interests.test.ts` 가 고정한다). 검수 전용 계정에 관심사 `카페` 가 남아 있다.
+
+## 2026-10-13 (이어서) — 초안 과금(backlog A-12 7단계)
+
+착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 7단계, 결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md) §5,
+요구 CRD-9(`결정·미구현` → `구현됨`). 오너가 서버 부하를 이유로 스위치 없이 바로 켜기로 했다(공모전 기간 포함). 관심사(A-9)는 배포 · 테스터 빌드
+`42d510d` · 에뮬레이터 확인까지 끝냈다(위 항목).
+
+- **서버(`58f1f15`)** — 에이전트가 만든 초안은 최근 24시간 3번까지 무료, 그 뒤 1번에 20크레딧(`credit-policy.ts` 의 `FREE_EDIT_DRAFTS_PER_DAY` ·
+  `EDIT_DRAFT_COST`). 무비 생성의 예약을 그대로 써서 유저 행을 잠그고 잔액을 본 뒤 차감하고(모자라면 402 `INSUFFICIENT_CREDITS` + `required` ·
+  `balance`, 에이전트를 부르지 않는다), 에이전트가 끝까지 만들면 확정, 규칙으로 돌아가거나(`fallback`) 기록이 실패하면 돌려준다. 재사용한 제안 ·
+  에이전트가 없는 서버의 초안(`rules`)은 무료이고 무료 횟수에도 세지 않는다. `movie_drafts.charged_credits`(무료 횟수는 `mode = agent` 이고 0 인 행) ·
+  원장 `movie_draft_id`(한 초안의 비용 · 환급은 한 번씩 — unique, FK 없음) · 원장 사유 `draft_charge` · `draft_refund`(마이그레이션
+  `20261013030000_add_edit_draft_charge`). 응답에 `chargedCredits`, 새 `GET /movie-drafts/allowance`(`agent` · `freeRemaining` · `nextCost` 등).
+- **앱(`c2638ab`)** — 자동 편집으로 스냅을 고르는 동안 선택 바가 `자동 편집 · 무료 2번 남음 · 최대 30개` / `자동 편집 · 20크레딧 · 최대 30개`(에이전트가
+  없으면 붙이지 않는다). 잔액 부족은 `크레딧이 모자라요. 자동 편집 1번에 20크레딧이 필요해요.` 와 함께 `이 스냅으로 새 무비` 를 권한다(하루 상한과 같은
+  처리). 초안이 나오거나 거절되면 비용과 잔액 쿼리를 무효화한다. 크레딧 내역 문구 `자동 편집` · `자동 편집 환급`.
+- **받아들인 것** — 무료 횟수는 잠그지 않고 세어 동시 요청 두 개가 마지막 무료를 함께 쓸 수 있다(하루 상한이 묶고, 크레딧을 잘못 빼는 쪽으로는 틀리지
+  않는다). 분석 동의를 철회하면 초안 기록이 지워져 그날의 무료 횟수 · 상한을 다시 센다(원장은 남는다) — 결정 문서 §5 구현 메모.
+- **검증** — `movie-drafts-agent.test.ts` 과금 5건(무료 3번 뒤 20 차감 · 잔액 부족 402 와 에이전트 미호출 · 폴백 환급과 원장 순서 · 폴백 · 재사용 · 규칙
+  초안은 무료 횟수에 안 셈 · 에이전트 없는 서버의 비용 조회), 앱 `draft-cost.test.ts` · `use-edit-draft.test.ts`(잔액 부족 문구 · 필요 크레딧 유지) ·
+  `use-compose-movie.test.ts`(402 → `credits` 와 부족분 · 초안 뒤 비용 · 잔액 무효화), `npm test -w apps/api` 48파일 799건, `npm run verify:mobile`
+  193 스위트 1511건. `use-compose-movie.test.ts` 에 QueryClient 를 붙이면서 기본 가비지 수집 타이머가 Jest 를 5분 붙잡아 `gcTime: Infinity` 로 막았다.
+- **하지 않은 것** — 에뮬레이터 확인(새 테스터 빌드가 필요하다 — A-12).
