@@ -37,7 +37,9 @@
     "db:studio": "npm run prisma:studio -w apps/api",
     "analysis:run": "node scripts/analysis-run.mjs",
     "media:e2e": "node scripts/media-e2e.mjs",
-    "media:cleanup": "node scripts/media-cleanup.mjs"
+    "media:cleanup": "node scripts/media-cleanup.mjs",
+    "ontology:export": "npm run build -w @vlog-studio/shared-types && node scripts/ontology-export.mjs",
+    "ontology:test": "npm run build -w @vlog-studio/shared-types && node --test scripts/ontology/build.test.mjs"
   },
   "devDependencies": {
     "eslint": "^9.30.0",

@@ -298,6 +298,7 @@ cd ../..
 | `npm run worker` / `worker:rendition` / `worker:analysis` / `worker:install` | 편집 / 배포 렌디션 / 스냅 분석 워커 / venv 설치 (§3-8) |
 | `npm run worker:notifications -w apps/api` | 알림 발송 워커 (§3-8) |
 | `npm run build` / `typecheck` / `lint` | 전체 빌드/검사 (turbo) |
+| `npm run ontology:export` / `ontology:test` | 개념 사전(`content-vocabulary.json`)에서 발표용 온톨로지를 만든다 — `dist/ontology/` 에 OWL(Turtle) 파일과 그래프 페이지(HTML, 브라우저로 연다). 결과는 생성물이라 커밋하지 않는다. `ontology:test` 는 내보내기 테스트. 둘 다 shared-types 를 먼저 빌드한다 |
 | `npm test` | turbo로 전체 테스트 — API 통합 테스트 + 모바일 jest |
 | `npm test -w apps/api` | API 통합 테스트만 (실제 Postgres/Redis/MinIO 사용, `snaply_test` DB 자동 생성) |
 | `npm run db:generate` / `db:migrate` / `db:seed` / `db:studio` | Prisma 클라이언트 생성 / 마이그레이션 / 시드 / Studio |
