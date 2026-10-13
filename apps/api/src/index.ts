@@ -6,6 +6,7 @@ import { ensureBucketForDev } from './services/storage.service.js';
 import { closeEditQueue } from './queue/edit-queue.js';
 import { disconnectRedis } from './lib/redis.js';
 import { initSentry, flushSentry } from './lib/sentry.js';
+import { settleTasteSignals } from './services/taste/taste.service.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -18,6 +19,8 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     app.log.info({ signal }, 'shutting down');
     await app.close();
+    // 응답 뒤로 미룬 취향 반영을 끝내고 DB 를 닫는다 — 배포 때의 컨테이너 교체가 신호를 버리지 않게.
+    await settleTasteSignals();
     await closeEditQueue();
     await disconnectRedis();
     await disconnectPrisma();

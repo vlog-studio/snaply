@@ -16,6 +16,7 @@ import { getPrisma, disconnectPrisma } from '../../src/db/client.js';
 import { closeEditQueue } from '../../src/queue/edit-queue.js';
 import { closeVideoAnalysisQueue } from '../../src/queue/video-analysis-queue.js';
 import { disconnectRedis } from '../../src/lib/redis.js';
+import { settleTasteSignals } from '../../src/services/taste/taste.service.js';
 
 export interface TestUser {
   /** users.id (앱 내부 UUID) */
@@ -111,6 +112,8 @@ export async function createHarness(env: Record<string, string> = {}): Promise<H
   const prisma = getPrisma();
 
   async function resetDb(): Promise<void> {
+    // 앞 테스트가 응답 뒤로 미룬 취향 반영이 비운 DB 에 쓰지 않게 먼저 끝낸다.
+    await settleTasteSignals();
     await assertTestDatabase(prisma);
     await prisma.$executeRawUnsafe(
       `TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(', ')} RESTART IDENTITY CASCADE`,
@@ -149,6 +152,7 @@ export async function createHarness(env: Record<string, string> = {}): Promise<H
     // env 원복은 반드시 수행해야 한다 — 테스트 파일들이 한 프로세스를 순차로 공유하므로,
     // 정리 중 예외로 원복이 건너뛰어지면 다음 파일이 엉뚱한 설정으로 돌아간다.
     try {
+      await settleTasteSignals();
       await app.close();
       await closeEditQueue();
       await closeVideoAnalysisQueue();

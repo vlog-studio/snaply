@@ -116,12 +116,20 @@ describe('공개 페이지', () => {
     const terms = await h.app.inject({ method: 'GET', url: '/legal/terms' });
 
     // 법무 검토 전에 분석을 켤 수 있게 한 근거가 이 동의다(specs ANA-5). 서버는 동의 없이는
-    // 분석·추천을 거절하고 철회 시 분석 결과와 추천 기록을 지운다(analysis-consent.test.ts) —
-    // 그 동작이 바뀌면 이 문장이 사실이 아니게 된다.
+    // 분석·추천을 거절하고 철회 시 분석 결과 · 추천 기록 · 내용에서 배운 취향을 지운다
+    // (analysis-consent.test.ts · taste.test.ts) — 그 동작이 바뀌면 이 문장이 사실이 아니게 된다.
     expect(privacy.body).toContain('사용자가 동의한 경우에만 분석하며');
     expect(privacy.body).toContain('철회하면 그 뒤로 분석하지 않으며');
-    expect(privacy.body).toContain('결과와 추천 기록을 삭제합니다');
+    expect(privacy.body).toContain('결과와 추천 기록, 영상 내용에서 배운 취향을 삭제합니다');
     expect(terms.body).toContain('사용자가 동의한 경우에만');
+  });
+
+  it('취향은 스냅을 지워도 남고, 동의 철회 · 계정 삭제로 지운다고 적는다 — 서버가 실제로 그렇게 한다', async () => {
+    const res = await h.app.inject({ method: 'GET', url: '/legal/privacy' });
+
+    // 취향은 개념별 합산값이라 스냅을 지워도 남긴다(specs PRF-4, taste.test.ts "forgetting").
+    expect(res.body).toContain('영상을 삭제해도 이미 반영된 점수는 남습니다');
+    expect(res.body).toContain('계정을 삭제하면 전부를 삭제합니다');
   });
 
   it('분석 사업자의 학습 이용과 보관 기간을 적는다', async () => {

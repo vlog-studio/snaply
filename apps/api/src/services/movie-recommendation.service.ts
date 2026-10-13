@@ -22,6 +22,8 @@ import { AppError } from '../lib/errors.js';
 import { captureException } from '../lib/sentry.js';
 import { isSnapAnalysisEnabled, requireAnalysisConsent } from './analysis-consent.service.js';
 import { ANALYSIS_VERSION, requestAnalysis } from './video-analysis.service.js';
+import { contentSignalsOf, emitTasteSignals } from './taste/taste.service.js';
+import { TASTE_SIGNAL_STRENGTH } from './taste/taste-policy.js';
 import {
   DAILY_RECOMMENDATION_LIMIT,
   MAX_CANDIDATES,
@@ -37,6 +39,7 @@ import {
 
 interface RecommendationRow {
   id: string;
+  userId: string;
   templateId: string;
   candidateVideoIds: string[];
   status: string;
@@ -48,6 +51,7 @@ interface RecommendationRow {
 
 const SELECT = {
   id: true,
+  userId: true,
   templateId: true,
   candidateVideoIds: true,
   status: true,
@@ -389,6 +393,13 @@ async function finalize(
       excluded: excluded as unknown as Prisma.InputJsonValue,
     },
   });
+
+  if (won.count > 0) {
+    // 후보로 넘긴 스냅은 약한 선호 신호다(PRF-1). 채점이 끝난 지금에야 분석이 있어 개념을 안다 — 굳힌 쪽만 한 번 낸다.
+    emitTasteSignals(row.userId, () =>
+      contentSignalsOf(row.userId, row.candidateVideoIds, TASTE_SIGNAL_STRENGTH.candidate),
+    );
+  }
 
   if (won.count > 0 && slots.length > 0) {
     await prisma.movieRecommendationItem.createMany({

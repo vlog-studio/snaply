@@ -25,6 +25,12 @@ import { captureException } from '../lib/sentry.js';
 import { createEditJob } from './edit-job.service.js';
 import { deleteObject } from './storage.service.js';
 import { pickTransitions } from './transition-director.js';
+import { emitTasteSignals } from './taste/taste.service.js';
+import {
+  draftComparisonSignals,
+  finishedMovieSignals,
+  movieEditSignals,
+} from './taste/movie-taste-signals.js';
 
 const DEFAULT_TITLE = '새 무비';
 const DEFAULT_STYLE: StylePreset = '일상';
@@ -69,6 +75,7 @@ interface ClipRow {
 
 interface MovieRow {
   id: string;
+  userId: string;
   title: string;
   status: string;
   stylePreset: string;
@@ -92,6 +99,7 @@ type MovieRowWithJob = MovieRow & { job: LatestJob | null };
 
 const SELECT = {
   id: true,
+  userId: true,
   title: true,
   status: true,
   stylePreset: true,
@@ -385,10 +393,15 @@ async function reconcileStatus(row: MovieRowWithJob): Promise<MovieRowWithJob> {
   if (next === null) {
     return row;
   }
-  await getPrisma().movie.update({
-    where: { id: row.id },
+  // `generating` 조건부로 옮긴다 — 두 조회가 동시에 와도 옮긴 쪽은 하나라, 완성의 취향 신호도 한 번만 난다.
+  const moved = await getPrisma().movie.updateMany({
+    where: { id: row.id, status: 'generating' },
     data: { status: next, updatedAt: row.updatedAt },
   });
+  if (moved.count > 0 && next === 'ready') {
+    // 끝까지 만든 무비는 가장 강한 취향 근거다(PRF-1).
+    emitTasteSignals(row.userId, () => finishedMovieSignals(row.userId, row));
+  }
   return { ...row, status: next };
 }
 
@@ -463,6 +476,11 @@ export async function createMovie(params: {
     },
     select: SELECT,
   });
+  if (arranger === 'ai' && clips.length > 0) {
+    // AI 초안으로 만든 무비 — 그 초안과 비교해 남긴 컷 · 지운 컷을 취향 신호로 낸다(PRF-1).
+    const videoIds = clips.map((clip) => clip.videoId);
+    emitTasteSignals(params.userId, () => draftComparisonSignals(params.userId, videoIds));
+  }
   // 새 무비에는 결과물이 없으니 작업도 없다 — 조회 없이 비운다.
   return toDto({ ...(created as MovieRow), job: null });
 }
@@ -547,6 +565,11 @@ export async function updateMovie(params: {
     },
     select: SELECT,
   });
+  if (clips !== undefined) {
+    // 저장 전후의 차이 — 넣은 스냅 · 지운 AI 컷 · 바꾼 전환 · 스타일(PRF-1). 컷이 그대로면 바뀐 것이 없다.
+    const after = updated as MovieRow;
+    emitTasteSignals(params.userId, () => movieEditSignals(params.userId, current, after));
+  }
   // 수정은 결과물을 건드리지 않으므로 방금 읽은 작업이 그대로 유효하다.
   return toDto({ ...(updated as MovieRow), job: current.job });
 }

@@ -224,3 +224,10 @@ alter table public.movie_drafts enable row level security;
 
 create policy "movie_drafts_select_own" on public.movie_drafts
   for select using (user_id = public.current_app_user_id());
+
+-- ── user_tastes ────────────────────────────────────────
+-- 취향 프로필은 서버가 행동 신호로 갱신한다. 조회만 본인 것으로 허용한다.
+alter table public.user_tastes enable row level security;
+
+create policy "user_tastes_select_own" on public.user_tastes
+  for select using (user_id = public.current_app_user_id());

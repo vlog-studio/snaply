@@ -6,8 +6,10 @@
  * 묻는 화면을 건너뛰어도, 분석 요청과 추천 요청이 모두 여기를 거친다.
  */
 import { SNAP_ANALYSIS_CONSENT_VERSION, type AnalysisConsent } from '@vlog-studio/shared-types';
+import type { Prisma } from '@prisma/client';
 import { getPrisma } from '../db/client.js';
 import { AppError } from '../lib/errors.js';
+import { purgeContentTastes, tasteLockKey } from './taste/taste.service.js';
 
 export const SNAP_ANALYSIS_CONSENT_KIND = 'snap_analysis';
 
@@ -25,17 +27,22 @@ export function isSnapAnalysisEnabled(): boolean {
 }
 
 /**
- * 현재 문구 버전에 대한, 철회하지 않은 동의. 문구가 바뀌어 버전이 오르면 이전 버전의 행은
+ * 현재 문구 버전에 대한, 철회하지 않은 동의의 조건. 문구가 바뀌어 버전이 오르면 이전 버전의 행은
  * 건드리지 않아도 여기서 걸리지 않는다 — 사용자가 본 적 없는 문구에 동의한 것으로 치지 않는다.
+ * 트랜잭션 안에서 다시 보는 쪽(취향 반영)도 이 조건을 쓴다.
  */
+export function activeAnalysisConsentWhere(userId: string): Prisma.UserConsentWhereInput {
+  return {
+    userId,
+    kind: SNAP_ANALYSIS_CONSENT_KIND,
+    version: SNAP_ANALYSIS_CONSENT_VERSION,
+    revokedAt: null,
+  };
+}
+
 async function findActiveConsent(userId: string): Promise<{ grantedAt: Date } | null> {
   return getPrisma().userConsent.findFirst({
-    where: {
-      userId,
-      kind: SNAP_ANALYSIS_CONSENT_KIND,
-      version: SNAP_ANALYSIS_CONSENT_VERSION,
-      revokedAt: null,
-    },
+    where: activeAnalysisConsentWhere(userId),
     orderBy: { grantedAt: 'desc' },
     select: { grantedAt: true },
   });
@@ -85,7 +92,8 @@ export async function giveAnalysisConsent(
 /**
  * 철회. 그 뒤로 분석하지 않고 **이미 만든 분석 결과와 추천 기록을 파기한다**(ANA-5).
  *
- * 추천 기록과 편집 초안 기록도 지운다 — 제외 사유(`unusable` 등)나 뺀 스냅이 분석의 판단을 담고 있을 수 있다. 큐에 남은 분석
+ * 추천 기록과 편집 초안 기록도 지운다 — 제외 사유(`unusable` 등)나 뺀 스냅이 분석의 판단을 담고 있을 수 있다. 스냅 내용에서
+ * 배운 취향(내용 개념의 `derived` 행)도 지운다(PRF-4) — 반영과 엇갈리지 않게 취향 잠금 안에서 한다. 큐에 남은 분석
  * 작업은 행이 사라졌으므로 워커가 건너뛴다(`analysis_worker.py` 의 `AnalysisSkipped`). 철회 순간
  * 이미 모델에 보내는 중이던 1건은 되돌릴 수 없고, 결과는 저장할 행이 없어 버려진다.
  *
@@ -93,16 +101,17 @@ export async function giveAnalysisConsent(
  * 철회할 동의가 없어도 성공이다(멱등). 파기는 그 경우에도 한다.
  */
 export async function withdrawAnalysisConsent(userId: string): Promise<AnalysisConsent> {
-  const prisma = getPrisma();
-  await prisma.$transaction([
-    prisma.userConsent.updateMany({
+  await getPrisma().$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${tasteLockKey(userId)}, 0))`;
+    await tx.userConsent.updateMany({
       where: { userId, kind: SNAP_ANALYSIS_CONSENT_KIND, revokedAt: null },
       data: { revokedAt: new Date() },
-    }),
-    prisma.videoAnalysis.deleteMany({ where: { userId } }),
-    prisma.movieRecommendation.deleteMany({ where: { userId } }),
-    prisma.movieDraft.deleteMany({ where: { userId } }),
-  ]);
+    });
+    await tx.videoAnalysis.deleteMany({ where: { userId } });
+    await tx.movieRecommendation.deleteMany({ where: { userId } });
+    await tx.movieDraft.deleteMany({ where: { userId } });
+    await purgeContentTastes(tx, userId);
+  });
   return toDto(null);
 }
 

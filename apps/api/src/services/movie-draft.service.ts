@@ -20,6 +20,8 @@ import {
   type DraftSignals,
 } from './edit-director.js';
 import { ANALYSIS_VERSION } from './video-analysis.service.js';
+import { contentSignalsOf, emitTasteSignals } from './taste/taste.service.js';
+import { TASTE_SIGNAL_STRENGTH } from './taste/taste-policy.js';
 
 /**
  * AI 편집 초안의 제안(specs/movie.md MOV-21). 고르는 규칙은 `edit-director.ts`, 상한은
@@ -220,6 +222,8 @@ export async function requestDraft(params: {
     complete: waiting === 0,
     result: draft as unknown as Prisma.InputJsonValue,
   });
+  // 초안에 넘긴 스냅은 약한 선호 신호다(PRF-1). 새 제안에서만 낸다 — 재사용은 같은 요청의 반복이라 근거가 늘지 않는다.
+  emitTasteSignals(params.userId, () => contentSignalsOf(params.userId, uploadedIds, TASTE_SIGNAL_STRENGTH.candidate));
   return { ...draft, unavailable };
 }
 

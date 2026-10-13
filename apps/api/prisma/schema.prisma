@@ -47,6 +47,7 @@ model User {
   movieDrafts      MovieDraft[]
   movies           Movie[]
   consents         UserConsent[]
+  tastes           UserTaste[]
 
   @@index([deletedAt])
   @@map("users")
@@ -642,4 +643,29 @@ model MovieClip {
   @@unique([movieId, order])
   @@index([videoId])
   @@map("movie_clips")
+}
+
+/// 사용자 취향 프로필 — 개념 하나에 한 행(docs/decisions/ontology-personalization.md §4, specs PRF-1 · PRF-2 · PRF-4).
+/// 내용 개념(places · objects · actions · topics · moods)은 개념 사전의 id, 편집 개념은 전환 kind(`transition`) ·
+/// 스타일 프리셋(`style`)이다. 서버만 쓴다 — 사용자가 이미 하는 행동의 신호로 갱신한다(`taste.service.ts`).
+model UserTaste {
+  id       String @id @default(uuid()) @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  field    String @db.VarChar(20)
+  concept  String @db.VarChar(50)
+  /// `explicit`(관심사처럼 사용자가 고른 것) · `derived`(행동에서 배운 것).
+  source   String @default("derived") @db.VarChar(10)
+  /// −1~1. 갱신 시각(`updatedAt`) 기준의 값이고, 읽을 때 시간 감쇠를 적용한다.
+  weight   Float
+  /// 근거가 된 신호 수.
+  evidence Int    @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// 마지막 신호 시각 — 시간 감쇠의 기준이라 신호를 반영할 때만 바꾼다.
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, field, concept, source])
+  @@map("user_tastes")
 }
