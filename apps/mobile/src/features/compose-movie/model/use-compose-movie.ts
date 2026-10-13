@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import { creditQueries } from '@/entities/credit';
@@ -12,6 +12,7 @@ import {
   isAiArranged,
   movieDraftQueries,
   movieStyleOrDefault,
+  movieStyleQueries,
   requestMovieDraft,
   sameArrangement,
   toMovieBody,
@@ -250,6 +251,9 @@ export function useComposeMovie() {
   const beginMovieJob = useBeginMovieJob();
   const cancelMovieJob = useCancelMovieJob();
   const queryClient = useQueryClient();
+  // What the account's taste recommends (PRF-3) — only for a new movie with
+  // nothing else to go by. Until it answers, or when it cannot, the default style.
+  const { data: recommendedStyle } = useQuery(movieStyleQueries.recommended());
 
   /**
    * Starts a draft straight from hand-picked snaps — the Snap tab's selection —
@@ -266,9 +270,13 @@ export function useComposeMovie() {
   const startMovieFromSnaps = useCallback(
     (snapIds: readonly string[]): Movie | undefined => {
       if (snapIds.length === 0 || snapIds.length > MovieSnapLimit) return undefined;
-      return createMovie({ snapIds, arranger: 'user' });
+      return createMovie({
+        snapIds,
+        arranger: 'user',
+        ...(recommendedStyle ? { style: recommendedStyle } : null),
+      });
     },
-    [createMovie],
+    [createMovie, recommendedStyle],
   );
 
   /**
@@ -302,8 +310,9 @@ export function useComposeMovie() {
         return { videoId };
       });
       // The cut lengths follow the style, which the user has not chosen yet: the
-      // movie last worked on is the best guess at the one they will want.
-      const style = movieStyleOrDefault(getLatestMovieStyle());
+      // movie last worked on is the best guess at the one they will want, and
+      // with none, the style their taste recommends.
+      const style = movieStyleOrDefault(getLatestMovieStyle() ?? recommendedStyle ?? undefined);
 
       let proposal;
       try {
@@ -366,7 +375,7 @@ export function useComposeMovie() {
       });
       return { movie };
     },
-    [createMovie, snapIndex, queryClient],
+    [createMovie, snapIndex, queryClient, recommendedStyle],
   );
 
   /**

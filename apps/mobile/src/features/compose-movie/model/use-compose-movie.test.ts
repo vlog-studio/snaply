@@ -49,8 +49,20 @@ jest.mock('@/entities/movie', () => {
     useBeginMovieJob: () => mockBeginMovieJob,
     useCancelMovieJob: () => mockCancelMovieJob,
     movieDraftQueries: { all: () => ['movie-draft'] },
+    // Never fetched: each test puts the recommendation in the cache first.
+    movieStyleQueries: {
+      recommended: () => ({
+        queryKey: RecommendedStyleKey,
+        queryFn: () => null,
+        staleTime: Infinity,
+      }),
+    },
   };
 });
+
+const RecommendedStyleKey = ['movie-style', 'recommended'];
+/** What the account's taste recommends, as the server would have answered. */
+const recommend = (style: string | null) => queryClient.setQueryData(RecommendedStyleKey, style);
 
 // A real cache: a draft tells it the cost read-out and the balance are stale.
 // `gcTime: Infinity` schedules no garbage-collection timer, which would keep Jest waiting minutes after the suite.
@@ -60,6 +72,7 @@ const wrapper = ({ children }: { children: ReactNode }) =>
   createElement(QueryClientProvider, { client: queryClient }, children);
 beforeEach(() => {
   queryClient = newQueryClient();
+  recommend(null);
 });
 afterEach(() => {
   queryClient.clear();
@@ -137,6 +150,22 @@ describe('startMovieFromSnaps', () => {
 
     expect(mockCreateMovie).toHaveBeenCalledWith({ snapIds: ['s3', 's1'], arranger: 'user' });
     expect(movie).toBe(created);
+  });
+
+  it('starts in the style the account’s taste recommends', async () => {
+    recommend('travel');
+    mockCreateMovie.mockReturnValue(makeMovie({ id: 'new' }));
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
+
+    await act(async () => {
+      result.current.startMovieFromSnaps(['s1']);
+    });
+
+    expect(mockCreateMovie).toHaveBeenCalledWith({
+      snapIds: ['s1'],
+      arranger: 'user',
+      style: 'travel',
+    });
   });
 
   it('makes nothing from no picks', async () => {
@@ -232,6 +261,23 @@ describe('startMovieFromDraft', () => {
     await draft(['early']);
 
     expect(mockRequestMovieDraft).toHaveBeenCalledWith([{ videoId: 'v-early' }], 'daily');
+  });
+
+  it('cuts to the recommended style when there is no movie to take one from, and to the latest movie’s when there is', async () => {
+    recommend('travel');
+    mockRequestMovieDraft.mockResolvedValue({
+      cuts: [{ videoId: 'v-early' }],
+      leftOut: [],
+      unavailable: [],
+    });
+
+    mockLatestStyle.mockReturnValue(undefined);
+    await draft(['early']);
+    expect(mockRequestMovieDraft).toHaveBeenLastCalledWith([{ videoId: 'v-early' }], 'travel');
+
+    mockLatestStyle.mockReturnValue('emotional');
+    await draft(['early']);
+    expect(mockRequestMovieDraft).toHaveBeenLastCalledWith([{ videoId: 'v-early' }], 'emotional');
   });
 
   it('makes nothing when the balance cannot pay for a draft, keeping what it costs', async () => {

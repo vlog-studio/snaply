@@ -75,6 +75,11 @@ const StyleByPreset: Record<string, MovieStyle> = {
   일상: 'daily',
 };
 
+/** The app's style for a server preset; `undefined` for one this build does not know. */
+export function movieStyleOfPreset(preset: string): MovieStyle | undefined {
+  return StyleByPreset[preset];
+}
+
 /** Who knows which local snap a server video is — the upload state, injected. */
 export type SnapIdResolver = (videoId: string) => string | undefined;
 
