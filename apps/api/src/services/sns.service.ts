@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import type { SnsPlatform, SnsUploadStatus } from '@vlog-studio/shared-types';
 import type { SnsConfig, SnsProviderConfig } from '../config.js';
 import { getPrisma } from '../db/client.js';
@@ -78,6 +79,10 @@ export function parseInstagramSignedRequest(signedRequest: string): string | nul
  * Meta 가 알려 온 사용자의 인스타그램 데이터를 지운다(SNS-9) — 연동 행(토큰 · 계정 ID · 사용자명)과
  * 그 계정의 게시 이력에 남은 플랫폼 값(게시물 ID · 플랫폼이 준 실패 사유). Snaply 계정 · 스냅 · 무비는 건드리지 않는다.
  * 연결 해제와 데이터 삭제 요청이 같은 일을 한다. 지운 연동 수를 반환한다(이미 지웠으면 0).
+ *
+ * 사용자의 게시 이력에 남은 플랫폼 값은 늘 **지금 연결된 계정의 것**이다 — 앱에서 해제하거나 다른 계정으로 다시 연결할 때
+ * 이전 값을 지우기 때문이다(`disconnect` · `handleCallback`). 그래서 연동으로 찾은 사용자의 값을 지우면 이 계정의 값만 지운다.
+ * 앱에서 먼저 해제했다면 연동이 없어 0 이지만, 그 계정의 값도 해제할 때 이미 지워졌다(backlog E-39).
  */
 export async function forgetInstagramUser(platformUserId: string): Promise<number> {
   const prisma = getPrisma();
@@ -107,6 +112,22 @@ export async function forgetInstagramUser(platformUserId: string): Promise<numbe
  */
 const INSTAGRAM_PROFESSIONAL_TYPES = new Set(['BUSINESS', 'MEDIA_CREATOR', 'CREATOR']);
 
+/**
+ * 한 사용자의 게시 이력에서 그 플랫폼이 준 값(게시물 ID · 플랫폼이 준 실패 사유)을 지운다. 게시 이력 자체(언제 어떤 무비를
+ * 올렸는지)는 Snaply 의 기록이라 남는다(SNS-9). 연동을 해제하거나 다른 계정으로 바꿀 때 부른다 — 남은 값이 지금 연결된
+ * 계정의 것만 되어야 Meta 의 삭제 요청이 정확히 그 계정의 값을 지운다(backlog E-39).
+ */
+async function forgetPlatformValues(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  platform: SnsPlatform,
+): Promise<void> {
+  await tx.snsUpload.updateMany({
+    where: { userId, platform },
+    data: { platformPostId: null, errorMessage: null },
+  });
+}
+
 /** OAuth 콜백 처리 → 앱으로 돌아갈 딥링크 반환. */
 export async function handleCallback(params: {
   platform: SnsPlatform;
@@ -123,7 +144,15 @@ export async function handleCallback(params: {
 
   let token: TokenExchangeResult;
   if (params.platform === 'instagram') {
-    token = await instagram.exchangeCode(pc, params.code, params.logger);
+    try {
+      token = await instagram.exchangeCode(pc, params.code, params.logger);
+    } catch (err) {
+      if (err instanceof instagram.InstagramProfileUnavailableError) {
+        params.logger?.warn({ platform: 'instagram' }, 'Instagram 계정 ID 를 얻지 못해 연동을 거절');
+        return snsErrorDeepLink('instagram', 'profile_unavailable');
+      }
+      throw err;
+    }
     // 비즈니스/크리에이터 계정만 릴스 업로드 가능
     if (token.accountType && !INSTAGRAM_PROFESSIONAL_TYPES.has(token.accountType.toUpperCase())) {
       params.logger?.info({ accountType: token.accountType }, 'Instagram 프로페셔널 계정이 아니라 연동을 거절');
@@ -133,24 +162,34 @@ export async function handleCallback(params: {
     token = await tiktok.exchangeCode(pc, params.code);
   }
 
-  await getPrisma().snsConnection.upsert({
-    where: { userId_platform: { userId, platform: params.platform } },
-    update: {
-      platformUserId: token.platformUserId,
-      platformUsername: token.platformUsername,
-      accessToken: encrypt(token.accessToken),
-      refreshToken: token.refreshToken ? encrypt(token.refreshToken) : null,
-      tokenExpiresAt: token.expiresAt ?? null,
-    },
-    create: {
-      userId,
-      platform: params.platform,
-      platformUserId: token.platformUserId,
-      platformUsername: token.platformUsername,
-      accessToken: encrypt(token.accessToken),
-      refreshToken: token.refreshToken ? encrypt(token.refreshToken) : null,
-      tokenExpiresAt: token.expiresAt ?? null,
-    },
+  await getPrisma().$transaction(async (tx) => {
+    const previous = await tx.snsConnection.findUnique({
+      where: { userId_platform: { userId, platform: params.platform } },
+      select: { platformUserId: true },
+    });
+    // 다른 계정으로 바꿔 연결하면 이전 계정에서 받은 값은 그 계정과 함께 놓는다.
+    if (previous && previous.platformUserId !== token.platformUserId) {
+      await forgetPlatformValues(tx, userId, params.platform);
+    }
+    await tx.snsConnection.upsert({
+      where: { userId_platform: { userId, platform: params.platform } },
+      update: {
+        platformUserId: token.platformUserId,
+        platformUsername: token.platformUsername,
+        accessToken: encrypt(token.accessToken),
+        refreshToken: token.refreshToken ? encrypt(token.refreshToken) : null,
+        tokenExpiresAt: token.expiresAt ?? null,
+      },
+      create: {
+        userId,
+        platform: params.platform,
+        platformUserId: token.platformUserId,
+        platformUsername: token.platformUsername,
+        accessToken: encrypt(token.accessToken),
+        refreshToken: token.refreshToken ? encrypt(token.refreshToken) : null,
+        tokenExpiresAt: token.expiresAt ?? null,
+      },
+    });
   });
 
   return deepLink(`sns/connected?platform=${params.platform}`);
@@ -179,11 +218,15 @@ export async function listConnections(userId: string): Promise<ConnectionDto[]> 
   }));
 }
 
+/** 연동 해제 — 연동과 함께 그 계정에서 받은 게시 이력의 값도 지운다(`forgetPlatformValues`). */
 export async function disconnect(userId: string, platform: SnsPlatform): Promise<void> {
-  const res = await getPrisma().snsConnection.deleteMany({ where: { userId, platform } });
-  if (res.count === 0) {
-    throw AppError.notFound('연동된 계정이 없습니다.');
-  }
+  await getPrisma().$transaction(async (tx) => {
+    const res = await tx.snsConnection.deleteMany({ where: { userId, platform } });
+    if (res.count === 0) {
+      throw AppError.notFound('연동된 계정이 없습니다.');
+    }
+    await forgetPlatformValues(tx, userId, platform);
+  });
 }
 
 /**

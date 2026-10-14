@@ -49,16 +49,12 @@ interface ShortLivedToken {
   token_type?: string;
 }
 
-/**
- * 토큰 응답의 `user_id` 를 **문자열로** 뽑아낸다.
- *
- * 이유: Instagram 의 user_id 는 `27899354646370752` 처럼 2^53 을 넘고, 응답에서 JSON **숫자**로 온다.
- * 그대로 `JSON.parse` 하면 `27899354646370750` 으로 값이 바뀐다(부동소수점 정밀도 손실).
- * 이 값을 게시 URL 경로에 쓰면 Meta 가 "Object with ID ... does not exist" 로 거부한다 — 실측 확인됨.
- */
-function extractUserId(rawJson: string): string | undefined {
-  const match = /"user_id"\s*:\s*"?(\d+)"?/.exec(rawJson);
-  return match?.[1];
+/** 프로필에서 프로페셔널 계정 ID 를 얻지 못해 연동하지 않는다 — 콜백이 `profile_unavailable` 로 앱에 돌려보낸다. */
+export class InstagramProfileUnavailableError extends Error {
+  constructor() {
+    super('Instagram 프로필에서 계정 ID 를 얻지 못했습니다.');
+    this.name = 'InstagramProfileUnavailableError';
+  }
 }
 
 interface LongLivedToken {
@@ -106,10 +102,8 @@ export async function exchangeCode(
   if (!shortRes.ok) {
     throw AppError.badRequest(`Instagram 토큰 교환에 실패했습니다. ${await errorDetail(shortRes)}`);
   }
-  // user_id 정밀도 손실을 피하려고 원문 텍스트를 먼저 확보한다.
-  const shortRaw = await shortRes.text();
-  const short = JSON.parse(shortRaw) as ShortLivedToken;
-  const shortUserId = extractUserId(shortRaw);
+  // 토큰 응답의 user_id 는 앱 범위 ID 라 쓰지 않는다(2^53 을 넘는 숫자로 와 JSON.parse 가 값을 바꾸기도 한다) — 계정 ID 는 프로필에서 받는다.
+  const short = (await shortRes.json()) as ShortLivedToken;
   if (!short.access_token) {
     throw AppError.badRequest('Instagram 응답에 access_token 이 없습니다.');
   }
@@ -152,25 +146,30 @@ export async function exchangeCode(
     );
   }
 
-  // 3) 프로필 조회 — account_type 을 확인해 PERSONAL 계정을 걸러내기 위한 것.
-  //    조회가 실패해도 연동 자체는 살린다: 토큰은 이미 유효하고, 계정 타입을 모른다고
-  //    연동을 막으면 사용자는 아무것도 할 수 없다. (프로페셔널이 아니면 게시 단계에서 Meta 가 거부한다.)
-  const profile = await fetchProfile(accessToken, logger);
+  // 3) 프로필 — 프로페셔널 계정 ID(`user_id`)와 계정 타입(PERSONAL 을 거른다). 연결 해제 · 데이터 삭제 요청이 이 ID 로
+  //    오므로(2026-10-11 실측, `/me` 의 `id` 가 아니다) 이 값 없이는 연동하지 않는다 — 예전에는 조회가 실패하면 토큰 응답의
+  //    앱 범위 ID 를 저장해, 그 연동은 Meta 의 삭제 요청으로 지울 수 없었다(backlog E-39). 한 번 실패하면 한 번 더 묻는다.
+  let profile = await fetchProfile(accessToken, logger);
+  if (!profile.user_id) {
+    profile = await fetchProfile(accessToken, logger);
+  }
+  if (!profile.user_id) {
+    throw new InstagramProfileUnavailableError();
+  }
 
   return {
     accessToken,
     expiresAt,
-    // 프로페셔널 계정 ID 를 저장한다 — 연결 해제 · 데이터 삭제 요청이 이 값으로 온다(2026-10-11 실측, `/me` 의 `id` 가 아니다).
-    // /me 응답은 값을 문자열로 주므로 안전하다. 폴백은 정밀도 보존해 추출한 토큰 응답의 값.
-    platformUserId: profile.user_id ?? shortUserId ?? '',
+    // /me 응답은 값을 문자열로 주므로 정밀도가 안전하다.
+    platformUserId: profile.user_id,
     platformUsername: profile.username ?? '',
     accountType: profile.account_type,
   };
 }
 
 /**
- * 프로필 조회. 실패하면 예외를 던지지 않고 빈 객체를 반환한다 —
- * 호출자가 account_type 을 "알 수 없음"으로 취급하고 연동을 계속할 수 있게 한다.
+ * 프로필 조회. 실패하면 예외를 던지지 않고 빈 객체를 반환한다 — 호출자(`exchangeCode`)가 한 번 더 묻고,
+ * 그래도 계정 ID 가 없으면 연동하지 않는다.
  */
 async function fetchProfile(accessToken: string, logger?: SnsLogger): Promise<IgProfile> {
   const url = new URL(`${GRAPH_HOST}/${GRAPH_VERSION}/me`);
@@ -180,7 +179,7 @@ async function fetchProfile(accessToken: string, logger?: SnsLogger): Promise<Ig
   if (!res.ok) {
     logger?.warn(
       { detail: await errorDetail(res), url: `${GRAPH_HOST}/${GRAPH_VERSION}/me` },
-      'Instagram 프로필 조회 실패 — account_type 확인 없이 연동을 진행합니다',
+      'Instagram 프로필 조회 실패',
     );
     return {};
   }

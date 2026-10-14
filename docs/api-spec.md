@@ -351,8 +351,9 @@ FE 가 알아야 할 동작:
 - `GET /sns/{platform}/callback` (인증 없음) — OAuth 콜백. **항상 302 딥링크**로 응답한다(실패해도 JSON 을 주지 않으므로 앱은 딥링크만 처리한다):
   `snaplyapp://sns/connected?platform=…`(성공) / `snaplyapp://sns/error?platform=…&reason=<사유>`(실패).
   스킴은 `APP_DEEPLINK_SCHEME`(기본 `snaplyapp://`)이며 앱(`apps/mobile/app.json`)의 `scheme` 과 같아야 한다.
-  `reason`: 서버가 붙이는 값은 `invalid_state`(state 위조) · `account_type`(인스타 개인계정) · `missing_params` · `exchange_failed`(토큰 교환 실패)이고, 플랫폼이 돌려준 `error`(예: 사용자 취소 `access_denied`)는 **그대로** 실린다 — 앱은 모르는 값을 일반 실패로 다룬다.
-- `DELETE /sns/{platform}/disconnect` 🔒 — 연동이 없으면 404.
+  `reason`: 서버가 붙이는 값은 `invalid_state`(state 위조) · `account_type`(인스타 개인계정) · `profile_unavailable`(인스타 프로필에서 계정 ID 를 두 번 다 얻지 못함 — 연동하지 않는다) · `missing_params` · `exchange_failed`(토큰 교환 실패)이고, 플랫폼이 돌려준 `error`(예: 사용자 취소 `access_denied`)는 **그대로** 실린다 — 앱은 모르는 값을 일반 실패로 다룬다.
+- `DELETE /sns/{platform}/disconnect` 🔒 — 연동을 지우고, 그 플랫폼의 게시 이력에 남은 값(게시물 ID · 플랫폼이 준 실패 사유)도 지운다(게시 이력 행은 남는다, SNS-9). 연동이 없으면 404.
+  콜백에서 **다른 계정으로** 다시 연결해도 이전 계정의 값을 같이 지운다 — 남는 값이 늘 지금 연결된 계정의 것이어야 Meta 의 삭제 요청이 정확하다.
 - `POST /sns/{platform}/upload` 🔒 — 편집 완료(`editedUrl` 존재) 영상만. 400 이 나는 경우: 미연동 / 편집 미완료 / **영상이 공개 URL 이 아님**(인스타·틱톡이 URL 을 직접 내려받으므로 `https` 공개 주소여야 한다 — 로컬 MinIO 는 호출 전에 차단) / **연동 만료**(`SNS 연동이 만료되었습니다. 계정을 다시 연동해 주세요.` → 재연동 플로우로 유도) / 플랫폼의 거절(만료 시각을 모르는 연동이면 재연동을 권하는 문장이 덧붙는다). 남의 영상·없는 영상은 404.
   - `status`: **인스타그램**은 컨테이너 처리 완료까지 서버가 대기하므로 응답이 수십 초(최대 5분, `INSTAGRAM_POLL_TIMEOUT_MS`) 걸릴 수 있고 완료되면 `success`, 그 안에 끝나지 않으면 400. **틱톡**은 게시 완료까지 폴링(최대 2분, `TIKTOK_POLL_TIMEOUT_MS`)하며 그 안에 끝나면 `success`, 진행 중이면 `pending`(실패가 아니다 — "업로드 중" 으로 표시).
   - **`success` 면 서버가 그 결과물을 쓰던 무비를 끝낸다**([끝내기](#끝내기-post-moviesidfinish)와 같은 동작, MOV-18) — 결과물 파일이 지워지므로 같은 결과물을 다른 플랫폼에 다시 올리면 404 다. `pending` 은 플랫폼이 나중에 파일을 가져가므로 끝내지 않는다.
