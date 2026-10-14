@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react-native';
+import { act, renderHook } from '@testing-library/react-native';
 
 import type { Movie } from '@/entities/movie';
 import type { Snap } from '@/entities/snap';
@@ -85,6 +85,33 @@ describe('useMovieSummaries', () => {
     expect(byId.get('soon')?.expiryCountdown).toBe('2일 남음');
     expect(byId.get('fresh')?.expiryCountdown).toBeUndefined();
     expect(byId.get('draft')?.expiryCountdown).toBeUndefined();
+  });
+
+  // The movie tab stays mounted for days; a clock read once at mount kept a card
+  // without its countdown long after the last three days began (2026-10-13 review).
+  it('moves the countdown on while the tab stays mounted', async () => {
+    const hourMs = 60 * 60 * 1000;
+    const dayMs = 24 * hourMs;
+    // Local time, since the countdown counts calendar days: 21:00, so three and a
+    // half days later falls on the fourth day — not counted yet.
+    jest.useFakeTimers({ now: new Date(2026, 9, 14, 21, 0) });
+    try {
+      mockMovies.mockReturnValue([
+        makeMovie({
+          id: 'later',
+          status: 'ready',
+          render: { renderedAt: Date.now() - 26.5 * dayMs, durationSec: 3 },
+        }),
+      ]);
+      const { result } = await renderHook(() => useMovieSummaries());
+      expect(result.current[0]?.expiryCountdown).toBeUndefined();
+
+      await act(async () => jest.advanceTimersByTime(13 * hourMs));
+
+      expect(result.current[0]?.expiryCountdown).toBe('3일 남음');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('sums the length of the resolved snaps and samples the first cut as the cover', async () => {
