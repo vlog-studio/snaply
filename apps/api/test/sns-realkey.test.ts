@@ -543,23 +543,44 @@ describe('user_id 정밀도 (2^53 초과)', () => {
   // "Object with ID ... does not exist" 로 거부한다 (실제로 확인됨).
   const BIG_ID = '27899354646370752';
 
-  it('JSON 숫자로 온 user_id 를 정확한 문자열로 보존한다', async () => {
-    stubFetch((url) => {
+  // 예전에는 /me 가 실패하면 토큰 응답의 user_id(앱 범위 ID)를 저장했다. 그 연동은 Meta 의 연결 해제 · 데이터 삭제 요청
+  // (프로페셔널 계정 ID)과 맞지 않아 지울 수 없었다(backlog E-39) — 이제는 한 번 더 묻고, 그래도 없으면 연동하지 않는다.
+  it('/me 가 두 번 실패하면 계정 ID 없이 연동하지 않는다', async () => {
+    const { calls } = stubFetch((url) => {
       if (url.includes('api.instagram.com/oauth/access_token')) {
         // 따옴표 없는 큰 정수 — 실제 Meta 응답과 동일한 형태
         return { raw: `{"access_token":"short","user_id":${BIG_ID},"permissions":"a,b"}` };
       }
-      // 장기 교환·프로필 조회를 실패시켜 폴백 경로를 태운다
       if (url.includes('graph.instagram.com/access_token')) return { status: 400, body: {} };
       if (url.includes('/me')) return { status: 400, body: {} };
       return undefined;
     });
 
+    await expect(instagram.exchangeCode(igConfig, 'code')).rejects.toBeInstanceOf(
+      instagram.InstagramProfileUnavailableError,
+    );
+    expect(calls.filter((c) => c.includes('/me')).length).toBe(2);
+  });
+
+  it('/me 가 한 번 실패해도 다시 물어 프로페셔널 계정 ID 를 쓴다', async () => {
+    let profileCalls = 0;
+    stubFetch((url) => {
+      if (url.includes('api.instagram.com/oauth/access_token')) {
+        return { raw: `{"access_token":"short","user_id":${BIG_ID}}` };
+      }
+      if (url.includes('graph.instagram.com/access_token')) return { status: 400, body: {} };
+      if (url.includes('/me')) {
+        profileCalls += 1;
+        return profileCalls === 1
+          ? { status: 500, body: {} }
+          : { body: { user_id: '17841439086162200', username: 'gagejigi', account_type: 'BUSINESS' } };
+      }
+      return undefined;
+    });
+
     const result = await instagram.exchangeCode(igConfig, 'code');
 
-    expect(result.platformUserId).toBe(BIG_ID);
-    // 정밀도가 깨졌다면 ...750 이 된다
-    expect(result.platformUserId).not.toBe('27899354646370750');
+    expect(result.platformUserId).toBe('17841439086162200');
   });
 
   it('/me 가 성공하면 그 프로페셔널 계정 ID(문자열)를 쓴다', async () => {
@@ -853,6 +874,115 @@ describe('인스타그램 연결 해제 · 데이터 삭제 요청 (SNS-9)', () 
 
     expect(res.statusCode).toBe(200);
     expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  /** 게시 이력 하나를 더 가진다 — 다른 플랫폼 값이 같이 지워지지 않는지 보려고. */
+  async function addUpload(userId: string, platform: 'instagram' | 'tiktok', platformPostId: string) {
+    const video = await h.prisma.video.create({
+      data: { userId, originalUrls: [], status: 'completed' },
+      select: { id: true },
+    });
+    await h.prisma.snsUpload.create({
+      data: { userId, videoId: video.id, platform, platformPostId, status: 'success', errorMessage: 'note' },
+    });
+  }
+
+  async function postIds(userId: string, platform: 'instagram' | 'tiktok') {
+    const rows = await h.prisma.snsUpload.findMany({ where: { userId, platform }, select: { platformPostId: true } });
+    return rows.map((row) => row.platformPostId);
+  }
+
+  // 앱에서 먼저 해제한 사용자의 값은 연동이 없어 Meta 의 삭제 요청으로 찾을 수 없었다(backlog E-39) — 해제할 때 지운다.
+  it('앱에서 연동을 해제하면 그 플랫폼의 게시 이력 값도 지우고 다른 플랫폼은 남긴다', async () => {
+    const user = await connectedUser(BIG_ID);
+    await addUpload(user.id, 'tiktok', 'tt-post-1');
+
+    const res = await h.app.inject({ method: 'DELETE', url: '/sns/instagram/disconnect', headers: user.auth });
+
+    expect(res.statusCode).toBe(200);
+    expect(await postIds(user.id, 'instagram')).toEqual([null]);
+    expect(await postIds(user.id, 'tiktok')).toEqual(['tt-post-1']);
+    const upload = await h.prisma.snsUpload.findFirstOrThrow({ where: { userId: user.id, platform: 'instagram' } });
+    expect(upload).toMatchObject({ errorMessage: null, status: 'success' });
+  });
+
+  it('해제한 뒤에 온 데이터 삭제 요청에는 지울 값이 남아 있지 않다', async () => {
+    const user = await connectedUser(BIG_ID);
+    await h.app.inject({ method: 'DELETE', url: '/sns/instagram/disconnect', headers: user.auth });
+
+    const res = await post('/sns/instagram/data-deletion', signedRequest(BIG_ID));
+
+    expect(res.statusCode).toBe(200);
+    expect(await postIds(user.id, 'instagram')).toEqual([null]);
+  });
+
+  // 다른 계정으로 다시 연결하면 이전 계정의 값이 남아, 새 계정의 삭제 요청이 이전 계정 값까지 지우고 이전 계정의 요청은
+  // 아무것도 못 지웠다(backlog E-39).
+  it('다른 Instagram 계정으로 다시 연결하면 이전 계정의 값을 지우고, 같은 계정이면 남긴다', async () => {
+    const user = await connectedUser(BIG_ID);
+    const { encodeState } = await import('../src/lib/crypto.js');
+    const connectAs = async (accountId: string) => {
+      stubFetch((url) => {
+        if (url.includes('api.instagram.com/oauth/access_token')) return { body: { access_token: 'short', user_id: 1 } };
+        if (url.includes('graph.instagram.com/access_token')) return { body: { access_token: 'long', expires_in: 5_184_000 } };
+        if (url.includes('/me')) return { body: { user_id: accountId, username: 'creator_user', account_type: 'BUSINESS' } };
+        return undefined;
+      });
+      const res = await h.app.inject({
+        method: 'GET',
+        url: `/sns/instagram/callback?code=c&state=${encodeURIComponent(encodeState(user.id))}`,
+      });
+      vi.unstubAllGlobals();
+      return res;
+    };
+
+    const same = await connectAs(BIG_ID);
+    expect(same.headers.location).toContain('sns/connected');
+    expect(await postIds(user.id, 'instagram')).toEqual(['ig-post-1']);
+
+    const other = await connectAs('17841400000000001');
+    expect(other.headers.location).toContain('sns/connected');
+    expect(await postIds(user.id, 'instagram')).toEqual([null]);
+    const connection = await h.prisma.snsConnection.findFirstOrThrow({ where: { userId: user.id } });
+    expect(connection.platformUserId).toBe('17841400000000001');
+  });
+
+  it('계정 ID 를 얻지 못하면 profile_unavailable 로 돌려보내고 연동을 만들지 않는다', async () => {
+    const user = await h.createUser();
+    stubFetch((url) => {
+      if (url.includes('api.instagram.com/oauth/access_token')) return { body: { access_token: 'short', user_id: 1 } };
+      if (url.includes('graph.instagram.com/access_token')) return { body: { access_token: 'long', expires_in: 5_184_000 } };
+      if (url.includes('/me')) return { status: 400, body: {} };
+      return undefined;
+    });
+    const { encodeState } = await import('../src/lib/crypto.js');
+
+    const res = await h.app.inject({
+      method: 'GET',
+      url: `/sns/instagram/callback?code=c&state=${encodeURIComponent(encodeState(user.id))}`,
+    });
+
+    expect(res.headers.location).toContain('reason=profile_unavailable');
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
+  });
+
+  it('데이터 마이그레이션은 연동이 없는 사용자의 값만 지운다', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const sql = readFileSync(
+      fileURLToPath(
+        new URL('../prisma/migrations/20261014000000_forget_sns_values_without_connection/migration.sql', import.meta.url),
+      ),
+      'utf8',
+    );
+    const kept = await connectedUser(BIG_ID);
+    const left = await connectedUser('111');
+    await h.prisma.snsConnection.deleteMany({ where: { userId: left.id } });
+
+    await h.prisma.$executeRawUnsafe(sql);
+
+    expect(await postIds(kept.id, 'instagram')).toEqual(['ig-post-1']);
+    expect(await postIds(left.id, 'instagram')).toEqual([null]);
   });
 
   it('multipart 파트 머리에 줄이 더 있어도 값을 꺼낸다', async () => {
