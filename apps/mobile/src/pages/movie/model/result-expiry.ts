@@ -1,9 +1,5 @@
-import {
-  MovieResultCountdownDays,
-  movieResultDaysLeft,
-  movieResultExpiresAt,
-} from '@/entities/movie';
-import { formatFullDate } from '@/shared/lib/datetime';
+import { MovieResultCountdownDays, movieResultExpiresAt } from '@/entities/movie';
+import { calendarDaysUntil, formatFullDate, relativeDayPhrase } from '@/shared/lib/datetime';
 
 export type ResultExpiry = { text: string; urgent: boolean };
 
@@ -16,13 +12,13 @@ export type ResultExpiry = { text: string; urgent: boolean };
  * (`movieResultExpiresAt`), shared with the studio's cards.
  */
 export function resultExpiry(renderedAt: number, now: number): ResultExpiry | undefined {
-  const daysLeft = movieResultDaysLeft(renderedAt, now);
-  if (daysLeft < 1) return undefined;
-  if (daysLeft <= MovieResultCountdownDays) {
-    return { text: `${daysLeft}일 뒤 사라져요 · 저장하거나 게시해 두세요`, urgent: true };
+  const expiresAt = movieResultExpiresAt(renderedAt);
+  if (expiresAt <= now) return undefined;
+  if (calendarDaysUntil(expiresAt, now) <= MovieResultCountdownDays) {
+    return {
+      text: `${relativeDayPhrase(expiresAt, now)} 사라져요 · 저장하거나 게시해 두세요`,
+      urgent: true,
+    };
   }
-  return {
-    text: `${formatFullDate(movieResultExpiresAt(renderedAt))}까지 볼 수 있어요`,
-    urgent: false,
-  };
+  return { text: `${formatFullDate(expiresAt)}까지 볼 수 있어요`, urgent: false };
 }

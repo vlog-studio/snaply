@@ -14,15 +14,3 @@ const DayMs = 24 * 60 * 60 * 1000;
 export function movieResultExpiresAt(renderedAt: number): number {
   return renderedAt + MovieResultRetentionDays * DayMs;
 }
-
-/**
- * Whole days left before the result is purged, rounded up — `1` on its last
- * day, `0` or less once it has passed.
- *
- * Counted from the app's own `renderedAt`. The server counts from when it filed
- * the result, a run's length earlier, so near midnight this reads a day late —
- * never early enough to send someone away too soon by more than that.
- */
-export function movieResultDaysLeft(renderedAt: number, now: number): number {
-  return Math.ceil((movieResultExpiresAt(renderedAt) - now) / DayMs);
-}

@@ -72,7 +72,6 @@ export { movieJobRatio } from './lib/movie-generation';
 export {
   MovieResultCountdownDays,
   MovieResultRetentionDays,
-  movieResultDaysLeft,
   movieResultExpiresAt,
 } from './lib/movie-result-expiry';
 export {

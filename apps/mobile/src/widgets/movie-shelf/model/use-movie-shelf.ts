@@ -4,14 +4,14 @@ import {
   cutsDurationSec,
   MovieResultCountdownDays,
   movieJobRatio,
-  movieResultDaysLeft,
+  movieResultExpiresAt,
   useMovies,
   type Movie,
   type MovieStatus,
   type MovieStyle,
 } from '@/entities/movie';
 import { snapsByRefs, useSnapIndex, type SnapIndex } from '@/entities/snap';
-import { formatDayHeading, useNow } from '@/shared/lib/datetime';
+import { daysLeftBadge, formatDayHeading, useNow } from '@/shared/lib/datetime';
 
 /** How often the cards' day countdown reads the clock again. */
 const HourMs = 60 * 60 * 1000;
@@ -69,8 +69,11 @@ function jobProgress(movie: Movie): number | undefined {
 
 function expiryCountdownOf(movie: Movie, now: number): string | undefined {
   if (movie.status !== 'ready' || !movie.render) return undefined;
-  const days = movieResultDaysLeft(movie.render.renderedAt, now);
-  return days >= 1 && days <= MovieResultCountdownDays ? `${days}일 남음` : undefined;
+  return daysLeftBadge(
+    movieResultExpiresAt(movie.render.renderedAt),
+    now,
+    MovieResultCountdownDays,
+  );
 }
 
 function summarize(movie: Movie, snapIndex: SnapIndex, now: number): MovieSummary {
