@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from pipeline import music, rendition, subtitle  # noqa: E402
 from pipeline.editor import (  # noqa: E402
     ClipSource,
+    _parse_loudnorm,
     clip_level_filter,
     edit,
     edit_timeline,
@@ -230,6 +231,19 @@ def make_tone_clip(path: str, *, volume: float, seconds: float = 2.0, color: str
     )
 
 
+def _loudness_stats(path: str) -> dict[str, float]:
+    """통합 음량(`i`, LUFS)과 트루 피크(`tp`, dBTP) — loudnorm 측정."""
+    proc = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-nostats", "-i", path, "-vn", "-af", "loudnorm=print_format=json", "-f", "null", "-"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    measured = _parse_loudnorm(proc.stderr)
+    assert measured is not None, proc.stderr[-500:]
+    return {"i": float(measured["input_i"]), "tp": float(measured["input_tp"])}
+
+
 @unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
 class AudioBasicsContract(unittest.TestCase):
     """기본 처리(decisions/auto-edit-draft.md §6.3) — 컷이 바뀔 때 소리가 튀지 않고, 무비는 플랫폼 크기다."""
@@ -278,6 +292,42 @@ class AudioBasicsContract(unittest.TestCase):
         self.assertGreater(peak(0, 5), steady / 4, "첫 5ms 가 비었다 — 소리가 리미터만큼 늦게 나온다")
         self.assertLess(peak(0, 1), steady / 2, "첫 1ms 가 이미 제 크기다 — 페이드인이 걸리지 않았다")
         self.assertEqual(len(samples), 4800, "길이가 바뀌었다 — 끝이 잘리거나 늘었다")
+
+    def test_a_peaky_movie_still_reaches_platform_loudness_within_the_true_peak(self) -> None:
+        """
+        말소리처럼 음절마다 오르내리는 소리에 짧고 큰 파열음 — 피크와 평균의 차가 크다. loudnorm 의 `linear=true` 는
+        이런 소리에서 말없이 동적 모드로 돌아가 −14 에 못 미쳤다(2026-10-13 리뷰). 크기와 트루 피크를 둘 다 지켜야 한다.
+        """
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "speech-like.mp4")
+            subprocess.run(
+                [
+                    "ffmpeg", "-y",
+                    "-f", "lavfi", "-i", "color=c=gray:s=320x240:rate=30:duration=12",
+                    "-f", "lavfi", "-i", "anoisesrc=color=pink:amplitude=0.25:sample_rate=48000:duration=12",
+                    "-f", "lavfi", "-i", "sine=frequency=180:sample_rate=48000:duration=12",
+                    "-filter_complex",
+                    "[1:a]volume=volume=0.15+0.85*abs(sin(2*PI*2.5*t)):eval=frame,lowpass=f=4000[n];"
+                    "[2:a]volume=enable=lt(mod(t\\,0.7)\\,0.012):volume=6,"
+                    "volume=enable=gte(mod(t\\,0.7)\\,0.012):volume=0[p];"
+                    "[n][p]amix=inputs=2:normalize=0,aformat=channel_layouts=stereo[a]",
+                    "-map", "0:v", "-map", "[a]",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-shortest",
+                    src,
+                ],
+                capture_output=True,
+                check=True,
+            )
+            source = _loudness_stats(src)
+            # 이 입력은 loudnorm 의 선형 조건(피크 − 평균 ≤ 12.5dB)을 넘는다 — 넘지 않으면 이 테스트는 아무것도 안 본다.
+            self.assertGreater(source["tp"] - source["i"], 12.5, source)
+            out = os.path.join(work, "final.mp4")
+
+            finalize(src, out)
+
+            final = _loudness_stats(out)
+            self.assertAlmostEqual(final["i"], -14.0, delta=0.5, msg=final)
+            self.assertLessEqual(final["tp"], -1.5, final)
 
     def test_the_movie_is_finished_at_platform_loudness_and_plays_while_downloading(self) -> None:
         with tempfile.TemporaryDirectory() as work:
