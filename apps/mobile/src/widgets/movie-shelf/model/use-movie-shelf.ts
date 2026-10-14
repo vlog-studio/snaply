@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import {
   cutsDurationSec,
@@ -11,7 +11,10 @@ import {
   type MovieStyle,
 } from '@/entities/movie';
 import { snapsByRefs, useSnapIndex, type SnapIndex } from '@/entities/snap';
-import { formatDayHeading } from '@/shared/lib/datetime';
+import { formatDayHeading, useNow } from '@/shared/lib/datetime';
+
+/** How often the cards' day countdown reads the clock again. */
+const HourMs = 60 * 60 * 1000;
 
 /** How many snap frames a movie card samples for its cover. */
 const CoverFrameCount = 1;
@@ -106,8 +109,9 @@ function summarize(movie: Movie, snapIndex: SnapIndex, now: number): MovieSummar
 export function useMovieSummaries(): MovieSummary[] {
   const movies = useMovies();
   const snapIndex = useSnapIndex();
-  // The countdown is in whole days; reading the clock once per mount is enough.
-  const [now] = useState(Date.now);
+  // The countdown is in whole days, but the movie tab stays mounted for days —
+  // read the clock again hourly and on every return to the app.
+  const now = useNow(HourMs);
 
   return useMemo(
     () =>
