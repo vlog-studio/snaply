@@ -120,7 +120,7 @@ class MovieLevelTest(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertEqual(
             command[command.index("-af") + 1],
-            "volume=4.40dB,aresample=192000,alimiter=limit=0.794:level=0:latency=1,aresample=48000",
+            "volume=4.40dB,aresample=192000,alimiter=limit=0.75:level=0:latency=1,aresample=48000",
         )
         self.assertIn("+faststart", command)
 
