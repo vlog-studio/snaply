@@ -19,7 +19,7 @@ jest.mock('@/entities/movie', () => {
     useMovies: () => mockMovies(),
     cutsDurationSec: trim.cutsDurationSec,
     movieJobRatio: generation.movieJobRatio,
-    movieResultDaysLeft: expiry.movieResultDaysLeft,
+    movieResultExpiresAt: expiry.movieResultExpiresAt,
     MovieResultCountdownDays: expiry.MovieResultCountdownDays,
   };
 });

@@ -7,7 +7,7 @@ import {
   type Snap,
   type SnapSyncStatus,
 } from '@/entities/snap';
-import { formatSeconds } from '@/shared/lib/datetime';
+import { daysLeftBadge, formatSeconds } from '@/shared/lib/datetime';
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
@@ -50,13 +50,10 @@ const SyncBadgeLabel: Record<SnapSyncStatus, string | undefined> = {
  */
 const ExpiryCountdownDays = 3;
 
-const DayMs = 24 * 60 * 60 * 1000;
-
-/** `3일 남음` inside the countdown window, nothing before it or once it has passed. */
+/** `3일 남음` · `오늘까지` inside the countdown window, nothing before it or once it has passed. */
 function expiryCountdownOf(expiresAt: number | undefined, now: number): string | undefined {
   if (expiresAt === undefined) return undefined;
-  const days = Math.ceil((expiresAt - now) / DayMs);
-  return days >= 1 && days <= ExpiryCountdownDays ? `${days}일 남음` : undefined;
+  return daysLeftBadge(expiresAt, now, ExpiryCountdownDays);
 }
 
 /**

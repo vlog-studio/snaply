@@ -13,14 +13,18 @@ describe('resultExpiry', () => {
     });
   });
 
-  // The same window as the D-3 push, so the screen says what the notice said.
-  it('counts down the last three days', () => {
+  // The same window as the D-3 push, so the screen says what the notice said —
+  // counted by calendar days, so the last day reads 오늘 and not "1일 뒤"
+  // (2026-10-13 review).
+  it('counts down the last three days by the calendar', () => {
     const threeLeft = renderedAt + (MovieResultRetentionDays - 3) * DayMs;
     expect(resultExpiry(renderedAt, threeLeft)).toEqual({
       text: '3일 뒤 사라져요 · 저장하거나 게시해 두세요',
       urgent: true,
     });
-    expect(resultExpiry(renderedAt, threeLeft + 2 * DayMs + 1)?.text).toMatch(/^1일 뒤/);
+    expect(resultExpiry(renderedAt, threeLeft + 2 * DayMs + 1)?.text).toMatch(/^내일 사라져요/);
+    const lastMorning = renderedAt + MovieResultRetentionDays * DayMs - 60 * 60 * 1000;
+    expect(resultExpiry(renderedAt, lastMorning)?.text).toMatch(/^오늘 사라져요/);
   });
 
   it('says nothing once the deadline has passed', () => {
