@@ -99,5 +99,49 @@ class ClipLevelTest(unittest.TestCase):
         self.assertIn("afade=t=out:st=2.995:d=0.005", graph)
 
 
+class MovieLevelTest(unittest.TestCase):
+    """무비 전체는 선형 이득 + 오버샘플링 리미터로 맞추고, 리미터가 줄인 만큼 다시 재 보정한다."""
+
+    def test_first_gain_brings_the_movie_to_platform_loudness_within_the_cap(self) -> None:
+        self.assertAlmostEqual(editor.movie_gain_db(-16.0), 2.0)
+        self.assertAlmostEqual(editor.movie_gain_db(-11.0), -3.0)
+        self.assertEqual(editor.movie_gain_db(-45.0), editor.MOVIE_MAX_GAIN_DB)
+        self.assertEqual(editor.movie_gain_db(-60.0), 0.0)
+        self.assertEqual(editor.movie_gain_db(None), 0.0)
+
+    @patch("pipeline.editor._run")
+    @patch("pipeline.editor.measure_loudness", side_effect=[-17.5, -14.9, -14.1])
+    def test_finalize_adds_back_what_the_limiter_took(self, measure, run) -> None:
+        editor.finalize("in.mp4", "out.mp4")
+
+        # 원본 −17.5 → +3.5dB. 리미터를 거치니 −14.9 → 0.9dB 더 → −14.1 이면 충분히 가깝다.
+        self.assertEqual(measure.call_count, 3)
+        self.assertEqual(measure.call_args_list[1].kwargs["pre_filter"], editor.movie_level_filter(3.5))
+        command = run.call_args.args[0]
+        self.assertEqual(
+            command[command.index("-af") + 1],
+            "volume=4.40dB,aresample=192000,alimiter=limit=0.794:level=0:latency=1,aresample=48000",
+        )
+        self.assertIn("+faststart", command)
+
+    @patch("pipeline.editor._run")
+    @patch("pipeline.editor.measure_loudness", return_value=-14.1)
+    def test_a_movie_already_at_platform_loudness_is_measured_once_more(self, measure, run) -> None:
+        editor.finalize("in.mp4", "out.mp4")
+
+        self.assertEqual(measure.call_count, 2)
+        command = run.call_args.args[0]
+        self.assertTrue(command[command.index("-af") + 1].startswith("volume=0.10dB,"))
+
+    @patch("pipeline.editor._run")
+    @patch("pipeline.editor.measure_loudness", return_value=None)
+    def test_finalize_keeps_the_level_when_it_cannot_measure(self, measure, run) -> None:
+        editor.finalize("in.mp4", "out.mp4")
+
+        self.assertEqual(measure.call_count, 1)
+        command = run.call_args.args[0]
+        self.assertTrue(command[command.index("-af") + 1].startswith("volume=0.00dB,"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -31,8 +31,13 @@ MICRO_FADE_SECONDS = 0.005
 CLIP_PEAK_LIMIT = 0.891
 # 릴스 · 틱톡이 맞추는 크기. 안 맞추면 업로드 뒤 플랫폼이 다시 눌러 소리가 뭉개진다.
 MOVIE_TARGET_LUFS = -14.0
-MOVIE_TRUE_PEAK_DB = -1.5
-MOVIE_LRA = 11.0
+# 무비 전체를 키운 뒤 피크를 막는 높이(−2dBFS = 0.794). 4배로 올려 막아 샘플 사이 피크(트루 피크)까지 잡고,
+# 플랫폼 기준 −1.5dBTP 에 AAC 인코딩이 더하는 몫으로 0.5dB 를 남긴다(−1.8 로는 AAC 뒤 −1.45 가 나왔다).
+MOVIE_PEAK_LIMIT = 0.794
+MOVIE_MAX_GAIN_DB = 30.0
+# 리미터가 피크를 누른 만큼 크기가 줄어 다시 재 보정한다 — 이만큼 가까워지면 멈추고, 이 횟수를 넘기지 않는다.
+MOVIE_LEVEL_TOLERANCE_LU = 0.3
+MOVIE_LEVEL_PASSES = 4
 # 마지막으로 인코딩하는 화질. 중간 파일은 한 번 더 인코딩되므로 조금 높게 둔다.
 FINAL_CRF = "20"
 INTERMEDIATE_CRF = "18"
@@ -108,12 +113,15 @@ def _parse_loudnorm(stderr: str) -> dict | None:
         return None
 
 
-def measure_loudness(path: str, start: float = 0.0, duration: float | None = None) -> float | None:
-    """구간의 통합 음량(LUFS). 소리가 없거나 잴 수 없으면 None."""
+def measure_loudness(
+    path: str, start: float = 0.0, duration: float | None = None, pre_filter: str = ""
+) -> float | None:
+    """구간의 통합 음량(LUFS) — `pre_filter` 가 있으면 그 필터를 거친 소리의 크기. 소리가 없거나 잴 수 없으면 None."""
     cmd = ["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{start:.3f}"]
     if duration is not None:
         cmd += ["-t", f"{duration:.3f}"]
-    cmd += ["-i", path, "-vn", "-af", "loudnorm=print_format=json", "-f", "null", "-"]
+    measure = f"{pre_filter},loudnorm=print_format=json" if pre_filter else "loudnorm=print_format=json"
+    cmd += ["-i", path, "-vn", "-af", measure, "-f", "null", "-"]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     measured = _parse_loudnorm(proc.stderr) if proc.returncode == 0 else None
     if measured is None:
@@ -261,34 +269,56 @@ def _crossfade(normalized: list[str], durations: list[float], t: float, out: str
     ])
 
 
+def movie_gain_db(loudness: float | None) -> float:
+    """무비 전체를 플랫폼 크기로 맞추는 첫 이득. 무음 · 측정 불가는 0, 크기는 ±상한 안."""
+    if loudness is None or loudness < CLIP_SILENCE_LUFS:
+        return 0.0
+    gain = MOVIE_TARGET_LUFS - loudness
+    return max(-MOVIE_MAX_GAIN_DB, min(MOVIE_MAX_GAIN_DB, gain))
+
+
+def movie_level_filter(gain_db: float) -> str:
+    """무비 전체의 크기 맞춤 — 선형 이득 뒤 4배로 올려 피크(트루 피크)를 막고 48kHz 로 되돌린다."""
+    return (
+        f"volume={gain_db:.2f}dB,aresample=192000,"
+        f"alimiter=limit={MOVIE_PEAK_LIMIT}:level=0:latency=1,aresample=48000"
+    )
+
+
+def settle_movie_gain(video_in: str) -> float:
+    """플랫폼 크기에 닿는 이득. 리미터가 피크를 누른 만큼 크기가 줄어, 거친 소리를 다시 재 모자란 만큼 더한다."""
+    gain = movie_gain_db(measure_loudness(video_in))
+    if gain == 0.0:
+        return 0.0
+    for _ in range(MOVIE_LEVEL_PASSES):
+        reached = measure_loudness(video_in, pre_filter=movie_level_filter(gain))
+        if reached is None:
+            break
+        error = MOVIE_TARGET_LUFS - reached
+        if abs(error) < MOVIE_LEVEL_TOLERANCE_LU:
+            break
+        gain = max(-MOVIE_MAX_GAIN_DB, min(MOVIE_MAX_GAIN_DB, gain + error))
+    return gain
+
+
 def finalize(video_in: str, out: str) -> None:
     """무비의 마지막 손질 — 전체 음량을 플랫폼 기준에 맞추고 첫 재생을 앞당긴다.
 
-    음량은 두 번에 맞춘다: 재고(측정) 그 값으로 **선형** 정규화한다. 한 번에 하는 동적 모드는 짧은
-    무비에서 소리가 숨 쉬듯 오르내린다. 영상 · 자막은 다시 인코딩하지 않는다(`copy`). `+faststart` 는
-    moov 를 앞으로 옮겨, 받으면서 바로 재생되게 한다.
+    음량은 **선형 이득**으로 플랫폼 크기(−14 LUFS)에 맞추고, 튀어나온 피크만 4배 오버샘플링 리미터로 막는다(트루 피크
+    −1.5dB 안). 리미터가 피크를 누른 만큼 크기가 줄므로 다시 재 보정한다(`settle_movie_gain`). 처음에는 loudnorm 의 두
+    번째 패스(`linear=true`)를 썼는데, loudnorm 은 피크와 평균의 차가 12.5dB 를 넘으면 말없이 동적 모드로 돌아간다 —
+    휴대폰 말소리는 흔히 그 범위라 크기를 계속 조절하며 목표에도 못 미쳤다(말소리 같은 합성 신호 셋 모두 dynamic,
+    −14.7 ~ −16.5 LUFS, 2026-10-13 리뷰). 영상 · 자막은 다시 인코딩하지 않는다(`copy`). `+faststart` 는 moov 를 앞으로
+    옮겨, 받으면서 바로 재생되게 한다.
     """
-    target = f"I={MOVIE_TARGET_LUFS:g}:TP={MOVIE_TRUE_PEAK_DB:g}:LRA={MOVIE_LRA:g}"
-    probe_proc = subprocess.run(
-        ["ffmpeg", "-hide_banner", "-nostats", "-i", video_in, "-vn",
-         "-af", f"loudnorm={target}:print_format=json", "-f", "null", "-"],
-        capture_output=True, text=True,
-    )
-    measured = _parse_loudnorm(probe_proc.stderr) if probe_proc.returncode == 0 else None
-    audio_filter = f"loudnorm={target}"
-    if measured is not None and all(
-        math.isfinite(float(measured.get(k, "nan")))
-        for k in ("input_i", "input_tp", "input_lra", "input_thresh")
-    ):
-        audio_filter += (
-            f":measured_I={measured['input_i']}:measured_TP={measured['input_tp']}"
-            f":measured_LRA={measured['input_lra']}:measured_thresh={measured['input_thresh']}"
-            f":offset={measured.get('target_offset', '0')}:linear=true"
-        )
+    gain = settle_movie_gain(video_in)
+    if gain == 0.0:
+        logger.warning("무비 음량을 맞추지 않는다(무음이거나 재지 못함) — 피크만 막는다: {}", video_in)
+    logger.debug("무비 음량 이득 {:+.2f}dB", gain)
     _run([
         "ffmpeg", "-y", "-i", video_in,
         "-map", "0", "-c", "copy",
-        "-af", f"{audio_filter},aresample=48000", "-c:a", "aac", "-b:a", "192k",
+        "-af", movie_level_filter(gain), "-c:a", "aac", "-b:a", "192k",
         "-movflags", "+faststart",
         out,
     ])
