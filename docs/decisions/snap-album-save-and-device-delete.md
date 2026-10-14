@@ -10,6 +10,10 @@
 [apps/mobile/docs/features/snaps.md](../../apps/mobile/docs/features/snaps.md) · [progress.md](../progress.md) 2026-09-29(구현 ·
 에뮬레이터 확인) · [backlog.md](../backlog.md) A-4
 
+> **후속 결정**(2026-10-12): ①의 B(만료 전 저장 유도)를 들였다 — 선택 모드에서 여러 스냅을 한 번에 앨범에 저장하고, 만료 예고 푸시를
+> 탭하면 곧 사라질 스냅을 앨범 저장용으로 골라 둔 채 라이브러리가 열린다(SNAP-13). 곧 끝나는 스냅 모아 보기 화면은 두지 않았다 →
+> [progress.md](../progress.md) 2026-10-12 "만료 전에 앨범 저장을 권한다".
+
 ---
 
 ## 무엇을 정했나
