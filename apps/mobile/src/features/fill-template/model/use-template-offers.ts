@@ -29,12 +29,17 @@ export type TemplateOffer = {
  * two shots the user could go take. A template the library cannot fill at all
  * still belongs on the shelf for the same reason.
  *
- * **Ordered by shortfall, not by the catalog** (2026-08-12). The studio draws
+ * **The ones the library fills come first** (2026-08-12). The studio draws
  * these as a horizontal row that fits two and a half cards, so catalog order
  * decided by luck which templates a user ever saw — a template the library can
- * fill today is worth more than the one that happens to be written first.
- * Templates the library fills equally are ordered by the shorter one, then by
- * the catalog, so the row stays stable while the library does.
+ * fill today is worth more than one it cannot.
+ *
+ * **Within each group, the server's order** (2026-10-15, spec PRF-3): the
+ * server orders the catalog by the user's taste, and by the catalog — shortest
+ * first — when there is none. So a cafe lover sees 카페 한 곳 ahead of the other
+ * templates the library is short for, however many cuts each is short, and a
+ * user with no taste sees the catalog's order. The row stays stable while the
+ * library and the taste do.
  *
  * The catalog itself comes from the server now (`useMovieTemplates`), which
  * answers with the built-in one until the request lands — so the cards are drawn
@@ -49,24 +54,22 @@ export function useTemplateOffers(): TemplateOffer[] {
   return useMemo(
     () =>
       templates
-        .map((template) => {
+        .map((template, index) => {
           const slotCount = template.slots.length;
           const best = pickBestSession(groupIntoSessions(snaps), slotCount);
           const slots = best
             ? spreadAcrossSlots(best.snaps, slotCount)
             : Array.from({ length: slotCount }, () => undefined);
-          return {
+          const offer: TemplateOffer = {
             template,
             filled: slots.filter((snap) => snap !== undefined).length,
             slotCount,
             slots,
           };
+          return { offer, index, ready: offer.filled === slotCount };
         })
-        .sort(
-          (left, right) =>
-            left.slotCount - left.filled - (right.slotCount - right.filled) ||
-            left.slotCount - right.slotCount,
-        ),
+        .sort((left, right) => Number(right.ready) - Number(left.ready) || left.index - right.index)
+        .map(({ offer }) => offer),
     [snaps, templates],
   );
 }

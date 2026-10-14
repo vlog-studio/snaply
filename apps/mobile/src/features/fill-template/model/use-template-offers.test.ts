@@ -13,9 +13,16 @@ jest.mock('@/entities/snap', () => ({
 // The catalog is a server read now. What this hook owns is the *order* it puts
 // the templates in, so the source is pinned to the shipped catalog rather than
 // dragged through a query client — `use-movie-templates.test.ts` covers the read.
+const mockTemplateOrder = jest.fn<string[] | undefined, []>();
 jest.mock('@/entities/movie-template', () => ({
-  useMovieTemplates: () =>
-    jest.requireActual('@/entities/movie-template/lib/movie-template-catalog').MovieTemplateCatalog,
+  useMovieTemplates: () => {
+    const catalog: { id: string }[] = jest.requireActual(
+      '@/entities/movie-template/lib/movie-template-catalog',
+    ).MovieTemplateCatalog;
+    // The server answers in the user's taste order when it has one.
+    const order = mockTemplateOrder();
+    return order ? order.map((id) => catalog.find((template) => template.id === id)) : catalog;
+  },
 }));
 
 const Noon = new Date('2026-08-12T12:00:00+09:00').getTime();
@@ -38,6 +45,7 @@ function makeSnap(id: string, minutesFromNoon: number): Snap {
 beforeEach(() => {
   jest.clearAllMocks();
   mockSnaps.mockReturnValue([]);
+  mockTemplateOrder.mockReturnValue(undefined);
 });
 
 function renderOffers() {
@@ -54,7 +62,7 @@ describe('useTemplateOffers', () => {
 
   // The studio's row fits two cards and a sliver, so the order decides which
   // templates a user ever sees.
-  it('puts the template closest to being filled first', async () => {
+  it('puts the templates the library fills first', async () => {
     mockSnaps.mockReturnValue([
       makeSnap('a', 0),
       makeSnap('b', 10),
@@ -64,15 +72,39 @@ describe('useTemplateOffers', () => {
 
     const { result } = await renderOffers();
 
-    // 하루 요약 asks for four and has them; 카페 한 곳 is one short; 동네 산책 and
-    // 나들이 are both two short, and the shorter-then-catalog tie-break keeps 산책 ahead.
+    // 하루 요약 asks for four and has them; the rest are short and, with no
+    // taste, keep the catalog's order (동네 산책 · 카페 한 곳 · 나들이) — how
+    // many cuts each is short no longer reorders them (2026-10-15).
     expect(result.current.map((offer) => offer.template.id)).toEqual([
       'day',
-      'cafe',
       'walk',
+      'cafe',
       'trip',
     ]);
     expect(result.current[0]).toMatchObject({ filled: 4, slotCount: 4 });
+  });
+
+  // PRF-3: the server's taste order decides within each group — the filled
+  // ones still lead.
+  it('orders by the taste within the filled and the unfilled templates', async () => {
+    mockSnaps.mockReturnValue([
+      makeSnap('a', 0),
+      makeSnap('b', 10),
+      makeSnap('c', 20),
+      makeSnap('d', 30),
+    ]);
+    mockTemplateOrder.mockReturnValue(['trip', 'cafe', 'day', 'walk']);
+
+    const { result } = await renderOffers();
+
+    // 하루 요약 is the one the library fills, so it stays first even though the
+    // taste ranks it third; 나들이 (two short) now leads 카페 한 곳 (one short).
+    expect(result.current.map((offer) => offer.template.id)).toEqual([
+      'day',
+      'trip',
+      'cafe',
+      'walk',
+    ]);
   });
 
   // The studio card draws these as its strip, so they must be the cuts the
@@ -97,13 +129,13 @@ describe('useTemplateOffers', () => {
     }
   });
 
-  it('falls back to the shortest template when the library fills none of them', async () => {
+  it('keeps the catalog order when the library fills none and there is no taste', async () => {
     const { result } = await renderOffers();
 
     expect(result.current.map((offer) => offer.template.id)).toEqual([
+      'walk',
       'day',
       'cafe',
-      'walk',
       'trip',
     ]);
   });
