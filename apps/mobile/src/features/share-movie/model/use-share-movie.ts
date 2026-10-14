@@ -80,13 +80,14 @@ export type MovieSharing = {
 };
 
 /** How a hand-off to the Instagram app ended. */
-export type InstagramHandoff = 'opened' | 'blocked' | 'failed' | 'unavailable';
+export type InstagramHandoff = 'opened' | 'blocked' | 'failed' | 'unavailable' | 'unresolved';
 
 /** What the sheet says when the hand-off could not happen. */
 export const InstagramHandoffMessages: Record<Exclude<InstagramHandoff, 'opened'>, string> = {
   blocked: '무비를 앨범에 저장하려면 사진 권한이 필요해요.',
   failed: '무비를 앨범에 저장하지 못했어요. 다시 시도해 주세요.',
   unavailable: ShareBlockMessages['no-render'],
+  unresolved: ShareBlockMessages.unresolved,
 };
 
 /**
@@ -144,7 +145,10 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
   };
 
   const openInInstagram = async (): Promise<InstagramHandoff> => {
-    if (!uri || !movie?.render) return 'unavailable';
+    // The same two empty-`uri` cases as 공유 (`ShareBlock`): a finished movie whose
+    // link could not be fetched must not be told it was never finished.
+    if (!movie?.render) return 'unavailable';
+    if (!uri) return source.unresolved ? 'unresolved' : 'unavailable';
     if (handingOff) return 'failed';
     const key = `${movie.id}-${movie.render.renderedAt}`;
     setHandingOff(true);

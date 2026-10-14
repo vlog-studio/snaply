@@ -73,6 +73,12 @@ describe('albumBatchMessage', () => {
       { saved: 1, failed: 0, blocked: true },
       '스냅 1개를 앨범에 저장했어요 · 나머지는 사진 권한이 필요해요',
     ],
+    // Nothing saved read "스냅 0개를 앨범에 저장했어요" (2026-10-13 review).
+    [
+      { saved: 0, failed: 3, blocked: false },
+      '스냅 3개를 앨범에 저장하지 못했어요. 다시 시도해 주세요.',
+    ],
+    [{ saved: 0, failed: 0, blocked: false }, '저장할 스냅이 없어요.'],
   ])('words %j', (outcome, message) => {
     expect(albumBatchMessage(outcome)).toBe(message);
   });

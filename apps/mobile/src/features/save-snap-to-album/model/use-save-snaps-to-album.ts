@@ -52,6 +52,12 @@ export function useSaveSnapsToAlbum() {
 /** The one line a batch leaves behind, in the user's words. */
 export function albumBatchMessage(outcome: AlbumBatchOutcome): string {
   if (outcome.blocked && outcome.saved === 0) return '앨범에 저장하려면 사진 권한이 필요해요.';
+  // Nothing saved is not "0개를 저장했어요" — say what failed, or that nothing was there to save.
+  if (outcome.saved === 0) {
+    return outcome.failed > 0
+      ? `스냅 ${outcome.failed}개를 앨범에 저장하지 못했어요. 다시 시도해 주세요.`
+      : '저장할 스냅이 없어요.';
+  }
   const saved = `스냅 ${outcome.saved}개를 앨범에 저장했어요`;
   if (outcome.blocked) return `${saved} · 나머지는 사진 권한이 필요해요`;
   return outcome.failed > 0 ? `${saved} · ${outcome.failed}개는 저장하지 못했어요` : saved;

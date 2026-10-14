@@ -132,6 +132,18 @@ describe('chunkedSecureStorage', () => {
     expect(await chunkedSecureStorage.getItem('k')).toBe('new');
   });
 
+  // A read that threw was remembered as "nothing stored", so one transient
+  // keystore error kept the session signed out until the app restarted
+  // (2026-10-13 review).
+  it('asks the device again after a read that threw', async () => {
+    backingStore.set('k.chunks', '1');
+    backingStore.set('k.0', 'session');
+    jest.mocked(SecureStore.getItemAsync).mockRejectedValueOnce(new Error('keystore busy'));
+
+    expect(await chunkedSecureStorage.getItem('k')).toBeNull();
+    expect(await chunkedSecureStorage.getItem('k')).toBe('session');
+  });
+
   it('remembers a removal', async () => {
     await chunkedSecureStorage.setItem('k', 'value');
     await chunkedSecureStorage.removeItem('k');
