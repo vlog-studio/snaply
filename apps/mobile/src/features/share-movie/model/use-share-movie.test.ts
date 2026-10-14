@@ -2,7 +2,12 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 
 import type { Movie } from '@/entities/movie';
 
-import { useShareMovie, type ShareSource } from './use-share-movie';
+import {
+  InstagramHandoffMessages,
+  ShareBlockMessages,
+  useShareMovie,
+  type ShareSource,
+} from './use-share-movie';
 
 const mockCanShare = jest.fn<Promise<boolean>, []>();
 const mockShareFile = jest.fn<Promise<void>, [string, unknown]>();
@@ -112,6 +117,21 @@ describe('openInInstagram', () => {
     });
 
     expect(outcome).toBe('unavailable');
+    expect(mockRequestAlbum).not.toHaveBeenCalled();
+  });
+
+  // Offline, a finished movie's link cannot be fetched; the hand-off said it was
+  // never finished (2026-10-13 review) — the same mix-up 공유's block avoids.
+  it('tells a finished movie whose link could not be fetched apart from one with no render', async () => {
+    const { result } = await renderHook(() => useShareMovie(makeMovie(), unresolved));
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.openInInstagram();
+    });
+
+    expect(outcome).toBe('unresolved');
+    expect(InstagramHandoffMessages.unresolved).toBe(ShareBlockMessages.unresolved);
     expect(mockRequestAlbum).not.toHaveBeenCalled();
   });
 });

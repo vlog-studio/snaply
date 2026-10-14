@@ -15,6 +15,8 @@ export type InstagramPostStepProps = {
   /** The finished render's file on the server. */
   videoId: string;
   onCancel: () => void;
+  /** Instagram opened with the movie in the album — the sheet's work is done. */
+  onHandedOff: () => void;
   onPosted: (outcome: PostOutcome) => void;
   /**
    * Saves the movie to the album and opens the Instagram app — posting by hand,
@@ -43,6 +45,7 @@ export function InstagramPostStep({
   title,
   videoId,
   onCancel,
+  onHandedOff,
   onPosted,
   onOpenInstagramApp,
   handingOff,
@@ -64,7 +67,7 @@ export function InstagramPostStep({
       onPress={() => {
         setHandoffProblem(undefined);
         void onOpenInstagramApp().then((outcome) => {
-          if (outcome === 'opened') onCancel();
+          if (outcome === 'opened') onHandedOff();
           else setHandoffProblem(InstagramHandoffMessages[outcome]);
         });
       }}
@@ -156,10 +159,13 @@ export function InstagramPostSheet({
   visible,
   onClose,
   ...step
-}: Omit<InstagramPostStepProps, 'onCancel'> & { visible: boolean; onClose: () => void }) {
+}: Omit<InstagramPostStepProps, 'onCancel' | 'onHandedOff'> & {
+  visible: boolean;
+  onClose: () => void;
+}) {
   return (
     <BottomSheet accessibilityLabel="Instagram에 게시" visible={visible} onClose={onClose}>
-      <InstagramPostStep {...step} onCancel={onClose} />
+      <InstagramPostStep {...step} onCancel={onClose} onHandedOff={onClose} />
     </BottomSheet>
   );
 }

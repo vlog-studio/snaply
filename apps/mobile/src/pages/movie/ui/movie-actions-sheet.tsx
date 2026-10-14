@@ -111,6 +111,8 @@ export function MovieActionsSheet({
           title={movie.title}
           videoId={postableVideoId}
           onCancel={() => setStep('menu')}
+          // Back from Instagram the user should not find the ⋯ menu still open.
+          onHandedOff={close}
           onPosted={(outcome) => {
             close();
             onPosted(outcome);

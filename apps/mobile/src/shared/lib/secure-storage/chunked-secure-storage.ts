@@ -71,7 +71,10 @@ const memory = new Map<string, string | null>();
 /** A native read in flight per key, shared by everyone who asks meanwhile. */
 const reads = new Map<string, Promise<string | null>>();
 
-async function readChunks(key: string): Promise<string | null> {
+/** A device read that threw — not the same as "nothing stored", so it is never remembered. */
+const ReadFailed = Symbol('read failed');
+
+async function readChunks(key: string): Promise<string | null | typeof ReadFailed> {
   try {
     const countRaw = await SecureStore.getItemAsync(chunkCountKey(key));
     if (countRaw == null) return null;
@@ -84,7 +87,7 @@ async function readChunks(key: string): Promise<string | null> {
     }
     return value;
   } catch {
-    return null;
+    return ReadFailed;
   }
 }
 
@@ -103,13 +106,17 @@ export const chunkedSecureStorage = {
     if (memory.has(key)) return memory.get(key) ?? null;
     const pending = reads.get(key);
     if (pending) return pending;
-    const read = readChunks(key).then((value) => {
+    const read = readChunks(key).then((result) => {
       // A write that landed while this read was in flight is newer than it.
       if (reads.get(key) === read) {
         reads.delete(key);
-        memory.set(key, value);
+        // A read that threw says nothing about what is stored: remembering it as
+        // absent would keep the session signed out until the app restarted, for
+        // one transient keystore error. The next caller asks the device again.
+        if (result !== ReadFailed) memory.set(key, result);
       }
-      return memory.has(key) ? (memory.get(key) ?? null) : value;
+      if (memory.has(key)) return memory.get(key) ?? null;
+      return result === ReadFailed ? null : result;
     });
     reads.set(key, read);
     return read;
