@@ -3505,3 +3505,16 @@ CI 에는 키가 없어 통과했다.
   남김 · `/me` 두 번 실패하면 연동하지 않음 · 한 번 실패해도 다시 물음 · `profile_unavailable`) 여섯은 수정 전 실패, 마이그레이션 SQL 은 테스트 DB 에서
   연동이 없는 사용자의 값만 지우는 것을 확인했다. 실제 Meta 요청으로는 아직 보지 않았다 — 배포 뒤 테스터 계정으로 앱에서 해제한 다음 Instagram 에서
   데이터 삭제를 요청해 본다(backlog F "Meta 삭제 요청의 실제 확인").
+
+## 2026-10-15 — 템플릿 카드를 취향 순으로(PRF-3)
+
+오너가 고른 방식(나) — 결정은 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md) §7 메모. 서버는 템플릿 목록을 이미 취향 순으로
+주었지만(A-13 5단계) 앱이 모자란 컷 수 → 짧은 템플릿 순으로 다시 놓아 취향은 동점에서만 작동했다.
+
+- **앱** — `use-template-offers.ts` 의 정렬을 "다 채울 수 있는가 → 서버 순서"로. 다 채울 수 있는 템플릿이 앞이고, 각 묶음 안은 서버 순서(취향 순, 취향이
+  없으면 카탈로그 `walk` · `day` · `cafe` · `trip`)다. 서버 · 계약 변경 없음.
+- **받아들인 것** — 취향이 없는 사용자의 못 채우는 템플릿이 모자란 컷 수 대신 카탈로그 순으로 놓인다(스냅 4개 · 취향 없음: `day` · `walk` · `cafe` · `trip`,
+  전에는 `day` · `cafe` · `walk` · `trip`. 스냅이 없으면 `walk` 가 첫 카드, 전에는 `day`).
+- **검증** — `use-template-offers.test.ts`(다 채운 템플릿이 취향 3위여도 맨 앞 · 못 채우는 묶음은 모자란 컷 수와 상관없이 취향 순 · 취향 없으면 카탈로그 순),
+  `npm run verify:mobile`. 기능 문서 `movie-templates.md`, 스펙 PRF-3.
+
