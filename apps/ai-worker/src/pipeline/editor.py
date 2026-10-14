@@ -27,6 +27,8 @@ CLIP_TARGET_LUFS = -16.0
 CLIP_SILENCE_LUFS = -50.0
 CLIP_MAX_GAIN_DB = 12.0
 MICRO_FADE_SECONDS = 0.005
+# 컷 하나를 키운 만큼 넘치지 않게 막는 높이(−1dBFS).
+CLIP_PEAK_LIMIT = 0.891
 # 릴스 · 틱톡이 맞추는 크기. 안 맞추면 업로드 뒤 플랫폼이 다시 눌러 소리가 뭉개진다.
 MOVIE_TARGET_LUFS = -14.0
 MOVIE_TRUE_PEAK_DB = -1.5
@@ -123,6 +125,19 @@ def measure_loudness(path: str, start: float = 0.0, duration: float | None = Non
     return value if math.isfinite(value) else None
 
 
+def clip_level_filter(gain_db: float, duration: float) -> str:
+    """컷 하나의 소리 손질 — 크기 맞춤 → 키운 만큼 넘치지 않게 막고 → 양 끝 마이크로 페이드.
+
+    리미터의 `latency=1` 이 없으면 미리보기 버퍼(attack 5ms)만큼 소리가 늦게 나와, 컷의 첫 5ms 는 0 이고 진짜 소리는
+    그 뒤에 페이드 없이 시작했다 — 페이드가 0 위에 걸려 없애려던 '틱' 이 그대로였고, 끝 5ms 는 잘렸다(2026-10-13 리뷰).
+    """
+    fade = min(MICRO_FADE_SECONDS, duration / 4)
+    return (
+        f"volume={gain_db:.2f}dB,alimiter=limit={CLIP_PEAK_LIMIT}:level=0:latency=1,"
+        f"afade=t=in:d={fade:.3f},afade=t=out:st={duration - fade:.3f}:d={fade:.3f}"
+    )
+
+
 def clip_gain_db(loudness: float | None) -> float:
     """컷 하나를 기준 크기로 맞추는 이득. 무음 · 측정 불가는 0, 크기는 ±상한 안."""
     if loudness is None or loudness < CLIP_SILENCE_LUFS:
@@ -176,13 +191,10 @@ def normalize_clip(
     video_trim = f"[0:v:0]trim=start={start:.3f}:end={end:.3f}{tonemap}[trimmed_v]"
     if has_audio:
         gain = clip_gain_db(measure_loudness(src, start, duration))
-        fade = min(MICRO_FADE_SECONDS, duration / 4)
         audio_filter = (
             f"{audio_input}aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
             f"apad,atrim=start={start:.3f}:end={end:.3f},asetpts=PTS-STARTPTS,"
-            # 컷 하나의 크기 맞춤 → 키운 만큼 넘치지 않게 −1dBFS 에서 막고 → 양 끝 마이크로 페이드.
-            f"volume={gain:.2f}dB,alimiter=limit=0.891:level=0,"
-            f"afade=t=in:d={fade:.3f},afade=t=out:st={duration - fade:.3f}:d={fade:.3f}[a]"
+            f"{clip_level_filter(gain, duration)}[a]"
         )
     else:
         audio_filter = (
