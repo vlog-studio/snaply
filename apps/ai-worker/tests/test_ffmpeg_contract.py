@@ -304,7 +304,7 @@ class AudioBasicsContract(unittest.TestCase):
                 [
                     "ffmpeg", "-y",
                     "-f", "lavfi", "-i", "color=c=gray:s=320x240:rate=30:duration=12",
-                    "-f", "lavfi", "-i", "anoisesrc=color=pink:amplitude=0.25:sample_rate=48000:duration=12",
+                    "-f", "lavfi", "-i", "anoisesrc=color=pink:amplitude=0.25:sample_rate=48000:duration=12:seed=7",
                     "-f", "lavfi", "-i", "sine=frequency=180:sample_rate=48000:duration=12",
                     "-filter_complex",
                     "[1:a]volume=volume=0.15+0.85*abs(sin(2*PI*2.5*t)):eval=frame,lowpass=f=4000[n];"
