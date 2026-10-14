@@ -19,6 +19,15 @@ const DayMs = 24 * 60 * 60 * 1000;
 
 const expiredLabel = '\uB9CC\uB8CC\uB428'; // 만료됨
 const twoDaysLeft = '2\uC77C \uB0A8\uC74C'; // 2일 남음
+const oneDayLeft = '1\uC77C \uB0A8\uC74C'; // 1일 남음
+
+/** Noon `daysFromToday` days from now, in the device's time zone. */
+function localNoon(daysFromToday: number): number {
+  const day = new Date();
+  day.setDate(day.getDate() + daysFromToday);
+  day.setHours(12, 0, 0, 0);
+  return day.getTime();
+}
 const daysLeftPattern = /\uC77C \uB0A8\uC74C/; // 일 남음
 
 const snap: Snap = {
@@ -60,14 +69,18 @@ describe('SnapCell', () => {
     expect(screen.getByText(expiredLabel)).toBeTruthy();
   });
 
+  // Days are counted on the calendar, so the deadline is a local day and hour —
+  // "1.5 days from now" lands on a different day depending on when the test runs.
   it('counts down the last days of the server copy', async () => {
-    await renderCellWith({
-      status: 'uploaded',
-      videoId: 'v1',
-      expiresAt: Date.now() + 1.5 * DayMs,
-    });
+    await renderCellWith({ status: 'uploaded', videoId: 'v1', expiresAt: localNoon(2) });
 
     expect(screen.getByText(twoDaysLeft)).toBeTruthy();
+  });
+
+  it('counts a copy that goes tomorrow as one day left, whatever the hour', async () => {
+    await renderCellWith({ status: 'uploaded', videoId: 'v1', expiresAt: localNoon(1) });
+
+    expect(screen.getByText(oneDayLeft)).toBeTruthy();
   });
 
   it('says nothing about the copy before its last three days', async () => {
