@@ -93,6 +93,8 @@ class ClipLevelTest(unittest.TestCase):
 
         graph = run.call_args.args[0][run.call_args.args[0].index("-filter_complex") + 1]
         self.assertIn("volume=10.00dB", graph)
+        # 리미터가 소리를 늦추면 페이드가 앞의 무음에 걸린다 — 지연을 되돌려야 한다.
+        self.assertIn("alimiter=limit=0.891:level=0:latency=1", graph)
         self.assertIn("afade=t=in:d=0.005", graph)
         self.assertIn("afade=t=out:st=2.995:d=0.005", graph)
 

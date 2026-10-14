@@ -19,6 +19,7 @@
 
 import json
 import os
+import struct
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from pipeline import music, rendition, subtitle  # noqa: E402
 from pipeline.editor import (  # noqa: E402
     ClipSource,
+    clip_level_filter,
     edit,
     edit_timeline,
     finalize,
@@ -250,6 +252,32 @@ class AudioBasicsContract(unittest.TestCase):
 
             first, second = measure_loudness(out, 0.2, 1.6), measure_loudness(out, 2.2, 1.6)
             self.assertLess(abs(first - second), 2.0, (first, second))
+
+    def test_a_cut_starts_with_its_fade_not_with_silence_then_a_jump(self) -> None:
+        """
+        리미터는 미리보기(attack 5ms)만큼 소리를 늦춘다. 그걸 되돌리지 않으면 컷의 첫 5ms 가 0 이고 진짜 소리는 그 뒤에
+        제 크기로 갑자기 시작해, 페이드가 0 위에 걸려 '틱' 이 남았다(2026-10-13). AAC 를 거치면 샘플이 번지므로 필터만
+        PCM 으로 돌려 본다.
+        """
+        result = subprocess.run(
+            [
+                "ffmpeg", "-hide_banner", "-loglevel", "error",
+                "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000:duration=0.1",
+                "-af", "aformat=sample_fmts=fltp:channel_layouts=mono," + clip_level_filter(0.0, 0.1),
+                "-f", "f32le", "-",
+            ],
+            capture_output=True,
+            check=True,
+        )
+        samples = struct.unpack(f"<{len(result.stdout) // 4}f", result.stdout)
+
+        def peak(start_ms: float, end_ms: float) -> float:
+            return max(abs(x) for x in samples[int(start_ms * 48) : int(end_ms * 48)])
+
+        steady = peak(5, 10)
+        self.assertGreater(peak(0, 5), steady / 4, "첫 5ms 가 비었다 — 소리가 리미터만큼 늦게 나온다")
+        self.assertLess(peak(0, 1), steady / 2, "첫 1ms 가 이미 제 크기다 — 페이드인이 걸리지 않았다")
+        self.assertEqual(len(samples), 4800, "길이가 바뀌었다 — 끝이 잘리거나 늘었다")
 
     def test_the_movie_is_finished_at_platform_loudness_and_plays_while_downloading(self) -> None:
         with tempfile.TemporaryDirectory() as work:
