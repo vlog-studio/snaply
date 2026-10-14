@@ -12,6 +12,7 @@ import {
   useSnapExpiresAt,
   useSnapFiles,
   useSnapSyncEntries,
+  useSnapSyncHydrated,
   type Snap,
   type SnapSyncEntry,
 } from '@/entities/snap';
@@ -44,9 +45,9 @@ import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/wi
 import { draftCostReadOut } from '../model/draft-cost';
 import { draftConfirmation, useEditDraft } from '../model/use-edit-draft';
 import { playerAlbumAction } from '../model/player-album-action';
-import { expiringSnapIds } from '../model/expiring-snaps';
 import { snapExpiryCaption } from '../model/snap-expiry-caption';
 import { useMovieDeleteImpact } from '../model/use-movie-delete-impact';
+import { useNoticePreselection } from '../model/use-notice-preselection';
 import {
   SnapDeleteDialog,
   type DeviceOnlyDelete,
@@ -273,17 +274,16 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     }
   }
 
-  // An expiry notice's tap opens the library on the snaps it is about, already
-  // picked. After the arrival, not during it: which snaps are about to go reads
-  // the clock. Once per arrival — later picks are the user's.
-  const preselectedArrival = useRef<string | undefined>(undefined);
+  const syncHydrated = useSnapSyncHydrated();
   const libraryIds = useMemo(() => days.flatMap((day) => day.snaps.map((snap) => snap.id)), [days]);
-  useEffect(() => {
-    if (startSelecting !== 'album' || !arrival || preselectedArrival.current === arrival) return;
-    if (!isHydrated) return;
-    preselectedArrival.current = arrival;
-    replace(expiringSnapIds(libraryIds, syncEntries, Date.now()));
-  }, [arrival, startSelecting, isHydrated, libraryIds, syncEntries, replace]);
+  useNoticePreselection({
+    arrival: startSelecting === 'album' ? arrival : undefined,
+    ready: isHydrated && syncHydrated,
+    libraryIds,
+    syncEntries,
+    picked,
+    replace,
+  });
 
   const confirmation =
     purpose === 'draft' ? draftConfirmation(draftState, picked, draftLimit) : undefined;
