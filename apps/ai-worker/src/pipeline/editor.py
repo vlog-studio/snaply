@@ -117,19 +117,29 @@ def _parse_loudnorm(stderr: str) -> dict | None:
 def measure_loudness(
     path: str, start: float = 0.0, duration: float | None = None, pre_filter: str = ""
 ) -> float | None:
-    """구간의 통합 음량(LUFS) — `pre_filter` 가 있으면 그 필터를 거친 소리의 크기. 소리가 없거나 잴 수 없으면 None."""
+    """구간의 통합 음량(LUFS) — `pre_filter` 가 있으면 그 필터를 거친 소리의 크기. 소리가 없거나 잴 수 없으면 None.
+
+    렌더와 같은 오디오 트랙(`0:a:0`)을 잰다 — ffmpeg 의 기본 선택(채널이 가장 많은 트랙)에 맡기면 트랙이 여럿인 원본에서
+    다른 트랙을 쟀다(backlog E-48). 재지 못하면 경고를 남긴다 — 그 컷은 크기를 맞추지 않고 지나간다.
+    """
     cmd = ["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{start:.3f}"]
     if duration is not None:
         cmd += ["-t", f"{duration:.3f}"]
     measure = f"{pre_filter},loudnorm=print_format=json" if pre_filter else "loudnorm=print_format=json"
-    cmd += ["-i", path, "-vn", "-af", measure, "-f", "null", "-"]
+    cmd += ["-i", path, "-map", "0:a:0", "-af", measure, "-f", "null", "-"]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     measured = _parse_loudnorm(proc.stderr) if proc.returncode == 0 else None
     if measured is None:
+        logger.warning(
+            "음량을 재지 못했다 — 크기를 맞추지 않는다: {} ({})",
+            path,
+            proc.stderr.strip()[-300:] or f"exit {proc.returncode}",
+        )
         return None
     try:
         value = float(measured["input_i"])
     except (KeyError, TypeError, ValueError):
+        logger.warning("음량 측정값을 읽지 못했다: {} ({})", path, measured)
         return None
     return value if math.isfinite(value) else None
 
@@ -200,6 +210,7 @@ def normalize_clip(
     video_trim = f"[0:v:0]trim=start={start:.3f}:end={end:.3f}{tonemap}[trimmed_v]"
     if has_audio:
         gain = clip_gain_db(measure_loudness(src, start, duration))
+        logger.debug("컷 음량 이득 {:+.2f}dB · 색 {}: {}", gain, eq or "없음", src)
         audio_filter = (
             f"{audio_input}aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
             f"apad,atrim=start={start:.3f}:end={end:.3f},asetpts=PTS-STARTPTS,"

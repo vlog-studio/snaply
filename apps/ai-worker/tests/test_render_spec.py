@@ -87,6 +87,18 @@ class RenderSpecTest(unittest.TestCase):
         self.assertIn("gblur=sigma=30", build_video_filter(DEFAULT_RENDER_SPEC, ""))
         self.assertIn("overlay=", build_video_filter(DEFAULT_RENDER_SPEC, ""))
 
+    # 색 맞춤 · 분위기는 축소한 화면에 건다 — 원본(휴대폰 4K)에 걸면 화소가 네 배였다(2026-10-14 리뷰, backlog E-49).
+    # 막대가 검게 남도록 pad 보다는 앞이다.
+    def test_the_grade_runs_on_the_scaled_picture_and_before_the_bars(self) -> None:
+        grade = "colorchannelmixer=rr=1.1,eq=saturation=0.8"
+        contain = build_video_filter(LEGACY_RENDER_SPEC, grade)
+        self.assertLess(contain.index("scale="), contain.index(grade))
+        self.assertLess(contain.index(grade), contain.index("pad="))
+
+        blur = build_video_filter(DEFAULT_RENDER_SPEC, grade)
+        self.assertLess(blur.index("overlay="), blur.index(grade))
+        self.assertEqual(blur.count(grade), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
