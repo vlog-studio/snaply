@@ -1,7 +1,5 @@
+import { SnapExpiryCountdownDays } from '@/entities/snap';
 import { calendarDaysUntil, formatFullDate, relativeDayPhrase } from '@/shared/lib/datetime';
-
-/** The last days the library counts down — the same window as the cell's `3일 남음` and the D-3 push (SNAP-13). */
-const CountdownDays = 3;
 
 /**
  * The snap player's line on when the server's copy runs out (SNAP-13): the date
@@ -13,7 +11,7 @@ const CountdownDays = 3;
  */
 export function snapExpiryCaption(expiresAt: number | undefined, now: number): string | undefined {
   if (expiresAt === undefined || expiresAt <= now) return undefined;
-  if (calendarDaysUntil(expiresAt, now) <= CountdownDays) {
+  if (calendarDaysUntil(expiresAt, now) <= SnapExpiryCountdownDays) {
     return `${relativeDayPhrase(expiresAt, now)} 보관 기간이 끝나요`;
   }
   return `${formatFullDate(expiresAt)}까지 보관돼요`;

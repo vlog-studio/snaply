@@ -1,7 +1,4 @@
-import type { SnapSyncEntry } from '@/entities/snap';
-
-/** The window an expiry notice speaks for — its D-3 (SNAP-13), the grid's countdown too. */
-const ExpiringWithinDays = 3;
+import { SnapExpiryCountdownDays, type SnapSyncEntry } from '@/entities/snap';
 
 const DayMs = 24 * 60 * 60 * 1000;
 
@@ -20,6 +17,6 @@ export function expiringSnapIds(
     const entry = entries[snapId];
     if (entry?.status !== 'uploaded' || entry.expiresAt === undefined) return false;
     const left = entry.expiresAt - now;
-    return left > 0 && left <= ExpiringWithinDays * DayMs;
+    return left > 0 && left <= SnapExpiryCountdownDays * DayMs;
   });
 }
