@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import type { Movie } from '@/entities/movie';
 import { requestAlbumPermission, saveVideoToAlbum } from '@/shared/lib/media-library';
@@ -79,11 +79,20 @@ export type MovieSharing = {
   handingOff: boolean;
 };
 
-/** How a hand-off to the Instagram app ended. */
-export type InstagramHandoff = 'opened' | 'blocked' | 'failed' | 'unavailable' | 'unresolved';
+/**
+ * How a hand-off to the Instagram app ended. `saved` — the movie is in the
+ * album but Instagram did not open. `busy` — one was already running; the tap
+ * is ignored and says nothing.
+ */
+export type InstagramHandoff =
+  'opened' | 'saved' | 'busy' | 'blocked' | 'failed' | 'unavailable' | 'unresolved';
 
 /** What the sheet says when the hand-off could not happen. */
-export const InstagramHandoffMessages: Record<Exclude<InstagramHandoff, 'opened'>, string> = {
+export const InstagramHandoffMessages: Record<
+  Exclude<InstagramHandoff, 'opened' | 'busy'>,
+  string
+> = {
+  saved: '무비를 앨범에 저장했어요. Instagram 앱을 직접 열어 올려 주세요.',
   blocked: '무비를 앨범에 저장하려면 사진 권한이 필요해요.',
   failed: '무비를 앨범에 저장하지 못했어요. 다시 시도해 주세요.',
   unavailable: ShareBlockMessages['no-render'],
@@ -117,12 +126,17 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
   // The render the sheet was last opened on, so the flag dies with the render.
   const [offeredFor, setOfferedFor] = useState<string>();
   const [handingOff, setHandingOff] = useState(false);
+  // The state above draws the controls; these decide, because a second tap can
+  // land before the first one's render (2026-10-14 review, backlog E-53).
+  const sharing = useRef(false);
+  const handing = useRef(false);
   const renderKey = movie?.render ? `${movie.id}-${movie.render.renderedAt}` : undefined;
 
   const share = () => {
-    if (!uri || !movie?.render || busy) return;
+    if (!uri || !movie?.render || sharing.current) return;
     const render = movie.render;
     const key = `${movie.id}-${render.renderedAt}`;
+    sharing.current = true;
     setBusy(true);
     setFailed(false);
     void (async () => {
@@ -139,6 +153,7 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
         setFailed(true);
         if (__DEV__) console.warn('[movie] share failed:', String(error));
       } finally {
+        sharing.current = false;
         setBusy(false);
       }
     })();
@@ -149,22 +164,32 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
     // link could not be fetched must not be told it was never finished.
     if (!movie?.render) return 'unavailable';
     if (!uri) return source.unresolved ? 'unresolved' : 'unavailable';
-    if (handingOff) return 'failed';
+    if (handing.current) return 'busy';
     const key = `${movie.id}-${movie.render.renderedAt}`;
+    handing.current = true;
     setHandingOff(true);
     try {
-      const permission = await requestAlbumPermission();
-      if (!permission.granted) return 'blocked';
-      const localUri = await downloadRenderFile(uri, key);
-      await saveVideoToAlbum(localUri);
-      // The file is the user's now — the same moment 공유 offers 끝내기 (MOV-17).
-      setOfferedFor(key);
-      await openInstagram();
-      return 'opened';
-    } catch (error) {
-      if (__DEV__) console.warn('[movie] instagram hand-off failed:', String(error));
-      return 'failed';
+      try {
+        const permission = await requestAlbumPermission();
+        if (!permission.granted) return 'blocked';
+        const localUri = await downloadRenderFile(uri, key);
+        await saveVideoToAlbum(localUri);
+        // The file is the user's now — the same moment 공유 offers 끝내기 (MOV-17).
+        setOfferedFor(key);
+      } catch (error) {
+        if (__DEV__) console.warn('[movie] instagram hand-off failed:', String(error));
+        return 'failed';
+      }
+      try {
+        await openInstagram();
+        return 'opened';
+      } catch (error) {
+        // Saved is saved: say so, instead of that the save failed.
+        if (__DEV__) console.warn('[movie] instagram did not open:', String(error));
+        return 'saved';
+      }
     } finally {
+      handing.current = false;
       setHandingOff(false);
     }
   };
