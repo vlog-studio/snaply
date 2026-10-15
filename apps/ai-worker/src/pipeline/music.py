@@ -176,10 +176,19 @@ def mix(video_in: str, bgm_path: str, out: str, video_duration: float) -> None:
 
 
 def apply_bgm(video_in: str, tag: str, out: str, video_duration: float, key: str) -> tuple[str, bool]:
-    """BGM 합성 시도. `key` 는 곡을 고정하는 값(무비 id). 반환: (결과 경로, BGM 적용 여부)."""
+    """BGM 합성 시도. `key` 는 곡을 고정하는 값(무비 id). 반환: (결과 경로, BGM 적용 여부).
+
+    합성이 실패하면 BGM 없이 간다(backlog E-51) — 컷을 다 붙인 뒤라 무비 전체를 실패시키면 처음부터 다시 돈다.
+    곡이 없을 때와 같은 결과다.
+    """
     sync_library()
     track = pick_track(tag, key)
     if track is None:
         return video_in, False
-    mix(video_in, track, out, video_duration)
+    try:
+        mix(video_in, track, out, video_duration)
+    except subprocess.CalledProcessError as exc:
+        logger.warning("BGM 합성 실패 — BGM 없이 진행 (track={}): {}", Path(track).name, (exc.stderr or "")[-300:])
+        _capture(exc)
+        return video_in, False
     return out, True

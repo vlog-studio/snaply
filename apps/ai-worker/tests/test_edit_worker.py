@@ -139,5 +139,20 @@ class RefusedStartTest(_WorkerCase):
         self.db.mark_failed.assert_not_awaited()
 
 
+class FinalizeFallbackTest(unittest.TestCase):
+    # 마지막 손질이 실패하면 비싼 단계를 다 거친 작업 전체가 실패해 처음부터 다시 돌았다(2026-10-14 리뷰, backlog E-51).
+    def test_a_failed_finish_uploads_the_movie_as_it_was(self) -> None:
+        failure = RuntimeError("ffmpeg 실패: boom")
+        with mock.patch.object(worker.editor, "finalize", side_effect=failure), mock.patch.object(
+            worker, "_capture"
+        ) as capture:
+            self.assertEqual(worker._finalize_or_keep("with_bgm.mp4", "final.mp4"), "with_bgm.mp4")
+        capture.assert_called_once_with(failure)
+
+    def test_a_finished_movie_is_the_final_file(self) -> None:
+        with mock.patch.object(worker.editor, "finalize"):
+            self.assertEqual(worker._finalize_or_keep("with_bgm.mp4", "final.mp4"), "final.mp4")
+
+
 if __name__ == "__main__":
     unittest.main()
