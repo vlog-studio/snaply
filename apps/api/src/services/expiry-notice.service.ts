@@ -7,12 +7,16 @@
  * 세 가지를 지킨다.
  *
  * - **두 번 보내지 않는다.** 발송 전에 `notification_logs` 행을 선점하고, 실패하면 지운다.
- *   유니크 제약이 DB 수준에서 막으므로 배치가 하루에 두 번 돌아도 중복되지 않는다.
+ *   유니크 제약이 DB 수준에서 막고, **이번 실행이 넣은 행만** 보내므로 배치가 동시에 두 번 돌아도
+ *   중복되지 않는다(backlog E-45).
  * - **밀린 예고도 보낸다.** "정확히 D-3 인 스냅" 이 아니라 "D-3 을 지났는데 아직 안 보낸
- *   스냅" 을 찾는다. 배치가 하루 쉬어도 예고가 통째로 증발하지 않는다.
+ *   스냅" 을 찾는다. 배치가 하루 쉬어도 예고가 통째로 증발하지 않는다. 두 창이 함께 밀렸으면 가까운
+ *   창(D-1)만 보낸다 — 같은 날 예고 두 개가 가지 않게, 가까운 창의 기록이 먼 창도 덮는다. 문구의 남은
+ *   날은 창이 아니라 실제 마감일까지 달력의 날짜로 센다(backlog E-46).
  * - **못 보낸 것을 보냈다고 하지 않는다.** FCM dry-run(운영에 서비스 계정 미주입)은
  *   `sendToUser` 가 성공으로 돌려주지만, 여기서는 선점을 되돌려 다음 실행에서 다시 시도한다.
  */
+import type { Prisma } from '@prisma/client';
 import { getPrisma } from '../db/client.js';
 import { captureException } from '../lib/sentry.js';
 import { isFcmDryRun, sendToUser } from './fcm.service.js';
@@ -22,6 +26,9 @@ import {
   SNAP_EXPIRY_NOTICE_DAYS,
   SNAP_RETENTION_DAYS,
   cutoffFor,
+  kstCalendarDaysUntil,
+  movieResultExpiresAt,
+  snapExpiresAt,
 } from './retention-policy.js';
 
 interface Logger {
@@ -38,7 +45,10 @@ export interface NoticeOutcome {
   skipped: Record<string, number>;
 }
 
-/** 예고 대상: 아직 살아 있고, D-`daysBefore` 를 지났고, 그 예고를 아직 못 받은 스냅. */
+/**
+ * 예고 대상: 아직 살아 있고, D-`daysBefore` 를 지났고, 그 예고를 — 또는 더 가까운 예고를 — 아직 못 받은 스냅.
+ * 더 가까운 예고를 받았으면 이 예고는 늦었다(두 창이 함께 밀린 날 가까운 쪽만 간다).
+ */
 async function findDueSnaps(daysBefore: number, now: Date) {
   return await getPrisma().video.findMany({
     where: {
@@ -52,7 +62,7 @@ async function findDueSnaps(daysBefore: number, now: Date) {
         // 아직 만료되지는 않았다. 오늘 지워질 것에 "곧 지워집니다" 를 보내지 않는다.
         gt: cutoffFor(SNAP_RETENTION_DAYS, now),
       },
-      notificationLogs: { none: { noticeDaysBefore: daysBefore } },
+      notificationLogs: { none: { noticeDaysBefore: { lte: daysBefore } } },
     },
     select: { id: true, userId: true, createdAt: true },
     orderBy: { createdAt: 'asc' },
@@ -79,8 +89,14 @@ async function canNotify(userId: string): Promise<boolean> {
   return Boolean(user && user.notificationEnabled && !user.deletedAt);
 }
 
-function messageFor(daysBefore: number, count: number): { title: string; body: string } {
-  const when = daysBefore === 1 ? '내일' : `${daysBefore}일 후`;
+/** 마감일까지 남은 날 — 달력의 날짜(KST)로 센다. 앱의 남은 기간 표시(SNAP-13)와 같은 셈이다. */
+function whenPhrase(deadline: Date, now: Date): string {
+  const days = kstCalendarDaysUntil(deadline, now);
+  if (days <= 0) return '오늘';
+  return days === 1 ? '내일' : `${days}일 후`;
+}
+
+function messageFor(when: string, count: number): { title: string; body: string } {
   return {
     title: '스냅 보관 기간이 곧 끝나요',
     // 되돌릴 수 없다는 것과, 지금 무엇을 하면 되는지를 같이 말한다. 탭하면 앱이 그 스냅들을 앨범 저장용으로
@@ -108,14 +124,16 @@ export async function sendExpiryNotices(params: {
     outcome.skipped[reason] = (outcome.skipped[reason] ?? 0) + 1;
   };
 
-  for (const daysBefore of SNAP_EXPIRY_NOTICE_DAYS) {
+  // 가까운 창부터 — 그 기록이 같은 날 밀린 먼 창을 덮는다(`findDueSnaps`).
+  for (const daysBefore of [...SNAP_EXPIRY_NOTICE_DAYS].sort((a, b) => a - b)) {
     const due = await findDueSnaps(daysBefore, now);
-    const byUser = new Map<string, string[]>();
+    const byUser = new Map<string, typeof due>();
     for (const video of due) {
-      byUser.set(video.userId, [...(byUser.get(video.userId) ?? []), video.id]);
+      byUser.set(video.userId, [...(byUser.get(video.userId) ?? []), video]);
     }
 
-    for (const [userId, videoIds] of byUser) {
+    for (const [userId, videos] of byUser) {
+      const videoIds = videos.map((video) => video.id);
       if (!(await canNotify(userId))) {
         skip('notifications_disabled');
         continue;
@@ -126,10 +144,10 @@ export async function sendExpiryNotices(params: {
         continue;
       }
 
-      // 발송보다 먼저 선점한다. 여기서 실패하면(경합) 다른 실행이 이미 보내는 중이다.
+      // 발송보다 먼저 선점한다. 이번 실행이 넣은 행만 보낸다 — 이미 있던 행은 다른 실행이 보내는 중이다.
       let claimed: string[];
       try {
-        await prisma.notificationLog.createMany({
+        const rows = await prisma.notificationLog.createManyAndReturn({
           data: videoIds.map((videoId) => ({
             userId,
             kind: 'snap_expiry' as const,
@@ -137,27 +155,35 @@ export async function sendExpiryNotices(params: {
             noticeDaysBefore: daysBefore,
           })),
           skipDuplicates: true,
+          select: { videoId: true },
         });
-        claimed = videoIds;
+        claimed = rows.flatMap((row) => (row.videoId ? [row.videoId] : []));
       } catch (err) {
         captureException(err, { userId, daysBefore, phase: 'expiry-notice-claim' });
         skip('claim_failed');
         continue;
       }
+      if (claimed.length === 0) {
+        skip('already_claimed');
+        continue;
+      }
+      // 여러 개면 가장 이른 마감일로 말한다 — 늦게 말하면 그 스냅을 잃는다.
+      const earliest = Math.min(
+        ...videos.filter((video) => claimed.includes(video.id)).map((video) => snapExpiresAt(video.createdAt).getTime()),
+      );
 
       const result = await sendToUser(params.logger, userId, {
-        ...messageFor(daysBefore, claimed.length),
+        ...messageFor(whenPhrase(new Date(earliest), now), claimed.length),
         data: { kind: 'snap_expiry', daysBefore: String(daysBefore) },
       });
 
       // dry-run 은 보낸 것이 아니다. 성공으로 기록하면 운영 설정 누락이 초록불로 보인다.
       const delivered = result.sent && !result.dryRun;
       if (!delivered) {
-        await prisma.notificationLog
-          .deleteMany({
-            where: { userId, noticeDaysBefore: daysBefore, videoId: { in: claimed } },
-          })
-          .catch(() => undefined);
+        await releaseClaim(
+          { userId, noticeDaysBefore: daysBefore, videoId: { in: claimed } },
+          { userId, daysBefore, phase: 'expiry-notice-release' },
+        );
         skip(result.sent ? 'dry_run' : result.reason);
         continue;
       }
@@ -208,7 +234,13 @@ async function findDueMovies(daysBefore: number, now: Date) {
         notificationLogs: { none: { kind: 'movie_expiry', noticeDaysBefore: daysBefore } },
       },
     },
-    select: { id: true, userId: true, title: true, resultVideoId: true },
+    select: {
+      id: true,
+      userId: true,
+      title: true,
+      resultVideoId: true,
+      resultVideo: { select: { createdAt: true } },
+    },
     orderBy: { createdAt: 'asc' },
   });
 }
@@ -227,8 +259,7 @@ async function canNotifyMovie(userId: string): Promise<boolean> {
   );
 }
 
-function movieMessageFor(daysBefore: number, titles: string[]): { title: string; body: string } {
-  const when = daysBefore === 1 ? '내일' : `${daysBefore}일 후`;
+function movieMessageFor(when: string, titles: string[]): { title: string; body: string } {
   const what = titles.length === 1 ? `'${titles[0]}' 무비가` : `무비 ${titles.length}편이`;
   return {
     title: '무비 보관 기간이 곧 끝나요',
@@ -272,8 +303,9 @@ export async function sendMovieExpiryNotices(params: {
       }
 
       const videoIds = movies.flatMap((movie) => (movie.resultVideoId ? [movie.resultVideoId] : []));
+      let claimed: typeof movies;
       try {
-        await prisma.notificationLog.createMany({
+        const rows = await prisma.notificationLog.createManyAndReturn({
           data: videoIds.map((videoId) => ({
             userId,
             kind: 'movie_expiry' as const,
@@ -281,44 +313,68 @@ export async function sendMovieExpiryNotices(params: {
             noticeDaysBefore: daysBefore,
           })),
           skipDuplicates: true,
+          select: { videoId: true },
         });
+        const claimedIds = new Set(rows.map((row) => row.videoId));
+        claimed = movies.filter((movie) => movie.resultVideoId && claimedIds.has(movie.resultVideoId));
       } catch (err) {
         captureException(err, { userId, daysBefore, phase: 'movie-expiry-notice-claim' });
         skip('claim_failed');
         continue;
       }
+      if (claimed.length === 0) {
+        skip('already_claimed');
+        continue;
+      }
+      const earliest = Math.min(
+        ...claimed.map((movie) => movieResultExpiresAt(movie.resultVideo!.createdAt).getTime()),
+      );
 
       const result = await sendToUser(params.logger, userId, {
         ...movieMessageFor(
-          daysBefore,
-          movies.map((movie) => movie.title),
+          whenPhrase(new Date(earliest), now),
+          claimed.map((movie) => movie.title),
         ),
         // 한 편이면 그 무비를 연다. 여러 편이면 앱만 연다 — 어느 하나를 고를 근거가 없다.
         data:
-          movies.length === 1
-            ? { kind: 'movie_expiry', movieId: movies[0]!.id, daysBefore: String(daysBefore) }
+          claimed.length === 1
+            ? { kind: 'movie_expiry', movieId: claimed[0]!.id, daysBefore: String(daysBefore) }
             : { kind: 'movie_expiry', daysBefore: String(daysBefore) },
       });
 
       const delivered = result.sent && !result.dryRun;
       if (!delivered) {
-        await prisma.notificationLog
-          .deleteMany({
-            where: {
-              userId,
-              kind: 'movie_expiry',
-              noticeDaysBefore: daysBefore,
-              videoId: { in: videoIds },
-            },
-          })
-          .catch(() => undefined);
+        await releaseClaim(
+          {
+            userId,
+            kind: 'movie_expiry',
+            noticeDaysBefore: daysBefore,
+            videoId: { in: claimed.flatMap((movie) => (movie.resultVideoId ? [movie.resultVideoId] : [])) },
+          },
+          { userId, daysBefore, phase: 'movie-expiry-notice-release' },
+        );
         skip(result.sent ? 'dry_run' : result.reason);
         continue;
       }
 
       outcome.notified += 1;
-      outcome.movies += movies.length;
+      outcome.movies += claimed.length;
     }
   }
   return outcome;
+}
+
+/**
+ * 보내지 못한 예고의 선점을 되돌린다. 되돌리지 못하면 그 예고는 다시 가지 않으므로 삼키지 않고 보고한다
+ * (backlog E-45) — 배치는 다음 사용자로 넘어간다.
+ */
+async function releaseClaim(
+  where: Prisma.NotificationLogWhereInput,
+  context: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await getPrisma().notificationLog.deleteMany({ where });
+  } catch (err) {
+    captureException(err, context);
+  }
 }
