@@ -48,7 +48,8 @@ function hintConcepts(
 /**
  * 취향이 맞는 템플릿을 앞으로 — 슬롯 힌트 개념들의 평균 취향 순(PRF-3). 비선호는 뒤로 갈 뿐 빠지지 않는다(PRF-2).
  * 차이가 `TASTE_TEMPLATE_EPSILON` 보다 작으면 카탈로그 순서를 지킨다 — 취향이 없는 사용자는 지금 순서 그대로다.
- * 앱은 이 순서를 동점 처리에만 쓴다(채울 수 있는 정도가 먼저 — apps/mobile/docs/features/movie-templates.md).
+ * 앱은 지금 스냅으로 다 채울 수 있는 템플릿을 앞에 두고, 그 묶음과 나머지 묶음 안에서 이 순서를 따른다
+ * (apps/mobile/docs/features/movie-templates.md).
  */
 function orderByTaste<T extends { slots: ReadonlyArray<{ matchHints: unknown }> }>(rows: T[], lookup: TasteLookup): T[] {
   if (lookup.isEmpty()) return rows;
