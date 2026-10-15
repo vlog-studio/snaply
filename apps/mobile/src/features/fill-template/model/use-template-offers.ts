@@ -35,11 +35,11 @@ export type TemplateOffer = {
  * fill today is worth more than one it cannot.
  *
  * **Within each group, the server's order** (2026-10-15, spec PRF-3): the
- * server orders the catalog by the user's taste, and by the catalog — shortest
- * first — when there is none. So a cafe lover sees 카페 한 곳 ahead of the other
- * templates the library is short for, however many cuts each is short, and a
- * user with no taste sees the catalog's order. The row stays stable while the
- * library and the taste do.
+ * server orders the catalog by the user's taste, and keeps the catalog's own
+ * order (`sort_order`) when there is none. So a cafe lover sees 카페 한 곳 ahead
+ * of the other templates the library is short for, however many cuts each is
+ * short, and a user with no taste sees the catalog's order. The row stays
+ * stable while the library and the taste do.
  *
  * The catalog itself comes from the server now (`useMovieTemplates`), which
  * answers with the built-in one until the request lands — so the cards are drawn
