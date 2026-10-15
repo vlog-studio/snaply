@@ -20,6 +20,14 @@ This project's standard tools are TanStack Query v5, Zustand, React Hook Form, Z
 
 `_app/providers` owns QueryClient creation, `QueryClientProvider`, and global retry or cache policies. Do not create a new QueryClient singleton inside a feature or page.
 
+The global policy ([`query-client.ts`](../../src/_app/providers/query-client.ts), root backlog E-44):
+
+- **Reads and writes run whatever the connection** (`networkMode: 'always'`). Offline they fail and the screen says so; the library default would hold them paused, a spinner where that message was.
+- **React Native gives TanStack Query neither signal, so both are wired there.** `onlineManager` follows [`shared/lib/network-state`](../../src/shared/lib/network-state) — expo-network's internet reachability, with the current state read once at start because Android reports nothing while there is no network at all. `focusManager` follows `AppState`: `active` is focused.
+- **The connection returning refetches every stale active read** (`refetchOnReconnect: true` — stated, because `networkMode: 'always'` turns it off by default), which includes every read that failed while offline.
+- **The app returning refetches only reads that failed.** A query whose data can change outside the app opts in with `refetchOnWindowFocus: true` in its factory — the credit balance does, for an operator's grant.
+- While the app is in the background, retries and `refetchInterval` polls wait for it to come back.
+
 ### Query and key placement
 
 - If a request retrieves one business entity, put it in `entities/<entity>/api`.

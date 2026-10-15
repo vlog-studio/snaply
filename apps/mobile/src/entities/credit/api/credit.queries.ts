@@ -14,5 +14,8 @@ export const creditQueries = {
     queryOptions({
       queryKey: [...creditQueries.all(), 'balance'] as const,
       queryFn: ({ signal }) => getCreditBalance(signal),
+      // Credits also arrive from outside the app — an operator's grant to a
+      // tester — so a stale balance is asked again when the app comes back.
+      refetchOnWindowFocus: true,
     }),
 };
