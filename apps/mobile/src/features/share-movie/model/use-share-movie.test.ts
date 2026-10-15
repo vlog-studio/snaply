@@ -134,9 +134,64 @@ describe('openInInstagram', () => {
     expect(InstagramHandoffMessages.unresolved).toBe(ShareBlockMessages.unresolved);
     expect(mockRequestAlbum).not.toHaveBeenCalled();
   });
+
+  // A second tap could land before the first one's render and read "not running",
+  // or read "running" and show "저장하지 못했어요" over a save still going
+  // (2026-10-14 review, backlog E-53).
+  it('ignores a second tap while one hand-off runs', async () => {
+    let grant!: (value: { granted: boolean }) => void;
+    mockRequestAlbum.mockReturnValueOnce(new Promise((resolve) => (grant = resolve)));
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    let outcomes: string[] = [];
+    await act(async () => {
+      const first = result.current.openInInstagram();
+      const second = result.current.openInInstagram();
+      grant({ granted: true });
+      outcomes = await Promise.all([first, second]);
+    });
+
+    expect(outcomes).toEqual(['opened', 'busy']);
+    expect(mockSaveToAlbum).toHaveBeenCalledTimes(1);
+  });
+
+  it('says the movie was saved when only opening Instagram fails', async () => {
+    mockOpenInstagram.mockRejectedValueOnce(new Error('no activity'));
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.openInInstagram();
+    });
+
+    expect(outcome).toBe('saved');
+    expect(result.current.offered).toBe(true);
+    expect(result.current.handingOff).toBe(false);
+  });
 });
 
 describe('useShareMovie', () => {
+  it('takes one share at a time', async () => {
+    let finish!: (uri: string) => void;
+    mockDownload.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    await act(async () => {
+      result.current.share();
+      result.current.share();
+      finish('file:///cache/share-movie/m1-42.mp4');
+    });
+
+    expect(mockDownload).toHaveBeenCalledTimes(1);
+    expect(mockShareFile).toHaveBeenCalledTimes(1);
+  });
+
   it('downloads the render locally, then opens the share sheet on the local copy', async () => {
     mockDownload.mockResolvedValue('file:///cache/share-movie/m1-42.mp4');
     const { result } = await renderHook(() =>

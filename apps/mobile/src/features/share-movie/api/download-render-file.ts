@@ -26,9 +26,20 @@ const shareCacheDirectory = new Directory(Paths.cache, 'share-movie');
  * that dies half-way (app killed, network dropped) can never leave a file
  * that a later share would hand out as if it were whole.
  */
-export async function downloadRenderFile(uri: string, cacheKey: string): Promise<string> {
-  if (!/^https?:\/\//.test(uri)) return uri;
+export function downloadRenderFile(uri: string, cacheKey: string): Promise<string> {
+  if (!/^https?:\/\//.test(uri)) return Promise.resolve(uri);
+  // One download per render at a time: 공유 and the Instagram hand-off write the
+  // same `.part` file, so two at once broke one of them (backlog E-53).
+  const running = inFlight.get(cacheKey);
+  if (running) return running;
+  const download = fetchToCache(uri, cacheKey).finally(() => inFlight.delete(cacheKey));
+  inFlight.set(cacheKey, download);
+  return download;
+}
 
+const inFlight = new Map<string, Promise<string>>();
+
+async function fetchToCache(uri: string, cacheKey: string): Promise<string> {
   shareCacheDirectory.create({ idempotent: true, intermediates: true });
   const local = new File(shareCacheDirectory, `${cacheKey}.mp4`);
   if (local.exists) return local.uri;

@@ -68,7 +68,8 @@ export function InstagramPostStep({
         setHandoffProblem(undefined);
         void onOpenInstagramApp().then((outcome) => {
           if (outcome === 'opened') onHandedOff();
-          else setHandoffProblem(InstagramHandoffMessages[outcome]);
+          // A tap while one is running is ignored, not reported.
+          else if (outcome !== 'busy') setHandoffProblem(InstagramHandoffMessages[outcome]);
         });
       }}
     />
