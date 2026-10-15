@@ -225,6 +225,21 @@ curl -s localhost:3000/health
 - 디스크는 `/data` 50G 중 4.7G. 이미지가 17개 4.2GB 이고 그중 3.8GB 가 지난 배포의 것인데, 배포가 72시간 지난 이미지를 지워(§3) 46G 여유에
   비하면 지금 주기로 충분하다.
 
+### BGM 곡 올리기
+
+곡은 git 에 없어 배포 이미지에 들어가지 않는다. 편집 워커(`ai-worker`)는 영상 버킷의 `assets/bgm/` 에서 받아 온다
+(compose 의 `BGM_S3_PREFIX`, `apps/ai-worker/src/pipeline/music.py` 의 `sync_library`). 공모전용 곡은 무료 라이선스 9곡으로 정했다
+([decisions/bgm-sourcing.md](./decisions/bgm-sourcing.md) "공모전 기간").
+
+- 버킷에 `assets/bgm/manifest.json` 과 `assets/bgm/<tag>/<file>` 을 올린다. `tag` 는 `calm`(감성) · `upbeat`(여행) · `daily`(일상).
+  매니페스트는 `{"tracks": [{"tag": "calm", "file": "a.mp3", "title": "…", "source": "…", "licenseUrl": "…", "checkedAt": "2026-10-15"}]}` —
+  `tag` · `file` 만 워커가 읽고, 나머지는 곡마다의 라이선스 기록이다.
+- 워커는 작업을 받을 때 매니페스트를 보고(10분에 한 번까지) 없는 곡을 받고 빠진 곡을 지운다. 재시작은 필요 없다. 같은 이름의 곡은 다시 받지
+  않으므로 **곡을 바꿀 때는 새 이름으로** 올린다.
+- 매니페스트를 읽지 못하면 있는 곡으로(없으면 BGM 없이) 렌더하고 Sentry 에 남긴다 — 음악 때문에 무비가 실패하지 않는다.
+- 같은 무비는 컷을 바꿔 다시 만들어도 같은 곡이다(무비 id 로 고른다, backlog E-5). 곡 수가 바뀌면 고르는 결과가 바뀔 수 있다.
+- `assets/` 는 정리 배치(§4 · 계정 삭제)가 지우는 `uploads/` 밖이다.
+
 ## 7. 인스턴스를 교체하면
 
 `/data` 는 그대로 다시 붙는다(DB · 이미지 · env 파일 · 태그가 남는다). §1 을 다시 하고(토큰은 새로 받는다) 마지막 배포를

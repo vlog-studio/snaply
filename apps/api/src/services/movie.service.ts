@@ -674,6 +674,7 @@ export async function exportMovie(params: {
     transitions: movie.clips
       .slice(0, -1)
       .map((clip): Transition => storedTransition(clip) ?? { kind: 'hardcut' }),
+    movieId: movie.id,
   });
 
   await getPrisma().movie.update({

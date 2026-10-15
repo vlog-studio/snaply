@@ -15,6 +15,11 @@ export interface EditJobData {
   renderSpec: RenderSpec;
   /** 소프트 자막(mov_text) 생성 여부. 쇼츠용이 기본이라 false가 디폴트. */
   subtitles: boolean;
+  /**
+   * 이 작업을 만든 무비. 워커가 BGM 을 무비 단위로 고른다 — 컷을 바꿔 다시 만들어도 같은 곡이다(무효화 사전: 컷 변경은 music 을 유지, E-5).
+   * 이 필드를 모르는 예전 작업 · 예전 워커와도 호환된다(없으면 워커가 작업 id 로 고른다).
+   */
+  movieId?: string;
 }
 
 /**

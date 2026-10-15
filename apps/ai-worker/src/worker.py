@@ -125,10 +125,10 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     duration = await asyncio.to_thread(editor.probe_duration, base)
     await _progress(job_id, 35, "컷편집 완료")
 
-    # 3) BGM 매칭/합성
+    # 3) BGM 매칭/합성 — 곡은 무비 단위로 고정된다(E-5). 무비를 모르는 예전 작업은 작업 id 로 고른다.
     with_bgm_path = os.path.join(work_dir, "with_bgm.mp4")
     current, _bgm_ok = await asyncio.to_thread(
-        music.apply_bgm, base, preset.bgm_tag, with_bgm_path, duration
+        music.apply_bgm, base, preset.bgm_tag, with_bgm_path, duration, data.get("movieId") or job_id
     )
     await _progress(job_id, 60, "음악 매칭 중...")
 

@@ -557,6 +557,13 @@ export const ENV_VARS = [
     origin: 'shared',
     description: 'BGM 음원 디렉터리. 컨테이너는 Dockerfile 에서 주입',
   },
+  {
+    key: 'BGM_S3_PREFIX',
+    required: false,
+    origin: 'shared',
+    description:
+      '편집 워커가 버킷의 이 접두(`{prefix}manifest.json` 과 곡)를 BGM_DIR 로 받아 온다. 비우면 BGM_DIR 의 곡을 그대로 쓴다. AWS 는 compose 가 `assets/bgm/` 로 준다',
+  },
 
   // ── Sentry ───────────────────────────────────────────
   {

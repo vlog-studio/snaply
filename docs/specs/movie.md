@@ -120,7 +120,8 @@
   15일이면 만료되고(SNAP-9) 컷이 하나라도 만료되면 그 구성은 다시 실행할 수 없다(MOV-20).
   예외를 두지 않기로 한 근거는
   [decisions/movie-snap-expiry-exemption.md](../decisions/movie-snap-expiry-exemption.md).
-  재현성을 깨는 또 하나는 BGM 무작위 선택이다([backlog.md](../backlog.md) E-5 — A-7 의 `bgm_tracks` 와 함께 닫는다).
+  BGM 은 2026-10-15 부터 **무비마다 고정**이다 — 같은 무비는 컷을 바꿔 다시 만들어도 같은 곡이다. 다만 라이브러리의 곡이 늘거나 줄면
+  바뀔 수 있어, 곡을 스펙에 핀으로 남기는 것은 남았다([backlog.md](../backlog.md) E-5 — A-7 의 `bgm_tracks` 와 함께 닫는다).
 - **MOV-20** `구현됨` — 만료·삭제된 스냅을 쓰는 컷이 있으면 **생성이 400 으로 막힌다.** 무비 자체는
   열리고 그 컷은 `unavailable` 로 보이며, 사용자가 그 컷을 빼면 다시 생성할 수 있다.
 

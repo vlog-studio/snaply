@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY packages/shared-types/src/*-vocabulary.json ./
 
 COPY apps/ai-worker/src/ ./src/
-# BGM 라이브러리 (실제 음원은 git 제외 — 없으면 워커가 BGM을 생략하고 진행)
+# BGM 라이브러리 (실제 음원은 git 제외 — BGM_S3_PREFIX 가 있으면 워커가 버킷에서 받아 오고, 없으면 BGM 을 생략하고 진행)
 COPY apps/ai-worker/assets/ ./assets/
 ENV BGM_DIR=/app/assets/bgm
 

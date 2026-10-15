@@ -255,6 +255,8 @@ export async function createEditJob(params: {
    * 없으면 v2 — 프리셋 하나가 전환을 정한다. 이 길을 쓰던 `POST /edit-jobs` 는 2026-10-11 에 없앴고, 무비 생성은 늘 전환을 준다.
    */
   transitions?: Transition[];
+  /** 작업을 만든 무비 — 워커가 BGM 을 무비 단위로 고르는 키(`EditJobData.movieId`). */
+  movieId?: string;
 }): Promise<{ jobId: string; videoId: string }> {
   const prisma = getPrisma();
   validateClips(params.clips);
@@ -355,6 +357,7 @@ export async function createEditJob(params: {
       editSpec,
       renderSpec,
       subtitles: params.subtitles,
+      ...(params.movieId !== undefined ? { movieId: params.movieId } : {}),
     });
   } catch (err) {
     await prisma.editJob.update({

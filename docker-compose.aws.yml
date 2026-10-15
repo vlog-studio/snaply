@@ -147,6 +147,8 @@ services:
     env_file: *secrets
     environment:
       <<: *runtime-env
+      # 곡은 git 에 없다 — 영상 버킷의 이 접두에서 받아 온다(docs/deployment-aws.md "BGM").
+      BGM_S3_PREFIX: assets/bgm/
     volumes:
       - whisper-cache:/root/.cache/huggingface
     depends_on:

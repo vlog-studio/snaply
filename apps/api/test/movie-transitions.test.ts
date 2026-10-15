@@ -310,6 +310,8 @@ describe('생성(export)은 경계 전환을 editSpec v3 로 보낸다', () => {
       expect(queued?.data.editSpec).toEqual(expectedSpec);
       // 최상위 clips 를 남기지 않는다 — 그것만 읽는 워커가 전환을 버리고 렌더할 여지를 없앤다.
       expect(queued?.data.clips).toBeUndefined();
+      // 워커가 BGM 을 무비 단위로 고른다(E-5) — 컷을 바꿔 다시 만들어도 같은 곡이다.
+      expect(queued?.data.movieId).toBe(movieId);
       expect(await legacy.getJob(jobId)).toBeUndefined();
       await queued?.remove();
     });
