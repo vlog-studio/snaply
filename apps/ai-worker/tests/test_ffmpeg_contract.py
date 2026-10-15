@@ -28,7 +28,7 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from pipeline import music, rendition, subtitle  # noqa: E402
+from pipeline import color_match, hdr, music, rendition, subtitle  # noqa: E402
 from pipeline.editor import (  # noqa: E402
     ClipSource,
     _parse_loudnorm,
@@ -419,6 +419,42 @@ class ColorMatchContract(unittest.TestCase):
 
 
 @unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class MeasuredTrackContract(unittest.TestCase):
+    """음량 · 색은 렌더와 같은 첫 트랙을 잰다 — ffmpeg 의 기본 선택(채널이 가장 많은 오디오 · 가장 큰 영상)이 아니다
+    (2026-10-14 리뷰, backlog E-48)."""
+
+    def test_a_second_track_does_not_change_what_is_measured(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            first_only = os.path.join(work, "first.mp4")
+            both = os.path.join(work, "both.mp4")
+            subprocess.run(
+                ["ffmpeg", "-y",
+                 "-f", "lavfi", "-i", "color=c=0xB03020:s=64x64:rate=30:duration=1.5",
+                 "-f", "lavfi", "-i", "sine=frequency=440:duration=1.5,volume=-20dB",
+                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", first_only],
+                capture_output=True, check=True,
+            )
+            # 더 큰 파란 영상과, 채널이 더 많고 더 큰 소리를 두 번째 트랙으로 붙이고 그쪽을 기본(default)으로 둔다 —
+            # ffmpeg 의 기본 선택은 기본 표시가 있는 트랙을 먼저 고른다. 렌더는 표시와 상관없이 첫 트랙이다.
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", first_only,
+                 "-f", "lavfi", "-i", "color=c=0x2030B0:s=320x320:rate=30:duration=1.5",
+                 "-f", "lavfi", "-i", "anoisesrc=d=1.5:a=0.5,aformat=channel_layouts=5.1",
+                 "-map", "0:v", "-map", "0:a", "-map", "1:v", "-map", "2:a",
+                 "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+                 "-disposition:v:0", "0", "-disposition:v:1", "default",
+                 "-disposition:a:0", "0", "-disposition:a:1", "default",
+                 "-shortest", both],
+                capture_output=True, check=True,
+            )
+
+            self.assertAlmostEqual(measure_loudness(both), measure_loudness(first_only), delta=0.5)
+            colour = color_match.measure_color(both, 0.0, 1.5)
+            self.assertIsNotNone(colour)
+            self.assertGreater(colour.r, colour.b)  # 붉은 첫 트랙이다
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
 class TimelineContract(unittest.TestCase):
     """경계별 전환(editSpec v3)의 산출물. 색으로 읽는다 — 빨강 → 파랑 → 초록."""
 
@@ -642,6 +678,28 @@ class HdrContract(unittest.TestCase):
             out = edit([ClipSource(src)], get_preset("일상"), DEFAULT_RENDER_SPEC, work)
 
             self.assert_sdr_tagged(out)
+
+    # 톤매핑을 프레임 줄이기 · 축소보다 먼저 걸면 구간의 모든 프레임을 원본 크기로 톤매핑했다(2026-10-14 리뷰, backlog E-49).
+    # 순서를 바꿔도 잰 색은 같아야 한다.
+    @unittest.skipUnless(hdr.has_tonemap(), "zscale·tonemap 이 없는 빌드")
+    def test_hdr_colour_is_measured_the_same_after_shrinking_first(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "hdr.mov")
+            self.make_hdr10(src)
+
+            quick = color_match.measure_color(src, 0.0, 1.0)
+            full = subprocess.run(
+                ["ffmpeg", "-v", "error", "-i", src, "-map", "0:v:0",
+                 "-vf", ",".join([*hdr.source_filters(src), "fps=5/1.000", "scale=64:-2:flags=area", "format=rgb24"]),
+                 "-frames:v", "5", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+                capture_output=True, check=True,
+            ).stdout
+            pixels = len(full) // 3
+            reference = [sum(full[i::3]) / pixels / 255 for i in range(3)]
+
+            self.assertIsNotNone(quick)
+            for measured, expected in zip((quick.r, quick.g, quick.b), reference):
+                self.assertAlmostEqual(measured, expected, delta=0.03)
 
     def test_sdr_source_tags_are_left_alone(self) -> None:
         """SDR 원본의 태그는 이미 사실이다 — 덮어쓸 이유가 없다."""

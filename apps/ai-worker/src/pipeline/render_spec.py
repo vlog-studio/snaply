@@ -65,15 +65,19 @@ def _fit_scale(spec: RenderSpec) -> str:
 
 
 def build_video_filter(spec: RenderSpec, eq: str, *, input_label: str = "[0:v:0]") -> str:
-    """Build a labelled filter graph whose video output is always named ``[v]``."""
+    """Build a labelled filter graph whose video output is always named ``[v]``.
+
+    ``eq`` (the colour match and the style, both per-pixel) runs on the scaled picture, not the source: a phone's
+    4K frame is four times the output's pixels, and ``colorchannelmixer`` adds an RGB round trip on every one of them
+    (backlog E-49). It still comes before ``pad`` so the bars stay black.
+    """
     prefix = f"{input_label}setpts=PTS-STARTPTS"
-    if eq:
-        prefix += f",{eq}"
+    grade = f",{eq}" if eq else ""
 
     finish = f"setsar=1,fps={spec.fps},format=yuv420p[v]"
     if spec.fit_mode == "contain":
         return (
-            f"{prefix},{_contain_scale(spec)},"
+            f"{prefix},{_contain_scale(spec)}{grade},"
             f"pad={spec.width}:{spec.height}:(ow-iw)/2:(oh-ih)/2:color=black,{finish}"
         )
 
@@ -83,13 +87,13 @@ def build_video_filter(spec: RenderSpec, eq: str, *, input_label: str = "[0:v:0]
         f"crop={spec.width}:{spec.height}"
     )
     if spec.fit_mode == "cover":
-        return f"{prefix},{cover},{finish}"
+        return f"{prefix},{cover}{grade},{finish}"
 
     return (
         f"{prefix},split=2[background][foreground];"
         f"[background]{cover},gblur=sigma=30[background_blurred];"
         f"[foreground]{_fit_scale(spec)}[foreground_scaled];"
         "[background_blurred][foreground_scaled]"
-        "overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2,"
+        f"overlay=(main_w-overlay_w)/2:(main_h-overlay_h)/2{grade},"
         f"{finish}"
     )
