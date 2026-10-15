@@ -52,6 +52,18 @@ class PickTrackTest(_LibraryCase):
         self.assertEqual(Path(music.pick_track("calm", "movie-1")).name, "d.mp3")
 
 
+class ApplyBgmTest(_LibraryCase):
+    # 합성이 실패하면 컷을 다 붙인 무비 전체가 실패해 처음부터 다시 돌았다(2026-10-14 리뷰, backlog E-51).
+    def test_a_failed_mix_goes_on_without_music(self) -> None:
+        self.put("calm", "a.mp3")
+        failure = music.subprocess.CalledProcessError(1, ["ffmpeg"], stderr="boom")
+        with mock.patch.object(music, "mix", side_effect=failure), mock.patch.object(music, "_capture") as capture:
+            path, applied = music.apply_bgm("in.mp4", "calm", "out.mp4", 5.0, "movie-1")
+
+        self.assertEqual((path, applied), ("in.mp4", False))
+        capture.assert_called_once_with(failure)
+
+
 class ParseManifestTest(unittest.TestCase):
     def test_reads_the_tag_and_file_of_each_track(self) -> None:
         raw = json.dumps(

@@ -64,6 +64,21 @@ def _capture(exc: BaseException) -> None:
     sentry_sdk.capture_exception(exc)
 
 
+def _finalize_or_keep(current: str, final_path: str) -> str:
+    """마지막 손질을 하고 그 결과를 돌려준다. 실패하면 손질 전 파일을 그대로 쓴다(backlog E-51).
+
+    손질은 음량과 첫 재생 시간뿐이라, 없어도 무비는 재생된다 — 비싼 단계를 다 거친 뒤 작업 전체를 실패시켜 처음부터
+    다시 돌리는 것보다 낫다. 자막이 실패하면 자막 없이 가는 것과 같다.
+    """
+    try:
+        editor.finalize(current, final_path)
+    except RuntimeError as exc:  # editor._run 이 ffmpeg 실패를 이것으로 올린다
+        logger.warning("마지막 손질 실패 — 손질 없이 올린다: {}", str(exc)[-300:])
+        _capture(exc)
+        return current
+    return final_path
+
+
 async def _publish(job_id: str, payload: dict) -> None:
     if _publisher is not None:
         await _publisher.publish(config.edit_progress_channel(job_id), json.dumps(payload))
@@ -143,9 +158,7 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
         await _progress(job_id, 85, "자막 건너뜀")
 
     # 마지막 손질 — 전체 음량을 플랫폼 기준으로, 첫 재생을 앞당긴다(editor.finalize).
-    final_path = os.path.join(work_dir, "final.mp4")
-    await asyncio.to_thread(editor.finalize, current, final_path)
-    current = final_path
+    current = await asyncio.to_thread(_finalize_or_keep, current, os.path.join(work_dir, "final.mp4"))
 
     # 5) 썸네일 추출 (기본 1초, 짧은 결과물은 중간 시점)
     thumb_path = os.path.join(work_dir, "thumb.jpg")
