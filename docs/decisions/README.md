@@ -20,7 +20,7 @@
 | [subtitle-rendering.md](subtitle-rendering.md) | 자막: 소프트 유지 vs 번인 전환 | A-7 | 2026-08-31 회의 |
 | [sns-webhook-scope.md](sns-webhook-scope.md) | "웹훅 연동"이 어느 웹훅을 뜻하는지 | D-1 | 2026-08-31 회의 |
 | [sticker-asset-sourcing.md](sticker-asset-sourcing.md) | 스티커 조달 경로 · 등록 경로(관리자 페이지 시점) | A-7 | 2026-08-31 회의 |
-| [bgm-sourcing.md](bgm-sourcing.md) | BGM 조달(AI 생성 · 라이선스 구독 · 커미션) — 법적 검토 6항목 선행 | A-7 · E-5 | 2026-08-31 회의 |
+| [bgm-sourcing.md](bgm-sourcing.md) | BGM 조달(AI 생성 · 라이선스 구독 · 커미션) — 법적 검토 6항목 선행. 공모전 기간은 무료 라이선스 9곡으로 잠정 결정(2026-10-15) | A-7 · E-5 | 2026-08-31 회의 |
 
 각 결정의 착수 순서와, 결정을 기다리지 않고 시작할 수 있는 일:
 
