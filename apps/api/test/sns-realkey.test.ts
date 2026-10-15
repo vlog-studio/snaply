@@ -776,10 +776,18 @@ describe('인스타그램 웹훅 (콘솔 등록용 검증)', () => {
 describe('인스타그램 연결 해제 · 데이터 삭제 요청 (SNS-9)', () => {
   const BIG_ID = '27899354646370752';
 
-  /** Meta 와 같은 방식으로 서명한다: base64url(HMAC(payload)).payload — user_id 는 따옴표 없는 큰 정수. */
-  function signedRequest(userId: string, secret = REAL_KEYS.INSTAGRAM_APP_SECRET): string {
+  /**
+   * Meta 와 같은 방식으로 서명한다: base64url(HMAC(payload)).payload — user_id 는 따옴표 없는 큰 정수.
+   * `issuedAt` 은 초 단위 발급 시각(기본 지금), `null` 이면 필드를 넣지 않는다.
+   */
+  function signedRequest(
+    userId: string,
+    secret = REAL_KEYS.INSTAGRAM_APP_SECRET,
+    issuedAt: number | null = Math.floor(Date.now() / 1000),
+  ): string {
+    const issued = issuedAt === null ? '' : `"issued_at":${issuedAt},`;
     const payload = Buffer.from(
-      `{"algorithm":"HMAC-SHA256","issued_at":1791716400,"user_id":${userId}}`,
+      `{"algorithm":"HMAC-SHA256",${issued}"user_id":${userId}}`,
     ).toString('base64url');
     const sig = createHmac('sha256', secret).update(payload).digest('base64url');
     return `${sig}.${payload}`;
@@ -1053,6 +1061,38 @@ describe('인스타그램 연결 해제 · 데이터 삭제 요청 (SNS-9)', () 
     expect(deauth.statusCode).toBe(400);
     expect(deletion.statusCode).toBe(400);
     expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  // 서명만 보면 한 번 받은 요청이 영구히 유효했다 — 같은 계정으로 다시 연결한 뒤 옛 요청이 오면 새 연결이
+  // 끊긴다(2026-10-14 리뷰, backlog E-47).
+  it('발급된 지 하루가 넘은 요청은 400 이고 아무것도 지우지 않는다', async () => {
+    const user = await connectedUser(BIG_ID);
+    const dayAndAMinuteAgo = Math.floor(Date.now() / 1000) - 24 * 60 * 60 - 60;
+
+    const deauth = await post(
+      '/sns/instagram/deauthorize',
+      signedRequest(BIG_ID, undefined, dayAndAMinuteAgo),
+    );
+    const deletion = await post(
+      '/sns/instagram/data-deletion',
+      signedRequest(BIG_ID, undefined, dayAndAMinuteAgo),
+    );
+
+    expect(deauth.statusCode).toBe(400);
+    expect(deletion.statusCode).toBe(400);
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(1);
+  });
+
+  it.each([
+    ['하루 안에 다시 보낸 요청', Math.floor(Date.now() / 1000) - 23 * 60 * 60],
+    ['발급 시각이 없는 요청', null],
+  ])('%s은 받는다', async (_name, issuedAt) => {
+    const user = await connectedUser(BIG_ID);
+
+    const res = await post('/sns/instagram/deauthorize', signedRequest(BIG_ID, undefined, issuedAt));
+
+    expect(res.statusCode).toBe(200);
+    expect(await h.prisma.snsConnection.count({ where: { userId: user.id } })).toBe(0);
   });
 
   it('위조한 확인 코드는 상태 페이지가 404', async () => {

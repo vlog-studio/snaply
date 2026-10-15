@@ -59,8 +59,12 @@ export function instagramAppSecret(): string | undefined {
  * Meta 의 `signed_request`(연결 해제 · 데이터 삭제 요청)를 검증하고 `user_id`(프로페셔널 계정 ID)를 꺼낸다.
  * 형식: `base64url(HMAC-SHA256(payload, 앱 시크릿)).base64url(payloadJSON)`. 위조 · 변조 · 시크릿 미설정이면 null.
  * `user_id` 는 2^53 을 넘을 수 있어 JSON 숫자로 와도 문자열 그대로 뽑는다.
+ *
+ * 발급(`issued_at`)이 `SIGNED_REQUEST_MAX_AGE_MS` 보다 오래됐으면 null — 서명만 보면 한 번 받은 요청이 영구히 유효해,
+ * 그 사용자가 같은 계정으로 다시 연결한 뒤 옛 요청이 오면 새 연결이 끊긴다(backlog E-47). Meta 가 늦게 다시 보내도
+ * 하루 안이면 받는다. `issued_at` 이 없으면 받는다 — 서명이 덮으므로 필드를 빼 위조할 수는 없다.
  */
-export function parseInstagramSignedRequest(signedRequest: string): string | null {
+export function parseInstagramSignedRequest(signedRequest: string, now: Date = new Date()): string | null {
   const secret = config().instagram.clientSecret;
   const [sig, payload] = signedRequest.split('.');
   if (!secret || !sig || !payload) {
@@ -72,8 +76,15 @@ export function parseInstagramSignedRequest(signedRequest: string): string | nul
     return null;
   }
   const json = Buffer.from(payload.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+  const issuedAt = /"issued_at"\s*:\s*(\d+)/.exec(json)?.[1];
+  if (issuedAt !== undefined && now.getTime() - Number(issuedAt) * 1000 > SIGNED_REQUEST_MAX_AGE_MS) {
+    return null;
+  }
   return /"user_id"\s*:\s*"?(\d+)"?/.exec(json)?.[1] ?? null;
 }
+
+/** Meta 의 `signed_request` 를 받아들이는 발급 후 기간(backlog E-47, 2026-10-15 결정). */
+export const SIGNED_REQUEST_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Meta 가 알려 온 사용자의 인스타그램 데이터를 지운다(SNS-9) — 연동 행(토큰 · 계정 ID · 사용자명)과
