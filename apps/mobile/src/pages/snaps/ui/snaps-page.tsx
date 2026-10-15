@@ -43,6 +43,11 @@ import { VideoPlayerModal } from '@/shared/ui/video-player-modal';
 import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/widgets/snap-grid';
 
 import { draftCostReadOut } from '../model/draft-cost';
+import {
+  movieLimitNotice,
+  pickingCapacity,
+  type SelectionPurpose,
+} from '../model/selection-limits';
 import { draftConfirmation, useEditDraft } from '../model/use-edit-draft';
 import { playerAlbumAction } from '../model/player-album-action';
 import { snapExpiryCaption } from '../model/snap-expiry-caption';
@@ -53,16 +58,6 @@ import {
   type DeviceOnlyDelete,
   type RestorableDelete,
 } from './snap-delete-dialog';
-
-/**
- * What a selection is for. `movie` — the user's own cut list, in pick order,
- * up to {@link MovieSnapLimit}. `draft` — material handed to the edit draft
- * (MOV-21), up to the draft's cap (`useEditDraft`'s `limit`), which chooses
- * among it. `album` — copies for the device's album (SNAP-17), no cap; an
- * expiry notice opens the library this way with its soon-to-go snaps picked
- * (SNAP-13).
- */
-export type SelectionPurpose = 'movie' | 'draft' | 'album';
 
 export type SnapsPageProps = {
   /**
@@ -145,12 +140,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     reset: resetDraft,
     limit: draftLimit,
   } = useEditDraft();
-  const capacity =
-    purpose === 'draft'
-      ? draftLimit
-      : purpose === 'album'
-        ? Number.POSITIVE_INFINITY
-        : MovieSnapLimit;
+  const capacity = pickingCapacity(purpose, draftLimit);
   const [playing, setPlaying] = useState<Snap>();
   const [playerOpenedAt, setPlayerOpenedAt] = useState(Date.now);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -167,11 +157,10 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     heldIds: NoHeldIds,
     heldCount: 0,
     capacity,
-    describeRefusal: () =>
-      purpose === 'draft'
-        ? `자동 편집에는 스냅 ${draftLimit}개까지 넣을 수 있어요.`
-        : `한 편에는 스냅 ${MovieSnapLimit}개까지 들어가요.`,
+    // Only the draft caps the picking (`pickingCapacity`).
+    describeRefusal: () => `자동 편집에는 스냅 ${draftLimit}개까지 넣을 수 있어요.`,
   });
+  const overMovieLimit = movieLimitNotice(purpose, picked.length);
 
   const impact = useMovieDeleteImpact(deleteOpen ? picked : EmptySelection);
   const expiredIds = useExpiredSnapIds();
@@ -294,6 +283,10 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
   }).data;
   const draftCost = purpose === 'draft' ? draftCostReadOut(draftAllowance) : undefined;
   const draftBusy = confirmation?.busy === true;
+  // A request in flight holds the picks: the draft would open a movie the
+  // screen no longer describes, and a finished album save ends the selection
+  // the user had moved on to (2026-10-14 review, backlog E-54).
+  const holding = draftBusy || albumBatch.saving;
 
   const exitSelection = useCallback(() => {
     setSelecting(false);
@@ -307,11 +300,11 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     if (!selecting) return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       // Mid-request, back is held: leaving would still open the movie it makes.
-      if (!draftBusy) exitSelection();
+      if (!holding) exitSelection();
       return true;
     });
     return () => subscription.remove();
-  }, [selecting, exitSelection, draftBusy]);
+  }, [selecting, exitSelection, holding]);
 
   // Selection swaps the bottom chrome: the tab bar and the capture button out,
   // the SnapSelectionBar in. The navigator paints its bar above every scene, so
@@ -332,9 +325,9 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
   }, [selecting, isFocused, setTabBarHidden]);
 
   const handlePress = (snap: Snap) => {
-    // The draft is being made from these picks; changing them now would open a
-    // movie the screen no longer describes.
-    if (selecting && draftBusy) return;
+    // A request is working from these picks; changing them now would answer a
+    // different selection than the one on screen.
+    if (selecting && holding) return;
     if (selecting) toggle(snap.id);
     else {
       setPlayerOpenedAt(Date.now());
@@ -406,9 +399,11 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
       });
       return;
     }
-    // The draft is where the picks land, so open it — the cap was enforced pick
-    // by pick, so a non-empty selection always makes a movie. (Past today's edit
-    // drafts the hand-made movie is offered, and only for picks that fit one.)
+    // The draft is where the picks land, so open it. Picks past one movie keep
+    // the button disabled with `overMovieLimit` saying why, so a selection that
+    // reaches here fits. (Past today's edit drafts the hand-made movie is
+    // offered, and only for picks that fit one.)
+    if (overMovieLimit) return;
     const movie = startMovieFromSnaps(picked);
     if (!movie) return;
     exitSelection();
@@ -489,8 +484,8 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
                 accessibilityRole="button"
                 accessibilityLabel={selecting ? '선택 취소' : '스냅 선택'}
                 // Leaving mid-request would still open the movie it makes.
-                accessibilityState={{ disabled: draftBusy }}
-                disabled={draftBusy}
+                accessibilityState={{ disabled: holding }}
+                disabled={holding}
                 hitSlop={12}
                 onPress={() => (selecting ? exitSelection() : setSelecting(true))}
                 style={styles.headerAction}
@@ -596,7 +591,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
         <SnapSelectionBar
           selectedCount={picked.length}
           heldCount={0}
-          capacity={capacity}
+          capacity={purpose === 'movie' ? MovieSnapLimit : capacity}
           targetLabel={
             purpose === 'draft'
               ? draftCost
@@ -613,10 +608,10 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
                 : '앨범에 저장'
               : (confirmation?.label ?? '이 스냅으로 새 무비')
           }
-          notice={notice ?? confirmation?.notice}
+          notice={notice ?? confirmation?.notice ?? overMovieLimit}
           busy={confirmation?.busy || albumBatch.saving}
           onSaveToAlbum={purpose === 'movie' ? () => void saveToAlbum() : undefined}
-          confirmDisabled={confirmation?.disabled}
+          confirmDisabled={confirmation?.disabled || overMovieLimit !== undefined}
           onClear={clear}
           onConfirm={confirmPicks}
           onDelete={() => {
