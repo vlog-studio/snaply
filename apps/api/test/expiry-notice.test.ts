@@ -29,6 +29,15 @@ vi.mock('firebase-admin', () => ({
   },
 }));
 
+// 삼키던 예외를 보고하는지 본다(E-45).
+const captureException = vi.fn();
+vi.mock('../src/lib/sentry.js', () => ({
+  initSentry: vi.fn(),
+  flushSentry: vi.fn(async () => true),
+  captureException,
+  isSentryEnabled: () => false,
+}));
+
 const SERVICE_ACCOUNT = JSON.stringify({
   project_id: 'snaply-test',
   client_email: 'sa@snaply-test.iam.gserviceaccount.com',
@@ -85,6 +94,8 @@ afterAll(async () => {
 beforeEach(async () => {
   await h.resetDb();
   send.mockReset();
+  captureException.mockReset();
+  vi.restoreAllMocks();
   logger.info.mockReset();
   logger.warn.mockReset();
   initFcm({ projectId: 'snaply-test', serviceAccountJson: SERVICE_ACCOUNT });
@@ -183,6 +194,48 @@ describe('중복 발송 방지', () => {
     expect(outcome.videos).toBe(5);
     expect(sentBody(0)).toContain('5개');
   });
+
+  // 배치가 동시에 두 번 돌면 둘 다 같은 스냅을 찾고 둘 다 선점을 시도한다. 넣은 행 수를 보지 않아 둘 다
+  // 보냈다(2026-10-14 리뷰, backlog E-45).
+  it('다른 실행이 먼저 선점한 예고는 보내지 않는다', async () => {
+    const user = await userWithToken();
+    await snapUploadedDaysAgo(user.id, SNAP_RETENTION_DAYS - 3);
+    const claim = h.prisma.notificationLog.createManyAndReturn.bind(h.prisma.notificationLog);
+    vi.spyOn(h.prisma.notificationLog, 'createManyAndReturn').mockImplementationOnce(((
+      args: Parameters<typeof claim>[0],
+    ) => claim(args).then(() => claim(args))) as never);
+
+    const outcome = await sendExpiryNotices({ logger, now, apply: true });
+
+    expect(outcome.skipped.already_claimed).toBe(1);
+    expect(send).not.toHaveBeenCalled();
+  });
+});
+
+// 배치가 밀리면 D-3 창의 예고가 마감 반나절 전에 "3일 후"라고 나갔고, 함께 밀린 D-1 창도 같은 날 또 갔다
+// (2026-10-14 리뷰, backlog E-46).
+describe('밀린 예고', () => {
+  it('남은 날을 실제 마감일로 말하고, 두 창이 함께 밀리면 가까운 쪽 하나만 보낸다', async () => {
+    const user = await userWithToken();
+    // 오늘 밤(KST 22시) 마감 — 지금은 KST 10시다.
+    await snapUploadedDaysAgo(user.id, SNAP_RETENTION_DAYS - 0.5);
+
+    await sendExpiryNotices({ logger, now, apply: true });
+    await sendExpiryNotices({ logger, now: new Date(now.getTime() + 60 * 60 * 1000), apply: true });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(sentBody(0)).toBe('오늘 스냅 1개가 삭제돼요. 앨범에 저장하거나 무비로 만들어 두세요.');
+  });
+
+  it('여러 개면 가장 이른 마감일로 말한다', async () => {
+    const user = await userWithToken();
+    await snapUploadedDaysAgo(user.id, SNAP_RETENTION_DAYS - 3);
+    await snapUploadedDaysAgo(user.id, SNAP_RETENTION_DAYS - 2);
+
+    await sendExpiryNotices({ logger, now, apply: true });
+
+    expect(sentBody(0)).toBe('2일 후 스냅 2개가 삭제돼요. 앨범에 저장하거나 무비로 만들어 두세요.');
+  });
 });
 
 describe('보내지 못한 것을 보냈다고 하지 않는다', () => {
@@ -211,6 +264,23 @@ describe('보내지 못한 것을 보냈다고 하지 않는다', () => {
     // 되돌렸으므로 다음 실행에서 다시 나간다.
     const retry = await sendExpiryNotices({ logger, now, apply: true });
     expect(retry.notified).toBe(1);
+  });
+
+  // 되돌리지 못하면 그 예고는 다시 가지 않는데, `.catch(() => undefined)` 가 삼켜 아무도 몰랐다(E-45).
+  it('선점을 되돌리지 못하면 보고한다', async () => {
+    const user = await userWithToken();
+    await snapUploadedDaysAgo(user.id, SNAP_RETENTION_DAYS - 3);
+    send.mockRejectedValueOnce(Object.assign(new Error('boom'), { code: 'messaging/internal' }));
+    const lost = new Error('connection lost');
+    vi.spyOn(h.prisma.notificationLog, 'deleteMany').mockRejectedValueOnce(lost);
+
+    const outcome = await sendExpiryNotices({ logger, now, apply: true });
+
+    expect(outcome.notified).toBe(0);
+    expect(captureException).toHaveBeenCalledWith(
+      lost,
+      expect.objectContaining({ phase: 'expiry-notice-release' }),
+    );
   });
 
   it('토큰이 없으면 건너뛰고 기록도 남기지 않는다', async () => {
@@ -367,5 +437,17 @@ describe('무비 결과물 만료 예고 (NTF-10)', () => {
 
     expect(failed.notified).toBe(0);
     expect(retried.notified).toBe(1);
+  });
+
+  it.each([
+    [MOVIE_RESULT_RETENTION_DAYS - 0.5, '오늘'],
+    [MOVIE_RESULT_RETENTION_DAYS - 1, '내일'],
+  ])('밀린 예고는 실제 마감일로 말한다 — 결과물이 %s일 전이면 "%s"', async (ageDays, when) => {
+    const user = await movieUser();
+    await movieWithResultDaysAgo(user.id, ageDays);
+
+    await sendMovieExpiryNotices({ logger, now, apply: true });
+
+    expect(sentBody(0)).toBe(`${when} '제주 3일' 무비가 사라져요. 남기려면 저장하거나 게시해 주세요.`);
   });
 });

@@ -86,6 +86,22 @@ export function snapExpiresAt(uploadedAt: Date): Date {
   return new Date(uploadedAt.getTime() + (SNAP_RETENTION_DAYS + EXPIRY_TO_PURGE_DAYS) * DAY_MS);
 }
 
+/** 무비 결과물의 보관이 끝나는 시각 — 정리 배치(`findExpiredMovieResults`)와 같은 기준(결과물 영상의 `createdAt`). */
+export function movieResultExpiresAt(resultCreatedAt: Date): Date {
+  return new Date(resultCreatedAt.getTime() + MOVIE_RESULT_RETENTION_DAYS * DAY_MS);
+}
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+
+/**
+ * `deadline` 까지 남은 날을 달력의 날짜(KST)로 센다 — 오늘이면 0, 내일이면 1. 시간을 올려 세면 반나절 남은 것이
+ * "1일"이 된다(SNAP-13, 앱의 `calendarDaysUntil` 과 같은 셈). 지났으면 음수.
+ */
+export function kstCalendarDaysUntil(deadline: Date, now: Date): number {
+  const day = (at: Date) => Math.floor((at.getTime() + KST_OFFSET_MS) / DAY_MS);
+  return day(deadline) - day(now);
+}
+
 /**
  * 위치 알림(geofence) 발송 이력의 보관 기간(일).
  *
