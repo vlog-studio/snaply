@@ -2,6 +2,7 @@ import { memo } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
+  SnapExpiryCountdownDays,
   useSnapExpiresAt,
   useSnapSyncStatus,
   type Snap,
@@ -43,17 +44,10 @@ const SyncBadgeLabel: Record<SnapSyncStatus, string | undefined> = {
   expired: '만료됨',
 };
 
-/**
- * How many days before the server's copy runs out a cell starts counting down
- * (SNAP-13) — the first of the two expiry pushes, so the library says what the
- * notification said, and still says it to someone who turned notifications off.
- */
-const ExpiryCountdownDays = 3;
-
 /** `3일 남음` · `오늘까지` inside the countdown window, nothing before it or once it has passed. */
 function expiryCountdownOf(expiresAt: number | undefined, now: number): string | undefined {
   if (expiresAt === undefined) return undefined;
-  return daysLeftBadge(expiresAt, now, ExpiryCountdownDays);
+  return daysLeftBadge(expiresAt, now, SnapExpiryCountdownDays);
 }
 
 /**

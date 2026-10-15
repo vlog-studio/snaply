@@ -1,4 +1,5 @@
 export { getServerSnaps } from './api/get-server-snaps';
+export { SnapExpiryCountdownDays } from './lib/snap-expiry';
 export { lookupServerSnaps } from './api/lookup-server-snaps';
 export { snapsByRefs, useSnapIndex, type SnapIndex } from './model/snap-refs';
 export {
