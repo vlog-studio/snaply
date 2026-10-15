@@ -1,4 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, View } from 'react-native';
 
@@ -32,9 +33,26 @@ export function EditNicknameSheet({ visible, name, onClose }: EditNicknameSheetP
     defaultValues: { nickname: name },
   });
 
-  const submit = handleSubmit((values) => {
-    save.mutate(values.nickname, { onSuccess: onClose });
-  });
+  // The button is disabled while saving, but the keyboard's done key is not —
+  // and `isPending` only shows after a render, so a quick second press sent a
+  // second PATCH (2026-10-14 review, backlog E-56).
+  const saving = useRef(false);
+  const submit = () => {
+    if (saving.current) return;
+    saving.current = true;
+    void handleSubmit(
+      (values) =>
+        save.mutate(values.nickname, {
+          onSuccess: onClose,
+          onSettled: () => {
+            saving.current = false;
+          },
+        }),
+      () => {
+        saving.current = false;
+      },
+    )();
+  };
 
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="이름 바꾸기">
@@ -49,7 +67,7 @@ export function EditNicknameSheet({ visible, name, onClose }: EditNicknameSheetP
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="done"
-          onSubmitEditing={() => void submit()}
+          onSubmitEditing={submit}
         />
         {save.isError ? (
           <ThemedText type="small" themeColor="danger">
@@ -70,7 +88,7 @@ export function EditNicknameSheet({ visible, name, onClose }: EditNicknameSheetP
           <SnaplyButton
             title={save.isPending ? '저장하는 중…' : '저장'}
             disabled={save.isPending}
-            onPress={() => void submit()}
+            onPress={submit}
             style={styles.save}
           />
         </View>

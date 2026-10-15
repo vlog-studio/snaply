@@ -113,6 +113,10 @@ async function renderPage() {
 describe('MePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Reset here rather than at the end of a test, so a failed assertion
+    // cannot leave a nickname for the tests after it.
+    mockNickname = null;
+    mockInstagram = { isLoaded: true, isError: false };
     mockAnalysisConsent.mockReturnValue({
       available: true,
       granted: false,
@@ -130,7 +134,6 @@ describe('MePage', () => {
     await fireEvent.press(screen.getByRole('button', { name: '이름 다연 · 바꾸기' }));
 
     expect(screen.getByText('nickname-sheet:다연')).toBeOnTheScreen();
-    mockNickname = null;
   });
 
   it('falls back to the sign-in name before a nickname is set', async () => {
@@ -161,7 +164,6 @@ describe('MePage', () => {
     expect(screen.getByText('Instagram @snaply')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: socialTitle }));
     expect(mockPush).toHaveBeenCalledWith('/settings/social');
-    mockInstagram = { isLoaded: true, isError: false };
   });
 
   // A link whose access ran out, or whose end nobody knows, must be made again
@@ -175,7 +177,6 @@ describe('MePage', () => {
     await renderPage();
 
     expect(screen.getByText('Instagram 다시 연결 필요')).toBeTruthy();
-    mockInstagram = { isLoaded: true, isError: false };
   });
 
   it('reads 소셜 연결 as unlinked when there is no account', async () => {
