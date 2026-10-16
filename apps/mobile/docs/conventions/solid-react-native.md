@@ -155,19 +155,6 @@ SOLID does not require any of the following by default:
 
 Choose abstractions based on change reasons and dependency direction, not code duplication alone. Similar-looking code may remain separate when it changes for different reasons. Prefer the simplest implementation that satisfies the current requirement, then expand the structure after a repeated change pattern is visible.
 
-## Required process before implementation
-
-Before implementing a feature or refactor:
-
-1. Explore the relevant screens and existing behavior.
-2. Find the closest existing implementation in the project.
-3. Read all applicable guides from `AGENTS.md` and verify the directory rules.
-4. Identify the responsibilities being changed and the modules they affect.
-5. Decide whether an existing pattern is sufficient or whether there is evidence for a new abstraction.
-6. Write a short implementation plan.
-
-Do not add behavior that the user or requirement did not request. When documentation and implementation diverge, follow [rule precedence](../../AGENTS.md#rule-precedence).
-
 ## Code implementation safeguards
 
 - Avoid `any`; model unknown input explicitly and narrow it safely.
@@ -181,13 +168,13 @@ Do not add behavior that the user or requirement did not request. When documenta
 - Do not assume web-only APIs exist in React Native.
 - Distinguish Expo Go-compatible APIs from capabilities that require a development build.
 - Consider iOS and Android behavioral differences and preserve shared contracts across platform implementations.
-- Do not add `useMemo`, `useCallback`, or `memo` by habit; use them when measurement, referential stability, or an expensive calculation justifies them.
+- Do not add `useMemo`, `useCallback`, or `memo` by habit: the React Compiler is on (`app.json` → `experiments.reactCompiler`) and memoizes components and hooks itself. Reach for them only when measurement, a referential stability the compiler cannot provide, or an expensive calculation justifies it; the compiler's lint pitfalls are in [animations and gestures](../frameworks/animations-and-gestures.md#work-around-the-react-compiler-lint-structurally).
 - For `FlatList` and related virtualized lists, review stable keys, pagination, item layout, justified memoization, and image loading behavior.
 - Never include secrets, private credentials, or sensitive keys in the client bundle.
 
-## Verification and review checklist
+## SOLID review checklist
 
-After implementation, run the automated gate ([AGENTS.md § Verification](../../AGENTS.md#verification)) and verify behavior on each relevant platform. Then confirm:
+The SOLID-specific items. The process before implementing is [feature development §1–7](../workflows/feature-development.md), and its [code-review checklist](../workflows/feature-development.md#code-review-checklist) covers verification and documentation; the safeguards above apply as written.
 
 - [ ] Each changed component, hook, and module has a clear reason to change.
 - [ ] Screen orchestration, presentation, state, external effects, and mapping are separated where their change reasons differ.
@@ -198,10 +185,3 @@ After implementation, run the automated gate ([AGENTS.md § Verification](../../
 - [ ] No SOLID-motivated abstraction introduces an upward import, same-layer cross-slice import, or deep import.
 - [ ] Technical adapters remain business-agnostic, while product-specific contracts and orchestration stay in their owning slice.
 - [ ] No unnecessary interface, wrapper chain, layer, generic component, or dependency-injection mechanism was added.
-- [ ] Types are explicit, hooks are valid, derived state is not duplicated, and effects are necessary.
-- [ ] Async races, navigation away from the screen, and relevant platform differences were considered.
-- [ ] Expo Go versus development-build requirements are documented when relevant.
-- [ ] List performance and image loading were reviewed when a virtualized list changed.
-- [ ] No client-bundled secrets or sensitive credentials were introduced.
-- [ ] `npm run verify` and affected-platform verification results are recorded.
-- [ ] Documentation was updated if responsibilities, contracts, dependencies, or supported behavior changed.

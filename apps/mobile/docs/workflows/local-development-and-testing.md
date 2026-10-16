@@ -5,10 +5,10 @@
 A change is verified on three surfaces, each answering a different question:
 
 1. **Automated checks** (`npm run verify`, [below](#automated-checks)) — JavaScript logic and rendered interaction contracts. Always run first.
-2. **iOS Simulator and Android emulator** — the agent's on-device verification path: screens render, navigation and interaction flows work, the app talks to the backend. Boot them, drive them, and capture screenshots yourself using the procedures below (Expo Go on the iOS Simulator, a dev build on the Android emulator — [Expo Go limitations](#expo-go-limitations) explains the split). The web build (`npm run web`) is not a reference runtime; do not use it as evidence.
-3. **Physical device, by the owner** — behavior a simulator cannot reproduce faithfully: real camera capture and the recording pipeline, the OS permission prompts as shipped, haptics, push-notification delivery, media-library writes, and network behavior from the device's own connection. When a change touches any of these, do not claim it verified. List the exact steps and expected results as a **separate manual-check section in your report** so the owner can run them on a real device, and say what you did verify on the simulator/emulator. If the owner has a device attached and asks you to drive it, [`android-device-verification.md`](android-device-verification.md) is the toolkit — confirm it with `adb devices` and target it with `-s <serial>` (or `ANDROID_SERIAL`); never assume it is the only device.
+2. **Android emulator and iOS Simulator** — the agent's on-device verification path: screens render, navigation and interaction flows work, the app talks to the backend. Boot them, drive them, and capture screenshots yourself using the procedures below (a dev build on the Android emulator, Expo Go on the iOS Simulator — [Expo Go limitations](#expo-go-limitations) explains the split). The first launch is Android-only, so **app behavior verified on the Android emulator counts as verified**. The web build (`npm run web`) is not a reference runtime; do not use it as evidence.
+3. **The owner's phone** — only behavior that exists on a device and not in the emulator: push receipt, the OS permission prompts as shipped, real camera capture, album (media-library) writes, and opening another app. When a change touches one of these, do not claim it verified: say what you verified on the emulator, and list the device-only steps and expected results as a **separate manual-check section in your report** for the owner. If the owner has the phone attached and asks you to drive it, [`android-device-verification.md`](android-device-verification.md) is the toolkit — confirm it with `adb devices` and target it with `-s <serial>` (or `ANDROID_SERIAL`); never assume it is the only device.
 
-iOS hardware checks follow the fallback in [`AGENTS.md`](../../AGENTS.md#planned-documentation).
+iOS checks wait for the iOS launch; the iOS Simulator is still evidence, but say that a change was not verified on iOS hardware ([AGENTS.md § Verification](../../AGENTS.md#verification)).
 
 **Metro belongs to whoever started it.** `expo run:android` and the dev client attach to any server already on port 8081, so a Metro process that dies quietly (a backgrounded process tied to a shell or a timeout) takes the device session with it. Reuse a Metro the owner already runs when one is up (`curl -s http://localhost:8081/status`); when you start one yourself, run it as a persistent process that outlives the shell that launched it, and never free port 8081 without asking.
 
@@ -24,32 +24,23 @@ The individual scripts for running one gate at a time (`npm run lint`, `npm run 
 
 Jest and React Native Testing Library validate JavaScript logic and rendered interaction contracts; they do not replace iOS and Android verification for camera, permissions, file-system, animation, or other native behavior.
 
-## Environment and legacy macOS limitation
+## Environment
 
-The project does not prohibit `expo run:ios` on every development machine. The restriction applies only to older macOS machines that cannot install an Xcode version with the Swift 6.2 toolchain required by Expo SDK 57 / React Native 0.86.
+The development machine, an Apple silicon Mac mini (2026-09), with Expo CLI 57.x. The command examples below use these names.
 
-- An older Intel Mac (`x86_64`) on macOS 15.7.7 is limited to **Xcode 16.4 (Swift 6.1.2)** and cannot install Xcode 26 (Swift 6.2).
-- On that class of machine, a **local native iOS build is not possible**. Running `npm run ios` (`expo run:ios`) fails with:
-  `package 'apple' is using Swift tools version 6.2.0 but the installed version is 6.1.0`.
-- A machine running a current macOS version with an Xcode release that provides Swift 6.2 is not subject to this limitation and may use `npm run ios` (`expo run:ios`).
-
-On a legacy machine limited to Xcode 16.4, use **Expo Go** ([below](#ios-simulator--expo-go)) as the iOS runtime; Android runs a dev build on every machine ([below](#android-emulator--dev-build)). Use **EAS Build** when a feature depends on native modules that Expo Go does not include.
-
-The command examples below use the **current machine's** names; substitute the legacy names where they differ. Expo CLI 57.x on both.
-
-| | Current — Apple silicon Mac mini (2026-09) | Legacy — Intel Mac |
-| --- | --- | --- |
-| iOS | Xcode 27 (Swift 6.4) + iOS 27 simulators, device `iPhone 17` (402×874 pt). No CocoaPods, so iOS still runs in Expo Go here. There is no `Simulator.app`: open the device window with `open /Applications/Xcode.app/Contents/Applications/DeviceHub.app` | Xcode 16.4 + iOS 18.6 simulators, device `iPhone 16` (393×852 pt), CocoaPods 1.17.0 (Homebrew); `open -a Simulator` |
-| Android | SDK at `~/Library/Android/sdk`, image `system-images/android-35/google_apis/arm64-v8a`, AVD **`snaply_api35`** — written by hand under `~/.android/avd/`, since this SDK has no cmdline-tools (`avdmanager`) | Same SDK path with Android Studio and JDK 17, image `system-images;android-35;default;x86_64`, AVD **`Pixel_API_35`** |
-| Expo Go (iOS) | Not in the CLI's cache — download the SDK 57 client ([below](#first-time-expo-go-install)) | `~/.expo/ios-simulator-app-cache/Expo-Go-57.0.4.tar.app` |
+| Platform | Setup |
+| --- | --- |
+| iOS | Xcode 27 (Swift 6.4) + iOS 27 simulators, device `iPhone 17` (402×874 pt). No CocoaPods, so there is no local native iOS build (`npm run ios`) here: iOS runs in Expo Go ([below](#ios-simulator--expo-go)), and a native iOS build goes through [EAS Build](#full-native-verification--eas-build-cloud-dev-build). There is no `Simulator.app`: open the device window with `open /Applications/Xcode.app/Contents/Applications/DeviceHub.app` |
+| Android | SDK at `~/Library/Android/sdk`, image `system-images/android-35/google_apis/arm64-v8a`, AVD **`snaply_api35`** — written by hand under `~/.android/avd/`, since this SDK has no cmdline-tools (`avdmanager`). Android runs a dev build ([below](#android-emulator--dev-build)) |
+| Expo Go (iOS) | Not in the CLI's cache — download the SDK 57 client ([below](#first-time-expo-go-install)) |
 
 ## iOS Simulator — Expo Go
 
-Expo Go is the iOS Simulator path (and the only iOS path on a legacy machine, [above](#environment-and-legacy-macos-limitation)). Android does not use it ([Expo Go limitations](#expo-go-limitations)); the Android emulator runs a dev build ([below](#android-emulator--dev-build)).
+Expo Go is the iOS path on this machine ([Environment](#environment)). Android does not use it ([Expo Go limitations](#expo-go-limitations)); the Android emulator runs a dev build ([below](#android-emulator--dev-build)).
 
 ```bash
 xcrun simctl boot "iPhone 17"; open /Applications/Xcode.app/Contents/Applications/DeviceHub.app
-npx expo start --go                                      # Metro in Expo Go mode
+npm start -- --go                                        # Metro in Expo Go mode
 xcrun simctl openurl "iPhone 17" "exp://127.0.0.1:8081"
 ```
 
@@ -57,7 +48,7 @@ Pressing `i` in the Metro terminal opens the app on the booted simulator; the `o
 
 ### First-time Expo Go install
 
-Expo Go must be present on the simulator before the app can open, and it only needs installing once per simulator. On the current machine the CLI has no cached client, so download the SDK 57 one named by Expo's versions API — the tarball holds the *contents* of the app, so extract it into an `Expo Go.app` directory:
+Expo Go must be present on the simulator before the app can open, and it only needs installing once per simulator. The CLI has no cached client here, so download the SDK 57 one named by Expo's versions API — the tarball holds the *contents* of the app, so extract it into an `Expo Go.app` directory:
 
 ```bash
 URL=$(curl -s https://api.expo.dev/v2/versions | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).sdkVersions["57.0.0"].iosClientUrl))')
@@ -65,30 +56,15 @@ mkdir -p "/tmp/expo-go/Expo Go.app" && curl -sL "$URL" | tar -xz -C "/tmp/expo-g
 xcrun simctl install "iPhone 17" "/tmp/expo-go/Expo Go.app"
 ```
 
-On the legacy machine, install the CLI's cached client instead: `xcrun simctl install "iPhone 16" ~/.expo/ios-simulator-app-cache/Expo-Go-57.0.4.tar.app`.
+After install, Expo Go stays on the simulator across sessions; just re-run `npm start -- --go` and reopen the app.
 
-After install, Expo Go stays on the simulator across sessions; just re-run `npx expo start --go` and reopen the app.
+### Driving the simulator
 
-### iOS Simulator touch automation — idb
-
-`xcrun simctl` cannot inject touches. Automated taps/swipes on the iOS Simulator use [idb](https://fbidb.io) (screen-coordinate tools like `cliclick` proved unreliable for in-app taps). On the legacy-profile machine it was set up like this:
-
-- `idb-companion` is installed via Homebrew (`brew install facebook/fb/idb-companion`).
-- The `fb-idb` Python client lives in a dedicated venv at `~/.venvs/fb-idb` because it is incompatible with the system Python 3.14 out of the box — `idb/cli/main.py` in that venv is patched to replace `asyncio.get_event_loop()` with `asyncio.new_event_loop()`. Recreating the venv requires re-applying that one-line patch.
-
-```bash
-IDB=~/.venvs/fb-idb/bin/idb
-$IDB list-targets                                   # find the booted simulator UDID
-$IDB ui tap 285 723 --udid <UDID>                   # coordinates in device points (iPhone 17: 402x874)
-$IDB ui swipe 200 600 200 300 --udid <UDID>         # scroll
-$IDB ui text "hello" --udid <UDID>                  # type into the focused field
-```
-
-Verify each interaction with `xcrun simctl io "iPhone 17" screenshot <path>`. To bypass permission dialogs during automation, grant them directly: `xcrun simctl privacy booted grant camera host.exp.Exponent` (same for `microphone`).
+`xcrun simctl` cannot inject touches: drive taps and swipes with the iOS Simulator tool the session provides, in device points (`iPhone 17` is 402×874). Confirm each interaction with `xcrun simctl io "iPhone 17" screenshot <path>`. To bypass permission dialogs during automation, grant them directly: `xcrun simctl privacy booted grant camera host.exp.Exponent` (same for `microphone`).
 
 ### Expo Go limitations
 
-**Expo Go no longer boots this app on Android** (verified 2026-07-23 on the Pixel_API_35 emulator): the app imports `expo-notifications` at startup (`_app/providers` push-token registrar → `shared/lib/notifications/local.ts`), and on Android Expo Go that import throws a fatal `Uncaught Error: expo-notifications: Android Push notifications … removed from Expo Go with the release of SDK 53` before anything renders. Android verification therefore requires a dev build: `npm run android` for the emulator, `npm run android:device` for a connected physical device. iOS Expo Go is unaffected.
+**Expo Go no longer boots this app on Android** (verified 2026-07-23 on the Android emulator): the app imports `expo-notifications` at startup (`_app/providers` push-token registrar → `shared/lib/notifications/local.ts`), and on Android Expo Go that import throws a fatal `Uncaught Error: expo-notifications: Android Push notifications … removed from Expo Go with the release of SDK 53` before anything renders. Android verification therefore requires a dev build: `npm run android` for the emulator, `npm run android:device` for a connected physical device. iOS Expo Go is unaffected.
 
 Only native modules bundled in Expo Go work, and `expo-dev-client` configuration is ignored. Config-plugin options (e.g. `expo-camera`'s) may differ from a real build, and the native modules Expo Go lacks are absent: `@react-native-firebase/messaging` and `react-native-google-mobile-ads` load lazily and fall back to inert behavior with a dev warning, and the local `modules/video-trim` module (`VideoTrim`) is missing, so push registration, rewarded ads, and snap-extract trimming cannot be verified there. When a feature depends on such modules, verify it on the Android dev build or with EAS Build instead.
 
@@ -105,14 +81,15 @@ until ~/Library/Android/sdk/platform-tools/adb -s emulator-5554 shell getprop sy
 npm run android
 ```
 
-Once the dev build is installed, a later session needs only Metro in dev-build mode — `npx expo start --dev-client` here, or `npm run dev:mobile` from the monorepo root — and the app opened on the emulator.
+Once the dev build is installed, a later session needs only Metro in dev-build mode — `npm run dev:mobile` from the monorepo root (it rebuilds the shared contract package first), or `npm start -- --dev-client` here — and the app opened on the emulator.
 
 If physical Android devices are also connected over adb, target the emulator explicitly with `-s emulator-5554`; a bare `adb shell` errors with "more than one device".
 
 ## Reload, dev menu, screenshots
 
 - Code changes hot-reload via Fast Refresh.
-- iOS reload: `Cmd+R`; dev menu: `Ctrl+D`. Android reload: `R` `R`; dev menu: `Cmd+M`.
+- Reload: `r` in the Metro terminal reloads every connected app; on the device, `Cmd+R` (iOS Simulator) or `R` `R` (Android emulator).
+- Dev menu: `m` in the Metro terminal; on the device, `Cmd+D` or Device → Shake (`Ctrl+Cmd+Z`) in the iOS Simulator, `Cmd+M` in the Android emulator.
 - Capture screens to confirm a change rendered:
   ```bash
   xcrun simctl io "iPhone 17" screenshot /tmp/ios.png
@@ -133,13 +110,13 @@ If physical Android devices are also connected over adb, target the emulator exp
 
 The release APK embeds the JS bundle, so it runs without Metro — use it to hand a device a self-contained build or to verify near-production behavior. The Expo prebuild template signs release builds with the debug keystore, so no signing setup is needed, and it overwrites an installed debug build in place.
 
-The release path deliberately does **not** use `expo run:android --variant release`: on the legacy-profile machine the expo-driven release build repeatedly failed in `:app:mergeReleaseResources` with corrupted incremental state (`merged.dir/values*.xml (No such file or directory)`), while a direct Gradle build succeeded. The script also clears that incremental state and retries once if the build fails, and recreates `android/local.properties` / runs `expo prebuild` when the generated `android/` folder is missing.
+The release path builds with Gradle directly rather than through `expo run:android --variant release`. When `merge<Variant>Resources` fails on corrupted incremental state (`merged.dir/values*.xml (No such file or directory)`), the script clears that state and retries once; it also recreates `android/local.properties` and runs `expo prebuild` when the generated `android/` folder is missing.
 
 Release builds need more Gradle daemon memory than the template default (`-Xmx2048m -XX:MaxMetaspaceSize=512m`): `lintVitalAnalyzeRelease` fails with a Metaspace OOM. The local config plugin `plugins/with-gradle-jvmargs.js` (registered in `app.json`) raises this to `-Xmx4096m -XX:MaxMetaspaceSize=1024m` via `withGradleProperties`, so the fix survives `prebuild --clean`. Do not hand-edit `android/gradle.properties` for this; change the plugin.
 
 ## Full native verification — EAS Build (cloud dev build)
 
-When Expo Go is insufficient, build a simulator/emulator dev client in the cloud (Expo's servers have Xcode 26), install the result on the local device, and connect Metro with `npx expo start --dev-client`. This exercises all native modules regardless of the local Xcode version. It requires a free Expo account; `eas login` must be performed by the user (account authentication).
+A dev client built in the cloud carries every native module without a local native build — the only native iOS route on this machine ([Environment](#environment)). **`eas.json` has no `development` profile; add one (`developmentClient: true`, and `ios.simulator: true` for a simulator build) before using this path.** Install the result on the simulator or emulator and connect Metro with `npm run dev:mobile` from the monorepo root. It requires a free Expo account; `eas login` must be performed by the user (account authentication).
 
 ### Tester build against the AWS contest server — `tester` profile
 
@@ -147,7 +124,7 @@ When Expo Go is insufficient, build a simulator/emulator dev client in the cloud
 
 - EAS signs the APK with its own keystore, so it does not install over a local debug build (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`); uninstall first.
 - `eas init` (or any EAS command that links the project) rewrites `app.json` with the resolved config — plugin-derived permissions and `extra`. Keep only `owner` and `extra.eas.projectId` and revert the rest; the config plugins stay the source of truth.
-- Without a device, an emulator is enough to check upload → edit → playback: `sdkmanager` the `google_apis_playstore` arm64 image, create an AVD, `adb install` the APK, and push test clips into `/sdcard/DCIM/Camera` (create the folder first) for the `가져오기` flow. The emulator's back camera is `emulated`, so capture also runs, but camera quality and LTE uploads still need a physical device.
+- Without a device, the emulator is enough to check upload → edit → playback: `adb install` the APK on `snaply_api35` ([Environment](#environment)) and push test clips into `/sdcard/DCIM/Camera` (create the folder first) for the `가져오기` flow. The emulator's back camera is `emulated`, so capture also runs; real camera capture is a check for the owner's phone ([Verification surfaces](#verification-surfaces-read-first)).
 
 ## Notes
 

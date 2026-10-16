@@ -56,7 +56,7 @@ Use it as: copy the relevant section into the PR, mark each item, and for every 
 - [ ] `copy` **Empty distinguishes nothing-yet / nothing-matched / failed-to-load.** Fail → `Orphan State`.
 - [ ] **Loading preserves layout.** Pass: skeleton in the content's shape; no shift on arrival; nothing unrelated blocked.
 - [ ] `copy` **Every error names a state and a fix, in the user's language, with no blame.** Fail → `Blaming Error`.
-- [ ] **The component matches the severity.** Pass: toast (transient), inline (field/block), dialog (a decision is required). Fail → `Blaming Error`.
+- [ ] **The component matches the severity.** Pass: toast (transient), inline (field/block), dialog (a decision is required) — [Failure](interaction-patterns.md#15--failure). Fail → `Blaming Error`.
 - [ ] **Long-running work can be left and returns to a findable result.** Fail → `Dead End`.
 - [ ] **Success lands the user on the result** with a likely next action. Fail → `Dead End`.
 
@@ -72,9 +72,10 @@ Use it as: copy the relevant section into the PR, mark each item, and for every 
 
 - [ ] **The change report follows [`agent-protocol.md`](agent-protocol.md#change-report-format)** — one block per change, meeting its rules for the report.
 - [ ] **Conflicts between principles are documented** per [`principle-priority.md`](principle-priority.md#conflict-report-format).
+- [ ] **No guardrail was crossed.** Pass: none of the wrong moves in [`guardrails.md`](guardrails.md) was made.
 - [ ] **Scope stayed inside what was approved** ([Escalation and confirmation](agent-protocol.md#escalation-and-confirmation)); extra findings were reported, not implemented.
 - [ ] **The proposal fits the code.** Pass: it is implementable within the current architecture, or the extra work is stated — checked against the slice that owns the screen and [`../conventions/cookbook.md`](../conventions/cookbook.md), not assumed.
-- [ ] **The [implementation rules](agent-protocol.md#implementation-rules) hold** — the verification gate, the documentation updated in the same change, and hardware verification done or its absence stated.
+- [ ] **The [implementation rules](agent-protocol.md#implementation-rules) hold** — the verification gate, the documentation updated in the same change, and device-only checks done or listed for the owner.
 
 ---
 

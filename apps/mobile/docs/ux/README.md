@@ -2,31 +2,34 @@
 
 This directory is the shared decision system that humans and AI agents use to judge, review, and change the user interface of this app. It is not a style guide and not a one-off audit. It exists so that a request like "this screen feels off, fix it" produces a reasoned change with a stated cause, not a change of taste.
 
-Design tokens (color, type scale, spacing, radius, motion curves) are **out of scope** here. They belong to the design system. This directory owns *semantics*: what a screen is for, what the user must decide, what must be visible now, and what the words must say.
+Design tokens (color, type scale, spacing, radius, motion curves) are **out of scope** here. They belong to the design system — [cookbook §14](../conventions/cookbook.md#14-consuming-the-design-system). This directory owns *semantics*: what a screen is for, what the user must decide, what must be visible now, and what the words must say.
 
-## Reading order
+## Index
 
-| # | Document | What it decides |
-| --- | --- | --- |
-| 1 | [`philosophy.md`](philosophy.md) | The four root ideas every other rule derives from |
-| 2 | [`principles.md`](principles.md) | 17 applicable principles, each with a yes/no Detection Rule |
-| 3 | [`ux-smells.md`](ux-smells.md) | Named defects to classify a screen's problems quickly |
-| 4 | [`screen-analysis.md`](screen-analysis.md) | The Step 0–10 analysis a review must run before proposing anything |
-| 5 | [`visual-hierarchy.md`](visual-hierarchy.md) | Semantic role, weight, and misuse of every screen element |
-| 6 | [`interaction-patterns.md`](interaction-patterns.md) | Canonical answers for 22 recurring situations |
-| 7 | [`ux-writing.md`](ux-writing.md) | Copy rules for CTAs, questions, explanations, read-outs, errors, and empty states; the fixed product vocabulary and tone |
-| 8 | [`examples.md`](examples.md) | 13 before/after screens with the reasoning shown |
-| 9 | [`agent-protocol.md`](agent-protocol.md) | How an agent runs that analysis: request modes, implementation rules, the change-report format, and when to ask |
-| 10 | [`guardrails.md`](guardrails.md) | Failure modes an agent must not commit, each linked to the rule it breaks |
-| 11 | [`principle-priority.md`](principle-priority.md) | How to resolve principles that conflict |
-| 12 | [`review-checklist.md`](review-checklist.md) | The one checklist — the gate for a PR or a screen review |
+| Document | What it decides |
+| --- | --- |
+| [`philosophy.md`](philosophy.md) | The four root ideas every other rule derives from |
+| [`principles.md`](principles.md) | 17 applicable principles, each with a yes/no Detection Rule |
+| [`ux-smells.md`](ux-smells.md) | Named defects to classify a screen's problems quickly |
+| [`screen-analysis.md`](screen-analysis.md) | The Step 0–10 analysis a review must run before proposing anything |
+| [`visual-hierarchy.md`](visual-hierarchy.md) | Semantic role, weight, and misuse of every screen element |
+| [`interaction-patterns.md`](interaction-patterns.md) | Canonical answers for 22 recurring situations |
+| [`ux-writing.md`](ux-writing.md) | Copy rules for CTAs, questions, explanations, read-outs, errors, and empty states; the fixed product vocabulary and tone |
+| [`examples.md`](examples.md) | 13 before/after screens with the reasoning shown |
+| [`agent-protocol.md`](agent-protocol.md) | How an agent runs that analysis: request modes, implementation rules, the change-report format, and when to ask |
+| [`guardrails.md`](guardrails.md) | Wrong moves an agent must not make, each linked to the rule it breaks |
+| [`principle-priority.md`](principle-priority.md) | How to resolve principles that conflict |
+| [`review-checklist.md`](review-checklist.md) | The one checklist — the gate for a PR or a screen review |
 
-What to read and run, by task:
+## What to read, by task
+
+The one required-reading list; every other document links here.
 
 | Task | Read | Run |
 | --- | --- | --- |
 | Copy only — a label, a question, a message, an empty state's line | [`ux-writing.md`](ux-writing.md) | The copy path of the [review checklist](review-checklist.md#fast-path) |
-| Anything else — a review, a smell scan, a proposal, or a change | `principles.md`, `ux-smells.md`, `agent-protocol.md`, `guardrails.md`; the rest as the task requires | [`screen-analysis.md`](screen-analysis.md), then the review checklist path the change's size calls for |
+| Small hierarchy or label change — one control's weight, a label with it | [`visual-hierarchy.md` → The weight ladder](visual-hierarchy.md#the-weight-ladder), and the principles the review checklist's sections A and B name | Review checklist sections A, B, and H |
+| Anything else — a review, a smell scan, a proposal, or a change | [`principles.md`](principles.md), [`ux-smells.md`](ux-smells.md), [`agent-protocol.md`](agent-protocol.md), and the screen's document under [`../features/`](../features/README.md) — what it currently *is*, including its implementation status; before proposing or implementing, also [`guardrails.md`](guardrails.md); to implement, also [`../architecture/feature-sliced-design.md`](../architecture/feature-sliced-design.md), [`../conventions/module-boundaries.md`](../conventions/module-boundaries.md), and [`../conventions/cookbook.md`](../conventions/cookbook.md); the rest as the task requires | [`screen-analysis.md`](screen-analysis.md), then the review checklist path the change's size calls for |
 
 ## Evidence labels
 

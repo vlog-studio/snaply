@@ -2,7 +2,7 @@
 
 Snaply는 짧게 여러 번 찍어두면 AI가 한 편의 숏폼 브이로그로 만들어 주는 앱입니다. 짧은 **스냅**(카메라로 3초·5초까지 찍거나 갤러리 영상에서 0.5~5초를 잘라낸 클립)을 모아두고, 스냅 탭에서 골라 확정하면 곧바로 초안 **무비**가 만들어집니다. 무비 화면은 타임라인 스튜디오입니다: 컷 순서·트림·스타일을 정리한 뒤 생성을 실행하고, 완성본을 같은 화면에서 감상·공유합니다. 촬영 원본은 앱의 문서 디렉터리에 저장되고, 생성에 쓰일 수 있도록 백그라운드에서 백엔드에 업로드됩니다.
 
-> **AI 합성은 실제 백엔드 작업으로 동작합니다.** 앱이 무비를 서버에 보내고 `POST /movies/{id}/export`로 생성을 요청하면 백엔드가 컷을 자르고 스타일을 입히고 음악을 붙여 렌더 파일을 만들며, 완성 무비는 그 파일을 재생하고 공유합니다. 백엔드 없이(mock 모드) 실행하면 합성 없이 컷을 순서대로 이어 재생합니다. 무엇이 실제로 동작하는지는 [`docs/features/`](docs/features)를 보세요.
+> **AI 합성은 실제 백엔드 작업으로 동작합니다.** 앱이 무비를 서버에 보내고 `POST /movies/{id}/export`로 생성을 요청하면 백엔드가 컷을 자르고 스타일을 입히고 음악을 붙여(곡이 올라가기 전에는 음악 없이) 렌더 파일을 만들며, 완성 무비는 그 파일을 재생하고 공유합니다. 백엔드 없이(mock 모드) 실행하면 합성 없이 컷을 순서대로 이어 재생합니다. 무엇이 실제로 동작하는지는 [`docs/features/`](docs/features)를 보세요.
 
 Expo SDK 57(React Native 0.86, Expo Router)을 사용하며, Feature-Sliced Design v2.1을 기준으로 프로젝트를 구성합니다.
 
@@ -16,12 +16,12 @@ Expo SDK 57(React Native 0.86, Expo Router)을 사용하며, Feature-Sliced Desi
 
 ```bash
 npm run android:device     # 실기기. 에뮬레이터는 npm run android
-npx expo start --dev-client
+npm start -- --dev-client
 ```
 
-iOS 시뮬레이터는 Expo Go(`npx expo start --go`)로 띄울 수 있습니다.
+모노레포 루트에서는 `npm run dev:mobile`이 공유 계약 패키지를 먼저 빌드한 뒤 같은 Metro를 띄웁니다. iOS 시뮬레이터는 Expo Go(`npm start -- --go`)로 띄울 수 있습니다.
 
-> Swift 6.2를 지원하는 Xcode가 없는 장비(구형 macOS, Xcode 16.4까지)에서는 iOS 로컬 빌드(`npm run ios`)가 실패하므로 Expo Go를 씁니다. 조건과 에러 메시지, 에이전트의 검증 경로와 기기 연결 규칙은 [`docs/workflows/local-development-and-testing.md`](docs/workflows/local-development-and-testing.md#environment-and-legacy-macos-limitation)가 기준입니다.
+> 개발 Mac의 환경(Xcode·시뮬레이터·에뮬레이터)과 iOS를 Expo Go로 실행하는 이유는 [`환경 표`](docs/workflows/local-development-and-testing.md#environment), 무엇으로 검증을 마쳤다고 보는지와 기기 연결 규칙은 [`검증 경로`](docs/workflows/local-development-and-testing.md#verification-surfaces-read-first)가 기준입니다.
 
 웹(`npm run web`)도 실행할 수 있지만 기준 개발 환경은 아닙니다. 웹에서는 영상 촬영 기능을 사용할 수 없습니다.
 
@@ -70,10 +70,11 @@ src/
 
 | 명령어 | 용도 |
 | --- | --- |
-| `npx expo start --dev-client` | 개발 빌드용 Metro 서버 실행(Android 기준 런타임) |
-| `npx expo start --go` | Expo Go용 Metro 서버 실행(iOS 시뮬레이터 전용 — Android Expo Go는 부팅 불가) |
+| `npm start` | Metro 서버 실행(`expo start`). 아래 두 형태로 런타임을 고릅니다 |
+| `npm start -- --dev-client` | 개발 빌드용 Metro 서버 실행(Android 기준 런타임). 모노레포 루트에서는 `npm run dev:mobile` |
+| `npm start -- --go` | Expo Go용 Metro 서버 실행(iOS 시뮬레이터 전용 — Android Expo Go는 부팅 불가) |
 | `npm run android` / `npm run android:device` | Android 개발 빌드를 에뮬레이터/실기기에 빌드·실행 |
-| `npm run ios` | iOS 개발 빌드를 시뮬레이터에 빌드·실행(Swift 6.2를 지원하는 Xcode 필요) |
+| `npm run ios` | iOS 개발 빌드를 시뮬레이터에 빌드·실행 — 개발 Mac에서 되는지는 [`환경 표`](docs/workflows/local-development-and-testing.md#environment) |
 | `npm run android:device:install` | 이미 빌드된 개발 APK를 무선(또는 USB) 연결 실기기에 설치하고 `adb reverse`·실행까지 처리. `-- --build`로 재빌드, `-- --connect <ip:port>`로 연결부터 |
 | `npm run android:device:reverse` | 설치 없이 `adb reverse`(8081·API·MinIO)만 다시 적용 — 무선 adb가 재연결돼 reverse가 풀렸을 때 |
 | `npm run android:device:release` | 릴리스 APK를 빌드해 실기기에 설치 |
@@ -115,6 +116,7 @@ src/
 | 패키지 | 사용 이유 |
 | --- | --- |
 | `@tanstack/react-query` | 서버 상태(데이터 페칭·캐싱·동기화) 관리. |
+| `expo-network` | 네트워크 연결 상태 감지. 연결이 돌아오면 실패한 조회를 다시 부릅니다(`shared/lib/network-state`). 네이티브 모듈이라 개발 빌드를 다시 만들어야 합니다. |
 | `zustand` | 클라이언트 전역 상태 관리. |
 | `@supabase/supabase-js` | Supabase 백엔드·인증 클라이언트. |
 | `react-native-url-polyfill` | RN 환경에 `URL` 표준 구현을 주입합니다. `supabase-js`가 요구합니다. |

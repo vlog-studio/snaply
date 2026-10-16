@@ -60,8 +60,7 @@ Reanimated 4 deprecates `runOnJS` in its favor (`scheduleOnRN(fn, ...args)` repl
 Gesture Handler's `.runOnJS(true)` is a different thing — a gesture option that runs its callbacks on JS — and stays.
 
 State that changes every frame (drag position, progress) lives in shared values,
-mutated by worklets. Mirror it to React state via `scheduleOnRN` (from
-`react-native-worklets`, `scheduleOnRN(fn, ...args)`) only at meaningful
+mutated by worklets. Mirror it to React state via `scheduleOnRN` only at meaningful
 boundaries (a step change, a completion) — for labels, badges, or commit payloads —
 never per frame. The commit itself stays a plain store/feature call made from the JS
 side (`timeline-cut.tsx`'s trim handle reports its window on a step change and when
@@ -99,15 +98,9 @@ deferred unmount comes from the animation's `scheduleOnRN` completion callback.
 Which of the two shapes below applies is decided by one question: **can the
 gesture be told apart from the scroll by direction?**
 
-*A gesture on a different axis, or one that may wait to begin* —
-`.activateAfterLongPress(...)` (no screen uses this shape today):
-
-- Use `.activateAfterLongPress(...)` so the scroll gesture keeps working; on
-  activation give haptic feedback (`impactFeedback('medium')` from `@/shared/lib/haptics`,
-  which plays on iOS only — the established lift/collect cue) and lock the scroll (`scrollEnabled={!dragActive}` via a
-  `scheduleOnRN` state flip) until the gesture settles.
-- Match the long-press delay to the sibling `Pressable`'s `delayLongPress` so
-  gesture entries feel like one family.
+*A gesture on a different axis, or one that may wait to begin* (no screen uses
+this shape today) — `.activateAfterLongPress(...)` with the sibling `Pressable`'s
+`delayLongPress`, locking the scroll until the gesture settles.
 
 *A gesture that wants the scroll's own axis and must respond to the first pixel*
 — lock the scroll on touch-down (`timeline-cut.tsx`'s `buildTrimGesture` is the

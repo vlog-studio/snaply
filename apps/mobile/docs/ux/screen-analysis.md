@@ -116,7 +116,7 @@ A finding without a named user cost is a preference, not a finding. Drop it.
 
 ## Step 7 — Principle mapping and scope
 
-For each confirmed finding, choose the principle that will drive the fix (the one whose Better Pattern most directly resolves it), then decide the scope of the change:
+For each confirmed finding, choose the principle that will drive the fix (the one whose Definition — or worked example — most directly resolves it), then decide the scope of the change:
 
 | Scope | Meaning | When |
 | --- | --- | --- |

@@ -64,8 +64,10 @@ Capture four things, because every later phase depends on them:
 3. **Verification commands** — the real ones, from `package.json` scripts or CI. Never invent a
    command; running `npm test` in a repo whose script is `test:ci` wastes a cycle and reports a
    false failure.
-4. **Commit and PR conventions** — read `git log` for prefix style, body depth, and language,
-   and `gh pr view <recent>` for body structure. Match what is there.
+4. **Commit and PR conventions** — read the repository's own guides first (in Snaply, the
+   monorepo root's `docs/commit-guidelines.md` and `docs/pull-request-guidelines.md`), then
+   `git log` for prefix style, body depth, and language, and `gh pr view <recent>` for body
+   structure. Match what is there.
 
 ### Phase 1 — Mechanical scan
 
@@ -170,6 +172,8 @@ Only when the user asks for commits or a PR.
 - **Put the caveats in the PR body.** Pre-existing failures, verification you could not perform,
   and findings you deliberately left out all belong there. A reviewer who discovers them later
   trusts the rest of the PR less.
+- **Create the PR as a Draft** unless the user asks otherwise, then give them its link and the
+  verification you ran.
 
 ## Rules
 

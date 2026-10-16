@@ -1,6 +1,6 @@
 # Android device verification (wireless adb)
 
-A physical Android device connected over wireless adb is an **optional verification surface**: the default path is the iOS Simulator and Android emulator ([`local-development-and-testing.md`](local-development-and-testing.md#verification-surfaces-read-first)), and device-only behavior (camera capture, real permission prompts, haptics, push delivery) is normally checked by the owner from a manual-check list you write. Use this document when the owner has a device attached and asks you to drive it, or when a manual check needs to be reproduced with exact commands.
+The owner's phone over wireless adb is needed only for device-only behavior — push receipt, the OS permission prompts, camera capture, album writes, and opening another app; everything else counts as verified on the Android emulator ([verification surfaces](local-development-and-testing.md#verification-surfaces-read-first)). Those checks are normally run by the owner from a manual-check list you write. Use this document when the owner has the phone attached and asks you to drive it, or when a manual check needs to be reproduced with exact commands.
 
 This document is the agent's toolkit: what can actually be observed and driven on that device, with the exact commands. Confirm the device is attached before assuming it (`adb devices`), and never free port 8081 without asking — the Metro rules in `local-development-and-testing.md` apply here too.
 
@@ -148,10 +148,10 @@ Know these before promising a verification result:
 
 - **No root.** `run-as` covers this app's debug build only. Other apps' data is unreachable, and Samsung Secure Folder profiles reject shell access outright (`SecurityException: Shell does not have permission to access user 150`).
 - **Camera input cannot be injected.** Recording a real clip requires the owner to hold the device. The agent can verify everything downstream of capture — stored clip, thumbnail, library state, UI — but not the capture gesture itself.
-- **FCM push display is unverified.** Geofence gating and local-notification setup are confirmed on device; no geofence-enter-to-displayed-notification run has been recorded yet (status: [`location-and-push-notifications.md`](../features/location-and-push-notifications.md)).
+- **Geofence arrival push is unverified end to end.** FCM display was walked on the phone on 2026-10-09 — the movie-completion push arrived in the background, with no app process, and in the foreground, and its tap opened the movie — but no run from a geofence entry through the server to a displayed notification has been recorded (root backlog C-4; status: [`location-and-push-notifications.md`](../features/location-and-push-notifications.md)).
 - **Release-variant behavior differs.** These tools assume the debug dev build. `run-as` and `ReactNativeJS` logging are unavailable on the release APK from `npm run android:device:release`.
 - **A JS-only loop.** Native module changes, config-plugin changes, and `app.json` branding changes need a rebuild (`npm run android:device`), not Fast Refresh — see [`app-branding-and-native-config.md`](app-branding-and-native-config.md).
 
 ## iOS physical devices
 
-This toolkit is Android-only. Its iOS counterpart is not written yet; until it is, follow the fallback in [`AGENTS.md`](../../AGENTS.md#planned-documentation).
+This toolkit is Android-only, and there is no iOS counterpart yet — iOS checks follow [`AGENTS.md` § Verification](../../AGENTS.md#verification).
