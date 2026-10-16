@@ -40,23 +40,18 @@ docs/           # 현행 문서·스펙·결정·계획 (아래 원천 지도)
 | 모바일 에이전트 규칙 | [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md) | `apps/mobile/**` 작업에 추가 적용. 경로는 별도 표기가 없으면 `apps/mobile` 기준 |
 | 모바일의 현재 사용자 동작 | [apps/mobile/docs/features/README.md](apps/mobile/docs/features/README.md) | 기능별 상태·라우트·소유 계층의 원천 |
 | 다음에 결정·구현할 일 | [docs/backlog.md](docs/backlog.md) | 닫히지 않은 작업은 여기에만 둔다. `decisions/` 전체를 훑지 않는다 |
-| 완료된 구현·검증 내역 | [docs/progress.md](docs/progress.md) | 완료된 것만 |
+| 완료된 구현·검증 내역 | [docs/progress.md](docs/progress.md) | 완료된 것만. 이번 달만 담고 지난달은 `docs/archive/progress-YYYY-MM.md`([doc-conventions.md](docs/doc-conventions.md) §본문) |
 | 작업 분담·공유 파일 규칙 | [docs/team.md](docs/team.md) | |
 | 배포·운영 절차 | [docs/deployment-aws.md](docs/deployment-aws.md) | 현행 배포 대상은 AWS 서버 하나. 구성을 고른 이유는 [docs/decisions/aws-contest-server.md](docs/decisions/aws-contest-server.md) |
 | 무비가 서버에 사는 방식(앱 캐시·아웃박스) | [apps/mobile/docs/features/movie.md](apps/mobile/docs/features/movie.md#movies-live-on-the-server) | 앱 id·멱등 생성·읽기 병합. 결정 배경·기각한 대안은 [docs/decisions/movie-client-cache.md](docs/decisions/movie-client-cache.md), 미결 목록은 backlog |
 | 정책·설계 결정 — 확정과 결정 대기 | [docs/decisions/README.md](docs/decisions/README.md) | 인덱스가 **결정 대기 / 결정 완료 / 과거 결정(대체됨)**을 구분한다. 배경·논점·기각한 대안 포함 |
-| 착수 전 구현 계획 | [docs/plans/README.md](docs/plans/README.md) | 제안이며 현행 사실이 아니다 |
+| 구현 계획 | [docs/plans/README.md](docs/plans/README.md) | 제안이며 현행 사실이 아니다. 어디까지 구현됐는지는 인덱스의 상태 열, 다 구현된 계획은 archive |
 | 외부 연동 셋업 절차 | [docs/sns-setup.md](docs/sns-setup.md) | 인스타·틱톡 앱 등록 |
 | 로컬 서버를 외부에 노출 | [docs/local-tunnel.md](docs/local-tunnel.md) | 웹훅·SSV 콜백·OAuth 테스트용 cloudflared 임시 주소 |
 | 회의 안건·결과 | [docs/meetings/README.md](docs/meetings/README.md) | |
 | 문서의 위치·이름·헤더·본문 규칙 | [docs/doc-conventions.md](docs/doc-conventions.md) | 문서를 새로 만들거나 옮기기 전에 읽는다 |
-| 지난 기록 | [docs/archive/README.md](docs/archive/README.md) | **현행 사실과 다를 수 있음 — 판단 근거로 쓰지 말 것** |
+| 지난 기록 | [docs/archive/README.md](docs/archive/README.md) | **현행 사실과 다를 수 있음 — 판단 근거로 쓰지 말 것.** 예외: 월별 진행 기록(`progress-YYYY-MM.md`)은 언제 무엇을 검증했는지의 근거로 인용할 수 있다(현행 동작의 근거는 아니다) |
 
 작업을 고를 때는 [docs/backlog.md](docs/backlog.md)에서 시작한다. 결정 문서는 선택한 항목의
 배경과 제약을 확인할 때만 따라간다. 구현을 마치면 백로그에서 닫고
 [docs/progress.md](docs/progress.md)에 검증 결과를 기록하되, 결정 문서는 근거 기록으로 남긴다.
-
-## 빠른 시작
-
-clone부터 API·모바일 dev client·워커 실행까지의 순서, 자주 쓰는 루트 명령, 트러블슈팅은
-[ONBOARDING.md](ONBOARDING.md)가 원천이다 — 처음이면 §3을 순서대로, 명령 표는 §4.

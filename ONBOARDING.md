@@ -101,28 +101,22 @@ cp .env.example apps/api/.env
 ```
 
 `apps/api/.env`는 API·Prisma·AI worker·compose·e2e 스크립트가 함께 읽는다. 루트에는
-`.env`를 만들지 않는다. 로컬 Docker 인프라를 쓸 때 최소값은 다음과 같다.
+`.env`를 만들지 않는다. `.env.example`의 기본값이 §3-5의 로컬 Docker 인프라(PostgreSQL·MinIO·Redis)를
+가리키므로, 직접 채울 것은 다음뿐이다.
 
 ```dotenv
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/snaply
-DIRECT_URL=postgresql://postgres:postgres@localhost:5432/snaply
 SUPABASE_URL=<팀 개발 프로젝트 URL>
 SUPABASE_PUBLISHABLE_KEY=<팀 개발 publishable key>
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin123
-AWS_REGION=ap-northeast-2
-S3_BUCKET_NAME=snaply-dev
-S3_ENDPOINT=http://localhost:9100
-S3_PUBLIC_ENDPOINT=http://localhost:9100
-REDIS_URL=redis://localhost:6379
-NODE_ENV=development
-API_PORT=3000
 SNS_TOKEN_ENCRYPTION_KEY=<32바이트 이상의 개인 개발용 랜덤 문자열>
 ```
 
+`SUPABASE_URL`이 비면 API가 기동을 거부한다. Supabase 프로젝트 없이 시작하려면 §4 "인증 없이 로컬에서
+API 찔러보기"의 스텁을 쓴다.
+
 Android 실기기에서 업로드·재생까지 확인할 때, adb reverse 경로(§3-4 기본)면 `S3_PUBLIC_ENDPOINT`를
-위 값(`localhost`) 그대로 두고, LAN IP 경로면 `localhost`를 개발 PC의 LAN IP로 바꾼다.
-`SUPABASE_SERVICE_ROLE_KEY`처럼 서버 전용인 값은 절대 모바일 환경파일에 넣지 않는다. 운영에는 `.env` 파일을 배포하지 않으며 값은 플랫폼 시크릿으로 주입한다.
+기본값(`http://localhost:9100`) 그대로 두고, LAN IP 경로면 `localhost`를 개발 PC의 LAN IP로 바꾼다.
+`SUPABASE_SERVICE_ROLE_KEY`처럼 서버 전용인 값은 절대 모바일 환경파일에 넣지 않는다. 개인 `.env`는 운영에 가지
+않는다 — 운영 env 파일은 배포가 시크릿에서 만든다([docs/deployment-aws.md](./docs/deployment-aws.md) §2).
 
 ### 3-4. 모바일 환경변수 만들기
 
@@ -167,12 +161,13 @@ npm run db:seed
 `infra:up`은 PostgreSQL `:5432`, MinIO `:9100/:9101`, Redis `:6379`를 시작한다.
 MinIO 이미지는 공개 배포처가 없어 우리가 소스에서 빌드한 GHCR 이미지를 쓴다. `docker login ghcr.io`
 가 되어 있으면 받아 오고, 아니면 첫 실행에서 `deploy/minio`로 로컬 빌드한다(몇 분, 한 번만)
-— [`scripts/ensure-minio-image.sh`](scripts/ensure-minio-image.sh), 배경은 backlog E-7.
+— [`scripts/ensure-minio-image.sh`](scripts/ensure-minio-image.sh), 배경은 progress 2026-10-10 "MinIO 는 소스 빌드 미러를 유지한다".
 MinIO 콘솔은 `http://localhost:9101`이며 기본 로그인은 `minioadmin` / `minioadmin123`이다.
-버킷은 API 첫 기동 시 자동 생성된다. 공유 Supabase DB를 쓰는 경우에는 `DATABASE_URL`과
-`DIRECT_URL`만 팀 값으로 바꾸고 로컬 PostgreSQL 대신 그 DB에 migration을 적용한다.
+버킷은 API 첫 기동 시 자동 생성된다.
 
-공유 Supabase DB를 쓰는 경우, 그 DB를 새로 만든 담당자만 최초 한 번 Supabase SQL Editor에서 RLS 정책
+DB의 기본은 이 로컬 PostgreSQL이다. 팀의 공유 Supabase DB를 쓰는 경우에만 `DATABASE_URL`과
+`DIRECT_URL`을 팀 값으로 바꾸고(형식은 `.env.example`의 Database 주석) 로컬 PostgreSQL 대신 그 DB에
+migration을 적용한다. 그 DB를 새로 만든 담당자만 최초 한 번 Supabase SQL Editor에서 RLS 정책
 `apps/api/prisma/rls-policies.sql`을 실행한다. 로컬 PostgreSQL에는 필요 없다.
 
 ### 3-6. API 실행과 확인 — 터미널 1
@@ -225,8 +220,7 @@ npm run dev:mobile
 실기기를 로컬 API에 붙일 때 adb reverse 경로(§3-4 기본)라면 API를 띄운 뒤
 `npm run android:device:reverse -w snaply-app`을 한 번 실행한다(`npm run dev:up`을 썼다면 이미 걸려 있다).
 LAN IP 경로라면 PC와 실기기가 같은 네트워크에 있어야 하며 방화벽에서 `3000`과 `9100` 포트 접근을
-허용해야 한다. iOS는 Swift 6.2를 지원하는 Xcode에서
-`npm run ios -w snaply-app`을 사용한다. 구형 Xcode 제약과 상세 기기 절차는
+허용해야 한다. iOS를 지금 Mac에서 띄우는 방법(Expo Go · EAS)과 상세 기기 절차는
 [`apps/mobile/docs/workflows/local-development-and-testing.md`](apps/mobile/docs/workflows/local-development-and-testing.md)를 본다.
 
 Claude Code로 모바일을 작업할 때는 `apps/mobile`에서 세션을 연다 — `apps/mobile/.claude/settings.json`의
@@ -301,12 +295,13 @@ cd ../..
 | `npm run ontology:export` / `ontology:test` | 개념 사전(`content-vocabulary.json`)에서 발표용 온톨로지를 만든다 — `dist/ontology/` 에 OWL(Turtle) 파일과 그래프 페이지(HTML, 브라우저로 연다). 결과는 생성물이라 커밋하지 않는다. `ontology:test` 는 내보내기 테스트. 둘 다 shared-types 를 먼저 빌드한다 |
 | `npm test` | turbo로 전체 테스트 — API 통합 테스트 + 모바일 jest |
 | `npm test -w apps/api` | API 통합 테스트만 (실제 Postgres/Redis/MinIO 사용, `snaply_test` DB 자동 생성) |
+| `npm exec -w apps/api -- vitest run test/<name>.test.ts` | API 테스트 한 파일만 — `apps/api`에서 실행돼 `vitest.config.ts`가 적용된다. `npm test -w apps/api -- <파일>`은 인자가 스크립트 끝(`node --test`)에 붙어 vitest 가 전부 돈다 |
 | `npm run db:generate` / `db:migrate` / `db:seed` / `db:studio` | Prisma 클라이언트 생성 / 마이그레이션 / 시드 / Studio |
 | `npm run openapi:write -w apps/api` | 계약을 바꾼 뒤 `apps/api/openapi.json` 재생성 (§3-6) |
 | `npm run media:e2e` / `media:cleanup` | 업로드→편집→결과 e2e / 테스트 데이터 정리 (§5) |
 | `npm run auth:stub -w apps/api` | 로컬 Supabase Auth 스텁 — 수동 테스트용 JWT 발급 |
 | `npm run analysis:run` | 앱으로 올린 스냅 1건을 분석 요청·대기·결과 출력 (분석 워커가 떠 있어야 한다) |
-| `npm run media:purge-expired -w apps/api` · `media:notify-expiring` · `accounts:purge` · `videos:purge-pending` | 정리·만료 예고 배치를 로컬 DB에 한 번 실행. 기본 dry-run이고 `-- --yes`를 붙여야 실행한다. 서버의 정기 실행은 [docs/deployment-aws.md](docs/deployment-aws.md#4-배치) §4 |
+| `npm run <이름> -w apps/api` — `<이름>`은 `media:purge-expired` · `media:notify-expiring` · `accounts:purge` · `videos:purge-pending` | 정리·만료 예고 배치를 로컬 DB에 한 번 실행. 기본은 dry-run(대상만 보여 준다)이고 `npm run <이름> -w apps/api -- --yes`여야 지우거나 보낸다. 서버의 정기 실행은 [docs/deployment-aws.md](docs/deployment-aws.md#4-배치) §4 |
 | `npm run ig:probe -w apps/api` 등 · `npm run dev:public-bucket -w apps/api` | SNS 연동 점검·개발 버킷 공개 — [docs/sns-setup.md](docs/sns-setup.md) |
 
 ### 외부에서 로컬 서버를 호출해야 할 때
@@ -334,8 +329,9 @@ npm run stack:down
   (`SNS_MOCK`/`BILLING_MOCK`). 잠깐 띄운 서버가 실제 RevenueCat·Instagram 을 호출하지 않게 하려는 것.
   실키 경로를 봐야 하면 `docker-compose.yml` 의 해당 줄을 지운다.
 - `stack:*` 명령은 `--env-file apps/api/.env` 를 넘기므로 Compose의 `${S3_PUBLIC_ENDPOINT}` 같은
-  보간 값도 같은 파일에서 읽는다. 휴대폰 테스트 시 이 값을 `http://<PC의 LAN IP>:9200`으로 두거나,
-  adb reverse 경로면 `http://localhost:9200`으로 두고 `npm run android:device:reverse -w snaply-app`을 실행한다.
+  보간 값도 같은 파일에서 읽는다 — 개발 인프라용 값(`http://localhost:9100`)이 들어 있으면 스택도 그 주소로 서명한다.
+  스택을 띄우는 동안은 이 값을 `http://localhost:9200`으로 바꾸고(휴대폰은 adb reverse 경로면 그대로 두고
+  `npm run android:device:reverse -w snaply-app`, LAN IP 경로면 `http://<PC의 LAN IP>:9200`), 끝나면 되돌린다.
 - API만 필요하면 `npm run stack:up`을 사용한다(포그라운드). 이 경우에도 필요한 인프라와 migration은
   자동으로 따라오지만 워커는 기동하지 않는다.
 - 분석 워커 컨테이너는 `apps/api/.env`에 `OPENAI_API_KEY`가 없으면 기동 단계에서 종료된다(의도된 동작).
@@ -366,7 +362,7 @@ curl -H "Authorization: Bearer <출력된 토큰>" http://localhost:3000/auth/me
 - **휴대폰에서 API 연결 실패 — LAN IP 경로**: `apps/mobile/.env`의 `EXPO_PUBLIC_API_BASE_URL`에 개발 PC의 LAN IP를 쓰고, API가 `0.0.0.0`에 bind됐는지와 방화벽의 3000 포트를 확인한다.
 - **Android Expo Go 부팅 실패**: 정상적인 제한이다 — Android는 dev build가 기준이다(§3-7).
 - **API·테스트가 `@vlog-studio/shared-types`를 찾지 못함**(`Failed to resolve entry for package` · `ERR_MODULE_NOT_FOUND`): 계약 패키지의 `dist/`가 없다. `npm run build -w @vlog-studio/shared-types`(§3-2). 계약이 바뀐 브랜치로 옮긴 뒤 API 응답이 이상할 때도 같은 명령으로 다시 빌드한다.
-- **API가 `환경 변수 <KEY>가 설정되지 않았습니다`로 뜨지 않음**: 기동 필수 변수(`apps/api/src/env-spec.ts`의 `required: true` — `DATABASE_URL`·`SUPABASE_URL`·`S3_BUCKET_NAME`·`REDIS_URL`)가 `apps/api/.env`에 없다. §3-3의 최소값을 확인한다. `DATABASE_URL` 값은 있는데 붙지 못하면 서버는 뜨고 `/health`의 `db`가 `error`다.
+- **API가 `환경 변수 <KEY>가 설정되지 않았습니다`로 뜨지 않음**: 기동 필수 변수(`apps/api/src/env-spec.ts`의 `required: true` — `DATABASE_URL`·`SUPABASE_URL`·`S3_BUCKET_NAME`·`REDIS_URL`)가 `apps/api/.env`에 없다. §3-3을 확인한다. `DATABASE_URL` 값은 있는데 붙지 못하면 서버는 뜨고 `/health`의 `db`가 `error`다.
 - **워커 DB 연결 실패**: `DATABASE_URL`에 pgbouncer 파라미터가 있으면 asyncpg가 실패 → DIRECT_URL(5432) 사용.
 - **Supabase 무료 프로젝트 일시정지**: 1주일 미사용 시 자동 정지. 대시보드에서 재개.
 - **테스트 데이터 정리**: `npm run media:e2e`로 공유 DB(공유 Supabase 등)에 만든 데이터는 `npm run media:cleanup`으로 지운다 — `TEST_EMAIL` 계정의 데이터만 대상이고, 기본은 대상만 보여 주며 `npm run media:cleanup -- --yes`로 실제 삭제한다. 통합 테스트(`npm test -w apps/api`)는 로컬 `snaply_test` DB만 쓰므로 정리할 것이 없다.
@@ -375,15 +371,3 @@ curl -H "Authorization: Bearer <출력된 토큰>" http://localhost:3000/auth/me
   (`*firebase-adminsdk*.json`, `*.pem` 등), 레포 안에 두지 말고 `.env` 에 base64 로 넣는 것을 권장한다.
 - **`apps/mobile` 의 이력**: 앱 저장소는 `d13f921 chore: unify app and backend monorepos` 에서 이 저장소로 합쳐졌다(2026-08-31).
   `apps/mobile` 아래 파일은 `git log` · `git blame` 이 그 커밋 이전으로 내려가지 않는다(이력이 squash 됐다) — 그 전 맥락은 옛 앱 저장소에서 찾는다.
-
----
-
-## 6. 다음 단계
-
-- 담당 트랙과 공유 파일 규칙: [docs/team.md](./docs/team.md)
-- 커밋·PR·코드 규칙: [AGENTS.md](./AGENTS.md)
-- 지금 막혀 있는 것: [docs/backlog.md](./docs/backlog.md)
-- 기능별 구현·검증 내역: [docs/progress.md](./docs/progress.md)
-- API 레퍼런스: `/docs`(Swagger) + [docs/api-spec.md](./docs/api-spec.md)
-- 정책·설계 결정(확정·결정 대기): [docs/decisions/README.md](./docs/decisions/README.md)
-- 서버 배포: [docs/deployment-aws.md](./docs/deployment-aws.md)

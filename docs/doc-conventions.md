@@ -14,9 +14,9 @@
 | `docs/` 직하 | 계속 갱신되는 현행 문서 (계약·상태·규칙·절차). 최상위 원칙은 [`constitution.md`](constitution.md) | 상시 |
 | `docs/specs/` | 제품 요구사항(무엇을·왜) — 요구 ID + 구현 상태 라벨. 동작 계약을 바꾸는 작업은 해당 spec 갱신이 먼저다 | 상시 |
 | `docs/decisions/` | 한 시점에 내린 정책·설계 결정. 배경·기각한 대안 포함. 결정 전의 **결정 요청**(선택지·결과·권장)도 상태 `미결`로 여기에 두고, 결정되면 같은 파일을 갱신한다. 어느 문서가 미결인지는 [decisions/README.md](decisions/README.md) | 결정 시점 고정 |
-| `docs/plans/` | 착수 전 구현 계획. **제안이며 현행 사실이 아니다.** 목록과 어디까지 구현됐는지는 [plans/README.md](plans/README.md) | 구현 시작까지 |
+| `docs/plans/` | 구현 계획. **제안이며 현행 사실이 아니다.** 목록과 어디까지 구현됐는지는 [plans/README.md](plans/README.md) | 다 구현될 때까지 — 일부 구현이면 구현된 절을 포인터로 접어 남기고, 다 구현되면 `archive/`로(살아 있는 설계는 먼저 `decisions/`로, 기록은 progress). 절차는 [plans/README.md](plans/README.md) |
 | `docs/meetings/` | 회의 안건과 결과 | 회의 단위 |
-| `docs/archive/` | 수명이 끝난 문서 | 보관 |
+| `docs/archive/` | 수명이 끝난 문서, 지난달의 진행 기록(`progress-YYYY-MM.md` — [§본문](#본문--에이전트가-찾고-고치기-쉽게)) | 보관 |
 
 `apps/mobile/docs/`는 모바일 에이전트 문서 체계이므로 위 `docs/` 배치 규칙의 예외다. 사용자 동작과
 구현 상태는 `apps/mobile/docs/features/`, 모바일 아키텍처·규칙·절차는 해당 하위 디렉터리에 둔다.
@@ -59,7 +59,7 @@
 
 | 위치 | 상태어 |
 |---|---|
-| 루트·`docs/` 직하·`specs/` | `현행` |
+| `docs/` 직하·`specs/` | `현행` |
 | `decisions/` | `결정` · `결정(잠정)` · `미결` · `과거 결정`(일부 또는 전부 대체) |
 | `plans/` | `제안` |
 | `meetings/` | `회의 기록` |
@@ -84,5 +84,10 @@
   **줄 번호(`editor.py:157`, `#L34-L38`)는 쓰지 않는다** — 코드가 바뀌면 조용히 엉뚱한 줄을 가리킨다.
   위치가 필요하면 함수·상수 이름을 함께 적는다.
 - **명령은 실행할 수 있는 형태 그대로** 쓴다 — 저장소 루트 기준, 실제로 있는 `npm run <script>`만.
+  스크립트가 없는 도구 명령(`npx expo prebuild` 등)은 그대로 쓰고, 같은 일을 하는 스크립트가 있으면 스크립트를 쓴다.
 - [progress.md](progress.md)의 항목 제목은 `## YYYY-MM-DD — 제목`, 같은 날 이어지면
-  `## YYYY-MM-DD (이어서) — 제목`이다. 날짜로 grep 해서 찾는다.
+  `## YYYY-MM-DD (이어서) — 제목`이다. **progress.md 에는 이번 달 항목만 둔다** — 새 달의 첫 항목을 쓸 때 지난달
+  항목을 `docs/archive/progress-YYYY-MM.md`로 옮긴다. 날짜로 grep 해서 찾는다 —
+  `grep -n '^## 2026-09-09' docs/progress.md docs/archive/progress-*.md`. 월별 진행 기록은 완료 기록이라
+  archive 에 있어도 **언제 무엇을 검증했는지**의 근거로는 인용할 수 있다(현행 동작의 근거로는 아니다 —
+  "archive 는 판단 근거로 인용하지 않는다"의 예외).

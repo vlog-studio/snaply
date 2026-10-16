@@ -41,7 +41,8 @@ export const ENV_VARS = [
     // "DB 설정 안 됨" 으로 통과했다 — 요청이 들어와야 터지는 구성이었다.
     required: true,
     origin: 'shared',
-    description: 'Prisma 런타임 연결 문자열. 운영은 pgbouncer(6543) 경유',
+    description:
+      'Prisma 런타임 연결 문자열. 로컬 기본은 docker-compose.dev.yml 의 Postgres, AWS 서버는 compose 가 같은 서버의 postgres 로 정한다. 공유 Supabase DB 는 pgbouncer(6543) 풀러 경유',
   },
   {
     key: 'DIRECT_URL',
@@ -74,7 +75,8 @@ export const ENV_VARS = [
     key: 'SUPABASE_ANON_KEY',
     required: false,
     origin: 'shared',
-    description: '레거시 fallback. 신규 프로젝트는 PUBLISHABLE 을 쓴다',
+    description:
+      '레거시 fallback. 신규 프로젝트는 PUBLISHABLE 을 쓴다. media:e2e 로그인(scripts/media-e2e.mjs)은 아직 이 값을 읽는다(backlog E-57)',
   },
   {
     key: 'SUPABASE_SERVICE_ROLE_KEY',
@@ -133,7 +135,8 @@ export const ENV_VARS = [
     key: 'CLOUDFRONT_DOMAIN',
     required: false,
     origin: 'production',
-    description: '공개 URL 베이스. 있으면 S3_PUBLIC_ENDPOINT 보다 우선',
+    description:
+      'publicUrl() 베이스 — DB 에 저장하는 URL 에만 쓰인다. 있으면 S3_PUBLIC_ENDPOINT 보다 우선. CloudFront 를 쓰는 배포에서만(현행 AWS 서버는 쓰지 않는다)',
   },
   {
     key: 'S3_PRESIGN_EXPIRY_SECONDS',
@@ -198,7 +201,7 @@ export const ENV_VARS = [
     key: 'RENDITION_QUEUE_NAME',
     required: false,
     origin: 'shared',
-    description: '배포 렌디션 큐 이름. 기본 renditions. API 와 ingest 워커가 일치해야 한다',
+    description: '배포 렌디션 큐 이름. 기본 renditions. API 와 렌디션 워커가 일치해야 한다',
   },
   {
     key: 'NOTIFICATION_QUEUE_NAME',
@@ -207,7 +210,7 @@ export const ENV_VARS = [
     description:
       '알림 요청 큐 이름. 기본 notifications. 편집 워커가 넣고 알림 워커가 꺼낸다 — 양쪽이 일치해야 한다',
   },
-  // 아래 둘은 ingest 워커(apps/ai-worker/src/rendition_worker.py)만 읽는다.
+  // 아래 둘은 렌디션 워커(apps/ai-worker/src/rendition_worker.py)만 읽는다.
   {
     key: 'RENDITION_TIMEOUT_SECONDS',
     required: false,
@@ -218,7 +221,7 @@ export const ENV_VARS = [
     key: 'RENDITION_CONCURRENCY',
     required: false,
     origin: 'shared',
-    description: 'ingest 워커 동시 처리 수. 기본 2',
+    description: '렌디션 워커(rendition_worker.py) 동시 처리 수. 기본 2',
   },
 
   // ── 스냅 내용 분석 (분석 워커 전용) ──────────────────
@@ -537,7 +540,7 @@ export const ENV_VARS = [
     key: 'AI_WORKER_PORT',
     required: false,
     origin: 'shared',
-    description: '워커 헬스 포트',
+    description: '실행되지 않는 apps/ai-worker/src/main.py(FastAPI) 전용 포트. 기본 8000 — ONBOARDING §2',
   },
   {
     key: 'WHISPER_MODEL',
@@ -549,7 +552,7 @@ export const ENV_VARS = [
     key: 'EDIT_TIMEOUT_SECONDS',
     required: false,
     origin: 'shared',
-    description: '편집 작업 1건의 타임아웃',
+    description: '편집 작업 1건의 타임아웃(초). 기본 600',
   },
   {
     key: 'BGM_DIR',

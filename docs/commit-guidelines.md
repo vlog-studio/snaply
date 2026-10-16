@@ -60,10 +60,11 @@ scope는 변경의 주된 소유 영역이 분명할 때 사용한다.
 |---|---|
 | `mobile` | `apps/mobile` Expo/React Native 앱 |
 | `api` | `apps/api` Fastify API |
-| `ai-worker` | `apps/ai-worker` Python 워커 |
+| `ai-worker` | `apps/ai-worker` Python 워커 — `worker`가 아니라 `ai-worker`를 쓴다 |
 | `db` | Prisma 스키마, 마이그레이션, 시드 |
 | `shared-types` | `packages/shared-types` |
 | `scripts` | 루트 `scripts/`의 개발 도구 |
+| `deploy` | 서버 배포 구성 — `deploy/`, `docker-compose.aws.yml` |
 
 저장소 루트 설정이나 여러 영역에 걸친 변경은 scope를 생략한다. 문서만 변경하는
 커밋도 현재 이력에 맞춰 보통 `docs:`를 사용한다.
@@ -105,19 +106,24 @@ fixed bug.
 - Prisma 스키마와 그에 대응하는 마이그레이션
 - 의존성 선언과 해당 lockfile 변경
 - 이름 변경과 그 이름을 사용하는 모든 참조
+- 동작 계약이나 명령을 바꾸는 코드와 그 원천 문서 — 어디를 고칠지는 [AGENTS.md](../AGENTS.md) §문서 갱신 의무
+  ([constitution.md](constitution.md) 제3조)
+- 새 환경변수와 그 운영 주입 — `env-spec.ts` · `.env.example` · 배포 compose
+  (예: `80470c6`이 `BGM_S3_PREFIX`를 코드 · `env-spec.ts` · `.env.example` · `docker-compose.aws.yml`에 함께 넣었다)
 
 분리할 항목:
 
-- 기능 구현과 독립적인 문서 보강
+- 그 기능과 무관한 문서 보강
 - 동작 변경과 관계없는 포맷팅 또는 리팩터링
 - 서로 다른 앱이나 기능의 수정
-- 배포 설정과 애플리케이션 기능 구현
+- 그 기능과 무관한 배포 설정 변경
 
-예를 들어 Swagger의 Supabase 로그인을 추가할 때는 다음처럼 나눌 수 있다.
+예를 들어 Swagger의 Supabase 로그인을 추가하다가 다른 문서의 깨진 링크를 발견했다면 다음처럼 나눈다.
+첫 커밋에는 로그인을 설명하는 원천 문서([ONBOARDING.md](../ONBOARDING.md) §3-6) 갱신이 함께 들어간다.
 
 ```text
 feat(api): add Supabase login to Swagger
-docs: document Swagger Supabase login
+docs: fix broken links in the SNS setup guide
 ```
 
 ## 6. Body와 Footer

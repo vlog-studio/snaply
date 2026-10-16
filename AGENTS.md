@@ -22,8 +22,9 @@
   `DATABASE_URL=<DIRECT_URL 값>` 한 줄만 두어 덮어쓸 수 있다([ONBOARDING.md](ONBOARDING.md) §3-8).
 - 모바일의 공개 빌드 변수(`EXPO_PUBLIC_*`)는 **`apps/mobile/.env`**에 둔다. 서버 시크릿을
   이 파일에 복사하면 앱 번들에 노출되므로 금지한다.
-- **운영에는 `.env` 파일이 가지 않는다.** 값은 배포 플랫폼의 시크릿에서 주입된다
-  ([`docs/decisions/env-management.md`](docs/decisions/env-management.md)). 그래서 새 변수를 쓸 때
+- **저장소 · 개인 `.env`는 운영에 가지 않는다** — 운영 env 파일은 배포가 시크릿에서 만든다
+  ([`docs/deployment-aws.md`](docs/deployment-aws.md) §2, 배경은
+  [`docs/decisions/env-management.md`](docs/decisions/env-management.md)). 그래서 새 변수를 쓸 때
   "로컬에서 되니까 됐다"가 아니라 운영에서 누가 주입하는지를 같이 정해야 한다.
 - 환경변수의 원천은 [`apps/api/src/env-spec.ts`](apps/api/src/env-spec.ts)다. 새 변수를 읽기
   시작하면 **여기부터** 선언하고 [`.env.example`](.env.example)에도 공개 가능한 예시를 넣는다.
@@ -39,34 +40,39 @@
   다른 디렉터리에서 `npx vitest`를 돌리면 `apps/api/vitest.config.ts`가 로드되지 않아 `setupFiles`가
   적용되지 않고, `DATABASE_URL`이 **개발 DB**를 가리킨 채 테스트의 `TRUNCATE`가 실행될 수 있다.
   실제로 이 경로로 개발 DB 시드가 삭제된 사고가 있었다. 지금은 `assertTestDatabase()`가 막지만
-  애초에 그러지 말 것.
+  애초에 그러지 말 것. 한 파일만 돌릴 때는 `npm exec -w apps/api -- vitest run test/<name>.test.ts`
+  ([`ONBOARDING.md`](ONBOARDING.md) §4 — `apps/api`에서 실행돼 같은 설정이 적용된다).
 - 통합 테스트는 실제 Postgres/Redis/MinIO를 사용하고 `snaply_test` DB를 자동 생성한다.
 - 기존 기대값을 "제한 없음" 같은 현행 동작으로 고정한 테스트가 있다. 정책을 되돌릴 때 함께
   복원해야 하므로, 그런 고정에는 되돌릴 기대값을 주석으로 남긴다.
 
 ## 문서 갱신 의무
 
-아래 표의 왼쪽을 바꾸는 변경은 오른쪽을 **같은 변경**에서 함께 갱신한다. 동작 계약(사용자가
+아래 표의 왼쪽을 바꾸는 변경은 오른쪽을 **같은 커밋**에서 함께 갱신한다. 동작 계약(사용자가
 관찰하는 동작·API 계약·정책 값)은 [constitution](docs/constitution.md) 제1조·제3조가, 나머지는
 원천이 낡지 않게 하는 제2조가 근거다. 어디를 고칠지 매번 원칙에서 재조립하지 말고 이 표에서 찾는다.
 
-| 바꾼 것 | 같은 변경에서 갱신할 곳 |
+| 바꾼 것 | 같은 커밋에서 갱신할 곳 |
 |---|---|
 | 사용자 가시 동작·정책 값 | [`docs/specs/`](docs/specs/README.md)의 해당 요구 — **구현보다 먼저** 고친다 |
 | 라우트·요청/응답 스키마 | [`packages/shared-types/src/contract/`](packages/shared-types/src/contract/)의 Zod 계약(백엔드 검증·직렬화·Swagger·앱 타입의 원천) · `npm run openapi:write -w apps/api`로 재생성한 [`apps/api/openapi.json`](apps/api/openapi.json) · [`docs/api-spec.md`](docs/api-spec.md)(FE 안내 + WebSocket) · 관련 테스트 |
 | 앱(모바일)의 사용자 가시 동작 | [`apps/mobile/docs/features/`](apps/mobile/docs/features/README.md)의 해당 기능 문서 |
 | 새 정책·설계 결정, 결정 상태 | [`docs/decisions/`](docs/decisions/)에 배경·기각한 대안과 함께 + [`docs/decisions/README.md`](docs/decisions/README.md) 인덱스 행 |
-| DB 스키마 | 마이그레이션(같은 커밋) — pull 한 쪽은 `npm run db:generate` |
+| DB 스키마 | 마이그레이션 — pull 한 쪽은 `npm run db:generate` |
 | 새 환경변수 | [`apps/api/src/env-spec.ts`](apps/api/src/env-spec.ts) 선언 + [`.env.example`](.env.example) 예시 |
-| 명령·로컬 인프라·CI 검사 (루트 `package.json` scripts · `scripts/` · `docker-compose.dev.yml`·`docker-compose.yml` · `.github/workflows/ci.yml`) | [`ONBOARDING.md`](ONBOARDING.md) — §3 절차 · §4 명령 표 · §5 트러블슈팅 |
-| 서버 배포 구성 (`docker-compose.aws.yml` · `.github/workflows/deploy.yml` · `deploy/`) | [`docs/deployment-aws.md`](docs/deployment-aws.md) |
+| 명령·로컬 인프라·CI 검사 (루트 `package.json` scripts · `scripts/` · `docker-compose.dev.yml`·`docker-compose.yml` · `.github/workflows/ci.yml` · `deploy/minio` · `.github/workflows/minio-image.yml`) | [`ONBOARDING.md`](ONBOARDING.md) — §3 절차 · §4 명령 표 · §5 트러블슈팅 |
+| 서버 배포 구성 (`docker-compose.aws.yml` · `.github/workflows/deploy.yml` · `deploy/`(`deploy/minio` 제외)) | [`docs/deployment-aws.md`](docs/deployment-aws.md) |
 | 새 모듈 (모바일 feature·entity·page, API 라우트·서비스, DB 모델, 워커·배치) | [`docs/team.md`](docs/team.md) §1 표의 해당 트랙 칸 |
+| 계획의 일부 · 전부를 구현 | [`docs/plans/README.md`](docs/plans/README.md)의 상태 열. 전부면 계획을 [`docs/archive/`](docs/archive/README.md)로(살아 있는 설계는 [`docs/decisions/`](docs/decisions/), 기록은 [`docs/progress.md`](docs/progress.md)) |
 | 백로그 항목을 끝냄 | [`docs/backlog.md`](docs/backlog.md)에서 "닫은 항목"으로 옮기고 [`docs/progress.md`](docs/progress.md)에 검증 결과를 기록 |
 
 - 미결 작업은 [`docs/backlog.md`](docs/backlog.md)에만 기록한다. 결정 문서·진행 기록에 미결
   체크리스트를 새로 만들지 않는다 — 여러 곳에 있으면 하나를 닫아도 나머지가 낡는다.
 - [`docs/archive/`](docs/archive/)의 문서는 지난 기록이다. **판단 근거로 인용하지 말고,
-  archive로 옮기는 시점에 붙이는 상단 상태 배너 외에는 수정하지 않는다.**
+  archive로 옮기는 시점에 붙이는 상단 상태 배너 외에는 수정하지 않는다.** 예외는 둘이다 — 옮기면서 깨지는
+  상대 링크 경로는 고치고 배너에 그 사실을 적는다. 월별 진행 기록(`docs/archive/progress-YYYY-MM.md`)은 완료
+  기록이라 **언제 무엇을 검증했는지**의 근거로는 인용할 수 있다(현행 동작의 근거로는 아니다).
+  상세는 [`docs/doc-conventions.md`](docs/doc-conventions.md).
 
 ## 문서 컨벤션
 
