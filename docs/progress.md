@@ -2075,3 +2075,46 @@ E-52(음량 측정 비용)는 재 보고 정하기로 남겼다.
   재는 테스트 도우미만 loudnorm 을 쓴다(`_parse_loudnorm` 을 테스트로 옮김).
 - **검증** — `test_ffmpeg_contract.py` 에 두 측정이 같은 크기를 낸다(0.3 LU 안) · 무음은 −50 아래 · 요약 파싱 2건을 더했다. 워커 테스트 272건(`REQUIRE_FFMPEG=1`),
   기존 음량 테스트(무비 −14 LUFS · 컷 크기 맞춤 · 트루 피크)는 그대로 통과.
+
+## 2026-10-16 (이어서) — 문서 정리 3차 — 감사와 정리
+
+**목표**: 에이전트가 문서를 읽고 바로 판단할 수 있게, 2026-10-09 감사 뒤에 생긴 문서끼리 · 문서와 코드 사이의 모순과 낡은 서술, 읽을 필요 없는
+분량을 걷는다.
+
+**방법** — 영역 여덟(루트 · 운영, API · 스펙, 결정 두 묶음, 계획 · 보관 색인, 백로그 · 진행 기록, 모바일 기능 문서, 모바일 규칙 · UX)을 읽기 전용으로
+감사하고, 찾은 것을 코드 · git 이력 · 진행 기록과 대조한 뒤 파일이 겹치지 않게 나눠 고쳤다.
+
+**오너 결정(2026-10-16)**
+- **H-15**: (b) — 앱 동작은 Android 에뮬레이터 확인으로 "실기기 미검증"을 지우고, 기기에만 있는 것(푸시 수신 · 권한 · 카메라 · 앨범 · 다른 앱
+  열기)만 휴대폰을 기다린다. iOS 는 "iOS 출시 전"(A-4). 규칙은 [specs/README.md](./specs/README.md) §요구사항 표기 규칙.
+- **진행 기록은 달마다 보관한다** — 8 · 9월을 [archive/progress-2026-08.md](./archive/progress-2026-08.md) ·
+  [archive/progress-2026-09.md](./archive/progress-2026-09.md)로 옮겼다. 보관본은 완료 기록으로 인용할 수 있다(constitution 제7조 단서,
+  [decisions/progress-monthly-archive.md](./decisions/progress-monthly-archive.md)).
+- **모바일 UX 문서는 중복을 걷고 근거를 줄인다.** **구형 Intel Mac 은 쓰지 않는다**(관련 절차를 걷었다). 공유 Supabase DB 경로는 남긴다.
+
+**바꾼 것**
+- **규칙** — AGENTS.md 의 문서 갱신 의무를 constitution 제3조와 같은 "같은 커밋"으로, commit · PR 지침의 "문서는 따로 커밋" 예시를 그 규칙에 맞췄다.
+  계획의 수명을 "다 구현될 때까지"로(일부 구현이면 구현된 절을 포인터로 접는다 — [plans/README.md](./plans/README.md)), 스펙 라벨은 "코드가 있으면
+  `구현됨`, 운영에서 꺼졌으면 괄호에 ID", 괄호에는 빠진 것과 백로그 ID 만 둔다.
+- **결정 · 계획** — 결정 색인의 `구현` 열이 낡은 행(AI 편집 에이전트 · 온톨로지 "미구현", `POST /edit-jobs` "다음 릴리스", 무비 문서들의 "실기기
+  미검증" 등)을 고치고, 결정 문서 스무여 곳에 정정 · 후속 결정 배너를 붙였다(재사용 키에 취향 값이 아니라 취향 규칙 버전이 들어간다, 에이전트의
+  툴 다섯과 규칙뿐인 검토, API 도 시드를 파생한다 등). 다 구현된 [agentic-ontology-rollout](./archive/agentic-ontology-rollout.md) ·
+  [content-vocabulary](./archive/content-vocabulary.md) 계획을 보관하고, 살아 있던 규칙은 ontology-personalization · ai-edit-agent 로, 정규화 ·
+  매칭 규칙의 원천은 `content-vocabulary.json` 으로 옮겼다. 코드 주석의 계획 인용도 결정으로 바꿨다(주석만).
+- **스펙 · API** — 라벨을 새 규칙에 맞췄다(SNAP-13 · SNAP-19 → `구현됨`, ADR-5 → `부분`, REC-1 · ANA-1 · ADR-1 · MOV-7 에 운영 상태). api-spec 의
+  잘못 끼어든 단락(`GET /interest-topics`), 만료 예고 문구 규칙, 초안의 응답 시간 · 분석 요청, 동의 철회의 취향 파기를 고쳤다.
+- **백로그** — 닫음: B-8 · C-4 · D-5 · H-15 · F 의 SNAP-13. 엶: D-6(운영 OpenAI 예산 상한) · E-57(`media:e2e` 의 키) · H-16 ~ H-18. E-5 · A-12 ·
+  A-13 의 낡은 제목과 본문, 닫힌 ID(A-9 · C-5 · B-8)를 가리키던 곳을 고치고 "iOS 출시 전"을 A-4 한곳에 모았다. 맨 위에 다음 번호를 적었다.
+- **운영 · 온보딩** — `.env.example` 의 기본값을 ONBOARDING 의 로컬 인프라 값으로, API 테스트 한 파일 실행 명령을 ONBOARDING §4 에, team.md 의
+  커밋 수 서사를 지웠다. deployment-aws 의 배치 시각 표 · EAS 절차 · BGM 규칙은 원천(batches.cron · 모바일 문서 · bgm README)을 링크한다.
+- **모바일** — 기능 문서에 빠진 라우트 넷과 slice 여덟, 낡은 "기기 미확인" 서술을 고쳤다. UX 문서 13개 2,318 → 2,129줄(규칙은 한 문서에, ux-smells ·
+  guardrails · principles 의 반복과 근거를 줄임). cookbook 은 `useMutation` 을 허용하고, AGENTS.md 의 "Planned documentation" 표를 §Verification
+  한 줄로 바꿨다.
+
+**검증** — 저장소의 모든 `.md` 상대 링크 · 앵커를 스크립트로 확인했다(깨진 것 0 — `origin/main` 에서도 나오는 검사기 오탐 2건 제외). 코드 파일의
+변경은 주석뿐인 것을 diff 로 확인했다. `env-spec.test.ts` 6/6, API `typecheck` · `lint` 통과, `npm run verify:mobile` 204개 스위트 1563건 통과,
+바꾼 파이썬 파일 `py_compile`. 진행 기록 분할은 빈 줄 · 구분선을 빼고 줄 단위로
+원본과 같다(제목 하나를 `(이어서)` 로 바꾼 것만 다르다). `deploy/minio/Dockerfile` · `minio-image.yml` 주석의 닫힌 E-7 은 고치지 않았다 — 고치면
+main 머지 때 공유 MinIO 이미지를 다시 빌드해 올린다. `schema.prisma` 의 "ingest 워커" 주석도 그대로 뒀다.
+같은 날 main 에 들어온 E-52 · A-3 실측 준비(위 두 항목) 위에 얹었다 — A-3 의 예산 상한은 D-6 으로 잇고 [deployment-aws.md](./deployment-aws.md)
+"실측" 1 이 D-6 을 가리킨다.
