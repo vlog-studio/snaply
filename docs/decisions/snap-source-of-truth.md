@@ -6,7 +6,7 @@
 **원천**: 서버 원천 전환 방향의 결정 근거와 업계 조사(§3). 현행 요구는 [specs/snap-library.md](../specs/snap-library.md)
 SNAP-14 다. §4·§5의 스키마와 이행 순서, §6.4의 집행 방식은 결정 당시 구현 초안이며 작업 상태를 관리하지 않는다
 **관련 문서**: [archive/plan-limits.md](../archive/plan-limits.md) · [api-spec.md](../api-spec.md) ·
-[backlog.md](../backlog.md) A-4(스냅 세부 정책) · A-2(유료 플랜 한도)
+[backlog.md](../backlog.md) A-4(스냅 세부 정책) · A-2(크레딧 값 · 구독 보관 축)
 
 > **후속 결정**(2026-08-12): §1·§6.1 이 "예정(미구현)"으로 적은 무비 생성의 크레딧 과금이 확정됐다
 > → [credit-payment-model.md](./credit-payment-model.md).

@@ -3,12 +3,14 @@
 **작성일**: 2026-08-12
 **상태**: 결정 — 정기 구독을 제품 모델에서 제거하고 무비 생성을 크레딧으로 과금한다.
 **원천**: 결제 방식이 다시 변경되기 전까지 수익 모델의 원천이다. 현행 요구는
-[specs/credits-and-payment.md](../specs/credits-and-payment.md) CRD-1~8 이다.
+[specs/credits-and-payment.md](../specs/credits-and-payment.md) CRD-1~9 이다.
 **관련 문서**: [payment-channel-iap.md](payment-channel-iap.md) ·
 [storage-and-subscription-policy.md](storage-and-subscription-policy.md) · [backlog.md](../backlog.md) A-2 · C-1
 
 > **후속 결정**(2026-08-13): 결제 채널이 Stripe에서 Apple/Google IAP로 확정됐다 →
 > [payment-channel-iap.md](payment-channel-iap.md).
+
+> **후속 결정**(2026-10-13): AI 편집 초안도 크레딧을 쓴다 — 하루 3회 무료 뒤 1회 20크레딧(CRD-9) → [ai-edit-agent.md](ai-edit-agent.md).
 
 > **후속 결정**(2026-08-14): 결정 5의 기본 단위 **Movie export 1회 = 100크레딧**이 확정됐다
 > (단위의 이유는 [specs/credits-and-payment.md](../specs/credits-and-payment.md) CRD-1). 같은 날 **유료

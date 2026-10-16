@@ -18,7 +18,7 @@ from pipeline.render_spec import RenderSpec, build_video_filter
 MIN_CLIP_DURATION_SECONDS = 0.1
 CLIP_END_TOLERANCE_SECONDS = 0.05
 
-# ── 기본 처리(사용자가 고르지 않는다 — decisions/auto-edit-draft.md §6.3, plans/trend-editing-pipeline.md §6) ──
+# ── 기본 처리(사용자가 고르지 않는다 — decisions/auto-edit-draft.md §6.3) ──
 #
 # 컷마다 녹음 레벨이 달라 컷이 바뀔 때마다 소리가 튀었다. 컷 하나하나를 같은 크기로 맞추고(선형 이득 —
 # 동적 압축은 짧은 컷에서 숨소리처럼 펌핑한다), 경계에는 몇 ms 페이드를 걸어 파형이 0 을 지나지 않는

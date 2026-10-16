@@ -15,6 +15,19 @@
 > [movie-cleanup-after-export.md](../decisions/movie-cleanup-after-export.md)가 대체했다 — 끝낸 무비를 다시 만드는 것은
 > 크레딧을 내는 새 생성이다(MOV-16·MOV-19). 두 절을 그에 맞췄다.
 
+> **정정**(2026-10-16): 구현과 결정이 이 초안과 다른 곳 —
+> ① **§7.2 의 BGM 아이템 스키마는 지금 쓰는 모양이 아니다.** 공모전 기간의 잠정 형식은 버킷의 `assets/bgm/manifest.json`
+> `{"tracks": [{"tag", "file", "title", "source", "licenseUrl", "checkedAt"}]}` 이고(`apps/ai-worker/src/pipeline/music.py` 의 `parse_manifest` — 워커는
+> `tag` · `file` 만 읽는다, [deployment-aws.md](../deployment-aws.md) "BGM 곡 올리기"), §7.2 는 `bgm_tracks`(backlog A-7) 뒤에야 적용된다.
+> ② §12 의 상태를 결정 V3-C2 에 맞췄다 — `retired` 는 없앤 것이 아니라 법적 긴급 차단 전용으로 좁혔다(결정이 이 초안보다 우선한다).
+> ③ 컷 사이 색 맞춤은 결과물에만 걸리고 보정값을 스펙에 남기지 않는다(`apps/ai-worker/src/pipeline/color_match.py`,
+> [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) §6.3) — §10.1 의 보정 모델과 §13 의 "프리뷰는 `grade.match` 까지"를 고쳤다.
+> ④ §7.1 · §10 의 `whip` · `slide` 는 전환 어휘 v1(`hardcut` · `crossfade` · `dip` · `flash` · `zoompunch`)에 없다.
+> ⑤ §15 의 조달 판단은 결정 요청 [sticker-asset-sourcing.md](../decisions/sticker-asset-sourcing.md)와 어긋나(그 문서는 검증용 임시 에셋으로 이모지를
+> 권한다) 링크로 바꿨다.
+> 앵커 파생 공식(§9.6)은 `apps/ai-worker/src/pipeline/anchor.py` 의 `resolve_face_anchor` · `resolve_hand_anchor` · `resolve_object_anchor` 로 구현돼 있다
+> (픽스처 `apps/ai-worker/tests/fixtures/anchor-derivation.json`) — 얼굴 · 손 인식이 없어 렌더에는 아직 쓰이지 않는다.
+
 ---
 
 ## 0. 범위
@@ -28,7 +41,7 @@
   전환 `kind` 는 `packages/shared-types/src/*-vocabulary.json` 이 원본이다. §9 는 매니페스트
   필드가 그 어휘를 **어떻게 쓰는지**만 정의한다.
   전환 `kind` 는 2026-10-01 에 [`transition-vocabulary.json`](../../packages/shared-types/src/transition-vocabulary.json)으로
-  닫혔다. ⚠️ `platform` 허용 집합과 무드 태그 집합은 **아직 사전 파일이 없다** — 파일을 몇 개로 묶을지가 미결이다.
+  닫혔다. ⚠️ `platform` 허용 집합과 무드 태그 집합은 **아직 사전 파일이 없다** — 파일을 몇 개로 묶을지가 미결이다([backlog.md](../backlog.md) A-7).
 - **미결 결정** — [backlog.md](../backlog.md) A-7.
 
 괄호 안의 `V3-B3`·`V3-C1`·`V3-D8` 같은 ID 는 [decisions/edit-spec-v3.md](../decisions/edit-spec-v3.md) §1·§2 표의 결정 항목이다 —
@@ -265,6 +278,10 @@ registry.json                        ← 짧은 TTL. 어떤 팩이 존재하는�
 **`gainDb` 는 기본값이다.** 스펙의 `audio.sfx[].gainDb` 가 있으면 그쪽이 이긴다(V3-D8).
 
 **`triggerKinds` 는 전환 어휘의 상위집합이다** — `"sticker"` 를 포함한다(V3-D5).
+
+📌 위 예시의 `whip` · `slide` 는 전환 어휘 v1(`hardcut` · `crossfade` · `dip` · `flash` · `zoompunch`,
+[`transition-vocabulary.json`](../../packages/shared-types/src/transition-vocabulary.json))에 없다 — 2026-10-01 에 넣지 않았다
+([decisions/transition-director.md](../decisions/transition-director.md) §0.1). 예시 값일 뿐이다.
 `hardcut`·`crossfade` 는 의도적으로 어떤 아이템에도 없다(무음).
 
 전환 `kind` 의 **집합은 사전**이고 §10 의 `transitionWeights` 는 그 집합에 매기는 **가중치**다.
@@ -486,7 +503,13 @@ MediaPipe Face Detection 6키포인트에 `cheekL`·`cheekR`·`chin` 이 없으�
 }
 ```
 
+📌 `transitionWeights` 의 `whip` · `slide` 도 전환 어휘 v1 에 없다(§7.1).
+
 ### 10.1 `correction` — 보정 상한
+
+⚠️ **구현된 색 맞춤(2026-10-12)은 이 모델과 다르다.** `apps/ai-worker/src/pipeline/color_match.py` 는 보정값을 스펙에 저장하지 않고 렌더할 때 컷마다
+채널별 RGB 이득(`colorchannelmixer`)을 계산하며, 상한(밝기 0.8~1.25배 · 색 치우침 ±8% · 밤 컷 · 아주 어두운 컷 규칙)은 번들이 아니라 코드 상수다.
+아래의 네 필드(`exposure` · `tempShift` · `tintShift` · `saturation`)와 `clamped` 기록은 없다([decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) §6.3).
 
 [edit-spec-v3.md](./edit-spec-v3.md) §11.3 의 상한값이다. 판정식은 네 필드에 공통이다.
 
@@ -572,12 +595,11 @@ experimental  →  active  →  deprecated
  (rollout 0.1)              (신규 사용 중단, 서빙은 계속)
 ```
 
-**`retired` 는 없다.** 초안에는 있었으나 "신규 생성 제외 + 기존 스펙 서빙"이 `deprecated` 의
-정의와 같아 존재 이유가 없다.
+**`retired` 는 법적 긴급 차단 전용이다**([decisions/edit-spec-v3.md](../decisions/edit-spec-v3.md) §2 V3-C2). 초안의 `retired` 는
+"신규 생성 제외 + 기존 스펙 서빙"이라 `deprecated` 의 정의와 같았다 — 그래서 수명 상태는 위의 셋이고, 라이선스 만료는 `retired` 의 사유가 아니다.
 
-서빙을 반드시 멈춰야 하는 경우(저작권 클레임, 법적 삭제 요구)는 **긴급 차단**으로 별도
-처리하며 라이선스 만료는 그 사유가 아니다. 드물지만 0 은 아니므로 사용자에게 무엇을 보여줄지
-(대체 렌더 / 환급 / 고지)는 결정 문서에 남긴다.
+서빙을 반드시 멈춰야 하는 경우(저작권 클레임, 법적 삭제 요구)에만 `retired` 로 **긴급 차단**한다. 드물지만 0 은 아니므로 사용자에게 무엇을
+보여줄지(대체 렌더 / 환급 / 고지)는 미결이다([backlog.md](../backlog.md) A-7 "팩을 긴급 차단(`retired`)할 때 사용자에게 무엇을 보일지").
 
 ### 12.1 `expiresAt: null` 필수
 
@@ -612,7 +634,9 @@ experimental  →  active  →  deprecated
 - 워커는 팩을 로컬 디스크에 LRU 캐시한다. 폰트는 그 디렉터리를 `fontsdir` 로 직접 가리킨다.
 - 클라이언트는 프리뷰용으로 스티커 썸네일과 woff2 렌디션만 받는다.
 - **클라이언트 프리뷰에 LUT 를 적용하지 않는다.** 근사 렌더는 "프리뷰와 결과가 다르다"는 CS 를
-  만들고, 그건 스키마로 못 막는다. 프리뷰는 `grade.match` 까지만 보여준다.
+  만들고, 그건 스키마로 못 막는다. 컷 사이 색 맞춤(`grade.match`)도 프리뷰에 없다 — 결과물에만 걸린다
+  (`apps/ai-worker/src/pipeline/color_match.py`, [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) §2.3 · §6.3 — 렌더에서만 보이는 효과는
+  스타일에 딸린 속성이다).
 
 ---
 
@@ -634,13 +658,7 @@ LUT 는 프리셋 변경률로 같은 판단을 한다.
 
 ## 15. 조달
 
-| 방법 | 판단 |
-|---|---|
-| 디자이너 커미션 40~60종 / 3~4스타일 | ✅ 권장. 저작권이 깨끗하고 차별점이 된다 |
-| 스톡 구매 | ⚠️ 다수가 `embedInApp` 을 금지한다 (§4.1) |
-| AI 생성 | 스타일 일관성이 안 나온다. 탐색용 |
-| CC 무료 세트 | 무료지만 무료처럼 보인다 |
-
-**유니코드 이모지는 쓰지 않는다.** 플랫폼 기본 스티커와 구분이 안 돼 제품의 이유가 사라진다.
-
-**밈·캐릭터·로고는 넣지 않는다.** 수명이 몇 주이고 대부분 저작권 침해다.
+조달 경로(디자이너 커미션 · 스톡 · 유니코드 이모지 · AI 생성)의 선택지와 권장은 결정 요청
+[decisions/sticker-asset-sourcing.md](../decisions/sticker-asset-sourcing.md) 결정 1(미결)이 원천이다 — 그 문서는 커미션을 권하고, 파이프라인 검증용
+임시 에셋으로 이모지(이미지로 렌더한 것)를 권한다. 스톡이 `embedInApp` 을 금지하는 문제는 §4.1, 밈 · 캐릭터 · 로고를 넣지 않는 이유는
+[trend-editing-pipeline.md](./trend-editing-pipeline.md) §8.1 이다.

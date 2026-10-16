@@ -5,7 +5,7 @@
  * 검사한다(`tests/test_content_vocabulary.py`). 시드 힌트가 사전에 있는지는 카탈로그를 읽는 DB 테스트
  * (`movie-templates.test.ts`)가 본다.
  *
- * 계획: docs/plans/content-vocabulary.md §5.2. DB·Redis 를 쓰지 않는 순수 검사다.
+ * 결정: docs/decisions/ontology-personalization.md §3. DB·Redis 를 쓰지 않는 순수 검사다.
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -153,7 +153,7 @@ describe('content vocabulary', () => {
   });
 });
 
-/** 정규화 규칙 — 사전 `_normalizeNote` · docs/plans/content-vocabulary.md §3 · §5.3. */
+/** 정규화 규칙 — 사전 `_normalizeNote`(docs/decisions/ontology-personalization.md §3.4). */
 describe('normalizeContentValue', () => {
   it('takes the whole value when it is an alias, after tidying spaces', () => {
     expect(normalizeContentValue('topics', '카페 투어')).toBe('cafe');
@@ -214,7 +214,7 @@ describe('normalizeContentValue', () => {
   });
 });
 
-/** 매칭 관계 — docs/plans/content-vocabulary.md §4 의 네 줄. */
+/** 매칭 관계 — 사전 `_matchNote` · `match` 의 네 경우(같음 · 하위 · 상위 · 그 밖). */
 describe('contentMatchScore', () => {
   it('scores the same concept 1', () => {
     expect(contentMatchScore('places', 'cafe', 'cafe')).toBe(1);

@@ -1,9 +1,9 @@
 # 결정 요청 — 자막을 소프트 자막으로 둘 것인가, 영상에 구울(번인) 것인가
 
 **작성일**: 2026-09-05
-**상태**: 미결 — 결정 대기. 회의(2026-08-31)에서는 "미정"으로 남았다.
-**출처**: [meetings/2026-08-31-dev-sync.md](../meetings/2026-08-31-dev-sync.md) §2 · [backlog.md](../backlog.md) A-7 "번인 자막으로 전환할 것인가"
-**관련 문서**: [specs/movie.md](../specs/movie.md) MOV-9 · 계약 [`contract/edit-jobs.ts`](../../packages/shared-types/src/contract/edit-jobs.ts) `subtitles` · [`contract/movies.ts`](../../packages/shared-types/src/contract/movies.ts) `captions` · [plans/trend-editing-pipeline.md](../plans/trend-editing-pipeline.md)
+**상태**: 미결 — 결정 대기
+**출처**: [meetings/2026-08-31-dev-sync.md](../meetings/2026-08-31-dev-sync.md) §2(회의에서는 "미정"으로 남았다) · [backlog.md](../backlog.md) A-7 "번인 자막으로 전환할 것인가"
+**관련 문서**: [specs/movie.md](../specs/movie.md) MOV-9 · 계약 [`contract/movies.ts`](../../packages/shared-types/src/contract/movies.ts) `captions` · [plans/trend-editing-pipeline.md](../plans/trend-editing-pipeline.md)
 
 ## 한 줄 요약
 
@@ -22,14 +22,14 @@
 | 렌더 비용 | 추가 인코딩 없음 | 자막 합성 단계가 들어가 재인코딩 1회 추가(생성 시간·서버 비용 증가) |
 | 오타 수정 | 트랙만 바꾸면 됨(이론상) | 다시 렌더링해야 함 |
 
-현재 자막은 **opt-in**(기본 없음)이고, 켜면 한국어 음성 인식(whisper)으로 만든다. 음성 인식 정확도
-문제는 두 방식 모두 같다 — 이 결정은 "보여주는 방식"만 정한다.
+현재 자막은 **opt-in**(기본 없음)이고, 켜면 한국어 음성 인식(whisper)으로 만든다. 앱에는 자막 스위치가 없어 지금은 API(무비의 `captions`)로만
+켤 수 있다(MOV-9 `부분`). 음성 인식 정확도 문제는 두 방식 모두 같다 — 이 결정은 "보여주는 방식"만 정한다.
 
 ## 이 결정이 영향을 주는 곳
 
 | 영역 | 무엇이 바뀌나 |
 |---|---|
-| FE 계약 | MOV-9 와 계약의 `subtitles` 필드 설명이 "플레이어에서 켜야 보인다, SNS 업로드 시 유실될 수 있다"고 안내한다. 번인이면 이 문구가 반대로 바뀐다 |
+| FE 계약 | MOV-9 가 "플레이어에서 켜야 보인다, SNS 업로드 시 유실될 수 있다"고 안내하고, 계약 `contract/movies.ts` 의 `captions` 설명은 "소프트 자막 생성 여부"다. 번인이면 둘 다 바뀐다 |
 | 앱 | 자막 토글의 설명 문구, 미리보기에서 자막이 보이는지 여부 |
 | 워커 | 번인은 libass 합성 단계 추가. 폰트 파일(TTF/OTF)을 워커 이미지에 넣어야 한다 |
 | editSpec v3 | 번인이어야 "자막 스타일" 층(위치·폰트·애니메이션)이 의미가 있다. 소프트면 그 층이 필요 없다 |
@@ -77,4 +77,4 @@ D 는 v3 파이프라인이 안정된 뒤 필요하면 추가한다.
 | 결정 | |
 | 결정일 / 결정자 | |
 | 기각한 선택지와 이유 | |
-| 함께 고칠 문서 | MOV-9 · 계약의 `subtitles`·`captions` 설명(`openapi.json` 재생성) · apps/mobile/docs/features/movie.md · 워커 파이프라인 |
+| 함께 고칠 문서 | MOV-9 · 계약의 `captions` 설명(`openapi.json` 재생성) · apps/mobile/docs/features/movie.md · 워커 파이프라인 |

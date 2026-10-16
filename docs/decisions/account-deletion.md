@@ -6,15 +6,17 @@
 [specs/account.md](../specs/account.md) ACC-7~11 이 원천이다(구현
 [`account.service.ts`](../../apps/api/src/services/account.service.ts), FE 호출 [api-spec.md](../api-spec.md)).
 **관련 문서**: [snap-source-of-truth.md](./snap-source-of-truth.md)(영상 soft delete + GC) ·
-[api-spec.md](../api-spec.md) §인증 / 프로필 · [backlog.md](../backlog.md) C-5 · E-3(닫힘)
+[api-spec.md](../api-spec.md) §인증 / 프로필 · [backlog.md](../backlog.md) 닫은 항목 C-5(SNS-9) · E-3
 
 > **정정**(2026-09-02): 아래 본문의 Stripe 구독 취소·Stripe 웹훅 한계와 진행 중 작업의 `failed` 처리는 현행이
 > 아니다 — 정기 구독은 제거됐고, 진행 중 작업은 `canceled` 로 전환된다(§기각한 대안의 `canceled` 신설은 이후
 > 채택됐다). 현행 동작은 [specs/account.md](../specs/account.md) ACC-7~11 을 본다. 아래 본문은
 > 2026-08-12 당시 결정 배경으로 보존한다.
+
 > **후속 결정**(2026-10-11): Meta 데이터 삭제 요청은 이 파이프라인(`deleteAccount`)을 쓰지 않는다 — 계정을 지우지 않고 **Meta 에서 받은
 > 데이터(인스타그램 연동 · 게시 이력의 Instagram 값)만** 지운다(스펙 SNS-9). Instagram 설정에서 한 요청 하나로 Snaply 의 스냅 · 무비까지
 > 사라지면 사용자가 기대한 범위를 넘고, Meta 가 요구하는 범위도 앱이 Meta 에서 받은 데이터다. 계정까지 지우려면 앱의 계정 삭제를 쓴다.
+> §알려진 한계의 마지막 줄(Meta 데이터 삭제 콜백이 이 파이프라인을 재사용)은 이 결정으로 대체됐다.
 
 ## 결정
 

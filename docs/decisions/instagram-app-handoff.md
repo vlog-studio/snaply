@@ -2,9 +2,12 @@
 
 **작성일**: 2026-10-12
 **상태**: 결정
-**원천**: 앱 안의 Instagram 게시(API) 옆에 "Instagram 앱에서 올리기"를 둔 이유와, Meta 검수 · Tech Provider 를 지금 진행하지 않은 근거.
+**원천**: 앱 안의 Instagram 게시(API) 옆에 "Instagram 앱에서 올리기"를 둔 이유와, 결정 시점(2026-10-12 오전)에 Meta 검수 · Tech Provider 를 진행하지 않은 근거(같은 날 진행됐다 — 아래 배너).
 요구는 [specs/sns-sharing.md](../specs/sns-sharing.md) SNS-8, 앱 동작은 [apps/mobile/docs/features/movie.md](../../apps/mobile/docs/features/movie.md)
 **관련 문서**: [backlog.md](../backlog.md) B-8 · C-8 · [sns-setup.md](../sns-setup.md) · [movie-cleanup-after-export.md](./movie-cleanup-after-export.md)(MOV-17)
+
+> **후속 결정**(2026-10-12): 같은 날 회사가 액세스 인증(Tech Provider)을 마쳤고, 두 권한으로 앱 검수를 제출했다(backlog C-8, progress
+> 2026-10-12 "Meta 앱 검수 제출"). 이 결정은 그대로다 — 검수 결과가 나올 때까지, 그리고 승인된 뒤에도 개인 계정 사용자에게는 이 길이 필요하다.
 
 ---
 
@@ -25,9 +28,6 @@ Instagram 계정만** 연결할 수 있다. 게다가 계정은 프로페셔널(
 즉 **Tech Provider(액세스 인증) 없이는 검수도, 테스터가 아닌 사람의 연결도 안 된다.** 이것은 Meta 의 규칙이라 코드로 돌아갈 길이 없다.
 Tech Provider 지정은 회사 비즈니스 계정에 영구히 붙고 다른 앱(가게지기)의 데이터 요건에도 영향을 주므로 회사 차원의 결정이 필요해, 이 결정을
 내린 시점에는 진행하지 않았다.
-
-> **2026-10-12 갱신**: 같은 날 회사가 액세스 인증(Tech Provider)을 마쳤고, 두 권한으로 앱 검수를 제출했다(backlog C-8, progress 2026-10-12
-> "Meta 앱 검수 제출"). 아래 결정은 그대로다 — 검수 결과가 나올 때까지, 그리고 승인된 뒤에도 개인 계정 사용자에게는 이 길이 필요하다.
 
 ## 결정 — "Instagram 앱에서 올리기"를 함께 둔다
 

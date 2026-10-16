@@ -146,7 +146,9 @@ score = 0.50 × keyword + 0.20 × visualQuality.score
 - `keyword` — `matchHints` 의 개념 id 마다 분석 결과의 같은 이름 필드에서 가장 잘 맞는 개념의 점수(같거나 하위 1 · 상위 0.5 · 그 밖 0)를
   낸 평균. 분석의 자유 문자열은 채점할 때 개념 사전([`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json))으로
   개념을 찾는다 — 2026-10-13 까지는 힌트와 분석값을 양방향 부분 문자열로 대조한 비율이었고, 오탐 · 미탐 때문에 바꿨다
-  ([plans/content-vocabulary.md](../plans/content-vocabulary.md) §1 · §3 · §4). 추천 재사용 키에 사전 버전이 들어간다
+  ([ontology-personalization.md](ontology-personalization.md) §3.4 — 규칙의 원천은 사전의 `_normalizeNote` · `_matchNote`). 추천 재사용 키에 사전 버전이 들어간다
+- `taste` — 2026-10-13 부터 위 식에 `TASTE_RECOMMENDATION_WEIGHT`(0.1, 잠정 — `apps/api/src/services/taste/taste-policy.ts`) × 스냅 취향(−1~1)을 더한다.
+  취향이 없으면 0 이라 위 식과 같다([ontology-personalization.md](ontology-personalization.md) §7)
 - `temporal` — 슬롯의 `temporalPrior`(외출 안 정규화 위치)와 스냅 위치의 차이, `1 - |Δ|`
 - 게이트 — `usableForEdit=false` 는 배정 대상에서 제외하고, 남는 슬롯은 비워 둔다
 - 배정 — 점수 내림차순 greedy, 1스냅 1슬롯
@@ -193,7 +195,8 @@ score = 0.50 × keyword + 0.20 × visualQuality.score
 
 카탈로그 · 추천 API(점수화 v1 + 상한) · 앱의 2단계 병합(1~3단계)은 구현됐다. 품질·단가 실측부터 생산
 활성화까지의 순서는 [plans/snap-analysis-recommendation-rollout.md](../plans/snap-analysis-recommendation-rollout.md)가,
-남은 조건(실측 · 운영 모델 고정 · §4 값 재조정 · 법무 검토)은 [backlog.md](../backlog.md) A-3·A-6·D-2 가 담는다.
+남은 조건(실측 · 운영 모델 고정 · §4 값 재조정)은 [backlog.md](../backlog.md) A-3·A-6 이 담는다. 법무 검토(D-2)는 2026-09-29 옵트인 결정으로 켜는
+조건에서 빠졌다(상단 배너 — 검토 자체는 여전히 필요하다).
 
 활성화의 선행 조건 중 법무 검토의 리드타임이 가장 길다. 그래서 추천 경로는
 `MOVIE_RECOMMENDATION_ENABLED` **기본 꺼짐**으로 배포된다 — 켜지 않으면 분석이 돌지 않고, 앱은

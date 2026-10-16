@@ -27,6 +27,8 @@
 | [plan-limits.md](./plan-limits.md) | 정기 구독 시절 플랜 차등 집행 보류 결정과 기술 보호 제한 표 | 기각 근거 [decisions/credit-payment-model.md](../decisions/credit-payment-model.md) · 현행 요청 제한 [api-spec.md](../api-spec.md) |
 | [ai-vlog-studio/concept.md](./ai-vlog-studio/concept.md) (+ [목업](./ai-vlog-studio/studio-mockup.html)) | 2026-08-03 확정 제품 기획과 그 시점의 화면 목업. 원래 위치는 `apps/mobile/docs/guides/ai-vlog-studio/` | 결정 [decisions/product-concept.md](../decisions/product-concept.md) · 앱 동작 [apps/mobile/docs/features/](../../apps/mobile/docs/features/README.md) |
 | [edit-recipe-tools.md](./edit-recipe-tools.md) | AI 편집 초안(MOV-21·MOV-22)이 쓸 편집 툴의 계획(2026-09-28) — 툴 카드 · v1 툴 목록 · 컷 역할 · 신호 · 착수 순서. 착수 순서 1~5 는 2026-10-01 에 대부분 구현 | 툴 카드·v1 범위 [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md#6-편집-툴--툴마다-정할-것과-v1-범위) §6 · 전환 범위·여분 프레임·줌 상한 [decisions/transition-director.md](../decisions/transition-director.md#0-전제--고를-수-있는-전환과-겹침형의-여분-프레임) §0 · 컷 역할·신호 [decisions/edit-director.md](../decisions/edit-director.md) §6·§8.1 · 미결 [backlog.md](../backlog.md) A-7·A-11 |
+| [content-vocabulary.md](./content-vocabulary.md) | 분석값과 슬롯 힌트의 부분 문자열 매칭을 닫힌 개념 사전으로 바꾸는 계획(2026-10-07). §6 의 1 · 3 · 4 를 2026-10-13 에 구현 | 규칙 사전 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json)의 `_normalizeNote` · `_matchNote` · 결정 [decisions/ontology-personalization.md](../decisions/ontology-personalization.md) §3 · §8 · 미결 [backlog.md](../backlog.md) A-6 · A-13 |
+| [agentic-ontology-rollout.md](./agentic-ontology-rollout.md) | 개념 사전 → 관계 → 관심사 → 취향 프로필 → 취향 반영 → AI 편집 에이전트 → 초안 과금 → 발표용 내보내기의 8단계 착수 계획(2026-10-13). 같은 날 모두 구현 | 결정 [decisions/ontology-personalization.md](../decisions/ontology-personalization.md) · [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md) · 미결 [backlog.md](../backlog.md) A-12 · A-13 |
 
 ## 왜 옮겼는지
 
@@ -54,3 +56,10 @@
 - **편집 레시피의 툴**(2026-10-09): 착수 순서가 대부분 구현됐는데 코드 주석·어휘 사전의 `_note` 가 계획의 절을 규칙의
   근거로 인용하고 있었다. 살아 있는 규칙(툴 카드 · v1 범위 · 겹침형의 여분 프레임 · 줌 계열의 상한 · 역할 어휘)은 결정
   문서 셋으로 옮기고 인용을 바꿨다. 남은 일(기본 처리 · 초안의 vision 분석 · 컷 역할 싣기)은 이미 백로그에 있다.
+- **개념 사전 · 온톨로지 착수 계획**(2026-10-16): 구현이 끝났는데 코드 · 테스트 주석과 결정 문서가 계획의 절을 규칙의 근거로 인용했고, 사전 파일의
+  정규화 규칙이 계획보다 새로웠다(계획에 없는 ②). 살아 있는 규칙은 옮기고 인용을 바꿨다 — 정규화 · 매칭은 사전 파일의 note, 넣는 기준 · 기각한
+  대안 · 신호를 내는 곳은 ontology-personalization, 에이전트에 보내는 것 · 스티커 연결점은 ai-edit-agent. 남은 제안(컷 역할에 `roleAffinity` ·
+  모델이 개념을 고른다)은 백로그로 옮겼다.
+- **완료 · 대체된 인수인계 · 계획 · 배포 기록**(mobile-handover-lifecycle · movie-server-transition · 2026-08-12-rewarded-credit-review ·
+  deployment-on-prem · on-prem-deployment): 구현이 끝났거나(앱 인수인계 · 서버 전환 계획), 다른 값으로 확정됐거나(광고 보상 제안), 접은 구성의
+  기록(사내 서버)이라 현행 문서처럼 읽히지 않게 옮겼다. 각 행의 "현행 원천"이 지금 볼 곳이다.

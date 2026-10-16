@@ -4,7 +4,7 @@
  * 원본은 `content-vocabulary.json` **하나**이고 워커(`tests/test_content_vocabulary.py`)도 같은 파일을 같은 규칙으로 검사한다.
  * 개념은 필드 안에서 id 로 구분하고, 상위 개념(`parent`)은 하나다(트리).
  *
- * 계획: `docs/plans/content-vocabulary.md` · 온톨로지로서의 결정: `docs/decisions/ontology-personalization.md`
+ * 정규화 · 매칭 규칙의 원천은 사전의 `_normalizeNote` · `_matchNote` · `match` 다. 온톨로지로서의 결정: `docs/decisions/ontology-personalization.md`
  */
 import vocabulary from './content-vocabulary.json' with { type: 'json' };
 
@@ -106,7 +106,7 @@ function aliasWithoutParticle(field: ContentField, word: string): string | undef
 /**
  * 분석의 자유 문자열 하나를 그 필드의 개념 하나로 바꾼다. 사전 밖이면 `undefined`.
  *
- * 규칙은 사전 `_normalizeNote` 와 `docs/plans/content-vocabulary.md` §3 이다 — 값 전체 → 끝 낱말로 끝나는 구(긴 것부터) →
+ * 규칙은 사전 `_normalizeNote` 다 — 값 전체 → 끝 낱말로 끝나는 구(긴 것부터) →
  * 나머지 낱말을 오른쪽부터(조사 하나를 떼어 볼 수 있다). 한국어 명사구 · 동사구는 머리가 끝에 온다. 부분 문자열은 보지 않는다.
  */
 export function normalizeContentValue(field: ContentField, value: string): string | undefined {
@@ -137,7 +137,7 @@ export function normalizeContentValues(field: ContentField, values: readonly str
 
 /**
  * 슬롯 힌트의 개념이 스냅의 개념으로 얼마나 채워지는가 — 같거나 스냅이 하위면 1, 스냅이 상위면 0.5(잠정), 그 밖(형제 포함) 0.
- * 사전 밖 개념은 0 이다. 계획 §4.
+ * 사전 밖 개념은 0 이다. 규칙은 사전 `_matchNote` · `match` 다.
  */
 export function contentMatchScore(field: ContentField, hint: string, snap: string): number {
   if (!isContentConcept(field, hint) || !isContentConcept(field, snap)) return 0;

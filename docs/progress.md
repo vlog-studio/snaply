@@ -3114,8 +3114,8 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 
 ## 2026-10-13 — 개념 사전 확정(backlog A-13 1단계)
 
-온톨로지 착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 1단계. 방법과 테스트는
-[plans/content-vocabulary.md](./plans/content-vocabulary.md) §5 · §6, 결정은 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md).
+온톨로지 착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 1단계. 방법과 테스트는
+[archive/content-vocabulary.md](./archive/content-vocabulary.md) §5 · §6, 결정은 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md).
 사용자에게 보이는 변화는 없다 — 템플릿 추천의 슬롯 배정만 바뀌고, 추천은 아직 스위치(`MOVIE_RECOMMENDATION_ENABLED`)로 꺼져 있다.
 
 - **현행 고정(§6 의 1, `2d85505`)** — 계획 §1 의 오탐 16 · 미탐 12 · 유지 3 을 지금 규칙(양방향 부분 문자열)의 결과로
@@ -3137,7 +3137,7 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 
 ## 2026-10-13 (이어서) — 개념 사이의 관계(backlog A-13 2단계)
 
-착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 2단계. 1단계는 main 에 푸시해 AWS 배포까지 끝냈다
+착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 2단계. 1단계는 main 에 푸시해 AWS 배포까지 끝냈다
 (CI · Deploy 성공, `/health` `db=connected`). 관계는 아직 아무 채점에도 쓰지 않는다 — 취향 반영(5단계)과 AI 편집 에이전트가 쓴다.
 
 - **사전(`62406ca`)** — [decisions/ontology-personalization.md](./decisions/ontology-personalization.md) §3.2 의 세 관계를 개념별 필드로 더했다.
@@ -3154,7 +3154,7 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 
 ## 2026-10-13 (이어서) — 취향 프로필(backlog A-13 4단계)
 
-착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 4단계. 2단계는 main 에 푸시해 AWS 배포까지 끝냈다
+착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 4단계. 2단계는 main 에 푸시해 AWS 배포까지 끝냈다
 (CI · Deploy 성공, `/health` `db=connected`). 결정은 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md) §4 · §5,
 요구는 PRF-1 · PRF-2 · PRF-4(`결정·미구현` → `부분`). 취향은 쌓기만 하고 아직 어디에도 반영하지 않는다 — 사용자에게 보이는 변화는 개인정보처리방침
 문구뿐이다.
@@ -3179,7 +3179,7 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 
 ## 2026-10-13 (이어서) — 취향 반영(backlog A-13 5단계)
 
-착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 5단계. 4단계는 main 에 푸시해 AWS 배포까지 끝냈다
+착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 5단계. 4단계는 main 에 푸시해 AWS 배포까지 끝냈다
 (CI · Deploy 성공, `/health` `db=connected`). 요구는 PRF-3(`결정·미구현` → `부분`) · PRF-2(`부분` → `구현됨`).
 
 - **취향 읽기(`09ef68b`, `services/taste/taste-affinity.ts`)** — 감쇠한 가중치를 관심사 · 행동 합으로 읽고(−1~1), 개념 하나는 자기 값이 없으면
@@ -3202,7 +3202,7 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 
 ## 2026-10-13 (이어서) — 발표용 온톨로지 내보내기(backlog A-13 8단계)
 
-착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 8단계. 5단계 배포는 AWS 배포 잡이 러너가 온라인 · 유휴인데도
+착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 8단계. 5단계 배포는 AWS 배포 잡이 러너가 온라인 · 유휴인데도
 71분 동안 대기열에 머물러(GitHub 배정 누락으로 본다) 그 실행을 취소하고 배포 잡만 다시 돌려 끝냈다(CI · Deploy 성공, `/health` `db=connected`).
 
 - **명령(`1b94263`)** — `npm run ontology:export` 가 shared-types 를 빌드한 뒤 `dist/ontology/` 에 두 파일을 만든다. 원천은 JSON 사전이라 결과는
@@ -3220,7 +3220,7 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 
 ## 2026-10-13 (이어서) — AI 편집 에이전트(backlog A-12 6단계)
 
-착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 6단계, 결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md),
+착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 6단계, 결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md),
 요구 MOV-25(`결정·미구현` → `부분`). 8단계 배포는 배포 잡이 대기 없이 돌아 끝났다(CI · Deploy 성공, `/health` `db=connected`).
 
 - **구조(`82efa3d`, `apps/api/src/services/edit-agent/`)** — `POST /movie-drafts` 가 OpenAI Responses API 의 함수 툴로 에이전트를 돌린다(분석 워커와
@@ -3262,7 +3262,7 @@ Meta 앱 검수에 필요한 두 주소를 만들고 공모전 서버에서 실�
 
 ## 2026-10-13 (이어서) — 관심사(backlog A-9)
 
-착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 3단계. 요구 ACC-5(`부분` → `구현됨`) · PRF-1 · PRF-4
+착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 3단계. 요구 ACC-5(`부분` → `구현됨`) · PRF-1 · PRF-4
 (`부분` → `구현됨`). 결정 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md) §4 · §5.
 
 - **사전(`a99021d`)** — `topics` 를 8개에서 18개로 늘렸다(친구 · 데이트 · 반려동물 · 자연 · 운동 · 요리 · 쇼핑 · 전시 · 예술 · 공연 · 공부 · 작업,
@@ -3298,7 +3298,7 @@ A-9 를 main 에 푸시해 AWS 배포(CI · Deploy 성공, `/interest-topics` �
 
 ## 2026-10-13 (이어서) — 초안 과금(backlog A-12 7단계)
 
-착수 계획 [plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 7단계, 결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md) §5,
+착수 계획 [archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 7단계, 결정 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md) §5,
 요구 CRD-9(`결정·미구현` → `구현됨`). 오너가 서버 부하를 이유로 스위치 없이 바로 켜기로 했다(공모전 기간 포함). 관심사(A-9)는 배포 · 테스터 빌드
 `42d510d` · 에뮬레이터 확인까지 끝냈다(위 항목).
 

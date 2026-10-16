@@ -8,7 +8,7 @@
  */
 export const EDIT_AGENT_PROMPT_VERSION = 3;
 
-/** 에이전트 모델의 기본값. `EDIT_AGENT_MODEL` 로 바꾼다. 이미지를 보지 않으므로 저가 모델부터 잰다(착수 계획 §2.3). */
+/** 에이전트 모델의 기본값. `EDIT_AGENT_MODEL` 로 바꾼다. 이미지를 보지 않으므로 저가 모델부터 잰다(decisions/ai-edit-agent.md §3.1). */
 export const DEFAULT_EDIT_AGENT_MODEL = 'gpt-5.6-luna';
 
 /** 에이전트 전체의 시간 상한. 넘기면 규칙만의 초안을 낸다(§6). */

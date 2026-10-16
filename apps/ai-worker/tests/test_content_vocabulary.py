@@ -4,7 +4,7 @@
 (`apps/api/test/content-vocabulary.test.ts`)도 같은 파일을 같은 규칙으로 검사한다. 워커는 지금 이 사전으로
 아무것도 바꾸지 않는다 — 분석 결과의 필드가 사전과 어긋나지 않는지만 여기서 막는다.
 
-계획: docs/plans/content-vocabulary.md §5.2. ffmpeg·SDK 없이 도는 순수 검사다.
+결정: docs/decisions/ontology-personalization.md §3. ffmpeg·SDK 없이 도는 순수 검사다.
 """
 
 import sys

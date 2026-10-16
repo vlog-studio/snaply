@@ -64,8 +64,8 @@ v1 에 넣지 않은 전환:
 - **전환을 바꿔도 컷은 움직이지 않는다.** 무비 길이가 컷 길이의 합이라 컷 시각이 그대로다. 그래서 무효화 사전의
   `transition-edit` 은 `timeline.cuts` 를 `preserved` 로 두고, 스티커·자막도 따라 움직이지 않는다
   ([`invalidation-vocabulary.json`](../../packages/shared-types/src/invalidation-vocabulary.json)).
-- **이렇게 정한 이유** — 경계별 전환 전의 편집기는 crossfade 를 두 컷 **안에서** 겹쳤다. `POST /edit-jobs`(v2) 경로는
-  지금도 그렇다(`apps/ai-worker/src/pipeline/editor.py` 의 `_crossfade`). 그러면 무비가 짧아지고 컷의 앞뒤가 섞인다 —
+- **이렇게 정한 이유** — 경계별 전환 전의 편집기는 crossfade 를 두 컷 **안에서** 겹쳤다. `POST /edit-jobs`(v2) 경로가
+  그랬다(`apps/ai-worker/src/pipeline/editor.py` 의 `_crossfade` — 2026-10-11 라우트를 없앤 뒤 v2 경로로 들어오는 작업은 없다). 그러면 무비가 짧아지고 컷의 앞뒤가 섞인다 —
   `감성` 의 0.8초 crossfade 면 3초 스냅 가운데 컷은 1.4초만 온전히 보이고, 10컷이면 7.2초가 줄어든다. 사용자가 구간을
   자를 수 있게 되면(MOV-22) 이 방식은 **사용자가 자른 구간을 전환이 먹는다.** 여분이 없을 때 v2 처럼 컷 안에서 겹치는
   안을 기각한 이유는 §3 이다.

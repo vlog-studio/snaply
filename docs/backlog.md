@@ -214,7 +214,7 @@ MOV-16~19 다. 만료의 동작 구조(2단계 삭제 · 만료 스냅 식별 ·
 - [ ] **상한 값 재조정**: 추천 상한(REC-3, [specs/template-and-recommendation.md](./specs/template-and-recommendation.md))은
       잠정값이다. A-3 의 단가 실측이 나오면 `apps/api/src/services/recommendation/recommendation-policy.ts` 의 숫자만 바꾼다
 - [ ] **개념 매칭의 실측 확인** — 2026-10-13 키워드 매칭을 부분 문자열에서 개념 사전 매칭으로 바꿨다(A-13 1단계, progress 2026-10-13).
-      계획([plans/content-vocabulary.md](./plans/content-vocabulary.md))의 순서는 실측(§5.4) 뒤 도입이었지만, 온톨로지 착수 순서에 따라 실측보다
+      계획([archive/content-vocabulary.md](./archive/content-vocabulary.md))의 순서는 실측(§5.4) 뒤 도입이었지만, 온톨로지 착수 순서에 따라 실측보다
       먼저 들였다 — 고른 사례(오탐 16 · 미탐 12)는 모두 고쳐졌지만 모델이 실제로 내는 값에서 얼마나 맞는지는 모른다. A-3 의 팀 스냅 실측에
       §5.4 를 얹어 필드별 사전 안 비율 · 규칙별 오탐 · 놓친 쌍 · 사전 밖 값 상위를 잰다.
       **완료 조건**: 개념 매칭의 오탐이 부분 문자열보다 적고 놓친 쌍이 많지 않음을 확인하고, 사전 밖 값 상위로 사전을 고친다(버전을 올린다).
@@ -380,7 +380,7 @@ e2e 실검증.
 
 AI 편집 초안을 LLM 에이전트가 계획하고 기존 디렉터를 툴로 부른다. 초안은 하루 3회 무료, 그 뒤 1회 20크레딧(2026-10-13 결정 —
 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md), 스펙 MOV-25 · CRD-9 · MOV-21). 착수 순서는
-[plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 6 · 7단계.
+[archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 6 · 7단계.
 
 **진행**: 2026-10-13 6단계를 넣었다 — 에이전트 루프 · 툴(`select_cuts` · `find_snaps` · `analyze_snaps` · `submit_draft`) · 규칙 검토와 재시도 ·
 계획 저장(`movie_drafts.mode` · `plan`) · 폴백 · 시간 상한, `EDIT_AGENT_MODEL`(progress 2026-10-13 "AI 편집 에이전트"). 운영 API 는 분석 워커와
@@ -404,7 +404,7 @@ AI 편집 초안을 LLM 에이전트가 계획하고 기존 디렉터를 툴로 
 
 스냅 내용과 사용자 취향을 같은 개념 체계로 표현하고, 취향을 행동에서 배워 추천 · 템플릿 순서 · AI 편집 초안에 반영한다(2026-10-13 결정 —
 [decisions/ontology-personalization.md](./decisions/ontology-personalization.md), 스펙 PRF-1~PRF-4). 착수 순서는
-[plans/agentic-ontology-rollout.md](./plans/agentic-ontology-rollout.md) §1 의 1 · 2 · 4 · 5 · 8단계.
+[archive/agentic-ontology-rollout.md](./archive/agentic-ontology-rollout.md) §1 의 1 · 2 · 4 · 5 · 8단계.
 
 **진행**: 2026-10-13 1단계(개념 사전 확정)를 넣었다 — 사전 `packages/shared-types/src/content-vocabulary.json`(`moods` 포함), 템플릿 추천의
 개념 매칭, 시드 힌트 마이그레이션, 재사용 키의 사전 버전(progress 2026-10-13 "개념 사전 확정"). 같은 날 2단계(관계 `typicallyAt` · `evokes` ·

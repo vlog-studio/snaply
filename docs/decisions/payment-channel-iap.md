@@ -77,6 +77,18 @@ App Store Server Notifications V2 + Play RTDN(Pub/Sub)을 직접 받는 방식. 
 월 추적 매출 $2,500까지 무료, 초과분 1%이고 React Native 공식 SDK가 있어 현재 팀
 규모에서는 경유가 낫다. 매출이 커져 1% 비용이 부담되면 이 대안으로 전환한다.
 
+## 구현 규칙(2026-08 이관 계획에서 옮김)
+
+2026-08-14 에 구현한 규칙이다. 코드(`apps/api/src/services/credit.service.ts` · `billing.service.ts`)가 근거로 인용하던 보관 계획
+[archive/iap-migration.md](../archive/iap-migration.md) §3 · §4 · §10 에서 2026-10-16 에 옮겼다.
+
+- **원장은 append-only 이고 잔액은 언제나 `credit_ledger.delta` 의 합계다.** 잔액을 따로 들고 있는 컬럼은 없다 — 원장과 잔액이 어긋날 여지를 만들지
+  않는다. 합계 쿼리가 병목이 되면 그때 `users.credit_balance` 캐시 컬럼을 트랜잭션 안에서 증분 갱신하는 방식으로 얹는다(원장이 원천, 컬럼은 파생).
+- **스토어 환불은 지급분을 그대로 빼고, 잔액이 음수가 되는 것을 허용한다.** 이미 만들어진 결과물은 회수할 수 없으므로, 음수 잔액이 새 생성을 막는
+  형태로 남는다. 크레딧 환불(소비분 회수)과 구독 환불(entitlement 소급 만료)은 처리가 완전히 달라 한 함수로 묶지 않는다.
+- **웹훅은 이벤트 타입으로 먼저 분기한다.** 크레딧 경로는 `NON_RENEWING_PURCHASE` · `REFUND` 만 받도록 좁혀 둔다 — 보관 구독이 붙으면 `RENEWAL` ·
+  `EXPIRATION` 같은 이벤트가 같은 웹훅으로 들어오는데, 그때 구조를 뒤집지 않기 위해서다. 처리하지 않는 이벤트는 200 으로 조용히 무시한다.
+
 ## 이번 결정에서 확정하지 않은 것
 
 팩 수량·가격은 [backlog.md](../backlog.md) A-2 에서만 관리한다. 웹 결제 병행은 결정 4 와 아래

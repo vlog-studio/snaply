@@ -12,6 +12,11 @@
 > **후속 결정**(2026-09-29): 법무 검토 전에는 **사용자 동의(옵트인)**로 켠다 — §1 의 "프라이버시" 행과 §6 의
 > "생산 스냅에 켜기 전 법무 검토 선행"을 대체한다(§6.1).
 
+> **후속 결정**(2026-10-13): 분석 결과의 소비자가 늘었다(§1 "결과 소비자") — AI 편집 초안(에이전트가 받는 개념 · `find_snaps` · `analyze_snaps`,
+> [ai-edit-agent.md](ai-edit-agent.md) §3)과 사용자 취향의 내용 개념 가중치([ontology-personalization.md](ontology-personalization.md) §4 · §5)다.
+> 사용자에게 보이지 않는다는 §2 는 그대로다. §6.1 의 철회는 분석 결과 · 추천 기록에 더해 AI 편집 초안 기록(`movie_drafts`)과 분석에서 나온 취향
+> 행도 지운다(`apps/api/src/services/analysis-consent.service.ts` 의 `withdrawAnalysisConsent` → `purgeContentTastes`).
+
 §1~§6 은 방향 결정이고, **§9 는 그 방향으로 실제 구현하면서 계획과 달라진 지점**이다.
 
 ---

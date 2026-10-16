@@ -1,5 +1,20 @@
 # 스냅 내용 어휘 — 자유 문자열 매칭을 개념 사전으로 바꾸는 계획
 
+> **보관**(2026-10-16): §6 의 1 · 3 · 4(현행 고정 테스트 · 사전 확정 · 정규화기와 개념 매칭 · 힌트 마이그레이션 · 재사용 키의 사전 버전)가 2026-10-13 에
+> 구현됐고([progress.md](../progress.md) 2026-10-13 "개념 사전 확정"), 사전이 온톨로지의 내용 층이 되면서 살아 있는 규칙을 사전 파일과 결정 문서로
+> 옮겨 계획의 수명이 끝났다. 아래는 착수 전 제안이라 판단 근거로 인용하지 않는다. **아래 §3 의 정규화 규칙은 확정 전의 것이다** — 확정하면서 "끝 낱말로
+> 끝나는 구를 긴 것부터 본다"(②)가 더해졌다.
+>
+> 현행 원천: 정규화 · 매칭 규칙(§3 · §4) → 사전 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json)의 `_normalizeNote` ·
+> `_matchNote` · `match`([decisions/ontology-personalization.md](../decisions/ontology-personalization.md#34-정규화--매칭-규칙--원천은-사전-파일이다) §3.4) ·
+> 사전에 넣는 기준(§2) → 같은 문서 §3.1 · 기각한 대안(§7) → 같은 문서 §8 · 사례 표(§1)와 정합성 · 규칙 검사(§5.1~§5.3) →
+> `apps/api/test/recommendation-score.test.ts` · `apps/api/test/content-vocabulary.test.ts` · `apps/ai-worker/tests/test_content_vocabulary.py` ·
+> 남은 일 — §5.4 실측은 [backlog.md](../backlog.md) A-6 "개념 매칭의 실측 확인", §6 의 5(컷 역할에 `roleAffinity`) · 6(모델이 개념을 고른다)은 A-13,
+> §6 의 7(관심사)은 2026-10-13 에 끝났다(A-9).
+>
+> 이동으로 깨지는 상대 링크(같은 디렉터리를 가리키던 `snap-analysis-recommendation-rollout.md` → `../plans/…`)만 고쳤다. 아래 본문의 `**상태**` 줄도
+> 보관 전 기준이다 — 이 배너가 덮는다.
+
 **작성일**: 2026-10-07
 **상태**: 일부 구현 — §6 의 1 · 3 · 4 를 2026-10-13 에 넣었다(사전 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json) · 개념 매칭 ·
 힌트 마이그레이션). §6 의 2(§5.4 실측)는 A-3 을 기다리고, 5~7 은 제안이다
@@ -8,7 +23,7 @@
 **관련 문서**: [decisions/template-snap-recommendation.md](../decisions/template-snap-recommendation.md) §7 ·
 [decisions/snap-content-analysis.md](../decisions/snap-content-analysis.md) §9.1(`visualIssues` 를 코드로 닫은 이유) ·
 [decisions/edit-director.md](../decisions/edit-director.md) §6 · [`cut-role-vocabulary.json`](../../packages/shared-types/src/cut-role-vocabulary.json) ·
-[snap-analysis-recommendation-rollout.md](snap-analysis-recommendation-rollout.md) §4.1 ·
+[snap-analysis-recommendation-rollout.md](../plans/snap-analysis-recommendation-rollout.md) §4.1 ·
 [`score-slots.ts`](../../apps/api/src/services/recommendation/score-slots.ts) ·
 [`prompt.py`](../../apps/ai-worker/src/pipeline/video_analysis/prompt.py)
 

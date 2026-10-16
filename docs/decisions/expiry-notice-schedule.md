@@ -3,7 +3,7 @@
 **작성일**: 2026-09-09
 **상태**: 결정 — 만료 예고는 삭제 3일 전과 1일 전 두 번, 정리 배치와 분리된 KST 10시 배치가 보낸다
 **원천**: 예고 일정의 결정 근거. 리드타임 값은 [`retention-policy.ts`](../../apps/api/src/services/retention-policy.ts)
-`SNAP_EXPIRY_NOTICE_DAYS`, 배치 시각은 [deployment-aws.md](../deployment-aws.md) §4, 요구는 [specs/snap-library.md](../specs/snap-library.md) SNAP-13 이다
+`SNAP_EXPIRY_NOTICE_DAYS`, 배치 시각은 [`deploy/batches.cron`](../../deploy/batches.cron)(설명 [deployment-aws.md](../deployment-aws.md) §4), 요구는 [specs/snap-library.md](../specs/snap-library.md) SNAP-13 이다
 **관련 문서**: [snap-retention-period.md](./snap-retention-period.md) §[만료의 동작 구조](./snap-retention-period.md#만료의-동작-구조) ·
 [notification-preferences.md](./notification-preferences.md) · [specs/snap-library.md](../specs/snap-library.md) SNAP-13 ·
 [backlog.md](../backlog.md) B-2
@@ -17,7 +17,7 @@
 ## 무엇을 정했나
 
 스냅이 보관 기간(15일)을 다 채우기 전에 **삭제 3일 전과 1일 전, 두 번** 푸시로 알린다.
-발송은 **KST 오전 10시**에 하루 1회 도는 별도 배치(`npm run media:notify-expiring -w apps/api`)가 맡는다.
+발송은 **KST 오전 10시**에 하루 1회 도는 별도 배치(`npm run media:notify-expiring -w apps/api` — 기본은 dry-run, 발송은 `-- --yes` 이고 cron 이 붙인다)가 맡는다.
 
 ## 왜 이 결정이 가벼운 결정이 아닌가
 

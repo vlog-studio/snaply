@@ -17,6 +17,15 @@
 > 컷이 `clipId` 대신 `videoId` 를 직접 갖고(§6 `source` 없음), 최상위 `stylePreset` 이 색보정·음악을 정하며, `seed`·`intent`·
 > `transitionId`·`reason` 이 없다. 이 초안과 맞추는 일은 [backlog.md](../backlog.md) A-7 의 "`editSpec` v3 확정"이다.
 
+> **정정**(2026-10-16): 구현이 이 초안과 다른 곳을 더 적는다. v3 의 정본 모양은 여전히 미결이다([backlog.md](../backlog.md) A-7 "v3 의 정본 모양").
+> ① 지금의 컷(`contract/edit-jobs.ts` 의 `timelineCutSchema`)은 `cutId` · `videoId` · `sourceInMs` 와 선택 필드 `sourceOutMs`(권위 값, "생략하면 원본
+> 끝까지")다 — §9.1 의 `startBeat` · `beatLength` · `speed` · `role` · `reason` 이 없고, §9.2 의 "`sourceOutMs` 가 파생"과 달리 `sourceOutMs` 가 권위다
+> (사용자가 자른 컷은 ms 기준 — [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) §2.4). 역할을 싣는 일은 backlog A-11.
+> ② 컷 사이 색 맞춤(§11 `grade.match`)은 렌더할 때 계산한다(2026-10-12, `apps/ai-worker/src/pipeline/color_match.py`) — 컷마다 채널별 RGB 이득이고
+> 상한은 코드 상수이며, 스펙에는 아무것도 남지 않는다([decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) §6.3). 그래서 §11 의 "현행 유일한
+> 색 표현은 `PRESETS` 의 `eq=` 한 줄"은 더 이상 사실이 아니다 — 색 맞춤이 스타일 `eq` 앞에 붙는다.
+> ③ 무비 전체 음량(§12 `audio.mix` 의 `targetLufs` · `truePeakDb`)은 스펙이 아니라 편집 워커의 마무리(`editor.py` 의 `finalize`)가 고정값으로 맞춘다.
+
 ---
 
 ## 0. 범위
@@ -149,7 +158,7 @@
 
 📌 `intent` 변경(예: 자막 켜기)은 아직 무효화 사전의 액션에 없다. `overlays.captions` 무효화에
 더해 **whisper 재실행**이 필요한데, whisper 는 스테이지가 아니라 분석 리더라 `attempt` 축에
-들어가지 않는다. 축이 하나 더 필요할 수 있으므로 구현 시점에 판단한다.
+들어가지 않는다. 축이 하나 더 필요할 수 있다 — 미결은 [backlog.md](../backlog.md) A-7 이다.
 
 ---
 
@@ -536,8 +545,9 @@ UI 에 드러나야 한다.
 }
 ```
 
-현행 유일한 색 표현은 [editor.py](../../apps/ai-worker/src/pipeline/editor.py) `PRESETS` 의 프리셋별 `eq=` 한 줄
-(`감성` 의 `eq=saturation=0.8` 등)이다. v3 초안에는 갈 자리가 없었다(V3-A3).
+초안을 쓸 때(2026-08-20) 유일한 색 표현은 [editor.py](../../apps/ai-worker/src/pipeline/editor.py) `PRESETS` 의 프리셋별 `eq=` 한 줄
+(`감성` 의 `eq=saturation=0.8` 등)이었다. v3 초안에는 갈 자리가 없었다(V3-A3). 2026-10-12 부터는 렌더할 때 계산하는 컷 사이 색 맞춤이 그 앞에
+붙는다(상단 정정 ②).
 
 ### 11.1 `grade` 세 갈래는 축이 각각 다르다 — 별개 레이어다
 

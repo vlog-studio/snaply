@@ -130,7 +130,7 @@ describe('GET /movie-templates', () => {
 
 describe('movie_template_slots.match_hints', () => {
   // 채점은 힌트를 개념 사전의 id 로 읽는다. 사전에 없는 id 는 오류 없이 0점이 되므로, 마이그레이션과 사전이
-  // 어긋나면 여기서만 드러난다(docs/plans/content-vocabulary.md §5.2).
+  // 어긋나면 여기서만 드러난다(docs/decisions/ontology-personalization.md §3.4).
   it('uses only concept ids of the content vocabulary', async () => {
     const slots = await h.prisma.movieTemplateSlot.findMany({
       select: { templateId: true, slotId: true, matchHints: true },

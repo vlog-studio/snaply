@@ -268,7 +268,7 @@ describe('parseMatchHints', () => {
 /**
  * 부분 문자열 매칭이 만들던 오탐 · 미탐이 개념 매칭에서 사라졌는지 고정한다.
  *
- * 사례는 docs/plans/content-vocabulary.md §1 의 표다(오탐 16 · 미탐 12 · 유지 3). 사전 도입 전에는 같은 사례를
+ * 사례는 사전 도입 때(2026-10-07) 모은 표다(오탐 16 · 미탐 12 · 유지 3 — docs/decisions/ontology-personalization.md §1). 사전 도입 전에는 같은 사례를
  * 시드의 자유 문자열 힌트(`hint`)로 재어 `now` 를 고정했고, 사전을 들이는 변경에서 힌트를 개념 id(`concept`)로 바꾸고
  * 기대값을 `then` 으로 뒤집었다. 사전을 되돌리면 `hint` · `now` 로 되돌린다.
  */
@@ -278,7 +278,7 @@ describe('keyword matching — concept vocabulary', () => {
     field: Field;
     /** 지금 시드에 있는 힌트. */
     hint: string;
-    /** 사전 도입 뒤 그 힌트가 옮겨 갈 개념 id (계획 §2.1). */
+    /** 사전 도입 뒤 그 힌트가 옮겨 갈 개념 id(시드 힌트 마이그레이션). */
     concept: string;
     value: string;
     /** 1 = 키워드 몫이 맞음, 0 = 맞지 않음. */
