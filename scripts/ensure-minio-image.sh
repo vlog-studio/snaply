@@ -3,7 +3,8 @@
 #
 # 이미지는 ghcr.io 에 우리가 올린 것이다(.github/workflows/minio-image.yml). 패키지가 비공개면
 # `docker login ghcr.io` 없이 받을 수 없고, 워크플로가 올리기 전에도 없다. 어느 경우든 같은
-# Dockerfile 로 같은 태그를 만들면 compose 는 그 로컬 이미지를 쓴다. 배경은 backlog E-7.
+# Dockerfile 로 같은 태그를 만들면 compose 는 그 로컬 이미지를 쓴다.
+# 배경은 progress 2026-10-10 "MinIO 는 소스 빌드 미러를 유지한다".
 #
 #   image=$(scripts/ensure-minio-image.sh)   # 이미지 이름은 docker-compose.dev.yml 에서 읽는다
 #

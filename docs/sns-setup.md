@@ -1,4 +1,4 @@
-# 인스타그램 · 틱톡 연동 셋업 (Dev B)
+# 인스타그램 · 틱톡 연동 셋업
 
 **작성일**: 2026-08-04
 **상태**: 현행
@@ -6,8 +6,8 @@
 [contract/sns.ts](../packages/shared-types/src/contract/sns.ts)(동작 안내는 [api-spec.md](./api-spec.md) §SNS 연동),
 cloudflared 설치와 임시 주소의 주의사항은 [local-tunnel.md](./local-tunnel.md), 외부에서 닿는 AWS 서버에 키를 넣는 절차는
 [deployment-aws.md](./deployment-aws.md) §2
-**관련 문서**: [progress.md](./progress.md)(진행 기록) · [backlog.md](./backlog.md) C-2 · C-3 · C-5 · D-1 · D-3(닫히지 않은
-항목 — 받은함 미도착 · 심사 · 검수 URL · 고정 도메인 · prefix 재등록) · [decisions/sns-webhook-scope.md](./decisions/sns-webhook-scope.md)
+**관련 문서**: [progress.md](./progress.md)(진행 기록) · [backlog.md](./backlog.md) C-2 · C-3 · C-8 · D-1 · D-3(닫히지 않은
+항목 — 받은함 미도착 · 심사 · Meta 앱 검수 결과 대기 · 고정 도메인 · prefix 재등록) · [decisions/sns-webhook-scope.md](./decisions/sns-webhook-scope.md)
 
 실제 업로드를 로컬에서 검증하기 위한 준비 절차. 코드는 이미 실키를 받을 준비가 끝나 있고,
 `INSTAGRAM_APP_ID` / `TIKTOK_CLIENT_KEY` 가 채워지면 플랫폼별로 mock → 실호출로 전환된다. 단 `SNS_MOCK=true` 면 키가
@@ -59,8 +59,9 @@ TIKTOK_REDIRECT_URI=https://<A>.trycloudflare.com/sns/tiktok/callback
 # 서명돼 §0 의 가드에 걸린다. 앱이 받는 업로드·재생 URL 도 이 터널을 지난다.
 S3_PUBLIC_ENDPOINT=https://<B>.trycloudflare.com
 
-# publicUrl() 의 베이스 — 편집 결과의 edited_url 과 기동 경고(snsUploadReadiness)가 이 값을 본다.
-# 운영에서는 실제 CloudFront 도메인이 들어간다.
+# publicUrl() 의 베이스 — DB 에 저장하는 URL(편집 결과의 edited_url 등)만 이 값으로 만든다. 그 저장 URL 이 앱과 플랫폼에
+# 그대로 나가는 것은 edited_s3_key 가 없는 옛 행뿐이다. 플랫폼에 넘기는 서명 URL 과 기동 경고(snsUploadReadiness)는
+# 위 S3_PUBLIC_ENDPOINT(비면 S3_ENDPOINT)를 본다. 현행 AWS 서버는 CloudFront 를 쓰지 않아 compose 가 이 값을 비운다.
 CLOUDFRONT_DOMAIN=https://<B>.trycloudflare.com/snaply-dev
 ```
 

@@ -70,12 +70,11 @@ jq -r 'keys[]' ~/snaply-env.json
 aws secretsmanager put-secret-value --profile dweax-snaply --secret-id dweax/service/snaply/env --secret-string file://$HOME/snaply-env.json && rm ~/snaply-env.json
 ```
 
-인프라가 요청서 4장의 키를 빈 값으로 만들어 두었다(`LEGAL_CONTACT_EMAIL` 은 없어 더해야 한다). `POSTGRES_PASSWORD` 와
-`SNS_TOKEN_ENCRYPTION_KEY` 는 한 번 정하면 바꾸지 않는다 — Postgres 는 첫 기동 때만 비밀번호를 정하고, 암호화 키가 바뀌면
+`POSTGRES_PASSWORD` 와 `SNS_TOKEN_ENCRYPTION_KEY` 는 한 번 정하면 바꾸지 않는다 — Postgres 는 첫 기동 때만 비밀번호를 정하고, 암호화 키가 바뀌면
 저장된 SNS 토큰을 못 읽는다.
 
 - **넣는 키**: [`env-spec.ts`](../apps/api/src/env-spec.ts) 에서 `origin` 이 `local` 이 아닌 것 중 쓰는 것과
-  `POSTGRES_PASSWORD`(접속 URL 에 들어가므로 영숫자만). 목록은 요청서 4장.
+  `POSTGRES_PASSWORD`(접속 URL 에 들어가므로 영숫자만). 목록의 원천은 그 파일이다.
 - **`OPENAI_API_KEY` 는 로컬 개발(`apps/api/.env`)과 다른 키다.** 한쪽이 새거나 폐기돼도 다른 쪽이 살아 있게 한다. 한쪽이 새면
   그쪽 키만 바꾼다 — 로컬을 바꿔도 된다. 둘이 다른지는 값을 꺼내지 않고 해시로 본다(저장소 루트에서, `SAME`/`DIFFERENT` 만 나온다):
 
@@ -86,9 +85,9 @@ aws secretsmanager put-secret-value --profile dweax-snaply --secret-id dweax/ser
   서버 쪽이 비어 있어도 `DIFFERENT` 다 — 빈 키면 `analysis-worker` 가 기동 단계에서 종료한다(§6).
 - **같은 키를 API 도 읽는다(2026-10-13~).** AI 편집 초안의 에이전트(MOV-25)가 이 키로 OpenAI 를 부른다 — API 는 분석 워커와 같은
   시크릿 파일을 읽으므로 따로 넣을 것이 없다. 키가 비면 API 는 정상 기동하고 초안을 규칙만으로 만든다(`movie_drafts.mode` 가 `rules`).
-  에이전트 모델은 `EDIT_AGENT_MODEL`(선택, 기본 `gpt-5.6-luna` — 잠정값)이다. 바꾸면 API 재기동만으로 반영된다(배포 불필요).
+  에이전트 모델은 `EDIT_AGENT_MODEL`(선택, 기본값은 [`env-spec.ts`](../apps/api/src/env-spec.ts))이다. 바꾸면 API 재기동만으로 반영된다(배포 불필요).
 - **넣지 않는 키**: compose 가 정한다 — `DATABASE_URL` · `DIRECT_URL` · `REDIS_URL` · `NODE_ENV` · `API_PORT` ·
-  `TRUST_PROXY`. S3 키 · `S3_ENDPOINT` · `S3_PUBLIC_ENDPOINT` · `CLOUDFRONT_DOMAIN` 은 넣어도 ""로 덮인다 — 이 서버는
+  `TRUST_PROXY` · `BGM_S3_PREFIX`(편집 워커, §6 "BGM 곡 올리기"). S3 키 · `S3_ENDPOINT` · `S3_PUBLIC_ENDPOINT` · `CLOUDFRONT_DOMAIN` 은 넣어도 ""로 덮인다 — 이 서버는
   인스턴스 역할로만 S3 에 붙는다.
 - **빈 값은 배포 때 빠지고 코드의 기본값이 쓰인다.** 그대로 옮기면 빈 `LOG_LEVEL` 은 기동 실패, 빈
   `RATE_LIMIT_GLOBAL_MAX` 는 모든 요청 429 다([`write-env.sh`](../deploy/aws/write-env.sh) 머리말).
@@ -131,16 +130,16 @@ main 머지
 ## 4. 배치
 
 `/etc/cron.d/snaply` 가 [`deploy/batches.cron`](../deploy/batches.cron) 과 **같은 시각**으로 돈다 —
-[`render-cron.sh`](../deploy/aws/render-cron.sh) 가 경로와 compose 파일만 바꿔 깐다 — **시각의 원천은 그 파일 하나**다.
+[`render-cron.sh`](../deploy/aws/render-cron.sh) 가 경로와 compose 파일만 바꿔 깐다 — **시각과 순서의 원천은 그 파일 하나**다.
 로그는 `/var/log/snaply/*.log`.
 
-| 시각(KST) | 무엇 | 로그 |
-|---|---|---|
-| 03:30 | DB 백업 | `backup.log` |
-| 04:00 | 만료 정리(스냅 · 결과물 · 남은 객체 · 7일 지난 위치 알림 이력) | `purge-expired.log` |
-| 04:20 | 계정 실삭제 | `accounts-purge.log` |
-| 04:40 | pending 영상 회수 | `purge-pending.log` |
-| **10:00** | **만료 예고 알림**(스냅 D-3 · D-1, 끝내지 않은 무비 결과물 D-3) | `notify-expiring.log` |
+| 무엇 | 로그 |
+|---|---|
+| DB 백업 | `backup.log` |
+| 만료 정리(스냅 · 결과물 · 남은 객체 · 7일 지난 위치 알림 이력) | `purge-expired.log` |
+| 계정 실삭제 | `accounts-purge.log` |
+| pending 영상 회수 | `purge-pending.log` |
+| **만료 예고 알림**(스냅 D-3 · D-1, 끝내지 않은 무비 결과물 D-3) | `notify-expiring.log` |
 
 **예고와 정리를 같은 시각에 묶지 않는다.** 조용한 시간대(22–08시)에 보낸 예고는 발송되지 않고 버려지고,
 그러면 예고 없는 삭제가 된다([decisions/expiry-notice-schedule.md](./decisions/expiry-notice-schedule.md)).
@@ -157,7 +156,7 @@ FCM 은 dry-run 으로 떨어지는데, 보내지 않은 예고를 보냈다고 
 
 ## 5. 백업
 
-- 매일 03:30(KST) `pg_dump` → `/data/backup`, 14일 보관. `/data` 볼륨은 인프라가 매일 스냅샷한다(7개).
+- 매일(시각은 [`deploy/batches.cron`](../deploy/batches.cron)) `pg_dump` → `/data/backup`, 14일 보관. `/data` 볼륨은 인프라가 매일 스냅샷한다(7개).
 - **S3 영상은 백업이 없다.** 버킷의 버전 관리가 꺼져 있어 지운 영상은 되돌릴 수 없다 — 공모전 서버라 두지 않기로 했다(2026-10-11, [decisions/aws-contest-server.md](./decisions/aws-contest-server.md)).
 - 볼륨째 되돌리는 것은 인프라에 요청한다. 덤프로 DB 만 되돌리는 법은 아래.
 
@@ -165,7 +164,7 @@ FCM 은 dry-run 으로 떨어지는데, 보내지 않은 예고를 보냈다고 
 
 덤프는 `pg_dump` 기본값이라 `DROP` 이 없다 — **데이터가 있는 DB 에 부으면 섞인다.** 그래서 DB 를 지우고 새로 만든 뒤 붓는다.
 덤프 뒤에 생긴 데이터(스냅 · 무비 · 크레딧)는 사라지고, S3 에는 그 사이 올라온 영상이 행 없이 남는다. §6 의 셸에서 한다.
-배치 시각(03:30 ~ 04:40, 10:00 — §4)은 피한다.
+배치 시각([`deploy/batches.cron`](../deploy/batches.cron))은 피한다.
 
 ```bash
 docker compose --env-file .env stop api ai-worker analysis-worker rendition-worker notification-worker
@@ -237,7 +236,7 @@ curl -s localhost:3000/health
 - 워커는 작업을 받을 때 매니페스트를 보고(10분에 한 번까지) 없는 곡을 받고 빠진 곡을 지운다. 재시작은 필요 없다. 같은 이름의 곡은 다시 받지
   않으므로 **곡을 바꿀 때는 새 이름으로** 올린다.
 - 매니페스트를 읽지 못하면 있는 곡으로(없으면 BGM 없이) 렌더하고 Sentry 에 남긴다 — 음악 때문에 무비가 실패하지 않는다.
-- 같은 무비는 컷을 바꿔 다시 만들어도 같은 곡이다(무비 id 로 고른다, backlog E-5). 곡 수가 바뀌면 고르는 결과가 바뀔 수 있다.
+- 곡을 고르는 규칙(무비마다 고정, 곡 수가 바뀌면 결과가 바뀔 수 있다)은 [BGM 라이브러리 README](../apps/ai-worker/assets/bgm/README.md#디렉터리-구조)다.
 - `assets/` 는 정리 배치(§4 · 계정 삭제)가 지우는 `uploads/` 밖이다.
 
 ### 실측 — 스냅 분석 · AI 편집 초안(backlog A-3 · A-12 · A-14)
@@ -245,7 +244,7 @@ curl -s localhost:3000/health
 공모전 지표는 이 서버의 기록으로 낸다 — 로컬 `apps/api/.env` 에는 OpenAI 키가 없다. 실측 전용 계정 하나에 팀 스냅을 모아 분석 · 추천 · 초안을 돌리고,
 [`deploy/aws/measure.sql`](../deploy/aws/measure.sql) 로 집계한다(읽기만 한다). 준비는 이 순서다.
 
-1. **예산 상한(오너)** — 서버 키가 속한 OpenAI 프로젝트에 월 사용 한도를 건다(A-3 "키 프로젝트의 사용 한도"). 실측 규모는 분석 100편(편당 약 0.6원) ·
+1. **예산 상한(오너)** — 서버 키가 속한 OpenAI 프로젝트에 월 사용 한도를 건다(backlog D-6). 실측 규모는 분석 100편(편당 약 0.6원) ·
    초안 20~30회(회당 약 15~20원 추정)라 몇천 원 수준이다 — 한도는 사고를 막는 값으로 넉넉히 둔다. rate limit 등급도 같은 화면에서 본다.
 2. **분석 켜기(오너)** — §2 의 방법으로 시크릿에 `MOVIE_RECOMMENDATION_ENABLED=true` 를 넣고 마지막 배포를 Re-run 한다. 켜도 **분석에 동의한 사용자의
    스냅만** 모델로 간다(ANA-5) — 동의하지 않은 테스터는 지금과 같다. 켜지면 앱 나 탭의 `스냅 분석` 이 `준비 중` 에서 켤 수 있는 상태로 바뀐다.
@@ -294,7 +293,7 @@ unzip -p app/build/outputs/apk/release/app-release.apk assets/index.android.bund
   나뉘지 않으므로, 로컬 서버에서 쓰던 계정으로 이 서버를 보면 두 서버의 스냅이 섞인다 — 테스터 앱에는 별도 계정을 쓴다. 이미 로그인돼
   있으면 비행기 모드에서 앱을 열어 로그아웃한 뒤 바꾼다. 개발용으로 돌아갈 때는 `npm run android:device:install -w snaply-app`.
 - **테스터 크레딧은 가입 보너스로 준다.** 광고 보상은 꺼져 있고 결제는 mock 이라, 시크릿에 `CREDIT_SIGNUP_BONUS=500`
-  (무비 5편, [CRD-8](./specs/credits-and-payment.md))을 둔다(§2). 계정마다 한 번이고, 넣기 전에 가입한 계정도 다음 요청에서 받는다.
+  을 둔다(§2). 지급 규칙(계정마다 한 번 등)은 [specs/credits-and-payment.md](./specs/credits-and-payment.md) CRD-8 이다.
   더 줘야 하는 테스터는 §6 의 셸에서 사용자 id 를 찾아 `promo` 를 넣는다:
 
   ```bash
@@ -308,22 +307,15 @@ unzip -p app/build/outputs/apk/release/app-release.apk assets/index.android.bund
 ### EAS 로 빌드해 링크로 나눠 주기
 
 Android SDK 가 없는 컴퓨터에서도 만들 수 있고, 결과가 설치 링크라 테스터에게 그대로 보낸다. iOS 는 유료 Apple Developer 계정이 없어
-만들지 않는다(backlog B-8).
+만들지 않는다(backlog B-8). 빌드 명령 · 서명 · `eas init` 주의는 모바일 문서
+[Tester build against the AWS contest server](../apps/mobile/docs/workflows/local-development-and-testing.md#tester-build-against-the-aws-contest-server--tester-profile)가 원천이다.
 
 | 무엇 | 어디 |
 |---|---|
 | 빌드 프로필 | [`apps/mobile/eas.json`](../apps/mobile/eas.json) 의 `tester` — 내부 배포 APK, `EXPO_PUBLIC_API_BASE_URL=https://snaply-api.dweaxai.com` |
 | EAS 프로젝트 | Expo 계정 `dayomi` 의 `snaply-app` (`app.json` 의 `owner` · `extra.eas.projectId`) |
 | Supabase 클라이언트 값 | EAS 프로젝트 환경변수(`preview` 환경) `EXPO_PUBLIC_SUPABASE_URL` · `EXPO_PUBLIC_SUPABASE_ANON_KEY` — 공개 저장소라 `eas.json` 에 두지 않는다 |
-| 서명 키 | EAS 서버가 보관한다(첫 빌드에서 생성) |
 
-```bash
-cd apps/mobile && npx --yes eas-cli@24.12.1 build --profile tester --platform android
-```
-
-- **위의 Gradle 빌드와 서명이 다르다.** 로컬 빌드(debug 키)가 깔린 기기에는 덮어 깔리지 않으므로 지우고 깐다 — 로컬 라이브러리가 지워진다.
 - **Supabase 값은 서버와 같은 프로젝트여야 한다.** 서버 시크릿의 `SUPABASE_URL` 과 같은 프로젝트의 URL, 그 프로젝트 대시보드
   (Project Settings → API Keys)의 publishable 또는 anon 키를 넣는다. 서버는 anon 키가 없어도 된다(JWKS 로 검증) —
   시크릿에 없다고 앱도 비워 두면 로그인이 안 된다.
-- **`eas init` 은 `app.json` 을 풀어 쓴다.** 플러그인이 계산한 권한 · `extra` 까지 박아 넣으므로, 다시 연결할 때는
-  `owner` 와 `extra.eas.projectId` 만 남기고 되돌린다(config plugin 이 원천이다).
