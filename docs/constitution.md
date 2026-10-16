@@ -69,6 +69,8 @@
 문서는 **계속 갱신되는가, 한 시점에 굳는가**로 위치가 결정되며, 수명이 끝난 문서는 archive로
 옮기고 판단 근거로 쓰지 않는다. 미결 작업 목록은 저장소 전체에서 **하나**만 존재한다.
 
+- 단서: 지난달의 진행 기록(`archive/progress-YYYY-MM.md`)은 **언제 무엇을 검증했는지**의 기록으로 인용할 수 있다.
+  현행 사실의 근거로는 쓰지 않는다([decisions/progress-monthly-archive.md](decisions/progress-monthly-archive.md), 2026-10-16).
 - 세칙: [doc-conventions.md](doc-conventions.md) · [AGENTS.md](../AGENTS.md) §문서 갱신 의무.
 - 근거: 미결 목록이 여럿이면 하나를 닫아도 나머지가 낡는다(제2조의 특수형).
 
