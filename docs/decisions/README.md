@@ -66,6 +66,7 @@
 | [instagram-app-handoff.md](instagram-app-handoff.md) | Instagram 게시 시트에 "Instagram 앱에서 올리기"(앨범 저장 → Instagram 앱 열기)를 함께 둔다 — Meta 고급 액세스는 회사 비즈니스의 Tech Provider(액세스 인증)가 먼저라 보류, 앱은 주식회사 디윅스 소유로 옮김 | 완료(2026-10-12). 이후 액세스 인증을 마치고 검수 제출(2026-10-12) — 결과는 C-8 |
 | [aws-contest-server.md](aws-contest-server.md) | 공모전 테스트 서버를 인프라팀 EC2 에 올린다 — GitHub self-hosted runner + GHCR(main 배포만 받음), S3 는 인스턴스 역할, 단독 compose, Secrets Manager → 배포 때 env 파일. **2026-10-09 부터 유일한 배포 대상** — 사내 서버 안은 접었다([archive/on-prem-deployment.md](../archive/on-prem-deployment.md)). 2026-10-11: 운영은 11월까지, S3 영상 백업 없음, 편집 워커 동시성 1 | 저장소 쪽 완료 · 첫 배포(2026-10-08). 남은 일은 B-8 |
 | [env-management.md](env-management.md) | 로컬은 `apps/api/.env`, 운영은 서버 측 주입(AWS 서버는 Secrets Manager 에서 배포 때 만든 파일) | 완료 |
+| [progress-monthly-archive.md](progress-monthly-archive.md) | progress.md 에는 이번 달만 두고 지난달은 `archive/progress-YYYY-MM.md` 로 옮긴다. 보관본은 언제 무엇을 검증했는지의 기록으로 인용할 수 있다(constitution 제7조 단서) | 완료(2026-10-16, 8 · 9월 이동) |
 
 ## 과거 결정 — 일부 또는 전부 대체됨
 
