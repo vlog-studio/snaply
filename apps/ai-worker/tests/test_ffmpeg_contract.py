@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from pipeline import color_match, hdr, music, rendition, subtitle  # noqa: E402
 from pipeline.editor import (  # noqa: E402
     ClipSource,
-    _parse_loudnorm,
+    _parse_ebur128,
     clip_level_filter,
     edit,
     edit_timeline,
@@ -231,6 +231,17 @@ def make_tone_clip(path: str, *, volume: float, seconds: float = 2.0, color: str
     )
 
 
+def _parse_loudnorm(stderr: str) -> dict | None:
+    """`loudnorm=print_format=json` 이 stderr 끝에 찍는 측정값 — 트루 피크(`input_tp`)를 재려고 테스트에서만 쓴다."""
+    start, end = stderr.rfind("{"), stderr.rfind("}")
+    if start < 0 or end < start:
+        return None
+    try:
+        return json.loads(stderr[start : end + 1])
+    except json.JSONDecodeError:
+        return None
+
+
 def _loudness_stats(path: str) -> dict[str, float]:
     """통합 음량(`i`, LUFS)과 트루 피크(`tp`, dBTP) — loudnorm 측정."""
     proc = subprocess.run(
@@ -247,6 +258,23 @@ def _loudness_stats(path: str) -> dict[str, float]:
 @unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
 class AudioBasicsContract(unittest.TestCase):
     """기본 처리(decisions/auto-edit-draft.md §6.3) — 컷이 바뀔 때 소리가 튀지 않고, 무비는 플랫폼 크기다."""
+
+    def test_measures_the_same_loudness_as_loudnorm(self) -> None:
+        # 측정을 loudnorm 에서 ebur128 로 바꿨다(backlog E-52) — 같은 소리를 같은 크기로 재야 컷 · 무비의 이득이 그대로다.
+        with tempfile.TemporaryDirectory() as work:
+            for volume in (0.4, 1.6):
+                path = os.path.join(work, f"tone-{volume}.mp4")
+                make_tone_clip(path, volume=volume, seconds=3.0)
+                with self.subTest(volume=volume):
+                    self.assertAlmostEqual(measure_loudness(path), _loudness_stats(path)["i"], delta=0.3)
+
+    def test_silence_measures_below_the_silence_line(self) -> None:
+        # 소리가 없으면 ebur128 은 절대 게이트(−70)를 낸다 — 호출하는 쪽이 무음(−50 아래)으로 보고 크기를 맞추지 않는다.
+        with tempfile.TemporaryDirectory() as work:
+            path = os.path.join(work, "silent.mp4")
+            make_tone_clip(path, volume=0.0)
+            loudness = measure_loudness(path)
+            self.assertTrue(loudness is None or loudness < -50, loudness)
 
     def test_cuts_recorded_at_different_levels_come_out_alike(self) -> None:
         with tempfile.TemporaryDirectory() as work:
@@ -723,6 +751,22 @@ def _movflags_state(path: str) -> str:
     if mdat == -1 or moov < mdat:
         return "faststart"
     return "moov-after-mdat"
+
+class ParseEbur128Test(unittest.TestCase):
+    """ffmpeg 없이 — ebur128 이 stderr 끝에 찍는 요약에서 통합 음량을 읽는다."""
+
+    SUMMARY = (
+        "[Parsed_ebur128_0 @ 0x1] Summary:\n\n"
+        "  Integrated loudness:\n    I:         -16.4 LUFS\n    Threshold: -26.7 LUFS\n\n"
+        "  Loudness range:\n    LRA:         2.1 LU\n"
+    )
+
+    def test_reads_the_integrated_loudness(self) -> None:
+        self.assertEqual(_parse_ebur128(self.SUMMARY), -16.4)
+
+    def test_reads_silence_and_nothing(self) -> None:
+        self.assertEqual(_parse_ebur128(self.SUMMARY.replace("-16.4", "-70.0")), -70.0)
+        self.assertIsNone(_parse_ebur128("no summary here"))
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 import json
 import math
+import re
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -102,15 +103,17 @@ def _has_audio(path: str) -> bool:
     return bool(json.loads(out.stdout).get("streams"))
 
 
-def _parse_loudnorm(stderr: str) -> dict | None:
-    """`loudnorm=print_format=json` 이 stderr 끝에 찍는 측정값."""
-    start = stderr.rfind("{")
-    end = stderr.rfind("}")
-    if start < 0 or end < start:
+_EBUR128_INTEGRATED = re.compile(r"^\s*I:\s+(-?(?:\d+(?:\.\d+)?|inf))\s+LUFS\s*$", re.MULTILINE)
+
+
+def _parse_ebur128(stderr: str) -> float | None:
+    """`ebur128` 이 stderr 끝의 요약(Summary)에 찍는 통합 음량(`I:`). 줄마다의 기록은 `framelog=quiet` 로 끈다."""
+    found = _EBUR128_INTEGRATED.findall(stderr)
+    if not found:
         return None
     try:
-        return json.loads(stderr[start : end + 1])
-    except json.JSONDecodeError:
+        return float(found[-1])
+    except ValueError:
         return None
 
 
@@ -121,25 +124,24 @@ def measure_loudness(
 
     렌더와 같은 오디오 트랙(`0:a:0`)을 잰다 — ffmpeg 의 기본 선택(채널이 가장 많은 트랙)에 맡기면 트랙이 여럿인 원본에서
     다른 트랙을 쟀다(backlog E-48). 재지 못하면 경고를 남긴다 — 그 컷은 크기를 맞추지 않고 지나간다.
+
+    `ebur128` 로 잰다(BS.1770 통합 음량, 0.1 LU 단위). 처음에는 `loudnorm` 의 측정값을 썼는데, loudnorm 은 재기만 할 때도
+    192kHz 로 리샘플해 같은 값을 약 3배 느리게 냈다 — 컷 10개 무비에서 1.6~3.0초 대 0.5~0.9초, 값 차이 0.15 LU 안(backlog E-52).
+    소리가 없으면 ebur128 은 −70 LUFS(절대 게이트)를 내고, 호출하는 쪽이 무음 기준(−50)으로 거른다.
     """
     cmd = ["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{start:.3f}"]
     if duration is not None:
         cmd += ["-t", f"{duration:.3f}"]
-    measure = f"{pre_filter},loudnorm=print_format=json" if pre_filter else "loudnorm=print_format=json"
+    measure = f"{pre_filter},ebur128=framelog=quiet" if pre_filter else "ebur128=framelog=quiet"
     cmd += ["-i", path, "-map", "0:a:0", "-af", measure, "-f", "null", "-"]
     proc = subprocess.run(cmd, capture_output=True, text=True)
-    measured = _parse_loudnorm(proc.stderr) if proc.returncode == 0 else None
-    if measured is None:
+    value = _parse_ebur128(proc.stderr) if proc.returncode == 0 else None
+    if value is None:
         logger.warning(
             "음량을 재지 못했다 — 크기를 맞추지 않는다: {} ({})",
             path,
             proc.stderr.strip()[-300:] or f"exit {proc.returncode}",
         )
-        return None
-    try:
-        value = float(measured["input_i"])
-    except (KeyError, TypeError, ValueError):
-        logger.warning("음량 측정값을 읽지 못했다: {} ({})", path, measured)
         return None
     return value if math.isfinite(value) else None
 
