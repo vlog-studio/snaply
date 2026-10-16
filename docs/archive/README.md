@@ -1,7 +1,8 @@
 # 보관 문서
 
 여기 있는 문서는 **작성 시점의 기록**이다. 현행 사실과 다를 수 있으므로 판단 근거로 쓰지 말 것.
-당시 맥락을 되짚을 때만 참고한다.
+당시 맥락을 되짚을 때만 참고한다. 예외는 월별 진행 기록(`progress-YYYY-MM.md`)이다 — 완료 기록이라 무엇을 언제 어떻게
+검증했는지의 근거로 인용할 수 있다(지금의 동작이 그렇다는 근거는 아니다).
 
 | 문서 | 무엇이었나 | 현행 원천 |
 |---|---|---|
@@ -16,12 +17,14 @@
 | [movie-server-transition.md](./movie-server-transition.md) | 무비 서버 전환의 앱 착수 계획과 결정 요청 3건(2026-09-12). 같은 날 승인·구현 | 결정 [decisions/movie-client-cache.md](../decisions/movie-client-cache.md) · 앱 동작 [apps/mobile/docs/features/movie.md](../../apps/mobile/docs/features/movie.md) |
 | [2026-08-12-rewarded-credit-review.md](./2026-08-12-rewarded-credit-review.md) | 열리지 않은 회의의 광고 보상 제안(한도 3회·쿨다운 5~15분 등). 다른 값으로 확정됨 | 정책 [decisions/ad-reward-credits.md](../decisions/ad-reward-credits.md) §7 · 미결 [backlog.md](../backlog.md) C-6 |
 | [progress-integrations-2026-08.md](./progress-integrations-2026-08.md) | 연동/수익화 트랙 하드닝 기록(2026-08-03~08-10). 2026-09-27 에 [progress.md](../progress.md) 에서 분리 — Stripe 하드닝·Stripe 웹훅 e2e 등 이후 뒤집힌 내용 포함 | 이후 진행 [progress.md](../progress.md) · SNS 셋업 [sns-setup.md](../sns-setup.md) · 결제 [decisions/payment-channel-iap.md](../decisions/payment-channel-iap.md) · 미결 [backlog.md](../backlog.md) C-2 |
+| [progress-2026-08.md](./progress-2026-08.md) | 2026-08-04 ~ 08-20 의 진행 기록. 2026-10-16 에 월 단위 규칙(progress.md 에는 이번 달만)으로 [progress.md](../progress.md) 에서 옮김 — **완료 기록이라 언제 무엇을 검증했는지의 근거로 인용할 수 있다** | 이후 진행 [progress.md](../progress.md) · 지금의 동작 [specs/](../specs/README.md) · 미결 [backlog.md](../backlog.md) |
+| [progress-2026-09.md](./progress-2026-09.md) | 2026-09-02 ~ 09-29 의 진행 기록. 같은 날 같은 규칙으로 옮김 — **완료 기록이라 근거로 인용할 수 있다** | 이후 진행 [progress.md](../progress.md) · 지금의 동작 [specs/](../specs/README.md) · 미결 [backlog.md](../backlog.md) |
 | [lifecycle-alignment.md](./lifecycle-alignment.md) | 영상·프로젝트·결과물 생애주기 정합 계획(2026-09-09). 결정 셋과 트랙이 2026-09-09~09-27 에 끝남 | 만료 구조 [decisions/snap-retention-period.md](../decisions/snap-retention-period.md#만료의-동작-구조) · 요구 [specs/movie.md](../specs/movie.md)·[specs/snap-library.md](../specs/snap-library.md) · 미결 [backlog.md](../backlog.md) |
 | [snap-reconcile.md](./snap-reconcile.md) | 스냅 reconcile(기기 간·재설치 동기화) 계획(2026-09-27). 0~3단계 구현·Android 실기기 검증 완료 | 설계 [decisions/snap-sync-across-devices.md](../decisions/snap-sync-across-devices.md#동기화-설계) · 앱 동작 [apps/mobile/docs/features/snaps.md](../../apps/mobile/docs/features/snaps.md) · 미결 [backlog.md](../backlog.md) A-4 |
 | [2026-08-31-dev-sync-follow-up.md](./2026-08-31-dev-sync-follow-up.md) | 2026-08-31 개발자 회의 후속 계획(2026-09-05). T2·T3 는 2026-09-09 결정 | 남은 결정과 착수 순서 [decisions/README.md](../decisions/README.md) §결정 대기 · 미결 [backlog.md](../backlog.md) |
 | [movie-cleanup-ux-comparison.md](./movie-cleanup-ux-comparison.md) | 끝내기 후 정리 결정의 선택지별 화면 비교(2026-09-09) | 결정 [decisions/movie-cleanup-after-export.md](../decisions/movie-cleanup-after-export.md) · 앱 화면 [apps/mobile/docs/features/movie.md](../../apps/mobile/docs/features/movie.md) |
 | [on-prem-deploy.md](./on-prem-deploy.md) | 사내 서버 배포 계획(2026-09-15 착수). 2026-10-09 사내 서버를 접음 | 현행 배포 [deployment-aws.md](../deployment-aws.md) · 그때의 절차 [deployment-on-prem.md](./deployment-on-prem.md) · 구성을 고른 이유 [on-prem-deployment.md](./on-prem-deployment.md) |
-| [deployment-on-prem.md](./deployment-on-prem.md) | 사내 서버의 배포·운영 절차(2026-09-15~10-09). 원래 위치는 `docs/deployment.md` | 현행 배포 [deployment-aws.md](../deployment-aws.md) · 남은 작업 [backlog.md](../backlog.md) B-8 |
+| [deployment-on-prem.md](./deployment-on-prem.md) | 사내 서버의 배포·운영 절차(2026-09-15~10-09). 원래 위치는 `docs/deployment.md` | 현행 배포 [deployment-aws.md](../deployment-aws.md) · 미결 [backlog.md](../backlog.md) |
 | [on-prem-deployment.md](./on-prem-deployment.md) | 사내 서버 구성을 고른 이유와 기각한 대안(2026-09-27). 원래 위치는 `docs/decisions/` | 뒤집은 결정 [decisions/aws-contest-server.md](../decisions/aws-contest-server.md) |
 | [edit-spec-v3-kickoff.md](./edit-spec-v3-kickoff.md) | editSpec v3 착수 계획(어휘 사전·시드·무효화 규칙 커밋 1~4). 커밋 1~3 은 2026-08-20 구현 | 확정 결정 [decisions/edit-spec-v3.md](../decisions/edit-spec-v3.md) · 남은 개정 [backlog.md](../backlog.md) A-7 |
 | [plan-limits.md](./plan-limits.md) | 정기 구독 시절 플랜 차등 집행 보류 결정과 기술 보호 제한 표 | 기각 근거 [decisions/credit-payment-model.md](../decisions/credit-payment-model.md) · 현행 요청 제한 [api-spec.md](../api-spec.md) |
@@ -49,6 +52,9 @@
   진행 추적기로 쓰였다. 코드·문서가 근거로 인용하던 살아 있는 설계·결정은 결정 문서로 옮기고 인용을 바꿨다.
 - **plan-limits · 정리 화면 비교**: 대체됐거나 결정이 끝나 쓸 곳이 없는 판단 자료다. plan-limits 는 낡은
   "현행 사실" 표가 api-spec 보다 우선한다고 주장하고 있었다.
+- **월별 진행 기록**(2026-10-16): progress.md 가 3,600줄을 넘어 날짜로 찾기도 읽기도 무거워졌다. 이번 달만 두고 지난달은
+  `progress-YYYY-MM.md` 로 옮기기로 했다(오너 결정). Phase 1~9 · 연동 하드닝 기록과 달리 뒤집힌 내용 때문에 옮긴 것이 아니라 근거로 인용해도 된다 —
+  다른 문서의 `progress 날짜 "제목"` 은 progress.md 의 머리말에 적은 grep 으로 찾는다.
 - **2026-08 연동 하드닝 기록**: Phase 1~9 와 같은 기준 — 이후 뒤집힌 Stripe 내용과 틀린 이동 안내가 현행
   진행 기록에 표시 없이 남아 있었다.
 - **제품 콘셉트**: 실무 가이드 폴더에 놓인 결정 기록이었고, 구현과 어긋난 부분까지 현행 문서가 근거로
