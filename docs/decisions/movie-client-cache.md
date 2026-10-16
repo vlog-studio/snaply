@@ -4,7 +4,7 @@
 **상태**: 결정 — 앱의 무비 스토어는 서버 캐시 + 아웃박스, 무비 id 는 앱이 정한 uuid
 **관련 문서**: [movie-model.md](./movie-model.md) · [movie-export-policy.md](./movie-export-policy.md) ·
 [movie-cleanup-after-export.md](./movie-cleanup-after-export.md) · [specs/movie.md](../specs/movie.md) MOV-2 ·
-[backlog.md](../backlog.md) A-1(서버 전환 실기기 검증) ·
+[backlog.md](../backlog.md) 닫은 항목 A-1(서버 전환 실기기 검증, 2026-10-11) ·
 [archive/movie-server-transition.md](../archive/movie-server-transition.md)(착수 계획) ·
 앱 동작 [apps/mobile/docs/features/movie.md](../../apps/mobile/docs/features/movie.md)
 

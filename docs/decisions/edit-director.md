@@ -9,6 +9,15 @@
 [transition-director.md](transition-director.md) · 툴 계획(보관) [archive/edit-recipe-tools.md](../archive/edit-recipe-tools.md) ·
 [`cut-role-vocabulary.json`](../../packages/shared-types/src/cut-role-vocabulary.json) · [edit-spec-v3.md](edit-spec-v3.md) §5
 
+> **후속 결정**(2026-10-13): AI 편집 에이전트([ai-edit-agent.md](ai-edit-agent.md))가 이 디렉터를 `select_cuts` 툴로 부른다. 에이전트가 넘기는 조절값
+> (`DirectionParams`)은 둘이다 — 초점(`focusKeys`, 초점 개념이 보이는 스냅의 점수에 `FOCUS_SCORE_BONUS` 1 을 더해 같은 묶음 안에서 앞서게 한다)과
+> 컷 수 상한(`maxCuts`, 1~10 — 상한을 낮출 수 있다). 거르기 · 중복 · 절반 한도 · 컷은 하나 이상 · 구간 고르기는 그대로다. 그래서 에이전트가 만든
+> 초안에서는 다음이 이 문서와 다르다: §4 의 "거르기 · 중복을 지난 것을 **모두** 쓴다"와 §9 가 기각한 "총 길이를 맞추려 컷을 줄인다"는 그대로가
+> 아니다 — 에이전트 검토가 길이가 목표의 1.2배를 넘으면 `maxCuts` 를 줄이라고 돌려준다. §8.2 의 "vision 분석은 부르지 않는다"도 바뀌었다 —
+> 분석에 동의한 사용자면 에이전트의 `analyze_snaps` 가 업로드된 스냅의 분석을 초안 1회 12개까지 요청한다(결과는 다음 초안부터 쓴다). §8 의 재사용
+> 키에는 에이전트 프롬프트 버전 · 모델 · 개념 사전 버전 · 취향 규칙 버전이 더해졌다(`movie-draft.service.ts` 의 `snapHashOf`). 에이전트가 없거나
+> (`OPENAI_API_KEY` 없음) 실패해 규칙으로 돌아가면 이 문서의 규칙 그대로다.
+
 ---
 
 ## 0. 전제

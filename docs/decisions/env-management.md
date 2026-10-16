@@ -7,7 +7,7 @@
 모바일의 `EXPO_PUBLIC_*` 는 [`apps/mobile/.env.example`](../../apps/mobile/.env.example), 서버의 주입 절차는
 [deployment-aws.md](../deployment-aws.md) §2
 **관련 문서**: [ONBOARDING.md](../../ONBOARDING.md) §3-3 · [aws-contest-server.md](./aws-contest-server.md) ·
-[archive/on-prem-deployment.md](../archive/on-prem-deployment.md) · [backlog.md](../backlog.md) B-8
+[archive/on-prem-deployment.md](../archive/on-prem-deployment.md)
 
 > **정정**(2026-09-29): [기각한 대안](#기각한-대안)의 워커 `.env` 구현은 워커 파일이 있으면 `apps/api/.env` 를 아예 읽지 않았다. 그래서
 > [ONBOARDING.md](../../ONBOARDING.md) §3-8 대로 `DATABASE_URL` 한 줄만 둔 워커 파일이 나머지 키(`OPENAI_API_KEY`·S3 등)를
@@ -16,7 +16,7 @@
 > **후속 결정**(2026-10-08): 배포 플랫폼은 AWS 공모전 서버다([aws-contest-server.md](./aws-contest-server.md)) — 이 결정의 구조는 그대로다.
 > 배포가 Secrets Manager 의 시크릿 하나를 `/data/compose/.env`(600)로 옮기고 compose 가 읽는다. 저장소 · 이미지에는 들어가지 않고,
 > **빈 값은 옮기지 않는다**(빈 문자열을 미설정으로 보지 않는 코드가 있다 — `LOG_LEVEL` · `RATE_LIMIT_GLOBAL_MAX`). 절차는
-> [deployment-aws.md](../deployment-aws.md) §2, 남은 서버 작업은 [backlog.md](../backlog.md) B-8. 사내 서버 안은 2026-10-09 에 접었다
+> [deployment-aws.md](../deployment-aws.md) §2, 남은 서버 작업은 [backlog.md](../backlog.md) D-6(B-8 은 2026-10-16 닫힘). 사내 서버 안은 2026-10-09 에 접었다
 > ([archive/on-prem-deployment.md](../archive/on-prem-deployment.md)).
 
 ---
@@ -110,7 +110,7 @@ compose 규격상 `environment` 가 `env_file` 보다 우선한다. 그래서 �
 - `required: true` 인 키는 `.env.example` 에서 주석 처리되어 있지 않다
 - `apps/api/src`·`apps/ai-worker/src`·`scripts` 가 읽는 키가 모두 스펙에 선언되어 있다
 
-배포 플랫폼이 정해지면 **`origin !== 'local'` 인 항목이 시크릿 스토어에 넣을 목록**이다.
+**`origin !== 'local'` 인 항목이 시크릿 스토어(AWS 서버는 Secrets Manager `dweax/service/snaply/env`)에 넣을 목록**이다.
 
 ## 기각한 대안
 

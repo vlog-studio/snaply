@@ -1,5 +1,5 @@
 /**
- * 무비에서 나오는 취향 신호(docs/decisions/ontology-personalization.md §4.2 · plans/agentic-ontology-rollout.md §2.2).
+ * 무비에서 나오는 취향 신호(docs/decisions/ontology-personalization.md §4.2 — 신호를 내는 곳과 때).
  *
  * 앱은 신호를 따로 보내지 않는다 — 서버가 이미 받는 것(초안 제안 · 무비 저장 전후 · 생성 완료)을 비교해 낸다. 그래서 신호는
  * "사용자가 무엇을 했는가"가 아니라 **서버에 닿은 결과의 차이**다. 기기에서 넣었다 뺀 컷처럼 서버에 오기 전에 끝난 일은 모른다.

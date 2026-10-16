@@ -13,8 +13,20 @@
 > **대체**(2026-09-09): 결과물이 만료된 무비를 크레딧 없이 같은 산출물로 다시 만들어 주는 "만료 후 재생성"은
 > 폐기됐다 — 끝낸 뒤 다시 만들기는 항상 새 생성이다(MOV-16·MOV-19, [movie-cleanup-after-export.md](movie-cleanup-after-export.md)).
 > §5·§6 의 "만료 후 재생성"·"복원"은 그 전제의 기록이다. 무효화 사전의 `expired-regenerate` 행은 그대로 남아 있다.
+
+> **후속 결정**(2026-10-01): V3-B6("`beatLength` 권위, 길이는 파생")은 사용자가 자른 컷에 맞지 않는다 — [auto-edit-draft.md](auto-edit-draft.md) §2.4 가
+> 사용자가 자른 컷은 ms 가 기준이고 AI 가 정한 컷만 음악이 있을 때 비트가 기준이라고 정했다. 지금 들어간 v3 의 컷도 `sourceInMs` · `sourceOutMs` 로
+> 적는다(`contract/edit-jobs.ts` 의 `timelineCutSchema`). v3 의 정본 모양은 미결이다(backlog A-7).
+
 > **정정**(2026-10-10): 결정 항목의 ID 를 `A-1` 꼴에서 `V3-A1` 꼴로 바꿨다 — 백로그 ID 와 모양이 같아 헷갈렸다(backlog H-10).
 > 그 전의 기록(progress 등)은 옛 ID 를 쓴다.
+
+> **정정**(2026-10-16): §5 의 "시드를 파생하는 것은 디렉터(워커)뿐이고 API 는 `attempt` 를 쓰기만 한다"는 2026-10-01 부터 사실이 아니다 — 선택
+> 단계(edit-director)와 전환 디렉터는 API 에 있고(`apps/api/src/services/edit-director.ts` · `transition-director.ts`) 시드를 API 에서 파생한다. 키는
+> 스테이지 시드의 규약(`{root}:{stage}:{attempt}`, sha256 상위 8바이트 빅엔디언)에 대상 키(스냅 · 경계의 두 컷)를 붙인 것이다. 결정성은 워커의 골든
+> 값(`apps/ai-worker/tests/fixtures/stage-seed.json`)과 API 테스트(`apps/api/test/edit-director.test.ts` · `transition-director.test.ts` 의 "같은 입력은
+> 같은 결과")가 지킨다. V3-A4 가 든 요청 바디의 `subtitles` 는 2026-10-11 `POST /edit-jobs` 와 함께 없어졌다 — 지금 자막 요청은 무비의 `captions`
+> 하나다.
 
 ---
 
@@ -64,7 +76,8 @@
 - **단일 원본 JSON** — `packages/shared-types/src/*-vocabulary.json`. 코드젠 없음, 수동 동기화 없음.
   이 결정 때는 셋이었다: `anchor`(앵커 어휘) · `stage`(스테이지·시드 알고리즘) · `invalidation`(재생성 규칙).
   2026-10-01 에 `transition`(컷 사이 전환) · `cut-role`(컷 역할)이 더해졌다
-  ([transition-director.md](transition-director.md) · [edit-director.md](edit-director.md) §6).
+  ([transition-director.md](transition-director.md) · [edit-director.md](edit-director.md) §6). 2026-10-13 에 `content`(스냅 내용의 개념 사전 —
+  [ontology-personalization.md](ontology-personalization.md) §3)가 더해졌다 — 편집 워커의 기동 필수 목록(§7 `REQUIRED`)에도 들어 있다.
 - **폴백 인코딩은 객체 배열로 통일.** `"face:aboveHead"` 문자열은 `offset` 을 담지 못해 확장 불가다.
 - **자유 배치(`freezone`)도 `ref` 를 쓴다** — `prefer` 를 따로 두지 않는다. 같은 것을 두 이름으로
   부르면 어긋난다.

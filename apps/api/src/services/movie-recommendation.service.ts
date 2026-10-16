@@ -86,7 +86,7 @@ function toDto(row: RecommendationRow): MovieRecommendation {
  * 다르게 만들었다는 이유로 재분석이 돌면 안 된다. 순서 자체는 행의 배열 컬럼에 남는다.
  *
  * 개념 사전 버전과 취향 규칙 버전도 넣는다 — 사전이나 취향을 읽는 규칙을 바꾼 뒤 재사용 창(24시간) 동안 예전 규칙의 결과가
- * 돌아오지 않게 한다(docs/plans/content-vocabulary.md §4, decisions/ontology-personalization.md §7). AI 편집 초안이
+ * 돌아오지 않게 한다(docs/decisions/ontology-personalization.md §3.4 · §7). AI 편집 초안이
  * `EDIT_DIRECTOR_VERSION` 을 넣는 것과 같다. 사용자의 취향 값은 넣지 않는다 — 이유는 `TASTE_POLICY_VERSION`.
  */
 export function candidateHashOf(

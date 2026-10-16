@@ -70,7 +70,7 @@ class NormalizeClipTest(unittest.TestCase):
 
 
 class ClipLevelTest(unittest.TestCase):
-    """컷마다 녹음 크기가 달라 컷이 바뀔 때 소리가 튀던 것(plans/trend-editing-pipeline.md §6.2)."""
+    """컷마다 녹음 크기가 달라 컷이 바뀔 때 소리가 튀던 것(decisions/auto-edit-draft.md §6.3 "오디오 기본 처리")."""
 
     def test_gain_brings_a_cut_to_the_target_within_the_cap(self) -> None:
         self.assertAlmostEqual(editor.clip_gain_db(-22.0), 6.0)

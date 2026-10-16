@@ -9,7 +9,19 @@
 **관련 문서**: [backlog.md](../backlog.md) A-12 · A-11 · A-3 · [auto-edit-draft.md](auto-edit-draft.md) · [edit-director.md](edit-director.md) ·
 [transition-director.md](transition-director.md) · [snap-content-analysis.md](snap-content-analysis.md) ·
 [template-snap-recommendation.md](template-snap-recommendation.md) · [credit-payment-model.md](credit-payment-model.md) ·
-계획 [plans/agentic-ontology-rollout.md](../plans/agentic-ontology-rollout.md)
+착수 계획(보관) [archive/agentic-ontology-rollout.md](../archive/agentic-ontology-rollout.md)
+
+> **정정**(2026-10-16): 구현(`apps/api/src/services/edit-agent/`)이 이 문서와 다른 곳이다.
+> ① **툴은 다섯이다** — `select_cuts` · `find_snaps` · `analyze_snaps` · `pick_transitions` · `submit_draft`. §3 그림과 §3.2 표의 `pick_music` · `pick_style` 은
+> 없다(backlog A-12). `select_cuts` 가 받는 것은 초점(최대 3) · 컷 수 상한 · 목표 길이(검토에만 쓴다)이고, 장면 흐름의 역할 순서는 넘기지 않는다.
+> ② **검토는 규칙뿐이다**(§3.3) — 초점을 정했으면 초점 개념이 보이는 스냅이 컷에 있는가, 목표 길이를 정했으면 길이가 그 1.2배
+> (`EDIT_AGENT_LENGTH_TOLERANCE`) 안인가, 컷이 min(2, 쓸 수 있는 스냅 수) 이상인가. LLM 에 따로 묻는 검토와 "첫 컷이 도입 역할인가" 점검은 없다.
+> 검토 결과는 `select_cuts` 의 응답(`review`)으로 돌아가고 다시 고를지는 에이전트가 정한다 — 재선택은 2회까지, 모델 왕복은 8회
+> (`EDIT_AGENT_MAX_TURNS`)까지이고 넘기면 마지막으로 고른 컷을 쓴다.
+> ③ **같은 초안의 재사용은 계획을 다시 실행하지 않는다**(§4) — 재사용 키가 같으면 저장한 결과(`movie_drafts.result`)를 그대로 돌려준다. 계획을 다시
+> 실행하면 같은 초안이 나온다는 성질은 `replayDraftPlan` 테스트(`apps/api/test/edit-agent.test.ts`)로 고정돼 있다.
+> ④ **재사용 키에는 사용자의 취향 값이 아니라 취향 규칙 버전(`TASTE_POLICY_VERSION`)이 들어간다**(§4, `snapHashOf`) — 재사용 창(24시간) 안에서는
+> 취향이 바뀌어도 예전 초안이 돌아올 수 있다([ontology-personalization.md](ontology-personalization.md) 상단 정정).
 
 ---
 
@@ -66,6 +78,12 @@ LLM 편집 에이전트
 촬영 간격과 순서, 고른 스타일, 사용자 취향으로 의도를 정한다. 나중에 분위기 · 길이 같은 가벼운 입력이 생기면 같은 에이전트가 그
 값을 추가 입력으로 받는다.
 
+**에이전트에 보내는 것은 개념 id · 신호 요약 · 촬영 간격 · 취향 상위 개념뿐이다**(2026-10-16 보관한 착수 계획
+[archive/agentic-ontology-rollout.md](../archive/agentic-ontology-rollout.md) §2.3 에서 옮김). 프레임 · 분석 원문 · 스냅 id 는 보내지 않는다 — 스냅은
+`s1` 같은 별칭으로 부른다. 취향은 크기가 큰 것부터 8개(`EDIT_AGENT_TASTE_TOP`)다. 이미지를 보지 않으므로 에이전트 모델은 분석 모델과 따로 두고
+(`EDIT_AGENT_MODEL`, 기본 `gpt-5.6-luna`) 저가 모델부터 잰다. 제공자는 분석과 같은 OpenAI(툴 호출 · 구조화 출력)이고, 키가 없으면 초안은 규칙만으로
+만든다(mode `rules`).
+
 ### 3.2 툴은 기존 디렉터를 감싼 것이다
 
 | 툴 | 감싸는 것 | 에이전트가 넘기는 것 |
@@ -79,13 +97,13 @@ LLM 편집 에이전트
 디렉터 내부의 규칙(거르기 · 중복 · 절반 한도 · 컷은 하나 이상 · 여분 프레임 · 폴백)은 바꾸지 않는다. 에이전트는 그 규칙 **안에서**
 고를 수 있는 파라미터만 넘긴다.
 
-> **구현 메모(2026-10-13) — `pick_transitions` 는 분위기만 정한다.** 초안 응답에는 전환이 없고 무비는 앱이 만든다(MOV-21). 그래서 에이전트가 경계별
-> 전환을 응답에 실어 앱이 `user`/`ai` 주인으로 보내게 하는 대신(계약 · 앱 변경), 에이전트가 정한 분위기를 계획(`plan.mood`)에 두고, `arranger: ai`
-> 무비가 만들어질 때 서버가 그 무비의 초안(재사용 창 안의 가장 최근 초안 중 무비의 컷을 모두 담은 것 — 취향 신호와 같은 짝짓기)을 찾아 `movies.mood`
-> 로 옮긴다. transition-director 는 AI 경계에서 그 분위기에 어울리는 전환(개념 사전 `suits.transitions`)의 비중을 `EDIT_AGENT_MOOD_BOOST`(잠정 2)배
-> 하고, 스타일의 후보 밖으로는 나가지 않는다. 전환은 계속 AI 몫이라 컷 · 스타일을 바꿔 다시 골라도 같은 분위기를 따른다. 기각한 것: 응답에 경계별
-> 전환을 싣기 — 앱이 컷을 고치면 경계가 바뀌어 다시 골라야 하고, 그때 쓸 근거가 결국 분위기다. 분위기 id 는 툴 정의에 목록(`enum`)으로 두고 한 번만
-> 받는다 — 목록 없이 낸 첫 버전에서 분석에 동의하지 않은 계정의 에이전트가 id 를 지어내 세 번 거절당했다(progress 2026-10-13). 프롬프트 버전 3.
+**구현(2026-10-13) — `pick_transitions` 는 분위기만 정한다.** 초안 응답에는 전환이 없고 무비는 앱이 만든다(MOV-21). 그래서 에이전트가 경계별
+전환을 응답에 실어 앱이 `user`/`ai` 주인으로 보내게 하는 대신(계약 · 앱 변경), 에이전트가 정한 분위기를 계획(`plan.mood`)에 두고, `arranger: ai`
+무비가 만들어질 때 서버가 그 무비의 초안(재사용 창 안의 가장 최근 초안 중 무비의 컷을 모두 담은 것 — 취향 신호와 같은 짝짓기)을 찾아 `movies.mood`
+로 옮긴다. transition-director 는 AI 경계에서 그 분위기에 어울리는 전환(개념 사전 `suits.transitions`)의 비중을 `EDIT_AGENT_MOOD_BOOST`(잠정 2)배
+하고, 스타일의 후보 밖으로는 나가지 않는다. 전환은 계속 AI 몫이라 컷 · 스타일을 바꿔 다시 골라도 같은 분위기를 따른다. 기각한 것: 응답에 경계별
+전환을 싣기 — 앱이 컷을 고치면 경계가 바뀌어 다시 골라야 하고, 그때 쓸 근거가 결국 분위기다. 분위기 id 는 툴 정의에 목록(`enum`)으로 두고 한 번만
+받는다 — 목록 없이 낸 첫 버전에서 분석에 동의하지 않은 계정의 에이전트가 id 를 지어내 세 번 거절당했다(progress 2026-10-13). 프롬프트 버전 3.
 
 ### 3.3 검토
 
@@ -96,6 +114,19 @@ LLM 편집 에이전트
 
 `analyze_snaps` · `find_snaps` 를 빼고 돈다. 에이전트는 촬영 시각 · 로컬 신호 · 스타일 · 분석과 무관한 취향(관심사 · 편집 취향)으로만
 추론한다. 분석 동의(ANA-5)는 그대로 서버가 집행한다.
+
+### 3.5 확장 후보 — 스티커(제안, 미결정, backlog A-7)
+
+(2026-10-16 보관한 착수 계획 [archive/agentic-ontology-rollout.md](../archive/agentic-ontology-rollout.md) §2.4 에서 옮김.) 스티커는 트렌드 편집
+파이프라인([plans/trend-editing-pipeline.md](../plans/trend-editing-pipeline.md))의 일이고, 에셋 조달([sticker-asset-sourcing.md](sticker-asset-sourcing.md))이
+결정 대기라 막혀 있다. 얼굴 · 손 인식(MediaPipe — 스테이지 사전의 `visual-reader`, [`anchor-vocabulary.json`](../../packages/shared-types/src/anchor-vocabulary.json))은
+설계만 있고 렌더에 쓰이지 않는다. 붙인다면 그 파이프라인의 "어디에는 MediaPipe, 무엇을은 LLM" 분담이 이 구조와 그대로 맞는다.
+
+- **툴** — `place_sticker` 를 §3.2 에 더한다. 위치(앵커)는 MediaPipe 가, 어느 컷에 어떤 스티커를 붙일지는 에이전트가 정하고, 실제 배치 값은 다른 툴처럼
+  규칙과 시드가 정한다.
+- **온톨로지 관계** — 스티커(또는 팩)를 내용 개념 · 분위기에 잇는 관계를 사전에 더한다(예: `dessert` → 하트, 청량 → 물방울).
+- **취향** — 사용자가 지우거나 바꾼 스티커를 편집 취향 신호로 받는다([ontology-personalization.md](ontology-personalization.md) §4.2 의 전환 · 스타일과
+  같은 방식).
 
 ## 4. 재현성 — 계획을 저장한다
 

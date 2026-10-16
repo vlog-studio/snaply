@@ -7,7 +7,7 @@
 [ux-writing.md](../../apps/mobile/docs/ux/ux-writing.md) 가 원천이다.
 **관련 문서**: [specs/movie.md](../specs/movie.md) MOV-1·3·4 ·
 [specs/template-and-recommendation.md](../specs/template-and-recommendation.md) TPL-1 ·
-[movie-model.md](movie-model.md)(서버의 무비 엔티티) · [backlog.md](../backlog.md) A-10(이 콘셉트가 정하지 않은 것) ·
+[movie-model.md](movie-model.md)(서버의 무비 엔티티) · §7(2026-10-12 — backlog A-10 닫음) ·
 결정 당시 기획 원문 [archive/ai-vlog-studio/concept.md](../archive/ai-vlog-studio/concept.md)
 
 > **후속 결정**(2026-09-28): §3 의 "무비를 시작하는 길은 두 갈래"에 세 번째 길이 더해졌다 — 고른 스냅으로 AI 편집

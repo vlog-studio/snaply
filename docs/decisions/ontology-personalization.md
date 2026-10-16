@@ -4,18 +4,34 @@
 **상태**: 결정 — 구조 · 신호 · 갱신 방식 · 삭제 규칙은 오너가 정했고(2026-10-13), 신호 강도 · 학습률 · 감쇠 속도는 잠정값이다
 **원천**: 온톨로지(개념 · 관계)를 원천 형식과 함께 정한 이유, 사용자 취향 프로필의 모양 · 학습 신호 · 갱신 규칙 · 삭제 규칙, 관심사의 쓰임새.
 요구는 [specs/template-and-recommendation.md](../specs/template-and-recommendation.md) PRF-1~PRF-4 · [specs/account.md](../specs/account.md) ACC-5.
-개념 사전의 정규화 · 매칭 규칙의 원천은 계획 [plans/content-vocabulary.md](../plans/content-vocabulary.md)(채택 시 사전 파일로 옮긴다)
+개념 사전의 정규화 · 매칭 규칙의 원천은 사전 파일 [`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json)의
+`_normalizeNote` · `_matchNote` · `match` 다(§3.4)
 **출처**: 공모전 평가 주제 "Agentic AI, Ontology AI"(2026-10-13 오너와 검토) · [backlog.md](../backlog.md) A-9
-**관련 문서**: [backlog.md](../backlog.md) A-13 · A-9 · A-3 · [ai-edit-agent.md](ai-edit-agent.md) · [snap-content-analysis.md](snap-content-analysis.md) ·
+**관련 문서**: [backlog.md](../backlog.md) A-13 · A-3 · [ai-edit-agent.md](ai-edit-agent.md) · [snap-content-analysis.md](snap-content-analysis.md) ·
 [template-snap-recommendation.md](template-snap-recommendation.md) · [edit-director.md](edit-director.md) §6 ·
-계획 [plans/agentic-ontology-rollout.md](../plans/agentic-ontology-rollout.md)
+착수 계획(보관) [archive/agentic-ontology-rollout.md](../archive/agentic-ontology-rollout.md) ·
+사전 계획(보관) [archive/content-vocabulary.md](../archive/content-vocabulary.md)
+
+> **후속 결정**(2026-10-15): 템플릿 카드의 순서 — 서버가 취향 순으로 준 목록을 앱이 "지금 스냅으로 몇 컷이 모자란가"로 다시 정렬해, 취향은
+> 동점일 때만 작동했고 화면에 거의 드러나지 않았다. 앱은 **다 채울 수 있는 템플릿을 앞에 두고, 그 묶음과 나머지 묶음 안에서는 서버 순서(취향 순)** 를
+> 따른다 — 바로 만들 수 있는 것이 앞이라는 2026-08-12 의 이유는 지키고, 그 밖의 순서는 취향이 정한다. 취향이 없는 사용자는 못 채우는 템플릿이 모자란
+> 컷 수 대신 카탈로그 순서로 놓인다(받아들였다). 기각: 지금 그대로(취향이 보이지 않는다), 취향을 1순위로(지금 만들 수 없는 템플릿이 첫 카드가 된다),
+> 모자란 컷 1~2개까지는 같은 칸으로 보기(새 문턱을 근거 없이 만든다). → §7 "템플릿 목록"
+
+> **정정**(2026-10-16): §7 끝의 "재사용 키에 개념 사전 버전과 취향 프로필 버전을 넣는다 — 취향이 바뀐 뒤 예전 결과가 돌아오지 않게 한다"는
+> 구현과 다르다. 재사용 키(추천의 `candidateHashOf` — `apps/api/src/services/movie-recommendation.service.ts`, 초안의 `snapHashOf` —
+> `movie-draft.service.ts`)에 들어가는 것은 개념 사전
+> 버전 `CONTENT_VOCABULARY_VERSION` 과 **취향을 읽는 규칙의 버전** `TASTE_POLICY_VERSION` 이고, 사용자의 취향 값은 들어가지 않는다 — 신호 하나마다
+> 재사용이 깨지면 같은 화면을 다시 열 때마다 새 추천이 되어 하루 한도(REC-3)를 쓰기 때문이다(`apps/api/src/services/taste/taste-policy.ts` 가 이유를
+> 적어 둔다). 그래서 재사용 창(24시간) 안에서는 취향이 바뀌어도 예전 결과가 돌아올 수 있다(progress 2026-10-13 "취향 반영").
 
 ---
 
 ## 1. 배경
 
 - **매칭이 부분 문자열이다.** 템플릿 채점은 슬롯 힌트와 분석값을 양방향 부분 문자열로 맞춘다(`apps/api/src/services/recommendation/score-slots.ts`).
-  "집"이 "맛집"에 맞고 "커피"가 "아메리카노"에 맞지 않는다 — 오탐 16 · 미탐 12 사례가 [plans/content-vocabulary.md](../plans/content-vocabulary.md) §1 에 있다.
+  "집"이 "맛집"에 맞고 "커피"가 "아메리카노"에 맞지 않는다 — 오탐 16 · 미탐 12 사례는 `apps/api/test/recommendation-score.test.ts` 가 고정한다
+  (처음 모은 표는 보관한 계획 [archive/content-vocabulary.md](../archive/content-vocabulary.md) §1).
 - **관심사를 읽는 곳이 없다.** 서버는 `interests` 를 받지만 쓰지 않아, 앱은 나 탭에 `준비 중` 으로 두었다(ACC-5 · A-9).
 - **사용자에 대해 배우는 곳이 없다.** 사용자가 초안에서 지운 컷, 바꾼 전환, 끝까지 만든 무비는 다음 초안에 아무 영향이 없다.
 
@@ -45,7 +61,15 @@
 | 편집 | 컷 역할 · 전환 · 스타일 프리셋 · 템플릿 슬롯 | [`cut-role-vocabulary.json`](../../packages/shared-types/src/cut-role-vocabulary.json) · [`transition-vocabulary.json`](../../packages/shared-types/src/transition-vocabulary.json) · `STYLE_PRESETS` · 서버 카탈로그 |
 | 사용자 | 취향 프로필 | DB(§4.1) |
 
-`topics` 는 초안에 8개뿐이다. 관심사로 고르기에 모자라 늘린다(A-13).
+`topics` 는 2026-10-13 관심사를 넣으면서 8개에서 18개로 늘렸고, 관심사는 이 18개에서 고른다(progress 2026-10-13 "관심사").
+
+**사전에 넣는 기준**(2026-10-16 보관한 계획 [archive/content-vocabulary.md](../archive/content-vocabulary.md) §2 에서 옮김):
+
+- **화면에 보이는 것만 넣는다.** 분석 프롬프트가 이미 "프레임에서 실제로 보이는 것만 적는다"이다.
+- **여정의 사건은 넣지 않는다.** 출발 · 도착 · 돌아오기는 3초 프레임으로 걷기와 구분되지 않는다 — 슬롯의 `temporalPrior` 가 이미 그 자리를 맡는다.
+- **상태 · 구도는 장소가 아니다.** `실내` · `외관` 은 넣지 않는다. 실내 · 실외 구분이 필요해지면 장소 개념이 아니라 별도 속성으로 둔다(§3.2).
+- **상위 개념은 하나다**(트리). 카페는 가게이고, 노을은 하늘이고, 바다 · 산 · 공원은 풍경이다.
+- 개념 id 는 필드 안에서만 유일하고, 같은 필드 안에서 한 별칭(label 포함)은 한 개념에만 있다 — places 의 `car`(차)와 objects 의 `tea`(차)는 다른 개념이다.
 
 ### 3.2 관계
 
@@ -53,22 +77,35 @@
 |---|---|---|
 | `parent`(상위 개념, 트리) | 카페 → 가게 · 노을 → 하늘 | 매칭(하위는 상위 슬롯을 채운다) · 취향 전파(§4.4) |
 | `aliases`(같은 개념의 다른 표기) | 커피숍 = 카페 | 분석값 정규화 |
-| `roleAffinity` | 풍경 → `establish` | 컷 역할 판정 |
-| `typicallyAt` | 커피 → 카페 · 침대 → 침실 | 장소가 적히지 않은 스냅의 장소 추론 · 취향 확장 |
+| `roleAffinity` | 풍경 → `establish` | 컷 역할 판정 — **아직 쓰지 않는다.** 선택 단계는 분석의 `places` · `objects` · `actions` 가 있는지로 역할을 정한다([edit-director.md](edit-director.md) §6) |
+| `typicallyAt` | 커피 → 카페 · 침대 → 침실 | 취향 확장(§4.4). 장소가 적히지 않은 스냅의 장소 추론에는 **아직 쓰지 않는다** |
 | `evokes` | 바다 → 청량 · 야경 → 감성 | 분위기 추론 |
 | `suits` | 잔잔함 → `crossfade` · 신남 → `zoompunch` | 전환 · 스타일 선택 |
 | 슬롯 힌트(`match_hints`) | cafe/sip → cafe · cup · drink | 템플릿 매칭(자유 문자열을 개념 id 로 바꾼다) |
 
 관계의 원천은 개념 사전 파일이다(`content-vocabulary.json` 의 개념별 필드 — `typicallyAt` · `evokes` 는 하위 개념이 상위 값을 물려받는다,
 2026-10-13). `parent` 는 트리로 둔다(상위 개념은 하나). 실내 · 실외처럼 장소가 아닌 속성은 개념 관계가 아니라 별도 속성으로 푼다 —
-[plans/content-vocabulary.md](../plans/content-vocabulary.md) §7 의 "상위 개념을 여럿 둔다(DAG)" 기각과 같은 이유다.
+§8 의 "상위 개념을 여럿 둔다(DAG)" 기각과 같은 이유다.
 
 ### 3.3 형식 — JSON 이 원천이다
 
 개념은 100개 안팎이고 관계는 위 일곱이다. 지금의 사전 방식(TS · 워커가 같은 파일을 읽고 정합성 테스트로 고정)이면 충분하고, 추론도
-트리 순회와 표 조회로 끝난다. 그래프 DB · OWL 추론기는 의존성과 운영 비용만 늘린다([plans/content-vocabulary.md](../plans/content-vocabulary.md) §7).
+트리 순회와 표 조회로 끝난다. 그래프 DB · OWL 추론기는 의존성과 운영 비용만 늘린다(§8).
 공모전 심사와 문서에는 JSON 에서 만든 **그래프 시각화와 OWL/Turtle 내보내기**를 보인다 — 원천은 하나이고 내보내기는 생성물이다
 (`npm run ontology:export` → `dist/ontology/`, 2026-10-13. 커밋하지 않는다).
+
+### 3.4 정규화 · 매칭 규칙 — 원천은 사전 파일이다
+
+분석의 자유 문자열을 개념으로 바꾸는 규칙과 슬롯 힌트 ↔ 스냅 개념의 점수는 사전 파일
+[`content-vocabulary.json`](../../packages/shared-types/src/content-vocabulary.json)의 `_normalizeNote` · `_matchNote` · `match` 가 원천이다 — 규칙을
+문서에 다시 적지 않는다. 구현은 `packages/shared-types/src/content-vocabulary.ts` 의 `normalizeContentValue` · `contentMatchScore`, 사례는
+`apps/api/test/content-vocabulary.test.ts` 다. 분석 출력은 그대로 두고 API 가 채점할 때 사전으로 개념을 찾으며, 부분 문자열은 보지 않는다.
+
+- 개념 · 별칭 · 매칭 규칙을 바꾸면 `contentVocabularyVersion` 을 올린다 — 재사용 키에 들어가 예전 결과가 돌아오지 않는다(§7). 관계는 매칭에 쓰지 않아
+  올리지 않는다.
+- **받아들인 한계**(2026-10-07 계획에서 옮김): 값 하나는 개념 하나다(`한강 공원` 은 `park` 이고 `river` 는 잃는다). 사전 밖 값은 맞지 않고 집계에만
+  남는다. 필드 혼동(모델이 places 에 `책상` 을 적는 것)은 고치지 못한다 — 정규화는 필드 안에서만 찾는다.
+- 사전 밖 비율의 실측은 [backlog.md](../backlog.md) A-6 "개념 매칭의 실측 확인"이다.
 
 ## 4. 취향 프로필
 
@@ -100,9 +137,28 @@
 **업로드 단계의 신호는 없다** — 분석이 요청 시점에만 돌기 때문이다(§6). 내용 개념은 분석이 있어야 생기므로, 분석에 동의하지 않은 사용자는
 관심사와 편집 취향만 배운다.
 
+**구현(2026-10-13) — 신호를 내는 곳과 때**(2026-10-16 보관한 착수 계획 [archive/agentic-ontology-rollout.md](../archive/agentic-ontology-rollout.md)
+§2.2 에서 옮김). 앱은 신호를 따로 보내지 않는다 — 서버가 이미 받는 것의 차이로 낸다(`apps/api/src/services/taste/movie-taste-signals.ts`). 그래서
+기기에서 넣었다 뺀 컷처럼 서버에 오기 전에 끝난 일은 모른다. 위 표의 시점과 다른 곳이 있다.
+
+| 신호 | 내는 곳 · 때 |
+|---|---|
+| 관심사 선택 | `PATCH /auth/me` 의 `interests` — 같은 트랜잭션에서 `explicit` 행을 만들고 지운다(`interest.service.ts`) |
+| 후보로 넘김(추천) | 추천 **채점이 끝날 때**(`movie-recommendation.service.ts`) — 분석이 끝나야 개념을 알아 요청 때가 아니다 |
+| 후보로 넘김(초안) | 새 초안을 기록한 뒤(`movie-draft.service.ts`). 재사용한 초안은 같은 요청의 반복이라 내지 않는다 |
+| 골랐다 · 원하지 않음(초안) | **AI 정렬 무비(`arranger: ai`)가 처음 서버에 올라올 때**(`POST /movies`). 무비는 초안을 가리키지 않아, 재사용 창 안의 가장 최근 초안 중 무비의 컷을 모두 담은(제안했거나 뺀) 것과 비교한다(`findMovieDraft`). 맞는 초안이 없으면 내지 않는다 |
+| 골랐다 · 원하지 않음 · 편집 취향(편집) | 무비 저장(`PATCH /movies/{id}`)의 **저장 전후** 비교 — 넣은 스냅 +, 지운 AI 컷(`trimOwner: ai`) −, AI 가 고른 전환 · 스타일을 바꾼 값 + · 원래 값 − |
+| 최종 선택 | 무비 상태가 `ready` 로 옮겨지는 때(조회 시점의 상태 보정, `movie.service.ts`) — 편집 워커가 아니다 |
+
+- 템플릿 화면에서 남긴 스냅만의 신호는 없다 — 추천의 후보 신호 · 저장 전후 · 최종 선택으로 배운다.
+- 반영은 큐 없이 **같은 프로세스에서 응답 뒤에** 한다(`emitTasteSignals`). 새 큐는 워커 프로세스와 배포 구성을 늘리는데, 취향은 근사값이라 프로세스가
+  죽을 때 사라지는 신호 몇 개는 감수했다. 종료할 때는 남은 반영을 끝낸다(`settleTasteSignals`).
+
 ### 4.3 갱신
 
-> 새 가중치 = 가중치 + 학습률 × 신호 강도 × (1 − |가중치|)
+```
+새 가중치 = 가중치 + 학습률 × 신호 강도 × (1 − |가중치|)
+```
 
 - **학습률 0.2(잠정).** 한 번의 신호로 크게 움직이지 않는다 — 전환을 한 번 바꾼 것은 그 경계 하나의 사정일 수 있다. 반복될 때만 취향이 된다.
 - **(1 − |가중치|)** 로 ±1 에 가까울수록 덜 움직인다. 범위를 넘지 않고, 굳은 취향은 한두 번의 반대 신호로 뒤집히지 않는다.
@@ -139,17 +195,12 @@
 | 소비처 | 쓰는 방법 |
 |---|---|
 | AI 편집 에이전트 | 취향 상위 개념을 기억으로 받아 의도를 추론한다. `find_snaps` 툴이 하위 개념까지 찾는다([ai-edit-agent.md](ai-edit-agent.md) §3) |
-| 템플릿 추천 | 개념 매칭 점수(같음 1 · 하위 1 · 상위 0.5 — [plans/content-vocabulary.md](../plans/content-vocabulary.md) §4)에 취향 가중을 더한다 |
-| 템플릿 목록 | 관심사 · 취향과 슬롯 개념이 겹치는 순으로 놓는다 |
+| 템플릿 추천 | 개념 매칭 점수(같음 1 · 하위 1 · 상위 0.5 — §3.4)에 취향 가중(`TASTE_RECOMMENDATION_WEIGHT`, 잠정 0.1)을 더한다 |
+| 템플릿 목록 | 관심사 · 취향과 슬롯 개념이 겹치는 순으로 놓는다. 앱의 카드 순서는 2026-10-15 후속 결정(상단 배너)이다 |
 | 스타일 · 전환 기본값 | 스냅 개념 → `evokes` 분위기 → `suits` 전환 · 스타일, 여기에 편집 취향을 더한다 |
 
-> **템플릿 카드의 순서(2026-10-15 결정)** — 서버가 취향 순으로 준 목록을 앱이 "지금 스냅으로 몇 컷이 모자란가"로 다시 정렬해, 취향은 동점일 때만
-> 작동했고 화면에 거의 드러나지 않았다. 앱은 **다 채울 수 있는 템플릿을 앞에 두고, 그 묶음과 나머지 묶음 안에서는 서버 순서(취향 순)** 를 따른다 —
-> 바로 만들 수 있는 것이 앞이라는 2026-08-12 의 이유는 지키고, 그 밖의 순서는 취향이 정한다. 취향이 없는 사용자는 못 채우는 템플릿이 모자란 컷 수 대신
-> 카탈로그 순서로 놓인다(받아들였다). 기각: 지금 그대로(취향이 보이지 않는다), 취향을 1순위로(지금 만들 수 없는 템플릿이 첫 카드가 된다), 모자란 컷
-> 1~2개까지는 같은 칸으로 보기(새 문턱을 근거 없이 만든다).
-
 재사용 키(추천의 `candidateHashOf`, 초안 해시)에 개념 사전 버전과 취향 프로필 버전을 넣는다 — 취향이 바뀐 뒤 예전 결과가 돌아오지 않게 한다.
+(구현은 취향 값이 아니라 취향 규칙 버전을 넣는다 — 상단 **정정**(2026-10-16).)
 
 ## 8. 기각한 대안
 
@@ -161,3 +212,13 @@
 | 음수 가중치의 개념을 제외한다 | 사용자가 넘긴 스냅으로 초안을 만들어야 한다. 추정이 틀리면 컷이 비거나 원하는 장면이 사라진다 |
 | 스냅별 기여를 기록해 스냅 삭제 때 뺀다 | 정확하지만 저장량 · 구현이 크다. 합산값에는 스냅 내용이 남지 않는다 |
 | 관심사를 자유 문자열로 둔다 | 개념과 맞출 수 없어 읽을 곳이 생기지 않는다 — 지금 보류된 이유 그대로다 |
+
+매칭을 개념 사전으로 바꿀 때 기각한 것(2026-10-07, 2026-10-16 보관한 계획 [archive/content-vocabulary.md](../archive/content-vocabulary.md) §7 에서 옮김):
+
+| 대안 | 기각 이유 |
+|---|---|
+| 힌트 목록만 늘린다 | 미탐은 줄지만 오탐은 그대로이고, 짧은 힌트가 늘수록 오탐도 는다. 같은 동의어를 슬롯마다 반복해야 한다 |
+| 부분 문자열을 두고 한 글자 힌트만 막는다 | `잔` · `손` · `담` 같은 오탐은 줄지만 `나무 테이블` · `주변 돌아보기` 처럼 두 글자 이상의 오탐과 미탐 전부가 남는다 |
+| 형태소 분석기 | `친구들과` 의 `들` 같은 오탐 일부는 줄지만 동의어 · 상위어(커피숍 ↔ 카페, 편의점 ↔ 가게)는 풀지 못한다. API 에 의존성이 는다 |
+| 임베딩 유사도로 매칭한다 | 동의어는 잘 잡지만 매칭마다 모델이 필요하고(추천 경로에 모델 호출을 더하지 않는다 — [template-snap-recommendation.md](template-snap-recommendation.md) §7), 점수가 불투명해 회귀를 잡을 수 없다 |
+| 상위 개념을 여럿 둔다(DAG) | 카페는 가게이면서 실내일 수 있다. 그러나 실내 · 실외는 장소가 아니라 속성이라 따로 풀 문제이고, 트리면 관계 판정이 단순하다 |

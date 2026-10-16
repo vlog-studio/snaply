@@ -3,8 +3,11 @@
 **작성일**: 2026-09-05 (2026-09-09 결정)
 **상태**: 결정 — 다섯 질문 모두 문서의 권장안대로 확정했다(①C ②A ③A ④A ⑤B)
 **출처**: [backlog.md](../backlog.md) A-1 "남은 판단 ①~⑤" · [meetings/2026-08-31-dev-sync.md](../meetings/2026-08-31-dev-sync.md) §3·§4
-**관련 문서**: [movie-model.md](movie-model.md) · [specs/movie.md](../specs/movie.md) · [backlog.md](../backlog.md) A-1(⑤ `POST /edit-jobs` 폐기) ·
+**관련 문서**: [movie-model.md](movie-model.md) · [specs/movie.md](../specs/movie.md) · [backlog.md](../backlog.md) 닫은 항목 A-1(⑤ `POST /edit-jobs` 폐기, 2026-10-11) ·
 후속 계획(보관) [archive/2026-08-31-dev-sync-follow-up.md](../archive/2026-08-31-dev-sync-follow-up.md) T3
+
+> **후속 결정**(2026-10-11): ⑤ 를 실행했다 — `POST /edit-jobs` 의 route · 계약 · Swagger 를 지웠다(backlog 닫은 항목 A-1,
+> progress 2026-10-11 "`POST /edit-jobs` 를 없앴다"). 다섯 규칙 모두 구현됐다.
 
 [결정 기록](#결정-기록) 앞의 요약·설명·선택지·권장은 결정 요청(2026-09-05) 당시의 기록이며, 확정 내용은 결정 기록이다.
 

@@ -1,10 +1,22 @@
 # Agentic · Ontology 착수 계획 — 개념 사전에서 AI 편집 에이전트까지
 
+> **보관**(2026-10-16): 1~8단계가 모두 2026-10-13 에 구현돼 계획의 수명이 끝났다([progress.md](../progress.md) 2026-10-13 "개념 사전 확정" ~
+> "취향이 권하는 스타일"). 아래는 착수 전 제안이라 판단 근거로 인용하지 않는다. §2.3 의 "구현" 줄은 그때도 틀렸다 — `pick_transitions` 는 계약 ·
+> 앱 변경 없이 같은 날 들어갔다(분위기만 정한다).
+>
+> 현행 원천: 신호를 내는 곳과 때(§2.2) → [decisions/ontology-personalization.md](../decisions/ontology-personalization.md#42-신호) §4.2 "구현" ·
+> 에이전트에 보내는 것과 모델(§2.3) → [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md#31-의도는-화면-입력이-아니라-추론이다) §3.1 · 툴 목록과
+> 검토 → 같은 문서 상단 정정(2026-10-16) · 스티커를 붙일 때의 연결점(§2.4) → 같은 문서 §3.5 · 남은 일(실측 · 잠정값 · `pick_music` · `pick_style`) →
+> [backlog.md](../backlog.md) A-12 · A-13.
+>
+> 이동으로 깨지는 상대 링크(같은 디렉터리를 가리키던 `snap-analysis-recommendation-rollout.md` · `trend-editing-pipeline.md` → `../plans/…`)만 고쳤다.
+> 아래 본문의 `**상태**` 줄도 보관 전 기준이다 — 이 배너가 덮는다.
+
 **작성일**: 2026-10-13
 **상태**: 구현 — 1~8단계를 모두 2026-10-13 에 넣었다(progress 2026-10-13). 남은 일(실측 · 에이전트의 전환 · 스타일 기본값)은 backlog A-12 · A-13
 **원천**: [decisions/ai-edit-agent.md](../decisions/ai-edit-agent.md)와 [decisions/ontology-personalization.md](../decisions/ontology-personalization.md)를
 구현하는 단계와 순서, 단계마다 바뀌는 곳. 미결 작업은 [backlog.md](../backlog.md) A-12 · A-13 · A-9 에만 둔다
-**관련 문서**: [content-vocabulary.md](content-vocabulary.md) · [snap-analysis-recommendation-rollout.md](snap-analysis-recommendation-rollout.md) ·
+**관련 문서**: [content-vocabulary.md](content-vocabulary.md) · [snap-analysis-recommendation-rollout.md](../plans/snap-analysis-recommendation-rollout.md) ·
 [specs/movie.md](../specs/movie.md) MOV-21 · MOV-25 · [specs/credits-and-payment.md](../specs/credits-and-payment.md) CRD-9 ·
 [specs/template-and-recommendation.md](../specs/template-and-recommendation.md) PRF-1~PRF-4 · [specs/account.md](../specs/account.md) ACC-5
 
@@ -66,7 +78,7 @@
 
 ### 2.4 나중에 붙는 것 — 스티커(얼굴 · 손 앵커)
 
-이 계획의 단계가 아니다. 스티커는 트렌드 편집 파이프라인([trend-editing-pipeline.md](trend-editing-pipeline.md))의 일이고, 남은 일과 막힌 이유
+이 계획의 단계가 아니다. 스티커는 트렌드 편집 파이프라인([trend-editing-pipeline.md](../plans/trend-editing-pipeline.md))의 일이고, 남은 일과 막힌 이유
 (스티커 에셋 조달 — [decisions/sticker-asset-sourcing.md](../decisions/sticker-asset-sourcing.md) 결정 대기)는 [backlog.md](../backlog.md) A-7 에 있다.
 얼굴 · 손 인식(MediaPipe — `stage-vocabulary.json` 의 `visual-reader`, [`anchor-vocabulary.json`](../../packages/shared-types/src/anchor-vocabulary.json))은
 설계만 있고 **구현되지 않았다**.

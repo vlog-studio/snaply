@@ -3,7 +3,10 @@
 **작성일**: 2026-09-11
 **상태**: 결정 — 편집 워커가 알림 요청을 큐에 넣고 Node 쪽 알림 워커가 발송한다
 **관련 문서**: [specs/notifications.md](../specs/notifications.md) NTF-6 · [expiry-notice-schedule.md](./expiry-notice-schedule.md) ·
-[notification-preferences.md](./notification-preferences.md) · [backlog.md](../backlog.md) A-1(실기기 검증)
+[notification-preferences.md](./notification-preferences.md) · [backlog.md](../backlog.md) 닫은 항목 A-1(서버 전환 실기기 검증, 2026-10-11)
+
+> **정정**(2026-10-11): `POST /edit-jobs` 는 없앴다 — 무비 없이 만든 결과물은 더 생기지 않는다. 아래 "무비를 못 찾으면
+> 보내지 않는다"는 안전장치로만 남는다.
 
 ---
 

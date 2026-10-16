@@ -10,7 +10,7 @@
  * 상대 순위다.
  *
  * 키워드는 **개념**으로 맞춘다 — 슬롯 힌트는 개념 사전(`packages/shared-types/src/content-vocabulary.json`)의
- * id 이고, 분석의 자유 문자열은 채점할 때 사전으로 개념을 찾는다. 규칙: docs/plans/content-vocabulary.md §3 · §4.
+ * id 이고, 분석의 자유 문자열은 채점할 때 사전으로 개념을 찾는다. 규칙: 사전의 `_normalizeNote` · `_matchNote`(docs/decisions/ontology-personalization.md §3.4).
  */
 import {
   contentMatchScore,

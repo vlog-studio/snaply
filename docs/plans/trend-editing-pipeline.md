@@ -36,21 +36,23 @@
 
 ## 2. 선행 제약 — 이 계획이 지켜야 하는 기존 결정
 
-### 2.1 레시피 재생성 결정론 ★ 지금 깨져 있다
+### 2.1 레시피 재생성 결정론 ★ 트랙이 아직 스펙에 핀되지 않는다
 
 [specs/movie.md](../specs/movie.md) MOV-14 는 생성에 쓰인 구성(`editSpec`+`renderSpec`)을 다시
 실행하면 같은 결과가 나오기를 요구한다 — 끝낸 무비를 다시 만드는 것(MOV-19, 크레딧을 내는 새
-생성)도 그 구성에서 출발한다. 그런데 현행 BGM 선택은 디렉터리 스캔 + `random.choice` 다
-([`pipeline/music.py`](../../apps/ai-worker/src/pipeline/music.py)). 즉 **지금도 같은 구성으로
-다시 만들면 BGM 이 바뀐다**([backlog.md](../backlog.md) E-5). 비트 싱크를 넣으면 컷 지점까지
-바뀐다 — 사용자는 자기가 바꾸지 않은 것이 왜 바뀌었는지 알 수 없다.
+생성)도 그 구성에서 출발한다. BGM 선택은 2026-10-15 에 무작위를 없앴다 — 버킷 매니페스트로 받아 온 라이브러리
+(`music.sync_library`)에서 `sha256("{movieId}:music:{tag}")` 로 고른다([`pipeline/music.py`](../../apps/ai-worker/src/pipeline/music.py)
+`pick_track`). 같은 무비는 다시 만들어도 같은 곡이지만, **라이브러리의 곡 수가 바뀌면 고르는 결과가 바뀔 수 있다** — 트랙 ID 가
+스펙에 없기 때문이다([backlog.md](../backlog.md) E-5). 비트 싱크를 넣으면 컷 지점까지 바뀐다 — 사용자는 자기가 바꾸지 않은 것이
+왜 바뀌었는지 알 수 없다.
 
 **v3 는 비결정적 선택을 전부 스펙에 핀으로 박는다**: 선택된 트랙 ID, 비트 그리드 버전,
 난수 시드. 이것이 v3 의 존재 이유 중 하나이며, 표현력 확장보다 우선순위가 높다.
 
 ### 2.2 클립 구간의 소유자는 클라이언트다
 
-`clips[].startMs/endMs` 는 전부 앱이 보낸다([api-spec.md](../api-spec.md) `POST /edit-jobs`).
+컷 구간은 앱이 무비로 보낸다 — 무비 계약의 컷 `startMs` · `endMs` 와 그 값의 주인 `trimOwner`
+([`contract/movies.ts`](../../packages/shared-types/src/contract/movies.ts), [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md) §2.2 · §2.4).
 서버가 컷을 비트에 스냅하면 **사용자가 직접 자른 구간을 서버가 덮는다.**
 v3 는 스냅 여부(`snapToBeat`)와 허용 오차를 클립 단위로 명시하고, 기본값은 "덮지 않음"이다.
 
@@ -60,19 +62,19 @@ v3 는 스냅 여부(`snapToBeat`)와 허용 오차를 클립 단위로 명시�
 분석·레이어 합성이 늘면 두 값이 함께 흔들린다. 단계를 추가할 때마다 처리 시간을 계측해
 남기고, 상한을 넘기면 기능이 아니라 상한을 먼저 재검토한다.
 
-**편집 워커는 동시성이 설정돼 있지 않다.** 분석 워커는 `VIDEO_ANALYSIS_CONCURRENCY`(기본 3)를
-넘기는데 편집 워커의 `Worker(...)`(큐 `edit-jobs`·`edit-v3` 마다 하나)에는 옵션이 없어 기본값으로 돈다
-([`worker.py`](../../apps/ai-worker/src/worker.py) `main`). 가장 무거운 작업이 사실상 직렬로 처리되는
-셈이라, 파이프라인이 무거워지면 **개별 처리 시간보다 큐 대기가 먼저 문제가 된다.** 다만 적정
-동시성은 단계별 CPU·메모리 실측 뒤에 정한다 — 지금 숫자를 찍으면 근거가 없다.
+**편집 워커의 동시성은 1 로 정했다**(2026-10-11, [decisions/aws-contest-server.md](../decisions/aws-contest-server.md#운영-기간--영상-백업--편집-동시성-2026-10-11-덧붙임)) —
+실측에서 ffmpeg 렌더가 CPU 에 묶여 있어 동시성을 올려도 처리량이 늘지 않았다. 파이프라인이 무거워지면 **개별 처리 시간보다 큐 대기가
+먼저 문제가 된다** — 다시 볼 조건은 그 결정 문서에 있다.
 
 ### 2.4 v3 는 Movie export 에 붙는다
 
 `Movie` 엔티티는 있고, 기존 `POST /edit-jobs` 는 **한 버전 공존 후 폐기**로 결정됐다
 ([decisions/movie-export-policy.md](../decisions/movie-export-policy.md) ⑤, [backlog.md](../backlog.md) A-1).
 따라서 v3 의 부착 지점은 `POST /edit-jobs` 가 아니라 Movie export(`POST /movies/{id}/export`)다 —
-폐기 전에 `POST /edit-jobs` 에도 붙이면 같은 스펙을 두 곳에 붙이게 된다. 2026-10-01 에 그렇게 들어갔다 — 무비 생성은
-v3, `POST /edit-jobs` 는 v2 그대로다([api-spec.md](../api-spec.md) §AI 편집).
+폐기 전에 `POST /edit-jobs` 에도 붙이면 같은 스펙을 두 곳에 붙이게 된다.
+
+**구현(2026-10-01, 무비 생성만 v3)** — 무비 생성이 v3 를 `edit-v3` 큐로 보낸다([api-spec.md](../api-spec.md) §AI 편집). `POST /edit-jobs` 는
+2026-10-11 에 없앴다([progress.md](../progress.md) 2026-10-11 "`POST /edit-jobs` 를 없앴다").
 
 **타임라인 모델 자체(§3)는 부착 지점과 무관하므로 설계는 지금 진행할 수 있다.**
 
@@ -145,7 +147,7 @@ MediaPipe 도입 시 확인할 것: 워커 이미지는 이미 faster-whisper �
 결이 같다.
 
 **다만 소프트 → 번인은 사용자에게 보이는 변경이다.** 지금은 "영상에 굽지 않으므로 플레이어에서
-켜야 보인다"고 안내한다([specs/movie.md](../specs/movie.md) MOV-9, 계약의 `subtitles` 필드 설명).
+켜야 보인다"고 안내한다([specs/movie.md](../specs/movie.md) MOV-9).
 자막을 끌 수 없게 되고, `-c:v copy` 가 깨져 재인코딩이 한 번 는다. 선택지와 권장은
 [decisions/subtitle-rendering.md](../decisions/subtitle-rendering.md)(미결)이며 착수는 그 결정 뒤다.
 
@@ -203,34 +205,32 @@ AGPL-3.0 이어서 배제다(§9). 자체 호스팅이 필요해지면 Florence-
 
 ## 6. 소스·출력 층
 
-### 6.1 실기기 영상이 들어올 때 ⚠️ 일부가 비어 있다
+### 6.1 실기기 영상이 들어올 때
 
-**트렌드 표현보다 앞선 문제다.** 아래 셋 중 HDR 톤매핑은 들어갔고, 나머지 둘은 처리나 검증이 없다.
+**트렌드 표현보다 앞선 문제다.** HDR 톤매핑과 회전은 들어갔고, VFR 만 남았다.
 
 - **HDR 톤매핑** — 정규화 단계에 있다([`pipeline/hdr.py`](../../apps/ai-worker/src/pipeline/hdr.py)).
   `zscale`+`tonemap` 이 있는 빌드(워커 이미지)는 톤매핑하고, 없는 빌드는 8bit 로 떨군다. 어느
   경로든 출력 색 태그를 bt709 로 고치고, SDR 소스는 건드리지 않는다. 합성 HDR10 으로만
   검증했고 돌비비전 실물은 미검증이다([backlog.md](../backlog.md) F)
-- **회전 메타데이터** — `autorotate`·`transpose` 언급이 없다. FFmpeg 가 입력 단계에서 display
-  matrix 를 자동 적용하므로 정상 동작할 가능성이 크지만, `filter_complex` 를 직접 조립하는
-  구조라 **검증된 적이 없다.** 세로로 찍은 영상이 눕는 것은 가장 눈에 띄는 버그다(§11)
+- **회전 메타데이터** — 구현(2026-10-12): 눕혀 저장한 세로 영상이 결과물에서 서는 것을 실제 ffmpeg 로 고정했다
+  (`tests/test_ffmpeg_contract.py` 의 `test_a_portrait_shot_stored_sideways_comes_out_upright`). FFmpeg 이 입력 단계에서 회전을 적용해
+  코드 변경은 없었다
 - **가변 프레임레이트(VFR)** — 폰 영상은 VFR 인 경우가 많다. 현재 `fps=` 필터가 CFR 로 바꾸므로
   영상은 맞지만, 긴 클립에서 **오디오 드리프트**가 남는지 확인한다
 
-### 6.2 오디오 연속성 — 컷이 들리면 안 된다
+### 6.2 오디오 연속성 — 구현(2026-10-12)
 
-- **클립별 레벨 편차** — `loudnorm`·`dynaudnorm` 이 전무하다. 클립마다 녹음 레벨이 다르면
-  **컷마다 소리가 튄다.** §6.3 의 최종 `loudnorm` 은 전체에 한 번 걸리는 것이라 클립 간 편차를
-  잡지 못한다. 정규화 단계에서 클립별로 한 번 더 맞춘다
-- **컷 지점 클릭·팝** — `afade` 는 BGM 끝 페이드아웃 하나뿐이다. cut 전환에서 파형이 0 을
-  지나지 않으면 틱 소리가 난다. **1~5ms 마이크로 페이드**가 표준 처방이고 한 줄이다
+클립별 음량 정규화와 컷 경계의 마이크로 페이드가 들어갔다. 규칙은 [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md#63-v1-툴과-나중으로-둔-툴)
+§6.3 "오디오 기본 처리" 행, 코드는 [`pipeline/editor.py`](../../apps/ai-worker/src/pipeline/editor.py) 의 `normalize_clip` 이다.
 
-### 6.3 출력 옵션 — 한 줄짜리 수정들
+### 6.3 출력 옵션
 
-- `-movflags +faststart` — 없으면 moov atom 이 파일 끝에 남아 스트리밍 첫 재생이 지연된다
-- `-crf 20`, `-profile:v high` (현재 CRF 미지정 = 기본 23)
-- `loudnorm=I=-14:TP=-1.5:LRA=11` — 플랫폼 정규화 타겟. 안 맞추면 업로드 후 소리가 뭉개진다
-- BGM 덕킹 `sidechaincompress` — 사이드체인 소스는 concat 된 원본 오디오 트랙을 그대로 물린다
+`+faststart` · 마지막 인코딩 CRF 20 / High 프로파일(중간 파일 CRF 18) · 무비 전체 −14 LUFS(선형 이득 + 트루 피크 리미터 — `loudnorm` 두 번째
+패스는 기각)는 구현됐다(2026-10-12 · 2026-10-14, `editor.py` 의 `finalize` — 규칙은 [decisions/auto-edit-draft.md](../decisions/auto-edit-draft.md#63-v1-툴과-나중으로-둔-툴)
+§6.3). 남은 것:
+
+- BGM 덕킹 `sidechaincompress` — 사이드체인 소스는 concat 된 원본 오디오 트랙을 그대로 물린다([backlog.md](../backlog.md) A-7 "BGM 덕킹")
 
 **재인코딩 횟수에 주의한다.** 현재 BGM·자막 단계가 `-c:v copy` 라 2회에 그치는데, 번인 자막과
 스티커가 붙으면 그 단계에서도 필터가 필요해 `copy` 가 깨진다. normalize 이후를
@@ -240,8 +240,9 @@ AGPL-3.0 이어서 배제다(§9). 자체 호스팅이 필요해지면 Florence-
 
 ## 7. `bgm_tracks` — BGM 을 1급 엔티티로
 
-현행 BGM 은 **디렉터리 스캔 + 무작위 선택**이 전부다. 트랙 ID 가 없으므로 레시피에 핀을 박을
-수도, 비트 그리드를 붙일 수도, 라이선스를 감사할 수도 없다.
+현행 BGM 은 버킷의 매니페스트(`assets/bgm/manifest.json` — 곡마다 `tag` · `file` · `title` · `source` · `licenseUrl` · `checkedAt`,
+`music.parse_manifest`)로 받아 온 파일을 무비 id 로 고르는 것이 전부다(2026-10-15, §2.1). 매니페스트의 라이선스 기록은 사람이 읽는 것이고
+트랙 ID 가 없으므로 레시피에 핀을 박을 수도, 비트 그리드를 붙일 수도, 라이선스를 기계로 감사할 수도 없다.
 
 | 컬럼 | 이유 |
 |---|---|
@@ -355,7 +356,7 @@ A-7이며, 여기 목록으로 상태를 관리하지 않는다. 어디까지 �
 
 1. **editSpec v3 설계 확정** — `layers`/`keyframes`/`audio` 핀. 여기에 §2.1 결정론이 걸려 있다
 2. **`bgm_tracks` 스키마 + 음원 15~20트랙 확보** — 이게 없으면 아래가 전부 미검증 코드가 된다
-   (조달: [decisions/bgm-sourcing.md](../decisions/bgm-sourcing.md), 미결)
+   (조달: [decisions/bgm-sourcing.md](../decisions/bgm-sourcing.md), 미결 — 공모전 기간은 무료 9곡 잠정)
 3. **번인 자막 전환 결정** — 소프트 자막 폐기는 사용자에게 안내된 동작의 변경이다(§5.1,
    [decisions/subtitle-rendering.md](../decisions/subtitle-rendering.md), 미결)
 4. **스티커 팩 매니페스트 스키마**(§8.3) + 조달 경로·스타일 방향 결정
@@ -364,9 +365,8 @@ A-7이며, 여기 목록으로 상태를 관리하지 않는다. 어디까지 �
 
 ### 1단계 — 체감 효과 최대, 의존성 최소
 
-5. **회전 검증 · 클립별 레벨 정규화 · 컷 마이크로 페이드**(§6.1·§6.2) —
-   실기기 영상을 받는 순간 드러난다. **트렌드 표현보다 앞이다** (HDR 톤매핑은 들어가 있다)
-6. `+faststart` · CRF · `loudnorm` · `sidechaincompress` — 반나절
+5. **끝남(2026-10-12)** — 회전 검증 · 클립별 레벨 정규화 · 컷 마이크로 페이드(§6.1 · §6.2)
+6. **끝남(2026-10-12)** — `+faststart` · CRF · 무비 전체 음량(§6.3). 남은 `sidechaincompress` 는 BGM 조달과 함께 한다(A-7)
 7. **ASS 애니메이션 자막 + 한글 폰트** — 새 라이브러리 0, 체감 효과 1위
 8. **VAD 기반 무음 자동 컷** — 이미 있는 whisper 로 가능. "AI 자동 편집"이 여기서 처음 사실이 된다
 9. 비트 그리드 스냅 컷 (`snapToBeat`)
@@ -378,8 +378,9 @@ A-7이며, 여기 목록으로 상태를 관리하지 않는다. 어디까지 �
 12. 단일 `filter_complex` 통합 (재인코딩 3회 → 1회)
 13. 알파 오버레이 트랙 베이킹
 14. 텍스트 배지(ASS 인프라 공유) · 스티커 팩 2·3종 추가
-15. `xfade` 종류 확장 + 줌 펀치 · 속도 램프
-16. **편집 워커 동시성 설정**(§2.3) — 단계별 CPU·메모리를 실측한 뒤 값을 정한다
+15. `xfade` 종류 확장 · 속도 램프 — 줌 펀치(`zoompunch`)와 경계별 전환(v1 다섯)은 2026-10-01 에 들어갔다
+    ([decisions/transition-director.md](../decisions/transition-director.md) §0.1)
+16. **끝남(2026-10-11)** — 편집 워커 동시성은 1(§2.3)
 
 ### 3단계
 
@@ -393,10 +394,10 @@ A-7이며, 여기 목록으로 상태를 관리하지 않는다. 어디까지 �
 필터그래프 문자열 검증만으로는 이걸 얹었을 때 회귀를 잡을 수 없다. 최소 두 종류가 함께 간다.
 
 - **ffprobe 계약 테스트**: 출력 duration 이 스펙과 ±100ms 이내, 오디오/비디오 길이 일치,
-  moov 위치(faststart), 오디오 LUFS 범위
+  moov 위치(faststart), 오디오 LUFS 범위 — moov 위치와 LUFS 는 2026-10-12 에 들어갔다
 - **골든 프레임 테스트**: 5초 합성 소스에서 특정 타임코드 프레임을 뽑아 지각 해시 비교.
-  자막·스티커 위치 회귀를 잡는 유일한 방법이다. **첫 케이스는 회전이다**(§6.1) — 세로 소스가
-  눕지 않는지. HDR 소스의 톤매핑 결과도 같은 방식으로 고정한다
+  자막·스티커 위치 회귀를 잡는 유일한 방법이다. 회전(세로 소스가 눕지 않는지)은 2026-10-12 에 실제 ffmpeg 테스트로
+  먼저 고정됐다(§6.1). HDR 소스의 톤매핑 결과도 같은 방식으로 고정한다
 
 진짜 ffmpeg 을 돌리는 계층은 이미 있다 — [`tests/test_ffmpeg_contract.py`](../../apps/ai-worker/tests/test_ffmpeg_contract.py)
 가 편집 산출물(세로 규격·H.264/yuv420p·HDR 색 태그)과 배포 렌디션(faststart·실측 길이·회전)을
@@ -419,4 +420,5 @@ ffmpeg 이 없는 로컬에서는 이 계층만 건너뛰고 기존 문자열 �
   **요건**과 스키마만 정의한다(§7·§8.5·§9)
 - 스티커 팩의 아트 디렉션 — 유형과 운영 루프까지만 정의한다(§8.1·§8.6)
 - 앱 편집 UI — 서버가 v3 를 받을 수 있게 되는 것까지가 범위다
-- GPU 렌더 인프라 — 배포 플랫폼 확정(backlog B-8) 이후 판단한다
+- GPU 렌더 인프라 — 지금 서버는 GPU 없는 AWS 공모전 서버 한 대다([decisions/aws-contest-server.md](../decisions/aws-contest-server.md)).
+  공모전 뒤 운영 서버를 정할 때 판단한다
