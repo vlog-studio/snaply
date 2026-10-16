@@ -46,7 +46,9 @@ import { EditAgentError, runEditAgent, type SnapConcepts } from './edit-agent/ed
  * 무비를 만든다 — 템플릿 추천과 같은 모양이다.
  *
  * **기다리지 않는다.** 신호는 업로드 때 계산해 두었으므로 요청 안에서 끝난다. 신호가 없는 스냅은 검사 없이
- * 들어가고, 신호 계산을 적재해 다음 요청부터 쓴다. vision 분석은 부르지 않는다 — 이미 있는 분석 결과만 얹는다.
+ * 들어가고, 신호 계산을 적재해 다음 요청부터 쓴다. vision 분석도 기다리지 않는다 — 이미 있는 분석 결과만 얹는다. 분석에 동의했고
+ * 분석 스위치가 켜져 있으면 에이전트가 개념이 없는 스냅의 분석을 요청할 수 있지만(`analyze_snaps`, 초안 1회
+ * `EDIT_AGENT_ANALYSIS_LIMIT`개까지) 그 결과는 다음 초안부터 쓰인다.
  */
 
 const DEFAULT_STYLE: StylePreset = '일상';
