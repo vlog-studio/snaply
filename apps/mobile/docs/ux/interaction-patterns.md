@@ -76,6 +76,8 @@ See [`../features/location-and-push-notifications.md`](../features/location-and-
 
 ## 7 — Notification permission
 
+*Not built — the app asks for the notification permission from 나 → 알림 ([examples §5](examples.md#5--notification-permission)). This is the target design, and the one place its copy lives.*
+
 - **Knows.** What we will send and roughly when — tied to something they just did.
 - **First.** The pending outcome: a generation running.
 - **Default.** Ask after the first action whose completion the user would want to hear about; never on launch.
@@ -95,8 +97,8 @@ See [`../features/location-and-push-notifications.md`](../features/location-and-
 - **Knows.** Which kind of empty this is: nothing yet / nothing matched / failed to load.
 - **First.** The action that resolves it.
 - **Default.** For "nothing matched", keep the filter controls visible and offer `필터 지우기`.
-- **CTA.** The filling action, named: `첫 스냅 찍기`, `영상에서 가져오기`.
-- **Disclosure.** At most one short line of state. No explanatory paragraph (project rule — [`Show State, Not Instructions`](principles.md#13--show-state-not-instructions)).
+- **CTA.** The filling action, named — the copy and the shipped empty states are in [`ux-writing.md` → Empty states](ux-writing.md#empty-states).
+- **Disclosure.** At most one short line of state, no explanatory paragraph ([`Show State, Not Instructions`](principles.md#13--show-state-not-instructions)).
 
 Never render "nothing yet" while a request is still in flight; that is `Orphan State`.
 
@@ -124,7 +126,7 @@ Reserve layout so nothing shifts when content arrives.
 
 - **Knows.** That it started, roughly how long it takes, that they can leave, and how they will find the result.
 - **First.** Progress with meaning (a ring, a stage name in user words), plus the object being produced.
-- **Default.** Continue in the background when the user leaves; offer completion notification (asked as in §7). Do not cancel on navigation.
+- **Default.** Continue in the background when the user leaves; offer completion notification as in §7 (not built — the app asks from 나 → 알림). Do not cancel on navigation.
 - **CTA.** None to leave with: leaving is safe, and the screen shows it by keeping the run and its progress, never by a sentence promising it ([the movie screen](../features/movie.md#user-goal)). Stopping is a quiet secondary that confirms in place: `만들기 취소`, then `계속 만들기` / `만들기 취소`. On completion the result itself is the next thing on screen — the finished movie plays where the user is.
 - **Disclosure.** Technical stages are collapsed into at most three user-meaningful ones; never expose queue positions or job ids (`Leaky Vocabulary`).
 
@@ -152,8 +154,8 @@ Background work must never steal focus, block a CTA, or interrupt the current sc
 
 - **Knows.** What failed, in their words, and the one thing that fixes it.
 - **First.** The state at the failure site, scoped to what broke.
-- **Default.** Preserve the user's input and progress. Choose the lightest component that fits the severity ([`Errors Are Design Failures First`](principles.md#16--errors-are-design-failures-first)).
-- **CTA.** `다시 시도`, or the specific fix (`인터넷 연결 확인하기`). Never `확인` alone.
+- **Default.** Preserve the user's input and progress. Use the lightest component that fits the severity ([`Errors Are Design Failures First`](principles.md#16--errors-are-design-failures-first)): a toast for a transient, recoverable failure; inline at the field or block for a scoped one; a dialog only when the user must decide before continuing.
+- **CTA.** `다시 시도`, or the specific fix (`인터넷 연결 확인하기`). Never `확인` alone. Copy: [`ux-writing.md` → Errors](ux-writing.md#errors).
 - **Disclosure.** Diagnostics under a disclosure or a copy action; never as the headline. No blame, no codes as the message ([Toss's error principles](https://toss.tech/article/21021)).
 
 ## 16 — Retry

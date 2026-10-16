@@ -40,6 +40,7 @@ Add only the segments that are needed — `features/share-movie` has no `ui`, be
 ```text
 features/share-movie/
 ├── api/download-render-file.ts
+├── lib/open-instagram.ts
 ├── model/use-share-movie.ts
 └── index.ts
 ```

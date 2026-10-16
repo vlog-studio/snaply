@@ -26,7 +26,7 @@ rather than letting two copies drift apart.
 ## How to use this document
 
 - Adding a screen → §1, §14.
-- Reading data from the backend → §2, §3, §4 (in that order), consumed via §5-adjacent code.
+- Reading data from the backend → §2–§5, in that order.
 - Writing data / firing a server action → §5 (the request function), §10 (the action hook and
   its query-cache update).
 - Sharing client state across components → §7, §8 (§8a when the data belongs to the signed-in account rather than to the device).
@@ -110,7 +110,9 @@ export default function SnapsRoute() {
   const { select, at } = useLocalSearchParams<{ select?: string; at?: string }>();
   return (
     <SnapsPage
-      startSelecting={select === '1' ? 'movie' : select === 'draft' ? 'draft' : undefined}
+      startSelecting={
+        select === '1' ? 'movie' : select === 'draft' ? 'draft' : select === 'album' ? 'album' : undefined
+      }
       selectionRequest={at}
     />
   );
@@ -281,7 +283,13 @@ result: (jobId: string) =>
 
 **When:** every request to the backend. Mock mode is on while no API origin is
 configured (or with `EXPO_PUBLIC_USE_MOCK_API=true`), so each request function carries
-both branches.
+both branches — unless a mock answer would mean nothing, in which case the consumer
+gates the request instead: `fill-template`'s
+[`request-recommendation.ts`](../../src/features/fill-template/api/request-recommendation.ts)
+and [`get-recommendation.ts`](../../src/features/fill-template/api/get-recommendation.ts)
+have no mock branch, and
+[`use-template-recommendation.ts`](../../src/features/fill-template/model/use-template-recommendation.ts)
+never enables their queries while `USE_MOCK_API` is on, falling back to the local match.
 
 **Canonical:**
 [`get-locations.ts`](../../src/entities/location/api/get-locations.ts),
@@ -554,19 +562,28 @@ export function useDoAction() {
 **Rules**
 - Own `pending`/`error`; guard re-entry; reset error on a new attempt; clear pending in
   `finally`.
-- Run the service, then write to the owning store. **Do not navigate** — navigation is
-  declarative via the route guard reacting to state.
+- Run the service, then write to the owning store. **Do not navigate** — the hook
+  reports the outcome, and the calling page navigates on it (or, for sign-in, the route
+  guard reacts to the new state). No file under `src/features` imports a router.
 - Distinguish user-cancellation (silent) from real failure (surface a message).
   User-facing copy is Korean and lives in the feature, not in shared.
-- When the action changes server data a query holds, the hook updates the cache itself
-  through `useQueryClient()` — the app does not use `useMutation`. Write the server's
-  answer into the query with `setQueryData`
-  ([`use-analysis-consent-actions.ts`](../../src/features/analysis-consent/model/use-analysis-consent-actions.ts)),
-  or invalidate the factory's `all()` key once the request settles
-  ([`use-restore-snaps.ts`](../../src/features/restore-snap/model/use-restore-snaps.ts)).
-  A control that must move before the network answers sets the value optimistically and
-  puts the changed fields back on failure
-  ([`use-update-notification-preferences.ts`](../../src/features/notification-settings/model/use-update-notification-preferences.ts)).
+- When the action changes server data a query holds, the hook updates the cache itself.
+  Two shapes are in use, and either is fine:
+  - **A plain action hook** like the skeleton, reaching the cache through
+    `useQueryClient()`: write the server's answer into the query with `setQueryData`
+    ([`use-analysis-consent-actions.ts`](../../src/features/analysis-consent/model/use-analysis-consent-actions.ts)),
+    invalidate the factory's `all()` key once the request settles
+    ([`use-restore-snaps.ts`](../../src/features/restore-snap/model/use-restore-snaps.ts)),
+    or — for a control that must move before the network answers — set the value
+    optimistically and put the changed fields back on failure
+    ([`use-update-notification-preferences.ts`](../../src/features/notification-settings/model/use-update-notification-preferences.ts)).
+  - **`useMutation`** for an optimistic or single-resource save, where TanStack's own
+    pending/error state is what the screen needs:
+    [`use-nickname.ts`](../../src/features/edit-nickname/model/use-nickname.ts)
+    (`useSaveNickname` writes the saved nickname with `setQueryData`) and
+    [`use-interests.ts`](../../src/features/choose-interests/model/use-interests.ts)
+    (`useToggleInterest` sets the choice at once, commits only the newest write's answer,
+    and puts the previous choice back on error).
 
 ---
 
@@ -961,7 +978,9 @@ jest.mock('react-native', () => ({
 slice's `model` owns the rules, and the action hook owns the request.
 
 **Canonical:** [`email-sign-in-form.tsx`](../../src/features/sign-in/ui/email-sign-in-form.tsx)
-+ [`email-sign-in-schema.ts`](../../src/features/sign-in/model/email-sign-in-schema.ts).
++ [`email-sign-in-schema.ts`](../../src/features/sign-in/model/email-sign-in-schema.ts);
+[`sign-up-schema.ts`](../../src/features/sign-up/model/sign-up-schema.ts) for a
+whole-object rule (the schema skeleton below).
 
 ```ts
 // features/<action>/model/<action>-schema.ts — rules + product copy, no React

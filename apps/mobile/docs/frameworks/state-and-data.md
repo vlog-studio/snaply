@@ -12,6 +12,7 @@ This project's standard tools are TanStack Query v5, Zustand, React Hook Form, Z
 | Client state shared by multiple components | Zustand | `model` in the lowest common owning slice |
 | Persistent storage for small or secret values (preferences, the session) | SecureStore adapter | `shared/lib/secure-storage` |
 | Persistent storage for growing data (snaps, movies) | JSON file store | `shared/lib/local-store` |
+| Persisted content that belongs to the signed-in account (snaps, movies, upload state) | The JSON file store, one file per account | `shared/lib/scoped-store`, bound in `_app/providers/library-scope-gate.tsx` ([cookbook §8a](../conventions/cookbook.md#8a-account-scoped-persisted-slice)) |
 | Product meaning of a session or token | Entity or feature | The actual domain owner, such as `entities/session/model` |
 
 ## TanStack Query
@@ -68,7 +69,7 @@ How a store exposes itself — domain actions and focused selector hooks, never 
 - If it is used by one screen, keep it in the page slice.
 - Infer the TypeScript type from the Zod schema instead of declaring it twice.
 - Put only business-agnostic primitives, such as a common adapter, in shared.
-- The owning feature or page coordinates submission mutations and post-success navigation; shared form controls must not know those details.
+- The owning feature or page coordinates the submission request; navigation after success belongs to the calling page — a feature reports the outcome and never navigates ([cookbook §10](../conventions/cookbook.md#10-action-orchestration-hook)). Shared form controls know neither.
 
 The one shared piece is [`shared/ui/form-text-field`](../../src/shared/ui/form-text-field): `TextField`
 bound to a form field through `useController`. It knows how a controlled field

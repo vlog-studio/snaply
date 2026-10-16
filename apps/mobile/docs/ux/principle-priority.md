@@ -2,11 +2,7 @@
 
 Principles conflict routinely. This document decides which one yields.
 
-The objective is never "obey principle N". It is the sentence [`philosophy.md`](philosophy.md) states once for the whole system:
-
-> The user reaches their own goal with the least thinking, in the fewest decisions, without needing to understand how the app is built — and without losing capability or control.
-
-A change that satisfies a principle while raising total cost is a regression, however well-cited.
+The objective is never "obey principle N"; it is [the single sentence in `philosophy.md`](philosophy.md). A change that satisfies a principle while raising total cost is a regression, however well-cited.
 
 ---
 
@@ -19,7 +15,7 @@ Apply in order. Stop at the first level that decides the case.
 | 1 | **Blocking** — does one option leave a user unable to proceed, exit, or recover? | The non-blocking option. `Preserve User Control and Exit` outranks everything. |
 | 2 | **Loss** — does one option risk losing data, work, money, or a permission that is expensive to re-ask? | The lossless option. `Errors Are Design Failures First`, `Value Before Cost`. |
 | 3 | **Answerability** — does one option leave the user facing a question they cannot answer? | The answerable option. `Easy to Answer` outranks convenience and brevity. |
-| 4 | **Total cost across the flow** — sum decisions, transitions, and recall points end to end. | The lower total. Never optimize one screen at another's expense (G21). |
+| 4 | **Total cost across the flow** — sum decisions, transitions, and recall points end to end. | The lower total. Never optimize one screen at another's expense ([G15](guardrails.md#g15--do-not-optimize-a-screen-in-isolation)). |
 | 5 | **Frequency weighting** — which user group and which path is affected more often? | The majority path, with the minority path kept reachable and named. |
 | 6 | **Reversibility** — can a wrong outcome be undone cheaply? | The more reversible option, when the two are otherwise equal. |
 | 7 | **Consistency** — does one option match an established app pattern? | The consistent option. Novelty needs a reason. |

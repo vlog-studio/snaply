@@ -2,6 +2,8 @@
 
 Product copy is Korean, in 해요체. Code identifiers, file paths, log output, and this documentation are English. Copy is part of the interface, not decoration on top of it: most hierarchy and predictability problems are cheaper to fix in words than in layout.
 
+In the tables below, a row that links a feature document is shipped copy; every other row is a shape to follow, not a string to ship.
+
 ## Foundation
 
 Toss publishes eight writing principles ([source](https://toss.tech/article/8-writing-principles-of-toss)). They are adopted here as `Toss Principle` and restated as checks:
@@ -93,12 +95,12 @@ The replacement for explanation. A read-out is a short labeled fact that makes t
 
 | Situation | Read-out |
 | --- | --- |
-| A movie's cut list | `컷 6 · 14초` |
-| The library's holdings | `18개 · 0:23` |
+| A movie's cut list | `컷 6 · 14초` ([The board](../features/studio.md#the-board)) |
+| The library's holdings | `18개 · 0:23` ([Snap library](../features/snaps.md#browsing-and-playback)) |
 | Upload in progress | `2개 올리는 중` |
 | Offline queue | `연결되면 올라가요` |
-| Generation running | `만드는 중 · 1분 정도 걸려요` |
-| Template match | `4컷 중 3컷 채웠어요` |
+| Generation running | `만드는 중…` over the step the run is on — `컷 자르는 중`, `음악 고르는 중`, … ([Running a movie](../features/movie.md#running-a-movie)) |
+| Template match | `6컷 중 4컷 채웠어요` ([Movie templates](../features/movie-templates.md#user-goal)) |
 
 **Form.** `[object] [number]`, or `[verb]-는 중`. Present tense. No terminal punctuation. Numerals as digits. Units in Korean (`초`, `분`, `개`). Never a percentage the user cannot act on.
 
@@ -106,7 +108,7 @@ The replacement for explanation. A read-out is a short labeled fact that makes t
 
 ## Errors
 
-Follows Toss's six error principles ([source](https://toss.tech/article/21021)). Structure: **state → fix.** Two sentences maximum, one preferred.
+Follows Toss's six error principles ([source](https://toss.tech/article/21021)). Structure: **state → fix.** Two sentences maximum, one preferred. Which component carries the message is the [failure pattern](interaction-patterns.md#15--failure)'s call.
 
 | Bad | Better |
 | --- | --- |
@@ -122,7 +124,7 @@ Follows Toss's six error principles ([source](https://toss.tech/article/21021)).
 
 ## Empty states
 
-One short line of state, plus the action that fills it. Nothing else.
+The copy of the [empty-state pattern](interaction-patterns.md#9--empty-state): one short line of state, plus the action that fills it. Nothing else.
 
 | Surface | Copy |
 | --- | --- |

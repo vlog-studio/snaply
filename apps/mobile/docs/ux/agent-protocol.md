@@ -11,17 +11,13 @@ How an agent runs the UX analysis when asked to review or improve a screen. It e
 | "Primary Action이 제대로 드러나는지 확인해줘" | **Focused check** | [`screen-analysis.md`](screen-analysis.md) Steps 1–3 + the relevant principles only. |
 | "개선안을 제안해줘" | **Proposal** | Findings + revised structure + exact copy. No code changes. |
 | "개선안을 코드에 적용하고 근거를 설명해줘" | **Implement** | Code changes + change report. |
-| "이 화면 뭔가 어색한데 개선해줘" | **Ambiguous → Proposal first** | Analyze, propose, then implement `copy`/`hierarchy` scope; ask before `structure`/`flow`/`system`. |
+| "이 화면 뭔가 어색한데 개선해줘" | **Ambiguous** | Analysis and proposal first; then the `copy`/`hierarchy` changes, asking before `structure`/`flow`/`system`. |
 
-Default when the mode is unclear: analyze and propose. Do not start editing files on an ambiguous request — the analysis is cheap and it is what makes the change defensible.
+A request whose mode is unclear is **Ambiguous**, and the rule is one: no file is edited before the analysis and the proposal exist — the analysis is cheap, and it is what makes the change defensible. What may then be implemented without asking is set in [Escalation and confirmation](#escalation-and-confirmation).
 
 ## Required reading before starting
 
-1. [`principles.md`](principles.md) — the Detection Rules
-2. [`ux-smells.md`](ux-smells.md) — the naming vocabulary
-3. [`guardrails.md`](guardrails.md) — what not to do
-4. The relevant document under [`../features/`](../features/README.md) — what the screen currently *is*, including its implementation status
-5. For implementation: [`../architecture/feature-sliced-design.md`](../architecture/feature-sliced-design.md), [`../conventions/module-boundaries.md`](../conventions/module-boundaries.md), [`../conventions/cookbook.md`](../conventions/cookbook.md)
+What to read is listed once, by task, in [README → What to read, by task](README.md#what-to-read-by-task).
 
 ## The procedure
 
@@ -68,7 +64,7 @@ Rules for the report:
 - Accessibility is part of the change, not a follow-up: labels, roles, hit targets, largest font scale, no color-only signals.
 - Run the verification gate before finishing, per [`../../AGENTS.md` → Verification](../../AGENTS.md#verification).
 - Update the documentation in the same change — the affected feature document, and the root `docs/specs/` requirement when the behavior contract changes — per [`../../AGENTS.md` → Feature documentation maintenance](../../AGENTS.md#feature-documentation-maintenance).
-- Verify visual and interactive changes on the surfaces in [`../workflows/local-development-and-testing.md`](../workflows/local-development-and-testing.md#verification-surfaces-read-first), and say plainly what was not verified on hardware.
+- Verify visual and interactive changes on the surfaces in [`../workflows/local-development-and-testing.md`](../workflows/local-development-and-testing.md#verification-surfaces-read-first), and say plainly what was left for the owner's phone or for iOS.
 
 ## Escalation and confirmation
 

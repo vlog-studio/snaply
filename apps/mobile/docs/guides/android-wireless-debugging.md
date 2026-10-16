@@ -59,7 +59,7 @@ adb connect 192.168.0.42:5555        # 기기 IP는 설정 > 휴대전화 정보
 
 ## 3. 개발 빌드 설치와 실행
 
-무선 adb 연결 상태에서 로컬 네이티브 빌드를 실기기에 설치합니다. 머신마다 달라지는 빌드 제약(구형 Mac의 iOS 로컬 빌드 불가 등)은 [`Environment and legacy macOS limitation`](../workflows/local-development-and-testing.md#environment-and-legacy-macos-limitation)(영문)을 보세요.
+무선 adb 연결 상태에서 로컬 네이티브 빌드를 실기기에 설치합니다. 개발 Mac의 빌드 환경은 [`Environment`](../workflows/local-development-and-testing.md#environment)(영문)를 보세요.
 
 ```bash
 npm run android:device               # expo run:android --device — 연결된 기기 목록에서 실기기 선택
@@ -77,10 +77,11 @@ npm run android:device:install -- --connect 192.168.0.42:40913 # 연결부터
 
 기기가 여러 대면 `ANDROID_SERIAL=<serial>`을 앞에 붙입니다. 네이티브 의존성이 APK 빌드 이후 바뀌었으면 경고가 나오니 `--build`로 다시 빌드하세요. 옵션 전체는 `bash scripts/install-android-device.sh --help`.
 
-개발 빌드가 설치된 뒤에는 Metro만 붙이면 됩니다:
+개발 빌드가 설치된 뒤에는 Metro만 붙이면 됩니다. 모노레포 루트의 `npm run dev:mobile`은 공유 계약 패키지를 먼저 빌드한 뒤 같은 Metro를 띄웁니다:
 
 ```bash
-npx expo start --dev-client
+npm run dev:mobile                   # 모노레포 루트에서
+npm start -- --dev-client            # 또는 apps/mobile에서
 ```
 
 ### Metro 접속이 안 될 때 — adb reverse

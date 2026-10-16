@@ -53,7 +53,7 @@
 1. [Apple Developer → Certificates, Identifiers & Profiles → Keys](https://developer.apple.com/account/resources/authkeys/list)에서 **APNs 인증 키(.p8)** 를 생성하고 Key ID를 기록합니다(팀 ID도 필요).
 2. Firebase → **프로젝트 설정 → Cloud Messaging → Apple 앱 구성**에 `.p8` 키, Key ID, 팀 ID를 업로드합니다.
 
-> iOS 실제 수신은 실제 iOS 기기에서만 확인할 수 있는데, 지금은 검증용 iOS 기기가 없습니다. 네이티브 iOS 빌드는 Swift 6.2를 지원하는 Xcode가 있는 장비에서는 로컬로(`npm run ios`), 구형 Xcode(16.4) 장비에서는 **EAS Build**로 만듭니다 — 조건은 [`../workflows/local-development-and-testing.md`](../workflows/local-development-and-testing.md#environment-and-legacy-macos-limitation).
+> iOS 실제 수신은 실제 iOS 기기에서만 확인할 수 있는데, 1차 출시가 Android만이라 iOS 확인은 루트 backlog A-4 "iOS 출시 전"으로 미뤄 두었습니다. 개발 Mac에서 네이티브 iOS 빌드를 어떻게 만드는지는 [`환경 표`](../workflows/local-development-and-testing.md#environment)가 기준이고, **EAS Build**로 만들려면 `eas.json`에 아직 없는 `development` 프로필을 먼저 추가해야 합니다([`EAS Build`](../workflows/local-development-and-testing.md#full-native-verification--eas-build-cloud-dev-build)).
 
 ---
 
@@ -69,7 +69,7 @@
 3. `shared/lib/notifications/messaging.ts` 어댑터: 권한 확인 `hasNotificationPermission`, iOS APNs 등록 `registerForRemoteMessages`, 토큰 `getFcmToken`·`onFcmTokenRefresh`, 포그라운드 수신 `onForegroundMessage`(같은 디렉터리의 `local.ts`가 `expo-notifications`로 로컬 알림 표시), 알림 탭 `onNotificationOpened`·`getOpeningNotification`. 네이티브 모듈이 없으면(Expo Go 등) 지연 로드가 실패하고 웹 스텁과 같은 무해한 동작으로 대신합니다. 알림 권한 요청 창은 이 어댑터가 아니라 나 탭의 무비 완성 알림 스위치가 띄웁니다.
 4. `features/register-push-token`: 권한이 이미 있을 때만 토큰 발급 → `registerFcmToken` 호출, 토큰 갱신 시 재등록
 
-Firebase 파일을 바꾼 뒤에는 `npx expo prebuild --clean --platform android` 후 Android dev build에서 실제 FCM 토큰이 발급되는지, Firebase 콘솔 테스트 발송이 포그라운드·백그라운드에서 도착하는지 확인합니다. 실기기에서 geofence 진입 보고부터 기기 표시까지 통과하는 end-to-end 수신은 아직 검증되지 않았습니다 — 동작 범위는 [기능 문서](../features/location-and-push-notifications.md), 남은 검증은 루트 backlog C-4.
+Firebase 파일을 바꾼 뒤에는 `npx expo prebuild --clean --platform android` 후 Android dev build에서 실제 FCM 토큰이 발급되는지, Firebase 콘솔 테스트 발송이 포그라운드·백그라운드에서 도착하는지 확인합니다. 무비 완성 푸시의 수신·표시는 2026-10-09 휴대폰에서 확인했지만, geofence 진입 보고부터 기기 표시까지 통과하는 end-to-end 수신은 아직 검증되지 않았습니다 — 동작 범위는 [기능 문서](../features/location-and-push-notifications.md), 남은 검증은 루트 backlog C-4.
 
 ---
 

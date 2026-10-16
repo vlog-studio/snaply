@@ -129,11 +129,11 @@ Wireframes use the `L1`–`L5` block order of [`screen-analysis.md` → Step 8](
 
 **Applied principles** — 14 Predictable Transitions, 8, 4.
 
-**After**
+**After** — the target design of [`interaction-patterns.md` → Notification permission](interaction-patterns.md#7--notification-permission), which holds its copy:
 ```text
 (generation just started; progress visible)
-  L1  만드는 중 · 1분 정도 걸려요
-  L2  [다 만들어지면 알려주기]     [괜찮아요]
+  L1  the run's progress, as the movie screen shows it (the ring and its step line)
+  L2  the §7 ask — both answers outcome-named
 ```
 **Why** — The value is on screen, the cost is one answerable question, and the ask is caused by the user's own action rather than by arriving somewhere.
 
@@ -220,7 +220,7 @@ Wireframes use the `L1`–`L5` block order of [`screen-analysis.md` → Step 8](
 
 **Applied principles** — 9, 7 Progressive Disclosure, 10 Obvious Navigation, 12.
 
-**After** — shipped, by owner decision: the [Me tab](../features/me.md#user-goal). The record is the hero (the week ring, the name, the two counts); seven summary rows — 크레딧, 알림, 화면 테마, 스냅 분석, 앨범 저장, 관심사, 소셜 연결 — read out the current settings while the controls sit one push away on `/settings/*` (관심사 and 소셜 연결 read 준비 중 and open nothing); 로그아웃 and 계정 삭제 close the screen, and deletion is a confirmation screen of its own.
+**After** — shipped, by owner decision: the [Me tab](../features/me.md#user-goal). The record is the hero (the week ring, the name, the two counts); seven summary rows — 크레딧, 알림, 화면 테마, 스냅 분석, 앨범 저장, 관심사, 소셜 연결 — read out the current settings, and each pushes its own `/settings/*` screen, where the controls sit (스냅 분석 reads 준비 중 and opens nothing while the capability is off for an account that has not turned it on); 로그아웃 and 계정 삭제 close the screen, and deletion is a confirmation screen of its own.
 
 **Why** — The root shows state, not controls: each row's read-out is the current setting, so nothing has to be opened to know it, and the row order is deliberate — the balance first, then the preferences most likely to be touched ([Ownership and state](../features/me.md#ownership-and-state)). The destructive actions sit last, away from routine rows.
 

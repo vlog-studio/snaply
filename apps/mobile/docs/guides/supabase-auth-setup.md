@@ -48,7 +48,7 @@
    EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOi...   # anon public 키
    ```
 
-   > `EXPO_PUBLIC_` 접두사가 붙은 환경 변수는 빌드 시 앱 번들에 포함됩니다. 값을 바꾸면 **Metro를 재시작**해야 반영됩니다(`npx expo start -c`로 캐시 정리 권장).
+   > `EXPO_PUBLIC_` 접두사가 붙은 환경 변수는 빌드 시 앱 번들에 포함됩니다. 값을 바꾸면 **Metro를 재시작**해야 반영됩니다(`apps/mobile`에서 `npm start -- --clear`로 캐시 정리 권장).
 
 이 두 값이 없으면 앱은 mock 로그인 상태로 부팅되며(개발 편의용) 실제 로그인은 완료되지 않습니다.
 
@@ -101,7 +101,7 @@ Google은 두 곳을 오갑니다. **Google Cloud Console에서 값을 발급**�
   npm run android          # 에뮬레이터. 실기기는 npm run android:device
   ```
 
-- **iOS:** Swift 6.2를 지원하는 Xcode가 있으면 `npm run ios`로 로컬 개발 빌드를 만들고, 구형 Xcode(16.4) 장비에서는 **EAS Build**로 개발 빌드를 만들어 시뮬레이터/기기에 설치합니다 — 조건은 [`../workflows/local-development-and-testing.md`](../workflows/local-development-and-testing.md#environment-and-legacy-macos-limitation). (Expo Go로는 로그인 검증 불가.)
+- **iOS:** 개발 Mac에서 로컬 개발 빌드(`npm run ios`)를 만들 수 있는지는 [`환경 표`](../workflows/local-development-and-testing.md#environment)를 봅니다. 로컬 빌드가 안 되면 **EAS Build**로 개발 빌드를 만들어 시뮬레이터/기기에 설치하는데, `eas.json`에는 아직 `development` 프로필이 없으므로 먼저 추가해야 합니다([`EAS Build`](../workflows/local-development-and-testing.md#full-native-verification--eas-build-cloud-dev-build)). (Expo Go로는 로그인 검증 불가.)
 
 ## 6. 동작 확인
 
@@ -124,7 +124,7 @@ Google은 두 곳을 오갑니다. **Google Cloud Console에서 값을 발급**�
 
 | 증상 | 원인 | 해결 |
 | --- | --- | --- |
-| 로그인 버튼을 눌러도 아무 일도 없음 / mock처럼 동작 | `.env` 값 미설정 또는 Metro 미재시작 | `.env`의 두 값 확인 후 `npx expo start -c`로 재시작 |
+| 로그인 버튼을 눌러도 아무 일도 없음 / mock처럼 동작 | `.env` 값 미설정 또는 Metro 미재시작 | `.env`의 두 값 확인 후 `npm start -- --clear`로 재시작 |
 | 동의 후 앱으로 복귀했는데 로그인 안 됨 | Supabase Redirect URLs에 `snaplyapp://auth/callback` 누락 | URL Configuration에 정확히 추가 |
 | 재설정 메일 링크로 돌아왔는데 새 비밀번호 화면이 안 뜸 | Supabase Redirect URLs에 `snaplyapp://auth/reset` 누락 | URL Configuration에 정확히 추가 |
 | Google 동의 화면에서 `redirect_uri_mismatch` | Google Cloud의 Authorized redirect URI가 Supabase Callback URL과 불일치 | 두 값을 완전히 동일하게 맞춤 |

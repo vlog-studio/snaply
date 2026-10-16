@@ -56,6 +56,8 @@ _app → pages → widgets → features → entities → shared
 
 `src/app` is a framework adapter and owns no application logic. FSD layers must never import from `src/app`.
 
+There is no `processes` layer — FSD v2.1 deprecates it. Route orchestration for a multi-screen flow goes in `_app`.
+
 ### `_app`: application composition and global concerns
 
 This layer runs and composes the whole application.
@@ -174,13 +176,6 @@ Do not move code to a lower layer because it might be reused later. Start in the
 ### Starter files reintroduced by an upgrade
 
 The starter's technical directories — `src/components`, `src/hooks`, `src/constants` — were dissolved into this structure on 2026-07-15 and removed. They are not allowed paths. If an Expo upgrade or a template regenerates files there, classify each file individually with the algorithm above instead of restoring the directory: generic UI without business logic goes to `shared/ui`, a single screen's block stays in that page, and navigation composition goes to `_app/routes`.
-
-## Important differences in the current FSD version
-
-- The `processes` layer is deprecated in v2.1. Put route orchestration for multi-screen flows in `_app`, product actions in features, and screen-specific composition in pages.
-- App and Shared contain no slices. Do not create `_app/auth` as an auth slice; organize App by responsibilities such as `_app/providers` and `_app/routes`.
-- Features are not the default location for all functionality. Use them selectively for reused user actions.
-- A page containing substantial code is not itself a violation. Keep code in the page when it is clear and screen-specific.
 
 ## Sources
 

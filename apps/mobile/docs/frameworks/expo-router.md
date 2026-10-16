@@ -53,16 +53,16 @@ src/_app/
 | Route filenames, route groups, and `_layout.tsx` | `src/app` |
 | Root navigator composition and global auth routing policy | `src/_app/routes` |
 | Href builders for a target more than one screen navigates to | `src/shared/routes` |
-| Navigation after a specific user action | The relevant `feature/model` or calling page |
+| Navigation after a specific user action | The calling page; a feature reports the outcome and never navigates ([cookbook §10](../conventions/cookbook.md#10-action-orchestration-hook)) |
 | Screen UI and screen-level loading or error states | `src/pages/<page>` |
 
 Consult the SDK 57 documentation when a React Navigation API is needed. Since SDK 56, application code cannot import directly from external `@react-navigation/*` packages. Import the corresponding APIs from `expo-router`.
 
 ### Do not push a tab route from a pushed screen
 
-`router.push('/some-tab')` from a screen that sits **above** `(tabs)` on the root stack does not reveal the existing tab — the target and the current state diverge at the root stack, so a **second `(tabs)` entry is pushed** and a whole new tab navigator mounts over the screen the user came from. Its state opens on the target tab with the initial tab behind it in `history`.
+`router.push('/some-tab')` from a screen that sits **above** `(tabs)` on the root stack does not reveal the existing tab — the target and the current state diverge at the root stack, so a **second `(tabs)` entry is pushed** and a whole new tab navigator mounts over the screen the user came from, opened on the target tab with the initial tab behind it in `history`.
 
-`router.back()` is delivered to the deepest **focused** navigator, which is now that tab navigator. It handles the action itself — switching back to its first tab — so the root stack never pops and the user never returns to the screen that sent them. This is a real defect the project shipped: a movie's "스냅 더 넣기" pushed `/snaps?select=1&for=<movieId>`, and confirming a pick landed the user on the 스튜디오 tab instead of the movie ([Application shell and navigation](../features/app-shell-and-navigation.md#route-map)).
+`router.back()` is delivered to the deepest **focused** navigator — now that tab navigator — which handles it by switching back to its first tab, so the root stack never pops and the user never returns to the screen that sent them (shipped once: a movie's "스냅 더 넣기" landed on the 스튜디오 tab instead of the movie).
 
 - A flow that starts on a pushed screen and must return to it belongs on the **root stack**, even when it looks like a tab screen (`/movie/[id]/add-snaps`).
 - Navigating to a tab route is fine from *inside* the tabs (tab-to-tab), where the action is retargeted to the tab navigator as a jump.

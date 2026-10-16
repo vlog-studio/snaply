@@ -1,6 +1,6 @@
 # Visual hierarchy rules
 
-Semantic rules only. No pixel values, font sizes, or colors — those belong to the design system. This document defines what each element *means*, how much weight it may claim, and how it is misused.
+Semantic rules only. No pixel values, font sizes, or colors — those belong to the design system ([cookbook §14](../conventions/cookbook.md#14-consuming-the-design-system)). This document defines what each element *means*, how much weight it may claim, and how it is misused.
 
 ## The weight ladder
 
@@ -98,14 +98,14 @@ Preference order for creating weight difference: **position → size → contras
 
 - **When.** A short decision or a small set of options that belongs to the screen behind it and returns the user there.
 - **Weight.** Takes W1 while open; the screen behind must remain recognizable.
-- **Do not combine with.** Another sheet or a dialog (`Modal Stack`); a multi-step flow; screen entry (never open a sheet just because the screen loaded — a published Toss prohibition, [source](https://developers-apps-in-toss.toss.im/design/consumer-ux-guide)); a full-height sheet that is really a screen.
+- **Do not combine with.** Another sheet or a dialog (`Modal Stack`); a multi-step flow; screen entry — never open a sheet because the screen loaded ([`Predictable Transitions`](principles.md#14--predictable-transitions)); a full-height sheet that is really a screen.
 - **Common misuse.** Using a sheet as a wizard; putting a scrolling form inside a sheet with a keyboard; no drag-to-dismiss or ✕ while also having no cancel button.
 
 ## Dialog
 
 - **When.** The user must decide before anything else can proceed, or must acknowledge something consequential and irreversible.
 - **Weight.** Takes W1; use rarely.
-- **Do not combine with.** Transient or self-resolving failures (use a toast or inline); optional information; more than two actions; a stack of dialogs.
+- **Do not combine with.** A failure the user does not need to decide about ([Failure](interaction-patterns.md#15--failure) picks its component); optional information; more than two actions; a stack of dialogs.
 - **Common misuse.** Dialogs for every error (`Blaming Error`); dialogs with `확인` only, where a toast would not have interrupted; a dialog asking a question the system could have defaulted.
 
 ## Tabs
@@ -124,24 +124,15 @@ Preference order for creating weight difference: **position → size → contras
 
 ## Empty State
 
-- **When.** A data-backed surface has no items — distinguish "nothing yet" from "nothing matched a filter" from "failed to load".
-- **Weight.** The resolving action is the clearest element (W1). Illustration may be W2 only here.
-- **Do not combine with.** A paragraph of explanation (project rule: one short line at most — [`Show State, Not Instructions`](principles.md#13--show-state-not-instructions)); a spinner; an empty state that hides the surface's controls, so the user cannot change the filter that caused it.
-- **Common misuse.** Using the same empty state for "no snaps yet" and "no results for this filter"; making the empty state prettier than the populated state; omitting the action that fills it.
+- **Weight.** The resolving action is the clearest element (W1); an illustration may be W2 only here. Behavior: [Empty state](interaction-patterns.md#9--empty-state); copy: [`ux-writing.md` → Empty states](ux-writing.md#empty-states).
 
 ## Loading State
 
-- **When.** Data or work is in flight.
-- **Weight.** Occupies the position of the content it replaces; never W1 unless the loading *is* the screen (generation progress).
-- **Do not combine with.** A blank screen; a layout that shifts when content arrives; a full-screen blocker for a partial update; a spinner where the final layout's shape is known (use a skeleton).
-- **Common misuse.** Blocking the whole app for a background operation; no distinction between "loading" and "empty"; long operations with no progress or no way to leave (see [`interaction-patterns.md` → Long-running process](interaction-patterns.md#12--long-running-process)).
+- **Weight.** Occupies the position of the content it replaces; never W1 unless the loading *is* the screen (generation progress). Behavior: [Loading](interaction-patterns.md#11--loading) and [Long-running process](interaction-patterns.md#12--long-running-process).
 
 ## Error State
 
-- **When.** An action or load failed.
-- **Weight.** Scoped to what failed — inline at the failure site for field/block scope, toast for transient, dialog only when a decision is required.
-- **Do not combine with.** Destroying content the user could still use; codes as the headline; `확인` as the only action; blame.
-- **Common misuse.** One global error banner for every failure regardless of cause; retry that repeats the same failure with no changed condition and no explanation; error copy that is longer than the fix.
+- **Weight.** Scoped to what failed, in the component the severity calls for. Behavior: [Failure](interaction-patterns.md#15--failure); copy: [`ux-writing.md` → Errors](ux-writing.md#errors).
 
 ---
 
