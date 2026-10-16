@@ -18,8 +18,7 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 - **공통 에러 코드**: `UNAUTHORIZED`(401) · `FORBIDDEN`(403) · `ACCOUNT_PENDING_DELETION`(403, 삭제 대기 계정 — 복구는 `POST /auth/me/restore`) · `NOT_FOUND`(404) · `BAD_REQUEST`/`VALIDATION_ERROR`(400) · `CONFLICT`(409) · `RATE_LIMITED`(429) · `INTERNAL_SERVER_ERROR`(500).
   타 유저의 리소스를 **조회·삭제**하면 403 이 아니라 **404** 다(존재를 알리지 않는다). 편집 요청처럼 남의 영상을 **입력으로 넘긴** 경우만 403 이다.
 - **Rate limit**: 전역은 IP당 분당 60회(`RATE_LIMIT_GLOBAL_MAX`, `/billing/webhook/*` 제외). 라우트별 제한은 토큰(`Authorization` 헤더)당 분당 — `POST /notifications/geofence-enter`·`POST /movie-recommendations`·`POST /movie-drafts` 10회. 초과 시 `429 RATE_LIMITED`. 도메인 한도(`429 RECOMMENDATION_LIMIT`·`429 DRAFT_LIMIT`)는 다른 코드다 — 잠시 후 재시도로 풀리지 않는다.
-  `POST /movies/{id}/export` 에는 라우트별 제한이 없다 — 전역 제한과 크레딧 예약, 사용자당 생성 1개(409, MOV-11)가 막는다
-  (토큰당 분당 5회 제한은 2026-10-11 에 없앤 `POST /edit-jobs` 에만 있었다).
+  `POST /movies/{id}/export` 에는 라우트별 제한이 없다 — 전역 제한과 크레딧 예약, 사용자당 생성 1개(409, MOV-11)가 막는다.
 - **알 수 없는 enum 값**: 서버가 값을 늘릴 수 있는 곳(편집 상태·에러 코드·템플릿 스타일·푸시 `kind` 등)에서 앱은 모르는 값을 **버리지 말고 보수적으로 해석**한다(모르는 실패 코드는 `INTERNAL`처럼, 모르는 템플릿 스타일은 건너뛰기).
 
 ---
@@ -32,15 +31,14 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 - `PATCH /auth/me` 🔒 — 보낸 필드만 바뀐다. `avatarUrl: null` 은 지우기다. `interests` 는 `GET /interest-topics` 의 id 만 받고(아니면 400
   `UNKNOWN_INTEREST` + 틀린 값 `unknown`), 통째로 바꾼다 — 빈 배열이면 모두 해제. 고른 관심사는 사용자 취향의 출발점이 된다(ACC-5 · PRF-1).
   `GET /auth/me` 의 `interests` 는 사전에 있는 값만 돌려준다(예전 빌드가 저장한 자유 문자열은 빠진다).
-- 프로필의 `recommendedStyle`(읽기 전용, 2026-10-13) — 취향이 권하는 스타일 프리셋(`감성` · `여행` · `일상`) 또는 `null`(권할 근거가 없다). 앱은 새 무비의 스타일을
-  정할 근거가 없을 때 쓴다(PRF-3). 규칙은 `taste-affinity.ts` 의 `recommendedStyle` — 스타일 취향 + 좋아하는 분위기가 어울리는 스타일(`suits.styles`) × 0.5,
-  최고점이 0.15 미만이면 `null`.
-- `GET /interest-topics` 🔒 — 관심사로 고를 수 있는 주제(개념 사전의 `topics`)를 사전 순서로 `{ id, label }` 목록으로 준다.
   **알림 설정(전체 스위치 · 종류별 스위치 · 방해 금지 시간)이 사는 곳이다** — 필드는 계약, 기본값은
   [NTF-7](./specs/notifications.md). 서버가 원천이라 앱은 기기에 사본을 두지 않는다. 전체를 끄면 종류와 무관하게 아무것도
   가지 않고, **스냅 만료 예고에는 종류별 스위치가 없다**(끄면 모르는 채로 영상을 잃는다 —
   [decisions/notification-preferences.md](./decisions/notification-preferences.md)). 어느 스위치가 어느 푸시를 막는지는
   [푸시 알림](#푸시-알림-fcm-data).
+- 프로필의 `recommendedStyle`(읽기 전용) — 취향이 권하는 스타일 프리셋(`감성` · `여행` · `일상`) 또는 `null`(권할 근거가 없다). 앱은 새 무비의 스타일을
+  정할 근거가 없을 때 쓴다(PRF-3). 규칙은 `apps/api/src/services/taste/taste-affinity.ts` 의 `recommendedStyle`(값은 같은 디렉터리의 `taste-policy.ts`).
+- `GET /interest-topics` 🔒 — 관심사로 고를 수 있는 주제(개념 사전의 `topics`)를 사전 순서로 `{ id, label }` 목록으로 준다.
 - `DELETE /auth/me` 🔒 — 즉시: SNS 연동·FCM 토큰 삭제, 진행 중 편집 작업 취소(예약 크레딧 환급). 이후 **30일 유예** 동안 복구 가능하고, 유예가 지나면 배치가 S3 원본까지 영구 삭제한다. 응답의 `purgeAfter` 가 실삭제 예정 시각.
   삭제 대기 중에 다른 인증 API 를 부르면 `403 ACCOUNT_PENDING_DELETION` 이고 같은 `purgeAfter` 를 에러에 싣는다 — 앱은 삭제 응답을 저장해 두지 않아도 남은 유예를 보여줄 수 있다.
 - `POST /auth/me/restore` 🔒 — 유예 내 복구. FCM 토큰·SNS 연동은 되살아나지 않는다(재등록 필요). 크레딧 잔액은 보존된다. 삭제 대기 상태가 아니면 400.
@@ -60,8 +58,9 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
     문구가 바뀌어 버전이 오르면 이전 동의는 `granted: false` 가 되고, 앱은 바뀐 문구로 다시 묻는다.
 - `POST /auth/me/analysis-consent` 🔒 — 본문 `{ version }` 은 사용자에게 **보여 준** 문구의 버전이다. 멱등하다.
   `currentVersion` 과 다르면 `409 CONSENT_VERSION_MISMATCH` — 상태를 다시 읽어 바뀐 문구로 다시 묻는다.
-- `DELETE /auth/me/analysis-consent` 🔒 — 철회. 그 뒤로 분석하지 않고 **이 사용자의 분석 결과·추천 기록·편집 초안 기록을
-  파기**한다(스냅은 그대로, 동의 기록은 철회 시각과 함께 남는다). 동의가 없어도 200 이다(멱등).
+- `DELETE /auth/me/analysis-consent` 🔒 — 철회. 그 뒤로 분석하지 않고 **이 사용자의 분석 결과·추천 기록·편집 초안 기록과
+  스냅 내용에서 배운 취향을 파기**한다(PRF-4 — 스냅은 그대로, 동의 기록은 철회 시각과 함께 남는다). 편집 초안 기록이 지워지므로
+  초안의 무료 횟수와 24시간 상한도 다시 센다(크레딧 원장은 남는다). 동의가 없어도 200 이다(멱등).
 
 ---
 
@@ -113,17 +112,10 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 
 ## AI 편집 (`contract/edit-jobs.ts`)
 
-편집 작업은 무비 생성(`POST /movies/{id}/export`)이 쓰는 엔진이다. **작업은 무비 생성으로만 만든다** — 앱은 진행률·취소·실패 사유를
-여기서 본다. 클립을 바로 받던 `POST /edit-jobs` 는 2026-10-11 에 없앴다(404,
-[decisions/movie-export-policy.md](./decisions/movie-export-policy.md) ⑤ — 한 버전 공존 후 폐기).
+편집 작업은 무비 생성(`POST /movies/{id}/export`)이 쓰는 엔진이다. **작업은 무비 생성으로만 만든다** — 만드는 규칙(크레딧 예약 ·
+402 · 409 · 출력 규격)은 [무비](#무비-contractmoviests)의 `export` 이고, 앱은 진행률·취소·실패 사유를 여기서 본다. 클립을 바로 받던
+`POST /edit-jobs` 는 없다(404, [decisions/movie-export-policy.md](./decisions/movie-export-policy.md) ⑤).
 
-- **작업을 만들 때(무비 생성)** — `npm run worker` 가 떠 있지 않으면 `queued` 에 머문다.
-  - **크레딧 100 을 예약(차감)한다.** 잔액이 모자라면 `402 INSUFFICIENT_CREDITS` 이며 작업이 만들어지지 않는다(예약과 생성이 한 트랜잭션). 에러의 `required`·`balance` 로 부족분을 그린다. 작업이 **실패하거나 취소되면 전액 자동 환급**, 자동 재시도로 추가 차감 없음. 해상도·워터마크 차등은 없다.
-  - 큐 적재가 실패하면 요청은 500 이고, 이미 만든 작업은 `failed`(`errorCode: QUEUE_FAILED`)로 남으며 예약은 환급된다.
-  - **사용자당 진행 중 생성은 하나다**(MOV-11). 같은 사용자의 `queued`·`processing` 작업이 있으면 `409 GENERATION_IN_PROGRESS` 이고
-    `error.movieId` 가 지금 생성 중인 무비다(무비 없는 옛 작업이면 `null`). 크레딧 확인(402)이 먼저다. 그 작업이
-    끝나거나(`done`·`failed`) 취소되면 다시 만들 수 있다 — 갇힌 작업은 그 무비에서 취소하면 풀린다.
-  - 출력은 늘 세로 9:16 숏폼(흐린 배경 맞춤)이다. 출력 프로필 · 맞춤 방식은 고르지 않는다(MOV-8).
 - `GET /edit-jobs/{id}` 🔒 — 폴링용. `videoId` 는 **결과물** 영상 id 다(원본이 아니다). 완료 후 `GET /videos/{videoId}` 로 `editedUrl` 을 얻는다.
   - `errorMessage` 는 서버 진단용 원문 — **사용자 노출 문구가 아니다.** 화면 문구는 `errorCode` 로 분기해 앱이 만든다. `errorCode` 는 append-only 라 앱은 모르는 코드를 `INTERNAL` 처럼 다룬다. `TIMEOUT` 은 작업이 워커 제한 시간(`EDIT_TIMEOUT_SECONDS`, 기본 10분)을 넘긴 것이다 — 멈춘 ffmpeg·whisper 가 워커를 붙잡아 두지 않게 한다.
   - `pipelineVersion`·`editSpec`·`renderSpec` 은 재현 가능한 작업 스냅샷이다.
@@ -210,7 +202,7 @@ FE 가 알아야 할 동작:
   - 응답의 값은 **고른 값**이다. 미리보기·렌더는 컷 길이와 원본의 여분 프레임에 맞춰 다시 해석한다
     (`resolveTransition` — 짧아지거나 `crossfade` → `dip` → `hardcut` 으로 떨어진다. 트림하지 않은 컷은 여분이
     없어 `crossfade` 가 대개 `dip` 이 된다).
-  - 생성(`export`)은 이 값을 경계마다 그대로 렌더한다(editSpec v3, 아래 AI 편집). 워커가 원본 길이를 재서
+  - 생성(`export`)은 이 값을 경계마다 그대로 렌더한다(editSpec v3, [AI 편집](#ai-편집-contractedit-jobsts)). 워커가 원본 길이를 재서
     컷·여분 프레임에 맞추고, 겹쳐 녹이는 전환도 여분 프레임을 써서 결과물 길이는 컷 길이의 합이다.
 - **컷의 `unavailable: true`** 는 참조하던 스냅이 만료·삭제됐다는 뜻이다. 그런 컷이 있어도
   무비는 열리고 목록에서 사라지지 않는다 — 사용자가 무엇을 잃었는지 알아야 하기 때문이다.
@@ -219,10 +211,16 @@ FE 가 알아야 할 동작:
   앱은 이것으로 "보관 기간이 끝났어요" 와 "스냅이 삭제됐어요" 를 가른다(SNAP-12).
 - **생성 중(`generating`)에는 수정·재생성·끝내기가 모두 409**다. 작업이 끝나면 무비는 읽는
   시점에 따라잡힌다 — 완료는 `ready`, 실패는 `failed`, **취소는 `draft`**(결과물 포인터도 비워진다).
+- **`export` 는 크레딧 100 을 예약(차감)한다.** 잔액이 모자라면 `402 INSUFFICIENT_CREDITS` 이며 작업이 만들어지지 않는다(예약과
+  생성이 한 트랜잭션). 에러의 `required`·`balance` 로 부족분을 그린다. 작업이 **실패하거나 취소되면 전액 자동 환급**이고, 자동
+  재시도로 추가 차감하지 않는다. 해상도·워터마크 차등은 없다.
 - **다른 무비가 생성 중이면 `export` 는 `409 GENERATION_IN_PROGRESS`** 이고 `error.movieId` 로 그 무비를 알린다 —
-  사용자당 진행 중 생성은 하나다(MOV-11, 위 [AI 편집](#ai-편집-contractedit-jobsts)의 같은 규칙). 앱은 그 무비로 안내한다. 이 무비 자체가
-  생성 중이면 위처럼 `409 CONFLICT` 다.
-- `export` 는 크레딧 **100** 을 예약한다(잔액 부족 시 402). 진행률은 `GET /edit-jobs/{id}` 와
+  사용자당 진행 중 생성은 하나다(MOV-11). 크레딧 확인(402)이 먼저다. 앱은 그 무비로 안내한다. 그 작업이 끝나거나(`done`·`failed`)
+  취소되면 다시 만들 수 있다 — 갇힌 작업은 그 무비에서 취소하면 풀린다. 이 무비 자체가 생성 중이면 위처럼 `409 CONFLICT` 다.
+- 큐 적재가 실패하면 `export` 는 500 이고, 이미 만든 작업은 `failed`(`errorCode: QUEUE_FAILED`)로 남으며 예약은 환급된다.
+  편집 워커(`npm run worker`)가 떠 있지 않으면 작업은 `queued` 에 머문다.
+- 출력은 늘 세로 9:16 숏폼(흐린 배경 맞춤)이다. 출력 프로필 · 맞춤 방식은 고르지 않는다(MOV-8).
+- 진행률은 `GET /edit-jobs/{id}` 와
   WebSocket 으로 본다 — 무비 API 는 진행률을 주지 않는다. 그 작업의 id 는 `export` 응답과
   **무비의 `jobId`** 양쪽에 있다(2026-09-12) — 앱이 재시작으로 응답의 값을 잃어도 무비를 다시
   읽으면 진행률·취소·실패 사유(`errorCode`)에 다시 닿는다. `resultVideoId` 와 함께 비워진다.
@@ -289,11 +287,15 @@ FE 가 알아야 할 동작:
 
 ## 편집 초안 (`contract/movie-drafts.ts`)
 
-넘긴 스냅으로 고칠 수 있는 무비 초안을 **제안**한다(2026-10-01, [specs/movie.md](./specs/movie.md) MOV-21). 고르는 규칙은
-[decisions/edit-director.md](./decisions/edit-director.md), 상한은 [decisions/auto-edit-draft.md](./decisions/auto-edit-draft.md) §5.
-화면에는 "AI" 라는 말을 쓰지 않는다.
+넘긴 스냅으로 고칠 수 있는 무비 초안을 **제안**한다([specs/movie.md](./specs/movie.md) MOV-21 · MOV-25). 고르는 규칙은
+[decisions/edit-director.md](./decisions/edit-director.md), 상한은 [decisions/auto-edit-draft.md](./decisions/auto-edit-draft.md) §5,
+에이전트는 [decisions/ai-edit-agent.md](./decisions/ai-edit-agent.md). 화면에는 "AI" 라는 말을 쓰지 않는다.
 
 - `POST /movie-drafts` 🔒 (토큰당 분당 10회) — **동기**. 응답이 곧 결과다. 분석 동의·기능 스위치와 무관하게 동작한다.
+  - 서버에 에이전트가 있으면(`GET /movie-drafts/allowance` 의 `agent`) 에이전트가 계획하는 동안 응답이 **수 초, 길게는 20초 안팎**
+    걸린다(`EDIT_AGENT_TIME_LIMIT_MS` — 넘기면 규칙만으로 만든 초안을 돌려준다). 앱은 짧은 타임아웃을 두지 않는다.
+  - 분석에 동의했고 서버 스위치(`MOVIE_RECOMMENDATION_ENABLED`)가 켜져 있으면 에이전트가 개념이 없는 스냅의 분석을 초안 1회에
+    최대 12개 요청한다. 그 분석은 기다리지 않는다 — 결과는 다음 초안부터 쓰인다.
   - `snaps` 는 업로드된 스냅 `{ videoId }` 와 업로드되지 않은 스냅 `{ localId, capturedAt }` 을 섞어 보낸다. 순서는 상관없다.
   - 응답 `cuts` 는 **촬영순**이다. 업로드된 컷은 `startMs`·`endMs`(서버가 자른 구간, 없으면 스냅 전체), 업로드되지 않은 컷은
     `{ localId }` 로 돌아오고 스냅 전체를 쓴다. 업로드됐지만 서버가 아직 신호를 계산하지 못한 스냅도 구간 없이 돌아온다.
@@ -305,7 +307,8 @@ FE 가 알아야 할 동작:
     다시 넣어도 무비가 될 수 없다. 넘긴 스냅이 모두 이렇다면 `cuts` 가 비어 있고, 기록하지 않으며 횟수에도 세지 않는다.
   - **멱등하다.** 같은 스타일 · 같은 스냅 집합이 24시간 안에 다시 오면 같은 제안을 돌려주고 횟수에 세지 않는다. 단, 신호를
     **기다리는** 스냅이 있었던 제안은 다시 계산한다. 원본을 읽을 수 없어 신호를 만들 수 없다고 끝난 스냅은 기다릴 것이 없어, 그런
-    스냅만 있었던 제안은 재사용한다.
+    스냅만 있었던 제안은 재사용한다. 에이전트가 실패하거나 시간을 넘겨 규칙으로 돌아간 제안(기록의 `mode: 'fallback'`)도 재사용하지
+    않는다 — 일시적인 실패가 하루 동안 남지 않게.
   - 남의 것이거나 없는(또는 `kind=source` 가 아닌) `videoId` 가 섞이면 403(어느 것인지는 알려주지 않는다 — 남의 id 로 존재를 떠보지
     못하게). 자기 스냅이 지워졌거나 준비되지 않은 것은 403 이 아니라 `unavailable` 이다.
   - **과금**(CRD-9, 2026-10-13): AI 에이전트가 만든 초안은 최근 24시간 **3번까지 무료**, 그 뒤 1번에 **20크레딧**. 무비 생성처럼 먼저
@@ -322,7 +325,7 @@ FE 가 알아야 할 동작:
 ## 위치 알림 (`contract/locations.ts`)
 
 - `GET /locations` 🔒 — `lat`·`lng` 필수, `radius`(m) 생략 시 계약 기본값. 서버가 관리하는 활성 장소만, Haversine 반경 필터 + 거리순.
-- `POST /notifications/geofence-enter` 🔒 (토큰당 분당 10회, 라우트는 `routes/notifications.ts`) — 조건을 통과하면 FCM 을 보내고 `{ notified: true }`, 아니면 `{ notified: false, reason }`. 보내지 않아도 200 이다. `reason` 은 계약의 `GEOFENCE_SKIP_REASONS` — `notifications_disabled` 는 전체 또는 위치 알림 스위치가 꺼진 것, `cooldown` 은 같은 장소에 30분 안에 다시 들어온 것(NTF-2), `no_token`·`send_failed` 는 발송 실패라 쿨다운을 쓰지 않는다. 없거나 내린 장소는 404.
+- `POST /notifications/geofence-enter` 🔒 (토큰당 분당 10회, 라우트는 `routes/notifications.ts`) — 조건을 통과하면 FCM 을 보내고 `{ notified: true }`, 아니면 `{ notified: false, reason }`. 보내지 않아도 200 이다. `reason` 은 계약의 `GEOFENCE_SKIP_REASONS` — `notifications_disabled` 는 전체 또는 위치 알림 스위치가 꺼진 것, `quiet_hours` 는 방해 금지 시간(NTF-3), `cooldown` 은 같은 장소에 30분 안에 다시 들어온 것(NTF-2), `no_token`·`send_failed` 는 발송 실패라 쿨다운을 쓰지 않는다. 없거나 내린 장소는 404.
 
 ---
 
@@ -334,9 +337,9 @@ FE 가 알아야 할 동작:
 
 | 알림 | `data` | 보내는 조건 |
 |---|---|---|
-| 무비 완성 | `kind: movie_ready` · `movieId` · `videoId`(결과물) | 무비 생성이 끝났을 때. 본문이 결과물이 30일 뒤 사라진다는 것을 말한다(MOV-16). 전체·무비 알림 스위치가 켜져 있고 방해 금지 시간이 아닐 때만 — 그 밖에는 보내지 않고 버린다(NTF-6). 실패는 보내지 않는다. 무비 없는 옛 작업(2026-10-11 에 없앤 `POST /edit-jobs`)의 결과물도 보내지 않는다 |
+| 무비 완성 | `kind: movie_ready` · `movieId` · `videoId`(결과물) | 무비 생성이 끝났을 때. 본문이 결과물이 30일 뒤 사라진다는 것을 말한다(MOV-16). 전체·무비 알림 스위치가 켜져 있고 방해 금지 시간이 아닐 때만 — 그 밖에는 보내지 않고 버린다(NTF-6). 실패는 보내지 않는다 |
 | 무비 만료 예고 | `kind: movie_expiry` · `daysBefore`(`"3"`) · `movieId`(한 편일 때만) | 끝내지 않은 결과물이 3일 뒤 사라질 때 하루 한 번 낮 배치가 보낸다(NTF-10). 만들지 못한 무비(결과물이 `done` 이 아니다)는 빼고, 전체·무비 알림 스위치가 켜져 있어야 한다. 한 사용자의 여러 편은 한 알림으로 묶고 그때는 `movieId` 가 없다 |
-| 스냅 만료 예고 | `kind: snap_expiry` · `daysBefore`(`"3"` · `"1"`) | 본문은 D-3 이 "3일 후 스냅 N개가 삭제돼요. 앨범에 저장하거나 무비로 만들어 두세요.", D-1 이 "내일 스냅 N개가 …"이다. 탭하면 앱이 곧 사라질 스냅을 앨범 저장용으로 골라 둔 채 라이브러리를 연다. 하루 한 번 낮에 도는 배치가 보낸다(SNAP-13, [expiry-notice-schedule.md](./decisions/expiry-notice-schedule.md)). 전체 스위치만 본다 — 종류별 스위치와 방해 금지 시간은 보지 않는다(NTF-9) |
+| 스냅 만료 예고 | `kind: snap_expiry` · `daysBefore`(`"3"` · `"1"`) | 본문은 "{언제} 스냅 N개가 삭제돼요. 앨범에 저장하거나 무비로 만들어 두세요."이고 `{언제}` 는 예고에 든 스냅 중 가장 이른 마감일까지 KST 달력의 날짜로 센 `오늘` · `내일` · `N일 후` 다(`daysBefore` 가 아니다 — 밀린 예고가 남은 날을 부풀리지 않는다). 배치가 밀려 두 창이 함께 걸리면 가까운 쪽(`"1"`) 하나만 보낸다. 탭하면 앱이 곧 사라질 스냅을 앨범 저장용으로 골라 둔 채 라이브러리를 연다. 하루 한 번 낮에 도는 배치가 보낸다(SNAP-13, [expiry-notice-schedule.md](./decisions/expiry-notice-schedule.md)). 전체 스위치만 본다 — 종류별 스위치와 방해 금지 시간은 보지 않는다(NTF-9) |
 | 위치 도착 | `locationId`(`kind` 없음) | `POST /notifications/geofence-enter` 가 `notified: true` 일 때(NTF-1~3) |
 
 ---

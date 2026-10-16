@@ -6,8 +6,10 @@
  * 실제 이름과 한 글자라도 다르면 그 디렉터는 `attempt=0` 을 보고, 사용자가 "다시 생성"을
  * 눌러도 같은 영상이 나오며 에러가 남지 않는다.
  *
- * 시드 **파생**은 워커 단독이라 여기서 검증하지 않는다(§1.3 파생 공식과 같은 이유).
- * 파생의 계약은 `apps/ai-worker/tests/fixtures/stage-seed.json` 골든 값이다.
+ * 시드 **파생**은 여기서 검증하지 않는다. 워커와 API 가 같은 규약(`{root}:{stage}:{attempt}`, sha256 상위 8바이트
+ * 빅엔디언)으로 파생한다 — 워커의 계약은 `apps/ai-worker/tests/fixtures/stage-seed.json` 골든 값이고, API 의 선택 단계 ·
+ * 전환 디렉터(`edit-director.ts` · `transition-director.ts`, 규약에 대상 키를 붙인다)는 각자의 테스트가 "같은 입력은 같은
+ * 결과"로 지킨다(docs/decisions/edit-spec-v3.md 2026-10-16 정정).
  *
  * DB·Redis 를 쓰지 않는 순수 검사다.
  */
