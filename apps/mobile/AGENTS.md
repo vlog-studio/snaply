@@ -52,7 +52,7 @@ These rules govern documents only. Replies to the user — answers, progress upd
 - Run `npm run verify:mobile` from the monorepo root, or `npm run verify` from `apps/mobile`, before finishing any code change. Both invoke the same canonical gate; its check list is defined once in `apps/mobile/package.json`, and CI runs the workspace command.
 - A `verify` failure that pre-exists your change and is unrelated to it: report it with evidence instead of expanding your scope to fix it.
 - On-device and platform verification is separate and stays governed by the workflow documents in the table above; what counts as verified is set in [verification surfaces](docs/workflows/local-development-and-testing.md#verification-surfaces-read-first).
-- The first launch is Android-only, so iOS checks wait for the iOS launch (root [backlog A-4](../../docs/backlog.md#a-4-스냅-서버-원천-전환의-미결-항목) "iOS 출시 전"). There is no iOS device-verification document yet: use the iOS Simulator procedures in [`docs/workflows/local-development-and-testing.md`](docs/workflows/local-development-and-testing.md), and state that a change was not verified on iOS hardware.
+- The first launch is Android-only, so iOS checks wait for the iOS launch (root [backlog A-4](../../docs/backlog.md#a-4-스냅-서버-원천-전환의-미결-항목--ios-출시-전-목록) "iOS 출시 전"). There is no iOS device-verification document yet: use the iOS Simulator procedures in [`docs/workflows/local-development-and-testing.md`](docs/workflows/local-development-and-testing.md), and state that a change was not verified on iOS hardware.
 
 ## Rule precedence
 
