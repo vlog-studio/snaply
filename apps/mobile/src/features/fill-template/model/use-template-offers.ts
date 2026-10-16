@@ -29,19 +29,19 @@ export type TemplateOffer = {
  * two shots the user could go take. A template the library cannot fill at all
  * still belongs on the shelf for the same reason.
  *
- * **The ones the library fills come first** (2026-08-12). The studio draws
+ * **The ones the library fills completely come first.** The studio draws
  * these as a horizontal row that fits two and a half cards, so catalog order
  * decided by luck which templates a user ever saw — a template the library can
  * fill today is worth more than one it cannot.
  *
- * **Within each group, the server's order** (2026-10-15, spec PRF-3): the
+ * **Within each group, the server's order** (spec PRF-3): the
  * server orders the catalog by the user's taste, and keeps the catalog's own
  * order (`sort_order`) when there is none. So a cafe lover sees 카페 한 곳 ahead
  * of the other templates the library is short for, however many cuts each is
  * short, and a user with no taste sees the catalog's order. The row stays
  * stable while the library and the taste do.
  *
- * The catalog itself comes from the server now (`useMovieTemplates`), which
+ * The catalog itself comes from the server (`useMovieTemplates`), which
  * answers with the built-in one until the request lands — so the cards are drawn
  * from the first render and a template the server added simply appears when its
  * answer arrives.

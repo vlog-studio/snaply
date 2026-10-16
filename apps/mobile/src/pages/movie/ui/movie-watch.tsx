@@ -63,10 +63,11 @@ export type MovieWatchProps = {
  * the style preset, so a movie's stored `bgm` was never a fact about the file
  * being played.
  *
- * 공유 is the mode's one standing action (editing, renaming, and deleting live
- * in the ⋯ sheet). It is visible but disabled until a render produces a real
- * file, the same idiom as the studio footer — with the reason written under
- * it, because a lone disabled primary action explains nothing by itself.
+ * 공유 and, while the render has a file on the server, Instagram에 게시 are the
+ * mode's standing actions (editing, renaming, and deleting live in the ⋯
+ * sheet). 공유 is visible but disabled until a render produces a real file,
+ * the same idiom as the studio footer — with the reason written under it,
+ * because a lone disabled primary action explains nothing by itself.
  *
  * The stage plays the finished movie, in whichever form the run left it:
  * the rendered file as one video when the render has one (`render.uri`), and
