@@ -29,7 +29,7 @@ Snaply opens into a four-tab application — 스튜디오 (`/`), 스냅 (`/snaps
 | Route | Presentation | Owner |
 | --- | --- | --- |
 | `/` | 스튜디오 tab | `pages/studio` |
-| `/snaps` | 스냅 tab; accepts `?select=1` to open in selection mode for a new movie, `?select=draft` for the edit draft, each with an `?at=` token that tells one request from the next | `pages/snaps` |
+| `/snaps` | 스냅 tab; accepts `?select=1` to open in selection mode for a new movie, `?select=draft` for the edit draft, `?select=album` for the album with the soon-to-go snaps preselected (an expiry notice's tap), each with an `?at=` token that tells one request from the next | `pages/snaps` |
 | `/movies` | 무비 tab | `pages/movies` |
 | `/me` | 나 tab | `pages/me` |
 | `/capture` | Headerless root-stack full-screen modal (opened by the center capture button); the viewfinder | `pages/capture-record` |
@@ -42,7 +42,10 @@ Snaply opens into a four-tab application — 스튜디오 (`/`), 스냅 (`/snaps
 | `/settings/notifications` | Root-stack screen with the stack's titled header (알림); every notification preference | `pages/me` |
 | `/settings/analysis` | Root-stack screen with the stack's titled header (스냅 분석); the consent to snap analysis | `pages/me` |
 | `/settings/album` | Root-stack screen with the stack's titled header (앨범 저장); the automatic album copy switch | `pages/me` |
+| `/settings/interests` | Root-stack screen with the stack's titled header (관심사); the account's interests | `pages/me` |
 | `/settings/theme` | Root-stack screen with the stack's titled header (화면 테마); the theme-mode radio | `pages/me` |
+| `/settings/social` | Root-stack screen with the stack's titled header (소셜 연결); the linked Instagram account | `pages/me` |
+| `/sns/connected`, `/sns/error` | Headerless root-stack screens with no transition animation (`animation: 'none'`), signed-in group; where the backend's SNS-link return lands when the link reaches the router — they re-read the account's links and step back ([Me tab](me.md#ownership-and-state)) | `pages/sns-return` |
 | `/settings/delete-account` | Root-stack screen with the stack's titled header (계정 삭제); the deletion consequence read-out and confirm button | `pages/me` |
 | `/account-restore` | Headerless full-screen block (back gesture disabled), forced by its own guard group while the account is pending deletion; restore or sign out | `pages/account-restore` |
 | `/update-password` | Root-stack screen with a titled header (새 비밀번호 설정), no back button and the back gesture disabled, forced by the recovery guard group until the new password is saved | `pages/update-password` |
@@ -51,7 +54,7 @@ Snaply opens into a four-tab application — 스튜디오 (`/`), 스냅 (`/snaps
 | `/reset-password` | Root-stack screen with a titled header (비밀번호 재설정), signed-out group | `pages/reset-password` |
 | `/auth/callback`, `/auth/reset` | Headerless spinner screens outside every guard, declared last; the email and OAuth deep-link landings, which exchange the link's `code` and redirect ([Authentication](authentication.md#route-flow)) | `pages/auth-callback` (`mode` `signin` / `recovery`) |
 
-`src/app` parses string search parameters where needed and passes them to page components as explicit props (`snaps.tsx` turns `?select=1` / `?select=draft` into `startSelecting` and `?at=` into `selectionRequest`, `add-snaps.tsx` turns `?only=left-out` into `onlyLeftOut`, `extract.tsx` turns `?source&duration` into `sourceUri` / `knownDurationSec`). The `src/_app/routes` module owns stack and tab policies; page slices own screen content.
+`src/app` parses string search parameters where needed and passes them to page components as explicit props (`snaps.tsx` turns `?select=1` / `?select=draft` / `?select=album` into `startSelecting` (`'movie'` / `'draft'` / `'album'`) and `?at=` into `selectionRequest`, `add-snaps.tsx` turns `?only=left-out` into `onlyLeftOut`, `extract.tsx` turns `?source&duration` into `sourceUri` / `knownDurationSec`). The `src/_app/routes` module owns stack and tab policies; page slices own screen content.
 
 **A pushed tab route is not a pushed screen.** Navigating from a root-stack screen to a route inside `(tabs)` diverges at the root stack, so Expo Router pushes a *second* `(tabs)` entry: a whole new tab navigator mounts over the screen the user came from, with the target tab focused and the first tab in its history. `router.back()` is then delivered to that tab navigator — the deepest focused one — which handles it by switching back to its first tab instead of letting the root stack pop. Pushed from the movie screen, a picker on `/snaps` would therefore land the user on the 스튜디오 screen after they added a cut. A flow that starts on a pushed screen and must return to it belongs on the root stack (`/movie/[id]/add-snaps`), even when it looks like a tab.
 

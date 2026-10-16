@@ -109,9 +109,9 @@ export function SettingsSection({ children, title }: React.PropsWithChildren<{ t
 
 /**
  * One selectable pill of a radio or checkbox group, so selection reads the
- * same way everywhere on the 나 screens — the theme-mode radio draws from it,
- * and a control that comes back from 준비 중 (reminder frequency, interests)
- * should too.
+ * same way everywhere on the 나 screens — the theme-mode radio and the
+ * interest checkboxes draw from it, and the reminder frequency should too
+ * when it comes back from 준비 중.
  */
 export function OptionPill({
   label,

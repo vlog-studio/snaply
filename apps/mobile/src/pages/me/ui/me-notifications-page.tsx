@@ -43,7 +43,7 @@ export function MeNotificationsPage() {
       {/* Reminders are a placeholder for the planned capability (owner
           decision, 2026-09-24): no scheduler consumes the stored windows or
           frequency, so a control would promise a notification that never
-          comes. Same treatment as 소셜 연결 — a row that reads 준비 중. */}
+          comes. A row that reads 준비 중 instead. */}
       <SettingsSection>
         <SettingRow icon="alarm-outline" title="촬영 리마인더" sub="준비 중" />
         <RowDivider />
