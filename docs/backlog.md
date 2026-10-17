@@ -20,7 +20,7 @@
 둔다. 번호는 재사용하지 않으며, 빠진 번호는 닫은 항목에 있다. `progress 날짜 "제목"` 은 [progress.md](./progress.md)(이번 달)와
 `archive/progress-YYYY-MM.md`(지난달)에서 날짜로 찾는다 — progress.md 머리말의 grep.
 
-다음 번호: A-15 · B-9 · C-9 · D-7 · E-58 · H-19
+다음 번호: A-16 · B-9 · C-9 · D-7 · E-58 · H-19
 
 ---
 
@@ -200,6 +200,8 @@ iPhone 실기기와 유료 Apple Developer 계정이 생기면 본다. **완료 
       iOS 에서의 SSV 수신과 크레딧 지급
 - [ ] **Apple 로그인**(ACC-1 의 `보류`) — iOS 에서 Google 로그인을 내면 App Store 심사 지침 4.8 이 개인정보 조건을 갖춘 다른 로그인
       (Apple 로그인 등)을 함께 요구한다
+- [ ] **정크 저널 화면의 iOS 확인**(A-15) — 오프셋 그림자 · 잘린 종이 조각의 그림자 · 회전한 글자 · 새 글꼴(Gaegu · D2Coding)이 iOS 에서
+      Android 와 같게 그려지는지, 터치 48dp 를 iOS 에서도 유지할지([decisions/junk-journal-design-system.md](./decisions/junk-journal-design-system.md) §다시 볼 때)
 
 ### A-6. 템플릿 기반 스냅 자동 추천 — 앱·백엔드 완료, 생산 활성화 대기
 
@@ -463,6 +465,33 @@ A-12 의 에이전트가 한다.
 - [ ] (선택) **개인화 효과** — 취향이 쌓인 계정과 새 계정에서 초안 뒤 사용자가 지운 컷 수 · 바꾼 전환 수를 비교한다. 표본이 작으면 발표에 쓰지 않는다
 
 **의존**: A-3(분석 활성화와 팀 스냅) · A-6("개념 매칭의 실측 확인") · A-12("잠정값 실측").
+
+### A-15. `앱` 정크 저널 리디자인 — 시안에 없는 화면과 구현
+
+앱 화면을 정크 저널 시안으로 바꾼다(2026-10-17 결정 — [decisions/junk-journal-design-system.md](./decisions/junk-journal-design-system.md)).
+현행 토큰 · 공용 컴포넌트의 대응과 시안만으로 정해지지 않던 여섯 가지는 정해졌다([plans/junk-journal-redesign.md](./plans/junk-journal-redesign.md)).
+
+**왜 막혀 있는지**: 시안(보드 39개)이 그리지 않은 화면이 많다 — 로그인 · 가입 · 비밀번호 재설정 · 계정 복구, 무비 탭(그리드 · 선택 모드),
+촬영 · 녹화 보관함, 영상에서 가져오기, 템플릿 상세, 스냅 플레이어, 스냅 더 넣기, 최근 삭제, 설정 하위(스냅 분석 · 앨범 저장 · 관심사 ·
+소셜 연결 · 계정 삭제), 시트(닉네임 · 분석 동의 · 위치 알림 안내 · 스냅 삭제 · Instagram 게시 · 정리 확인), 무비 생성 거절과 감상 오류 상태,
+권한 거부, 토스트, 스켈레톤 · 빈 상태, 스플래시 · 앱 아이콘, 시트 · 설정 · 로그인의 밤 모습. 이 화면들은 시안 보드를 더하거나 대응표의 규칙으로
+모습을 정해야 바꿀 수 있다. 크레딧 화면은 운영 상태(광고 꺼짐 · 구매 없음 — C-1 · C-6)의 모습도 정해야 한다.
+
+**완료 조건**:
+
+- [ ] **토큰 이식** — `apps/mobile/src/shared/ui/theme/theme.ts` 와 `themed-text.tsx` 를 대응표대로 바꾸고 글꼴을 바꾼다(Gaegu · D2Coding 추가,
+      Pretendard 500 · 800 제거 — [앱 글꼴](../apps/mobile/docs/workflows/app-branding-and-native-config.md#app-font) 절차). cookbook §14 를 같이 고친다
+- [ ] **공용 컴포넌트** — 대응표 §5 의 "겉모습" · "새로" 행
+- [ ] **화면** — 위에 적은 빠진 화면의 모습을 정하고 화면마다 바꾼다. 사용자에게 보이는 라벨 · 구조가 바뀌면 기능 문서를 같이 고친다
+- [ ] **글자 크기 확대** — 시스템 글꼴 1.3배 · 2배에서 종이 조각(테이프 라벨 · 입장권 버튼 · 탭 스텁)이 넘치지 않는지 확인한다. 지금 앱에는
+      `maxFontSizeMultiplier` 가 없다
+- [ ] **기기 확인** — Android 에뮬레이터 · 휴대폰에서 낮 · 밤 · 동작 줄이기. iOS 확인은 iOS 출시 전에 한다(A-4)
+- [ ] **앱 크기** — 글꼴을 바꾼 뒤 빌드 크기를 재서 [progress.md](./progress.md)에 적는다
+
+**후속 후보(완료 조건 아님)**:
+
+- (제안) **완성 축하** — 시안의 `완성!` 화면은 지금 앱에 없는 새 동작이다. 넣으려면 [specs/movie.md](./specs/movie.md)와 기능 문서
+  `apps/mobile/docs/features/movie.md` 부터 고친다
 
 ---
 
