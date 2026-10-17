@@ -162,7 +162,7 @@
 | 만들기 진행 영수증(`mv-order` "ORDER · 주문서") | `progress-ring` | 구조 | 링 대신 단계 목록 + %. 단계 문구와 진행률의 짝은 시안이 아니라 `apps/mobile/src/features/compose-movie/lib/edit-step-label.ts` 를 따른다 — 시안은 `자막 넣는 중` 단계를 빠뜨렸고 % 짝이 다르다 |
 | 타임라인 `jj-timeline` · `jj-ruler` · `jj-seam` · `jj-playhead` · `jj-addclip` | `timeline-strip` · `timeline-cut` | 겉모습 | 시안은 1초 = 30px, 현행 `TimelinePxPerSec` 는 120 이다. 배율은 트림 정밀도와 묶여 있어 겉모습을 바꾸면서 같이 바꾸지 않는다 |
 | 티켓 탭 바 `jj-tabbar` · `jj-stub` · `jj-capture` | `apps/mobile/src/_app/routes/app-tabs.tsx`(BlurView · Ionicons) | 구조 | 블러를 없애고 크래프트 띠로, 고른 탭은 분홍 스텁이 4px 올라온다. 높이는 [§3](#3-간격--모서리--그림자--크기) |
-| 요일 칸 줄(나 탭 "이번 주 4일 기록") | `week-ring` | 구조 | 링 → 요일 7칸 |
+| 요일 스티커 고리(나 탭 "이번 주 4일 기록") | `week-ring` | 겉모습 | 고리 모양과 가운데 이름 첫 글자는 그대로 두고, SVG 호 7개를 요일 글자가 적힌 둥근 스티커 7개로 바꾼다(기록한 날 = `cherry`, 안 한 날 = 점선 테두리) |
 | 빈 상태 · 스케치 `jj-empty` · `jj-sketch` | 없음(스켈레톤 없음) | 새로 | |
 | 완성 축하(`완성!` 랜섬 · 영수증 꼬리 · 색종이) | **없음** | 새로 | 화면 모양이 아니라 **새 동작**이다. 넣으려면 [specs/](../specs/README.md)의 무비 요구와 기능 문서 `apps/mobile/docs/features/movie.md` 를 먼저 고친다 |
 
