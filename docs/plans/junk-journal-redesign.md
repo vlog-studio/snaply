@@ -2,13 +2,14 @@
 
 **작성일**: 2026-10-17
 **상태**: 제안 — 앱 화면을 정크 저널 시안으로 바꿀 때 현재 디자인 토큰과 공용 컴포넌트가 각각 무엇이 되는지의 대응표
-**원천**: 시안은 Claude 디자인 아티팩트 [Snaply 정크 저널 시안](https://claude.ai/artifact/RsiA1bkskX2LTd6WVAVUdQ)(보드 39개 · `project/ds/snaplyjj/tokens.json` · 컴포넌트 CSS `bundle.css`)이다. 현행 토큰의 원천은 `apps/mobile/src/shared/ui/theme/theme.ts`, 글자 역할은 `apps/mobile/src/shared/ui/themed-text/themed-text.tsx`
+**원천**: 시안은 Claude 디자인 아티팩트 [Snaply 정크 저널 시안](https://claude.ai/artifact/RsiA1bkskX2LTd6WVAVUdQ)(보드 39개 · `project/ds/snaplyjj/tokens.json` · 컴포넌트 CSS `bundle.css`)이고, 앱의 모든 화면에 입힌 결과는 캔버스 [Snaply 정크 저널 전체 화면](https://claude.ai/artifact/7SURcRJRzVowNeB7WVeFye)(보드 103개 — 이 대응표의 새 토큰까지 `jj-tokens.css` · `jj-overrides.css`에 들어 있다)이다. 현행 토큰의 원천은 `apps/mobile/src/shared/ui/theme/theme.ts`, 글자 역할은 `apps/mobile/src/shared/ui/themed-text/themed-text.tsx`
 **관련 문서**: [decisions/junk-journal-design-system.md](../decisions/junk-journal-design-system.md) · [cookbook §14](../../apps/mobile/docs/conventions/cookbook.md#14-consuming-the-design-system) · [앱 글꼴](../../apps/mobile/docs/workflows/app-branding-and-native-config.md#app-font) · [기능 문서](../../apps/mobile/docs/features/README.md) · [specs/](../specs/README.md)
 
 시안은 개발자가 낸 아이디어를 Claude 가 구체화한 것이다. 정크 저널로 바꾸기로 한 결정과, 이 대응표에서 하나로
 정해지지 않던 여섯 가지 선택은 [decisions/junk-journal-design-system.md](../decisions/junk-journal-design-system.md)가
-원천이다(2026-10-17 결정). 시안이 박아 둔 정책 값(크레딧 · 보관 기간 · 알림 기본값 등)이 스펙과 다르면
-**스펙을 따른다** — 시안은 동작의 원천이 아니다.
+원천이다(2026-10-17 결정). 화면별 모습은 [캔버스](https://claude.ai/artifact/7SURcRJRzVowNeB7WVeFye)를 본다 — 이 문서는
+토큰과 공용 컴포넌트까지만 다룬다. 시안이 박아 둔 정책 값(크레딧 · 보관 기간 · 알림 기본값 등)이 스펙과 다르면
+**스펙을 따른다** — 시안도 캔버스도 동작의 원천이 아니다.
 
 ## 요약
 
@@ -143,7 +144,7 @@
 | 입장권 버튼 `jj-ticket` `--primary` · `--secondary` · `--ai` · `--danger` | `SnaplyButton` `primary` · `secondary` · `ai` · `ghost` | 겉모습 | `danger` 변형을 더한다. `ghost` 는 글자 버튼으로 |
 | 글자 버튼 `jj-textbtn` | `SnaplyButton` `ghost` · `link` 글자 | 겉모습 | |
 | 단추 스티커 `jj-button-sticker` | `BackBar` 동작 · 곳곳의 아이콘 `Pressable` | 새로 | 공용 아이콘 버튼 하나로 모은다 |
-| 아이콘 `jj-icon`(24 격자 손그림 선) | Ionicons(17개 파일) | 새로 | 시안 보드에 그려진 아이콘은 약 30개다. 나머지는 같은 규칙으로 그려야 한다 |
+| 아이콘 `jj-icon`(24 격자 손그림 선) | Ionicons(17개 파일) | 새로 | 시안 보드의 약 30개에 캔버스가 더 그린 아이콘(소리 · 카메라 전환 · 영상 변경 · 자르기 등)이 있다. 세트는 캔버스에서 모으고, 나머지는 같은 규칙으로 그린다 |
 | 메모장 입력란 `jj-field` | `TextField` · `FormTextField` | 겉모습 | 밑줄 하나 + 오류는 `cherry-ink` |
 | 똑딱단추 토글 | RN `Switch`(무비 세부 시트 · 설정의 알림 · 스냅 분석 · 앨범 저장) | 새로 | |
 | 체크 스티커 `jj-check` · 꿰맨 라디오 `jj-radio` | 화면 테마 · 전환 시트의 라디오 행 | 겉모습 | |

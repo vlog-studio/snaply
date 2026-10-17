@@ -3,7 +3,8 @@
 **작성일**: 2026-10-17
 **상태**: 결정 — 앱 화면을 정크 저널 시안으로 바꾼다. 현행 토큰 대응표에서 하나로 정해지지 않던 여섯 가지는 대응표의 제안 그대로
 **원천**: 정크 저널로 바꾸기로 한 결정과 여섯 가지 선택의 근거. 토큰 · 컴포넌트별 대응은 [plans/junk-journal-redesign.md](../plans/junk-journal-redesign.md),
-시안은 Claude 디자인 아티팩트 [Snaply 정크 저널 시안](https://claude.ai/artifact/RsiA1bkskX2LTd6WVAVUdQ)이다
+시안은 Claude 디자인 아티팩트 [Snaply 정크 저널 시안](https://claude.ai/artifact/RsiA1bkskX2LTd6WVAVUdQ)이고, 앱의 모든 화면에 입힌 결과는
+캔버스 [Snaply 정크 저널 전체 화면](https://claude.ai/artifact/7SURcRJRzVowNeB7WVeFye)이다
 **출처**: [backlog.md](../backlog.md) A-15
 **관련 문서**: [plans/junk-journal-redesign.md](../plans/junk-journal-redesign.md) ·
 [cookbook §14](../../apps/mobile/docs/conventions/cookbook.md#14-consuming-the-design-system) ·
@@ -18,6 +19,9 @@
   저장소에 없고 이 계정에서 열리지 않는다. 시안에 든 사본을 원천으로 쓴다.
 - 2026-10-17 에 시안을 스펙 · 코드와 대조했다. 문구는 대부분 현행 앱 문구를 옮긴 것이지만 일부 정책 값 — 광고 보상 수량 · 가입 보너스 ·
   진행률과 단계 문구의 짝 · 조용한 시간 기본값 · "공유한 뒤 기한 3일" — 은 스펙과 다르다.
+- 같은 날 시안과 이 문서의 결정을 앱의 모든 라우트 · 시트 · 오류 상태에 입힌 캔버스
+  [Snaply 정크 저널 전체 화면](https://claude.ai/artifact/7SURcRJRzVowNeB7WVeFye)을 만들었다(보드 103개, 섹션 ⓪~⑨). 시안의 보드 39개를
+  옮기면서 스펙과 다른 값을 고쳤고, 여섯 가지 선택의 토큰(`lavender-ink` · `tabbar` · 터치 48)은 캔버스의 `jj-tokens.css` · `jj-overrides.css`에 있다.
 
 ## 결정 — 정크 저널로 바꾼다
 
@@ -25,7 +29,8 @@
 
 - **동작 계약은 바꾸지 않는다.** 정책 값 · 문구의 의미 · 화면 흐름은 [specs/](../specs/README.md)가 원천이고, 시안이 스펙과 다르면 스펙을 따른다.
 - 시안의 "완성 축하"처럼 지금 앱에 없는 **새 동작은 이 결정에 들지 않는다.** 넣으려면 스펙과 기능 문서부터 고친다([AGENTS.md](../../AGENTS.md) §문서 갱신 의무).
-- 토큰 · 컴포넌트별 대응은 [plans/junk-journal-redesign.md](../plans/junk-journal-redesign.md)를 따른다.
+- 토큰 · 컴포넌트별 대응은 [plans/junk-journal-redesign.md](../plans/junk-journal-redesign.md)를, 화면별 모습은
+  [캔버스](https://claude.ai/artifact/7SURcRJRzVowNeB7WVeFye)를 따른다. 캔버스도 동작의 원천은 아니다 — 캔버스가 스펙과 다르면 스펙을 따른다.
 
 ## 여섯 가지 선택
 
@@ -54,7 +59,7 @@
 5. 시안의 규칙(손글씨는 제목, 22px 미만 금지)과 맞다. 현행 `heading` 30곳은 대부분 시트 · 빈 상태 · 오류 제목이지만, 제목이 아닌 곳도 있다 —
    `BackBar` 의 화면 이름(시안은 sans 굵은 글자), 스냅 그리드 가져오기 셀의 `+`(시안은 아이콘), 생성 진행 문구 `만드는 중…`. 이런 곳까지
    손글씨로 바꾸면 시안과도 어긋난다.
-6. 영상이 바탕인 화면은 영상이 잘 보이는 것이 먼저다(`media` 바탕). 시안에도 이 화면들의 보드가 없다.
+6. 영상이 바탕인 화면은 영상이 잘 보이는 것이 먼저다(`media` 바탕). 시안에는 이 화면들의 보드가 없었고, 캔버스는 이 결정대로 어두운 무지 바탕에 그렸다.
 
 ## 기각한 대안
 
@@ -69,7 +74,7 @@
 
 ## 이 결정의 범위 밖
 
-- 시안이 그리지 않은 화면(로그인 · 무비 탭 · 촬영 · 템플릿 상세 · 설정 하위 등)의 모습과 구현 순서 — [backlog.md](../backlog.md) A-15.
+- 캔버스에 아직 없는 화면과 구현 순서 — [backlog.md](../backlog.md) A-15.
 - 새 동작(완성 축하) — 넣으려면 스펙부터.
 - 타임라인 배율(시안 1초 = 30px, 현행 120px) — [plans/junk-journal-redesign.md](../plans/junk-journal-redesign.md#5-컴포넌트)의 타임라인 행.
 - 정책 값 — [specs/](../specs/README.md).
