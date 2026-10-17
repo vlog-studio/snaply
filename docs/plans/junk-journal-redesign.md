@@ -41,7 +41,7 @@
 | `onPrimary` | 글자 16 | `on-cherry` `#ffffff` | 짙은 글자(5.51)에서 흰 글자(4.96)로. 16px 굵게 이상에서만 쓴다 |
 | `ai` · `lumen` | 8개 파일(버튼 `ai` 변형 · 진행 링 · 타임라인 · 무비 배지) · `lumen` 글자 4 | 채움 → `lavender` `#d9ccf2` + 글자 `sticker-ink` · 글자 · 선 → 새 토큰 `lavender-ink` `#5b4a91` / `#c8b6f2` | 시안에는 AI 용 글자 · 선 색이 없고 `lavender` 는 글자로 1.51 이라 못 쓴다. `lavender-ink` 는 [결정 1](../decisions/junk-journal-design-system.md#여섯-가지-선택)로 더했다(paper 대비 6.77 / 6.92) |
 | `media` | 15 | `media` `#0e0b08` | 값까지 같다. 영상 무대는 기울이지 않는다(`tilt-media` 0°) |
-| `warmSurface` | 바탕 8(알림 띠) | `butter` `#fff1a8` + 글자 `sticker-ink` | 포스트잇. 스티커 색은 밤에도 그대로라 글자도 늘 `sticker-ink`(12.41) |
+| `warmSurface` | 바탕 8(알림 띠) | `butter` `#fff1a8` + 글자 `sticker-ink` | 고정 안내의 버터 띠. 같은 색의 포스트잇은 사라지는 알림(토스트) 전용이다. 스티커 색은 밤에도 그대로라 글자도 늘 `sticker-ink`(12.41) |
 | `danger` | 글자 34 · 바탕 7 · 테두리 10 | 오류 글자 → `cherry-ink` · 실패 배지 → `cherry` + `on-cherry`(`jj-tag--failed`) · 삭제 버튼 → `kraft` + `sticker-ink` + `VOID` 도장(`jj-ticket--danger`) | 주 행동과 오류가 같은 빨강 계열이 되므로 구분은 **모양**(입장권 · 크래프트 · 도장)과 문구가 맡는다 |
 | `amber` | 바탕 5 · 글자 1 · 테두리 1 | 경고 바탕 → `butter`, 그 밖 → `kraft` | 10곳을 하나씩 판단 |
 
@@ -76,9 +76,11 @@
 |---|---|---|
 | `micro` 11/16 | 없음 | 시안은 12px 미만을 금지한다. `note`(60곳) · `edge`(3곳)가 12px 로 커지므로 좁은 줄의 줄바꿈을 확인한다 |
 | `xsmall` 12/16 | `xsmall` · `data-sm` 12/16 | |
-| `small` 14/20 | `small` · `small-bold` 14/20 | |
+| `small` 14/20 | `small` · `small-bold` 14/20 | 시안이 쓰던 sans 13/18 도 여기로 접는다([결정 7](../decisions/junk-journal-design-system.md#캔버스-검토-뒤-더한-선택)) |
 | 없음 | `data` 13/20 | 새 단계 — 영수증 줄 · 타임라인 눈금 · 메타 |
+| 없음 | `body-sm` 15/22 | 새 단계 — 시트 · 안내 띠 · 확인 문구의 본문([결정 7](../decisions/junk-journal-design-system.md#캔버스-검토-뒤-더한-선택)) |
 | `body` 16/24 | `body` · `button` · `data-lg` 16/24 | |
+| 없음 | `bar-title` 17/24 굵게 | 새 단계 — 밀어 넣는 화면의 머리 제목([결정 7](../decisions/junk-journal-design-system.md#캔버스-검토-뒤-더한-선택)) |
 | `heading` 21/28 | `hand-heading` 22/28 | 1px 커진다 |
 | `subtitle` 26/32 | `hand-subtitle` 26/32 | |
 | `title` 32/40 | `hand-title` 32/40 | |
@@ -118,7 +120,7 @@
 | 버튼 높이 | `SnaplyButton` `minHeight` 56 | `ticket-height` 48 | |
 | 촬영 단추 | `CaptureSize` 52 | `capture-disc` 56 | 탭 바 위로 18px 튀어나온다 |
 | 탭 바 높이 | `TabBarContentHeight` 52 + 블러 | 스텁 48 + 위아래 여백 10 · 12 | `useTabBarHeight()` 를 쓰는 화면의 아래 여백이 모두 바뀐다 |
-| 비활성 | `opacity` 0.42(2곳), 그 밖은 곳마다 | `opacity-disabled` 0.5 | 하나로 모은다 |
+| 비활성 | `opacity` 0.42(2곳), 그 밖은 곳마다 | `opacity-disabled` 0.5 | 하나로 모은다. 입장권 버튼만은 투명도 대신 바랜 종이 — 겉면 `paper-edge` · 글자 `ink-muted`([결정 9](../decisions/junk-journal-design-system.md#캔버스-검토-뒤-더한-선택)) |
 | 종이 무늬 | 없음 | `rule-pitch` 24 · `margin-x` 32 | 종이 바탕 컴포넌트 전용 |
 
 ## 4. 모션
@@ -154,8 +156,9 @@
 | 테이프 라벨 제목 · 날짜 영수증 `jj-titlelabel` · `jj-datestub` | 탭 화면의 `ThemedText` `title` | 새로 | 랜섬 SVG 제목 |
 | Guest Check `jj-check-strip` | 스냅 탭 요약 줄 · 템플릿 카드 | 겉모습 | |
 | 영수증 · 영수증 줄 `jj-receipt` · `jj-row` | 나 탭 설정 행 · `movie-row` | 겉모습 | 값은 `receipt-blue` 고정폭, 점선 리더 |
-| 포스트잇 토스트 `jj-note` | `Toast` | 겉모습 | |
-| 알림 띠 `mv-notice` · 느낌표 `jj-bang` | `refusal-notice` · `left-out-notice` · `movie-failure-notice` | 겉모습 | |
+| 포스트잇 토스트 `jj-note` | `Toast` | 겉모습 | 사라지는 알림 전용 |
+| 알림 띠 `mv-notice` · 느낌표 `jj-bang` | `refusal-notice` · `left-out-notice` · `movie-failure-notice` | 겉모습 | 고정 안내 — 생성 거절도 머리 아래 이 띠 자리에 둔다 |
+| 오류 카드 `jj-alert`(캔버스 `jj-overrides.css`) | 스냅 업로드 실패 · 촬영 · 가져오기 오류 띠 | 새로 | 흰 카드 + `cherry-ink` 글자 하나로 모은다 |
 | 노트 바텀 시트 `jj-sheet` · `jj-scrim` | `BottomSheet` | 겉모습 | 위 테두리에 펀치 구멍 · 스프링. 슬라이드 동작은 그대로 |
 | 폴라로이드 `jj-polaroid` · `--916` · `--stage` | `ImageFrame` · `VideoFrame` · `snap-cell` · 무비 무대 | 겉모습 | 무대(`--stage`)는 기울이지 않는다 |
 | 카세트 키 `jj-key` | 재생 · 되돌리기 · 다시 실행 | 겉모습 | |
@@ -178,3 +181,6 @@
 4. 터치 최소 → 48dp
 5. 손글씨 → 제목인 `heading` 에만
 6. 촬영 · 가져오기 화면 → 다크 고정 유지, 단추 · 라벨에만 토큰
+
+캔버스 검토 뒤 더한 세 가지(글자 단계 · 촬영 영역 시트 · 비활성 입장권)와 쓰임 규칙은
+[결정 문서](../decisions/junk-journal-design-system.md#캔버스-검토-뒤-더한-선택)에 있다.
