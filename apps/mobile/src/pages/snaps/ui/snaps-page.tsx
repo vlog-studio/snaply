@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useIsFocused, useRouter, useScrollToTop } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MovieSnapLimit, movieDraftQueries } from '@/entities/movie';
 import {
@@ -32,9 +32,6 @@ import { useSetTabBarHidden } from '@/shared/ui/tab-bar-chrome';
 import { Toast } from '@/shared/ui/toast';
 import {
   MaxContentWidth,
-  OpacityDisabled,
-  Shadows,
-  Sizes,
   Spacing,
   useTabBarHeight,
   useTheme,
@@ -43,6 +40,7 @@ import {
 import { CheckStrip, CheckStripRow } from '@/shared/ui/check-strip';
 import { DoodleIcon } from '@/shared/ui/doodle-icon';
 import { ListRow } from '@/shared/ui/list-row';
+import { ModeTab } from '@/shared/ui/mode-tab';
 import { AlertCard, NoticeBand } from '@/shared/ui/notice';
 import { PaperGround } from '@/shared/ui/paper';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -493,30 +491,13 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
           <View style={styles.titleRow}>
             <RansomTitle word="스냅" />
             {totalCount > 0 ? (
-              <Pressable
-                accessibilityRole="button"
+              <ModeTab
+                label={selecting ? '취소' : '선택'}
                 accessibilityLabel={selecting ? '선택 취소' : '스냅 선택'}
                 // Leaving mid-request would still open the movie it makes.
-                accessibilityState={{ disabled: holding }}
                 disabled={holding}
                 onPress={() => (selecting ? exitSelection() : setSelecting(true))}
-                style={({ pressed }) => [
-                  styles.modeTab,
-                  {
-                    backgroundColor: theme.backgroundElement,
-                    boxShadow: (pressed ? Shadows.pressed : Shadows.paper)(theme.shadowInk),
-                    opacity: holding ? OpacityDisabled : 1,
-                  },
-                ]}
-              >
-                <ThemedText
-                  selectable={false}
-                  type="bodySm"
-                  style={[styles.modeLabel, { color: theme.navy }]}
-                >
-                  {selecting ? '취소' : '선택'}
-                </ThemedText>
-              </Pressable>
+              />
             ) : null}
           </View>
           {/* The library's total, on a strip torn off a guest check. */}
@@ -700,15 +681,4 @@ const styles = StyleSheet.create({
   },
   header: { gap: Spacing.three },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  // The mode switch as a tab of sheet paper standing off the page.
-  modeTab: {
-    minHeight: Sizes.touchMin,
-    minWidth: 64,
-    paddingHorizontal: Spacing.four,
-    marginTop: Spacing.one,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '1.5deg' }],
-  },
-  modeLabel: { fontWeight: 700 },
 });

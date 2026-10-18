@@ -1,7 +1,9 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { formatSeconds } from '@/shared/lib/datetime';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { CheckStrip, CheckStripRow } from '@/shared/ui/check-strip';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import type { MovieSummary } from '@/widgets/movie-shelf';
 
@@ -27,7 +29,6 @@ const NamedLimit = 3;
  * that carries it.
  */
 export function MovieDeleteConfirm({ movies, onCancel, onConfirm }: MovieDeleteConfirmProps) {
-  const theme = useTheme();
   const named = movies.slice(0, NamedLimit);
   const restCount = movies.length - named.length;
   const generatingCount = movies.filter((movie) => movie.status === 'generating').length;
@@ -36,77 +37,53 @@ export function MovieDeleteConfirm({ movies, onCancel, onConfirm }: MovieDeleteC
 
   return (
     <View style={styles.step}>
-      <ThemedText type="note" themeColor="danger">
-        무비 삭제
-      </ThemedText>
-      <ThemedText type="heading">
+      <ThemedText type="subtitle" accessibilityRole="header">
         {movies.length === 1 ? '이 무비를 삭제할까요?' : `무비 ${movies.length}편을 삭제할까요?`}
       </ThemedText>
 
-      <View style={[styles.movies, { borderColor: theme.border }]}>
-        {named.map((movie, index) => (
-          <View
-            key={movie.id}
-            style={[
-              styles.movieRow,
-              index > 0 ? [styles.movieDivider, { borderTopColor: theme.border }] : null,
-            ]}
-          >
-            <ThemedText type="smallBold" numberOfLines={1}>
+      <CheckStrip>
+        {named.map((movie) => (
+          <CheckStripRow key={movie.id}>
+            <ThemedText type="bodySm" numberOfLines={1} style={styles.title}>
               {movie.title}
             </ThemedText>
-            <ThemedText type="note" themeColor="textSecondary">
+            <ThemedText type="data">
               컷 {movie.snapCount} · {formatSeconds(movie.totalSec)}
             </ThemedText>
-          </View>
+          </CheckStripRow>
         ))}
         {restCount > 0 ? (
-          <View style={[styles.movieRow, styles.movieDivider, { borderTopColor: theme.border }]}>
-            <ThemedText type="note" themeColor="textSecondary">
-              외 {restCount}편
-            </ThemedText>
-          </View>
+          <CheckStripRow>
+            <ThemedText type="data">외 {restCount}편</ThemedText>
+          </CheckStripRow>
         ) : null}
-      </View>
+      </CheckStrip>
 
-      <ThemedText themeColor="textSecondary">
+      <ThemedText type="bodySm" themeColor="textSecondary">
         컷 구성과 완성된 무비가 함께 사라져요. 스냅은 그대로 남아요.
       </ThemedText>
 
       {generatingCount > 0 ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           만드는 중인 무비도 함께 사라져요.
         </ThemedText>
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="취소"
           accessibilityLabel="삭제 취소"
           onPress={onCancel}
-          style={[styles.action, { borderColor: theme.border }]}
-        >
-          <ThemedText selectable={false} type="button">
-            취소
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+          style={styles.action}
+        />
+        <SnaplyButton
+          variant="danger"
+          title="삭제"
           accessibilityLabel={confirmLabel}
           onPress={onConfirm}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: theme.kraft,
-              borderColor: theme.kraft,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
-            삭제
-          </ThemedText>
-        </Pressable>
+          style={styles.action}
+        />
       </View>
     </View>
   );
@@ -114,22 +91,7 @@ export function MovieDeleteConfirm({ movies, onCancel, onConfirm }: MovieDeleteC
 
 const styles = StyleSheet.create({
   step: { gap: Spacing.three },
-  movies: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
-  },
-  movieRow: { paddingVertical: Spacing.two, gap: Spacing.half },
-  movieDivider: { borderTopWidth: StyleSheet.hairlineWidth },
-  actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.one },
-  action: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  title: { flex: 1, minWidth: 0, fontWeight: 700 },
+  actions: { flexDirection: 'row', gap: Spacing.two + Spacing.half, marginTop: Spacing.one },
+  action: { flex: 1 },
 });

@@ -4,6 +4,7 @@ export {
   PaperPiece,
   PunchedHoles,
   Tape,
+  TitleLabel,
   tiltFor,
   type PaperEdge,
   type PaperKind,

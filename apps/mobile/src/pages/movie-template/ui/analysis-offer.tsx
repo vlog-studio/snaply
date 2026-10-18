@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { TextButton } from '@/shared/ui/text-button';
+import { Shadows, Sizes, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type AnalysisOfferProps = {
@@ -23,36 +24,33 @@ export function AnalysisOffer({ onAccept, onDecline }: AnalysisOfferProps) {
   const theme = useTheme();
 
   return (
+    // The agent's offer, on a band of lavender — the colour the app's own
+    // making is drawn in.
     <View
       style={[
         styles.offer,
-        { borderColor: theme.border, backgroundColor: theme.backgroundElement },
+        { backgroundColor: theme.aiFill, boxShadow: Shadows.paper(theme.shadowInk) },
       ]}
     >
-      <ThemedText type="smallBold">스냅을 분석해서 컷에 더 어울리게 채울까요?</ThemedText>
+      <ThemedText type="bodySm" style={[styles.question, { color: theme.stickerInk }]}>
+        스냅을 분석해서 컷에 더 어울리게 채울까요?
+      </ThemedText>
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="괜찮아요, 분석하지 않기"
-          hitSlop={8}
           onPress={onDecline}
-          style={styles.action}
+          style={({ pressed }) => [styles.action, { opacity: pressed ? 0.7 : 1 }]}
         >
-          <ThemedText selectable={false} type="small" themeColor="textSecondary">
+          <ThemedText selectable={false} type="small" style={{ color: theme.stickerInk }}>
             괜찮아요
           </ThemedText>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
+        <TextButton
+          label="분석해서 채우기"
           accessibilityLabel="스냅을 분석해서 채우기"
-          hitSlop={8}
           onPress={onAccept}
-          style={styles.action}
-        >
-          <ThemedText selectable={false} type="smallBold" style={{ color: theme.cherryInk }}>
-            분석해서 채우기
-          </ThemedText>
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -60,13 +58,18 @@ export function AnalysisOffer({ onAccept, onDecline }: AnalysisOfferProps) {
 
 const styles = StyleSheet.create({
   offer: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three + Spacing.half,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.half,
+    gap: Spacing.one,
+    transform: [{ rotate: '0.5deg' }],
+  },
+  question: { fontWeight: 700 },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: Spacing.two,
   },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.five },
-  action: { paddingVertical: Spacing.one },
+  action: { minHeight: Sizes.touchMin, paddingHorizontal: Spacing.two, justifyContent: 'center' },
 });

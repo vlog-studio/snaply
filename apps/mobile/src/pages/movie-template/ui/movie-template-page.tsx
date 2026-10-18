@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMovieTemplate } from '@/entities/movie-template';
@@ -17,7 +17,9 @@ import { formatSeconds } from '@/shared/lib/datetime';
 import { movieHref } from '@/shared/routes';
 import { BackBar } from '@/shared/ui/back-bar';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperGround, PaperPiece, Tape, TitleLabel } from '@/shared/ui/paper';
+import { TextButton } from '@/shared/ui/text-button';
+import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { AlertCard } from '@/shared/ui/notice';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -91,8 +93,17 @@ export function MovieTemplatePage({ templateId }: MovieTemplatePageProps) {
       <View style={[styles.screen, { backgroundColor: theme.background }]}>
         <BackBar onPress={goBack} />
         <View style={[styles.screen, styles.centered]}>
-          <ThemedText type="heading">템플릿을 찾을 수 없어요</ThemedText>
-          <ThemedText themeColor="textSecondary">이미 삭제됐거나 없는 템플릿이에요.</ThemedText>
+          <View style={styles.missing}>
+            <Tape color="tapeButter" style={styles.missingTape} />
+            <PaperPiece edge="tornBottom" tilt={-0.8} style={styles.missingSheet}>
+              <ThemedText type="subtitle" accessibilityRole="header">
+                템플릿을 찾을 수 없어요
+              </ThemedText>
+              <ThemedText type="bodySm" themeColor="textSecondary">
+                이미 삭제됐거나 없는 템플릿이에요.
+              </ThemedText>
+            </PaperPiece>
+          </View>
         </View>
       </View>
     );
@@ -120,9 +131,10 @@ export function MovieTemplatePage({ templateId }: MovieTemplatePageProps) {
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <BackBar onPress={goBack} />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: Spacing.seven }]}>
+        <PaperGround kind="ruled" />
         <View style={styles.header}>
-          <ThemedText type="title">{template.name}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
+          <TitleLabel>{template.name}</TitleLabel>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.description}>
             {template.description} · {template.slots.length}컷
           </ThemedText>
         </View>
@@ -132,13 +144,14 @@ export function MovieTemplatePage({ templateId }: MovieTemplatePageProps) {
             constant down every row. Absent when no row shows a number. */}
         {fill.slots.some((filled) => filled.confidence !== undefined) ? (
           <View style={styles.legend}>
-            <ThemedText selectable={false} type="note" themeColor="textSecondary">
+            <ThemedText selectable={false} type="dataSm" themeColor="textSecondary">
               {confidenceLabel(fill.confidenceKind)}
             </ThemedText>
           </View>
         ) : null}
 
-        <View style={styles.slots}>
+        {/* The slots as the lines of one receipt. */}
+        <PaperPiece edge="tornBottom" style={styles.slots}>
           {fill.slots.map((filled, index) => (
             <SlotRow
               key={filled.slot.id}
@@ -151,20 +164,10 @@ export function MovieTemplatePage({ templateId }: MovieTemplatePageProps) {
               onMove={fill.moveSnap}
             />
           ))}
-        </View>
+        </PaperPiece>
 
         {fill.isEdited ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="고친 것 되돌리기"
-            hitSlop={8}
-            onPress={fill.resetSlots}
-            style={styles.reset}
-          >
-            <ThemedText selectable={false} type="note" themeColor="textSecondary">
-              고친 것 되돌리기
-            </ThemedText>
-          </Pressable>
+          <TextButton label="고친 것 되돌리기" onPress={fill.resetSlots} style={styles.reset} />
         ) : null}
 
         {offer.visible ? (
@@ -179,18 +182,16 @@ export function MovieTemplatePage({ templateId }: MovieTemplatePageProps) {
           styles.footer,
           {
             backgroundColor: theme.background,
-            borderTopColor: theme.border,
+            boxShadow: `0 -2px 0 ${theme.shadowInk}`,
             paddingBottom: insets.bottom + Spacing.four,
           },
         ]}
       >
         <View style={styles.footerHead}>
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="data">
             {template.slots.length}컷 중 {fill.filledCount}컷 채웠어요
           </ThemedText>
-          <ThemedText type="note" themeColor="textSecondary">
-            {formatSeconds(fill.totalSec)}
-          </ThemedText>
+          <ThemedText type="data">{formatSeconds(fill.totalSec)}</ThemedText>
         </View>
         <SnaplyButton
           title={
@@ -198,7 +199,6 @@ export function MovieTemplatePage({ templateId }: MovieTemplatePageProps) {
               ? '이대로 만들기'
               : `${fill.filledCount}컷으로 만들기`
           }
-          variant="ai"
           disabled={fill.filledCount === 0}
           onPress={makeMovie}
         />
@@ -240,22 +240,25 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
     gap: Spacing.four,
   },
-  header: { gap: Spacing.half },
-  legend: { alignItems: 'flex-end', paddingHorizontal: Spacing.one },
-  slots: { gap: Spacing.one },
-  reset: { alignSelf: 'center', paddingVertical: Spacing.one },
-  notice: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
+  header: { gap: Spacing.one + Spacing.half },
+  description: { marginLeft: Spacing.one },
+  missing: { alignSelf: 'stretch' },
+  missingTape: { position: 'absolute', top: -8, alignSelf: 'center', zIndex: 2 },
+  missingSheet: {
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingTop: Spacing.six,
+    paddingHorizontal: Spacing.five,
+    paddingBottom: Spacing.six,
   },
+  legend: { alignItems: 'flex-end', paddingHorizontal: Spacing.one },
+  slots: { paddingHorizontal: Spacing.two, paddingTop: Spacing.one, paddingBottom: Spacing.three },
+  reset: { alignSelf: 'center' },
   footer: {
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
     gap: Spacing.two,
   },

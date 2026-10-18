@@ -2,7 +2,9 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ShareBlockMessages, type ShareBlock } from '@/features/share-movie';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PunchedHoles } from '@/shared/ui/paper';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { MaxContentWidth, Sizes, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type MovieSelectionBarProps = {
@@ -56,13 +58,16 @@ export function MovieSelectionBar({
         styles.bar,
         {
           backgroundColor: theme.backgroundElement,
-          borderTopColor: theme.border,
+          boxShadow: `0 -2px 0 ${theme.shadowInk}`,
           paddingBottom: insets.bottom + Spacing.four,
         },
       ]}
     >
+      <PunchedHoles />
       <View style={styles.counts}>
-        <ThemedText type="smallBold">{selectedCount}편 선택</ThemedText>
+        <ThemedText type="bodySm" style={styles.count}>
+          {selectedCount}편 선택
+        </ThemedText>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="선택 해제"
@@ -79,7 +84,7 @@ export function MovieSelectionBar({
       </View>
 
       {single && shareBlock !== undefined ? (
-        <ThemedText type="note" themeColor="textSecondary">
+        <ThemedText type="small" themeColor="textSecondary">
           {ShareBlockMessages[shareBlock]}
         </ThemedText>
       ) : null}
@@ -103,24 +108,14 @@ export function MovieSelectionBar({
             </ThemedText>
           </Pressable>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="danger"
+          title="삭제"
           accessibilityLabel={`${selectedCount}편 무비 삭제`}
-          accessibilityState={{ disabled: selectedCount === 0 }}
           disabled={selectedCount === 0}
           onPress={onDelete}
-          style={({ pressed }) => [
-            styles.primaryAction,
-            {
-              backgroundColor: theme.kraft,
-              opacity: selectedCount > 0 ? (pressed ? 0.78 : 1) : 0.45,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
-            삭제
-          </ThemedText>
-        </Pressable>
+          style={styles.primaryAction}
+        />
       </View>
     </View>
   );
@@ -135,10 +130,9 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: Spacing.three,
-    paddingHorizontal: Spacing.five,
-    gap: Spacing.three,
+    paddingTop: Spacing.five - Spacing.half,
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.two + Spacing.half,
   },
   counts: {
     flexDirection: 'row',
@@ -147,13 +141,13 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.four },
-  textAction: { minHeight: 44, justifyContent: 'center' },
-  primaryAction: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
+  count: { fontWeight: 700 },
+  textAction: {
+    minHeight: Sizes.touchMin,
+    minWidth: Sizes.touchMin,
+    paddingHorizontal: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  primaryAction: { flex: 1 },
 });

@@ -7,6 +7,8 @@ import { VideoFrame } from '@/shared/ui/video-frame';
 export type PolaroidProps = {
   /** The frame's video; none draws an empty dashed frame. */
   uri?: string;
+  /** A picture of the caller's own instead of the video's frame — a cover image. */
+  picture?: ReactNode;
   /** `square` for thumbnails, `portrait` for a 9:16 frame. */
   shape?: 'square' | 'portrait';
   /** Paper around the picture, and the deeper bottom margin under it. */
@@ -32,6 +34,7 @@ export type PolaroidProps = {
  */
 export function Polaroid({
   uri,
+  picture,
   shape = 'square',
   border = 3,
   foot = 14,
@@ -61,12 +64,12 @@ export function Polaroid({
         style={[
           styles.picture,
           { aspectRatio: shape === 'portrait' ? 9 / 16 : 1, backgroundColor: theme.media },
-          uri
+          uri || picture
             ? null
             : [styles.empty, { borderColor: theme.textSecondary, backgroundColor: 'transparent' }],
         ]}
       >
-        {uri ? <VideoFrame uri={uri} /> : null}
+        {picture ?? (uri ? <VideoFrame uri={uri} /> : null)}
         {overlay}
       </View>
       <View style={[styles.foot, { height: foot }]}>{footer}</View>

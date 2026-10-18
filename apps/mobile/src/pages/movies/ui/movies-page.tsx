@@ -1,24 +1,18 @@
 import { useIsFocused, useRouter, useScrollToTop } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  BackHandler,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { BackHandler, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useDeleteMovie, useMovieById } from '@/entities/movie';
 import { useRenderSource } from '@/features/compose-movie';
 import { useShareMovie } from '@/features/share-movie';
 import { movieHref, snapPickerHref } from '@/shared/routes';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
+import { ModeTab } from '@/shared/ui/mode-tab';
+import { PaperGround, PaperPiece } from '@/shared/ui/paper';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { useSetTabBarHidden } from '@/shared/ui/tab-bar-chrome';
 import {
   MaxContentWidth,
-  Radius,
   Spacing,
   useTabBarHeight,
   useTheme,
@@ -170,6 +164,7 @@ export function MoviesPage() {
           },
         ]}
       >
+        <PaperGround kind="ruled" />
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <View style={styles.titleText}>
@@ -177,22 +172,16 @@ export function MoviesPage() {
               {/* "모두" because the grid holds drafts and failures too: a bare
                   count under a 무비 heading reads as a count of finished ones,
                   and the number would then contradict what the tiles say. */}
-              <ThemedText type="small" themeColor="textSecondary">
+              <ThemedText type="data" style={styles.count}>
                 모두 {movies.length}편
               </ThemedText>
             </View>
             {movies.length > 0 ? (
-              <Pressable
-                accessibilityRole="button"
+              <ModeTab
+                label={selecting ? '취소' : '선택'}
                 accessibilityLabel={selecting ? '선택 취소' : '무비 선택'}
-                hitSlop={12}
                 onPress={() => (selecting ? exitSelection() : setSelecting(true))}
-                style={styles.headerAction}
-              >
-                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-                  {selecting ? '취소' : '선택'}
-                </ThemedText>
-              </Pressable>
+              />
             ) : null}
           </View>
         </View>
@@ -222,7 +211,7 @@ export function MoviesPage() {
           // knowing to go and find the studio's own entrance. Same act, same
           // destination, and the same words the studio uses for it — this is a
           // second door, not a second feature.
-          <View style={[styles.empty, { borderColor: theme.border }]}>
+          <PaperPiece edge="tornBottom" tilt={-1} style={styles.empty}>
             <ThemedText type="heading">아직 만든 무비가 없어요</ThemedText>
             <SnaplyButton
               accessibilityLabel="스냅 골라서 새 무비 만들기"
@@ -230,7 +219,7 @@ export function MoviesPage() {
               onPress={() => router.push(snapPickerHref())}
               style={styles.emptyAction}
             />
-          </View>
+          </PaperPiece>
         )}
       </ScrollView>
 
@@ -274,17 +263,15 @@ const styles = StyleSheet.create({
     gap: Spacing.five,
   },
   header: { gap: Spacing.half },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  titleText: { gap: Spacing.half },
-  headerAction: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  titleText: { gap: Spacing.two },
+  count: { marginLeft: Spacing.one + Spacing.half },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: Spacing.three, rowGap: Spacing.five },
   empty: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
-    padding: Spacing.five,
-    gap: Spacing.two,
+    paddingTop: Spacing.six,
+    paddingHorizontal: Spacing.five,
+    paddingBottom: Spacing.five,
+    gap: Spacing.three,
     alignItems: 'center',
   },
   // Wide enough to read as the block's action rather than as a chip, without

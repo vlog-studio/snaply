@@ -3,6 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, Line, Pattern, Polygon, Rect } from 'react-native-svg';
 
 import { Sizes, useTheme, type ThemeColor } from '@/shared/ui/theme';
+import { ThemedText } from '@/shared/ui/themed-text';
 
 export type PaperKind = 'ruled' | 'grid' | 'plain';
 
@@ -309,3 +310,36 @@ export function DottedRule({
     </Svg>
   );
 }
+
+/**
+ * A name written by hand on a torn label taped to the page (the design
+ * system's `jj-titlelabel`) — the heading of a screen about one named thing,
+ * a template or a movie.
+ */
+export function TitleLabel({
+  children,
+  tape = 'tapeMint',
+  tilt = -1,
+  style,
+}: {
+  children: string;
+  tape?: TapeColor;
+  tilt?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[{ alignSelf: 'flex-start', marginTop: 8 }, style]}>
+      <Tape color={tape} width={48} height={16} tilt={3} style={labelStyles.tape} />
+      <PaperPiece edge="tornBottom" tilt={tilt} style={labelStyles.face}>
+        <ThemedText type="subtitle" accessibilityRole="header">
+          {children}
+        </ThemedText>
+      </PaperPiece>
+    </View>
+  );
+}
+
+const labelStyles = StyleSheet.create({
+  tape: { position: 'absolute', top: -8, alignSelf: 'center', zIndex: 2 },
+  face: { paddingTop: 6, paddingHorizontal: 16, paddingBottom: 10 },
+});

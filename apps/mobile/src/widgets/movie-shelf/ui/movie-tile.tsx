@@ -3,9 +3,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { formatSeconds } from '@/shared/lib/datetime';
 import { ImageFrame } from '@/shared/ui/image-frame';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { CheckMark } from '@/shared/ui/choice-mark';
+import { Tape, tiltFor } from '@/shared/ui/paper';
+import { Polaroid } from '@/shared/ui/polaroid';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { VideoFrame } from '@/shared/ui/video-frame';
 
 import type { MovieSummary } from '../model/use-movie-shelf';
 import { MovieFailureNotice } from './movie-failure-notice';
@@ -25,8 +27,9 @@ export type MovieTileProps = {
 };
 
 /**
- * One movie in the movie tab's grid: a square cover with the length and status
- * over it, and the title beneath.
+ * One movie in the movie tab's grid: an instant print of its cover — the
+ * status tag on the picture, the length on the print's foot — and the title
+ * beneath.
  *
  * The cover is the render's own thumbnail once a run has produced one — the
  * grid is cover art, and a finished movie's cover should be the movie rather
@@ -36,9 +39,9 @@ export type MovieTileProps = {
  * a condition: a local file can vanish under the app, and only the load
  * failing says so.
  *
- * In selection mode a check circle joins the cover — opposite corner from the
- * status badge, so the two never collide — and the border thickens on the
- * selected tiles, the same vocabulary as the snap grid's cells.
+ * In selection mode a check mark joins the cover — opposite corner from the
+ * status tag, so the two never collide — and a selected print takes a cherry
+ * edge and a strip of pink tape, the same vocabulary as the snap grid's prints.
  */
 export function MovieTile({
   movie,
@@ -69,61 +72,56 @@ export function MovieTile({
       onLongPress={onLongPress ? () => onLongPress(movie) : undefined}
       style={({ pressed }) => [{ width, opacity: pressed ? 0.85 : 1 }, styles.tile]}
     >
-      <View
-        style={[
-          styles.cover,
-          { height: width, borderColor: selected ? theme.primary : theme.border },
-          selected && styles.selectedCover,
-        ]}
-      >
-        {coverImage ? (
-          <ImageFrame uri={coverImage} onError={() => setCoverImageFailed(true)} />
-        ) : cover ? (
-          <VideoFrame uri={cover} />
-        ) : null}
-        <View style={styles.badge}>
-          <MovieStatusBadge status={movie.status} />
-        </View>
-        <View style={styles.duration}>
-          <ThemedText selectable={false} type="note" style={styles.durationText}>
+      <Polaroid
+        uri={cover}
+        picture={
+          coverImage ? (
+            <ImageFrame uri={coverImage} onError={() => setCoverImageFailed(true)} />
+          ) : undefined
+        }
+        border={5}
+        foot={22}
+        tilt={tiltFor(movie.id, 2)}
+        style={[styles.print, selected && { borderColor: theme.primary, borderWidth: 2 }]}
+        footer={
+          <ThemedText selectable={false} type="dataSm" style={{ color: theme.text }}>
             {formatSeconds(movie.totalSec)}
           </ThemedText>
-        </View>
-        {movie.progress !== undefined ? (
-          <View style={[styles.track, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
-            <View
-              style={[
-                styles.fill,
-                { backgroundColor: theme.ai, width: `${Math.round(movie.progress * 100)}%` },
-              ]}
-            />
-          </View>
+        }
+        overlay={
+          <>
+            <View style={styles.badge}>
+              <MovieStatusBadge status={movie.status} />
+            </View>
+            {movie.progress !== undefined ? (
+              <View style={[styles.track, { backgroundColor: 'rgba(14,11,8,0.55)' }]}>
+                <View
+                  style={[
+                    styles.fill,
+                    { backgroundColor: theme.ai, width: `${Math.round(movie.progress * 100)}%` },
+                  ]}
+                />
+              </View>
+            ) : null}
+          </>
+        }
+      >
+        {selected ? (
+          <Tape color="tapePink" width={30} height={12} tilt={35} style={styles.pickTape} />
         ) : null}
         {selecting ? (
-          <View
-            style={[
-              styles.check,
-              {
-                backgroundColor: selected ? theme.primary : 'rgba(0,0,0,0.45)',
-                borderColor: selected ? theme.primary : 'rgba(255,255,255,0.7)',
-              },
-            ]}
-          >
-            {selected ? (
-              <ThemedText selectable={false} type="smallBold" style={{ color: theme.onPrimary }}>
-                ✓
-              </ThemedText>
-            ) : null}
+          <View style={styles.check}>
+            <CheckMark checked={selected} />
           </View>
         ) : null}
-      </View>
-      <ThemedText type="smallBold" numberOfLines={1}>
+      </Polaroid>
+      <ThemedText type="bodySm" numberOfLines={1} style={styles.title}>
         {movie.title}
       </ThemedText>
-      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+      <ThemedText type="dataSm" numberOfLines={1}>
         {movie.dateLabel} · 컷 {movie.snapCount}
         {movie.expiryCountdown ? (
-          <ThemedText type="small" themeColor="danger">
+          <ThemedText type="dataSm" themeColor="cherryInk" style={styles.title}>
             {` · ${movie.expiryCountdown}`}
           </ThemedText>
         ) : null}
@@ -141,41 +139,16 @@ export function MovieTile({
 }
 
 const styles = StyleSheet.create({
-  tile: { gap: Spacing.one },
-  // Square, like the snap grid's cells: a cover only has to be recognizable, and
-  // a tall 9:16 tile pushed the second row off the screen. Sized in points by
-  // the caller rather than shaped with `aspectRatio`, which collapses a wrapped
-  // flex cell whose only children are absolutely positioned.
-  cover: {
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  selectedCover: { borderWidth: 2 },
-  badge: { position: 'absolute', top: Spacing.two, left: Spacing.two },
-  check: {
+  tile: { gap: Spacing.half },
+  print: { marginBottom: Spacing.one + Spacing.half },
+  title: { fontWeight: 700 },
+  badge: {
     position: 'absolute',
-    top: Spacing.two,
-    right: Spacing.two,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    top: Spacing.one + Spacing.half,
+    left: Spacing.one + Spacing.half,
   },
-  duration: {
-    position: 'absolute',
-    bottom: Spacing.two,
-    right: Spacing.two,
-    borderRadius: Radius.small,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: Spacing.one,
-    paddingVertical: 1,
-  },
-  // Drawn over arbitrary video, so plain white rather than a palette color.
-  durationText: { color: '#FFFFFF' },
-  track: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 3 },
+  pickTape: { position: 'absolute', top: -6, right: -10, zIndex: 2 },
+  check: { position: 'absolute', top: Spacing.two, right: Spacing.two },
+  track: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 6 },
   fill: { height: '100%' },
 });

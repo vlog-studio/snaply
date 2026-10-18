@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { generationRefusalHeadline, useComposeMovie } from '@/features/compose-movie';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { TextButton } from '@/shared/ui/text-button';
+import { Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type MovieFailureNoticeProps = {
@@ -81,35 +82,45 @@ export function MovieFailureNotice({
   };
 
   return (
-    <View style={[styles.notice, { borderColor: theme.danger }]}>
+    // A memo stuck under the print: sheet paper edged in dashed cherry ink.
+    <View
+      style={[
+        styles.notice,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.cherryInk,
+          boxShadow: Shadows.paper(theme.shadowInk),
+        },
+      ]}
+    >
       {refusal ? (
-        <ThemedText type="note" numberOfLines={clampLines}>
+        <ThemedText type="xsmall" numberOfLines={clampLines}>
           {refusal}
         </ThemedText>
       ) : (
-        <ThemedText type="note" themeColor="danger" numberOfLines={clampLines}>
-          {error ?? UnknownError}
-        </ThemedText>
+        <View style={styles.reason}>
+          <ThemedText type="xsmall" themeColor="cherryInk" style={styles.bang}>
+            !
+          </ThemedText>
+          <ThemedText
+            type="xsmall"
+            themeColor="cherryInk"
+            numberOfLines={clampLines}
+            style={styles.reasonText}
+          >
+            {error ?? UnknownError}
+          </ThemedText>
+        </View>
       )}
       {snapCount > 0 ? (
-        <Pressable
-          accessibilityRole="button"
+        <TextButton
+          label="다시 시도"
           accessibilityLabel="다시 만들기"
-          accessibilityState={{ disabled: starting }}
           disabled={starting}
-          hitSlop={8}
           onPress={() => void retry()}
-          style={({ pressed }) => [
-            styles.retry,
-            { borderColor: theme.primary, opacity: starting ? 0.45 : pressed ? 0.7 : 1 },
-          ]}
-        >
-          <ThemedText selectable={false} type="note" themeColor="cherryInk">
-            다시 시도
-          </ThemedText>
-        </Pressable>
+        />
       ) : (
-        <ThemedText type="note" themeColor="textSecondary" numberOfLines={1}>
+        <ThemedText type="xsmall" themeColor="textSecondary" numberOfLines={1}>
           무비를 열어 스냅을 다시 넣어 주세요.
         </ThemedText>
       )}
@@ -119,19 +130,16 @@ export function MovieFailureNotice({
 
 const styles = StyleSheet.create({
   notice: {
+    marginTop: Spacing.two,
     borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
+    borderStyle: 'dashed',
+    paddingHorizontal: Spacing.one + Spacing.half,
+    paddingTop: Spacing.one + Spacing.half,
     gap: Spacing.half,
     alignItems: 'flex-start',
+    transform: [{ rotate: '-0.6deg' }],
   },
-  retry: {
-    borderWidth: 1,
-    borderRadius: Radius.pill,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-  },
+  reason: { flexDirection: 'row', gap: Spacing.one, alignSelf: 'stretch' },
+  bang: { fontWeight: 700 },
+  reasonText: { flex: 1, minWidth: 0 },
 });

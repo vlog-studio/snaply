@@ -1,9 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { ConfidenceKind, FilledSlot } from '@/features/fill-template';
 import { formatSeconds, formatTimestamp } from '@/shared/lib/datetime';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { tiltFor } from '@/shared/ui/paper';
+import { TextButton } from '@/shared/ui/text-button';
+import { Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
 
@@ -62,22 +64,26 @@ export function SlotRow({
   const { slot, snap, confidence, canMoveUp, canMoveDown } = filled;
 
   return (
-    <View style={[styles.row, { borderColor: theme.border }]}>
+    <View style={[styles.row, { borderBottomColor: theme.ruleLine }]}>
       {snap ? (
         // `VideoFrame` absolute-fills its parent, so the frame's size has to live
         // on a wrapper — handing it to the component directly takes the thumbnail
         // out of the row's flow and the body then renders on top of it.
-        <View style={[styles.frame, { borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.frame,
+            {
+              borderColor: theme.backgroundElement,
+              boxShadow: Shadows.paper(theme.shadowInk),
+              transform: [{ rotate: `${tiltFor(snap.id, 2)}deg` }],
+            },
+          ]}
+        >
           <VideoFrame uri={snap.uri} />
         </View>
       ) : (
-        <View
-          style={[
-            styles.placeholder,
-            { borderColor: theme.border, backgroundColor: theme.backgroundElement },
-          ]}
-        >
-          <ThemedText selectable={false} type="note" themeColor="textSecondary">
+        <View style={[styles.placeholder, { borderColor: theme.textSecondary }]}>
+          <ThemedText selectable={false} type="xsmall" themeColor="textSecondary">
             비어 있음
           </ThemedText>
         </View>
@@ -85,20 +91,26 @@ export function SlotRow({
 
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          <ThemedText type="smallBold">{slot.label}</ThemedText>
+          <ThemedText type="bodySm" numberOfLines={1} style={styles.label}>
+            {slot.label}
+          </ThemedText>
           {confidence !== undefined ? (
             <ThemedText
               accessibilityLabel={`${confidenceLabel(confidenceKind)} ${Math.round(confidence * 100)}퍼센트`}
               selectable={false}
-              type="edge"
-              themeColor="lumen"
+              type="data"
+              style={styles.label}
             >
               {Math.round(confidence * 100)}%
             </ThemedText>
           ) : null}
         </View>
 
-        <ThemedText type="xsmall" themeColor="textSecondary">
+        <ThemedText
+          type={snap ? 'dataSm' : 'small'}
+          themeColor={snap ? undefined : 'textSecondary'}
+          numberOfLines={1}
+        >
           {snap
             ? `${formatTimestamp(snap.capturedAt)} · ${formatSeconds(snap.durationSec)}`
             : slot.hint}
@@ -107,32 +119,27 @@ export function SlotRow({
         {snap === undefined || confidence === undefined ? (
           <View style={styles.actions}>
             {snap ? (
-              <ThemedText selectable={false} type="note" themeColor="cherryInk">
+              <ThemedText
+                selectable={false}
+                type="xsmall"
+                themeColor="cherryInk"
+                style={styles.label}
+              >
                 방금 찍은 컷
               </ThemedText>
             ) : (
               <>
-                <Pressable
-                  accessibilityRole="button"
+                <TextButton
+                  label="지금 찍기"
                   accessibilityLabel={`${slot.label} 지금 찍기`}
-                  hitSlop={8}
                   onPress={() => onShoot(slot.id)}
-                >
-                  <ThemedText selectable={false} type="note" themeColor="cherryInk">
-                    지금 찍기
-                  </ThemedText>
-                </Pressable>
+                />
                 {filled.isDropped ? (
-                  <Pressable
-                    accessibilityRole="button"
+                  <TextButton
+                    label="되돌리기"
                     accessibilityLabel={`${slot.label} 되돌리기`}
-                    hitSlop={8}
                     onPress={() => onRestore(slot.id)}
-                  >
-                    <ThemedText selectable={false} type="note" themeColor="textSecondary">
-                      되돌리기
-                    </ThemedText>
-                  </Pressable>
+                  />
                 ) : null}
               </>
             )}
@@ -147,13 +154,13 @@ export function SlotRow({
           <View style={styles.arrows}>
             <MoveButton
               label={`${slot.label} 위로`}
-              icon="chevron-up"
+              icon="chevronUp"
               enabled={canMoveUp}
               onPress={() => onMove(index, -1)}
             />
             <MoveButton
               label={`${slot.label} 아래로`}
-              icon="chevron-down"
+              icon="chevronDown"
               enabled={canMoveDown}
               onPress={() => onMove(index, 1)}
             />
@@ -167,7 +174,7 @@ export function SlotRow({
               onPress={() => onDrop(slot.id)}
               style={styles.control}
             >
-              <Ionicons color={theme.textSecondary} name="close" size={IconSize} />
+              <DoodleIcon color={theme.textSecondary} name="close" size={IconSize} />
             </Pressable>
           ) : null}
         </View>
@@ -188,7 +195,7 @@ export function confidenceLabel(kind: ConfidenceKind): string {
 
 type MoveButtonProps = {
   label: string;
-  icon: 'chevron-up' | 'chevron-down';
+  icon: 'chevronUp' | 'chevronDown';
   enabled: boolean;
   onPress: () => void;
 };
@@ -207,40 +214,38 @@ function MoveButton({ label, icon, enabled, onPress }: MoveButtonProps) {
       onPress={onPress}
       style={[styles.control, { opacity: enabled ? 1 : 0.3 }]}
     >
-      <Ionicons color={theme.textSecondary} name={icon} size={IconSize} />
+      <DoodleIcon color={theme.textSecondary} name={icon} size={IconSize} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  // A line of the receipt, ruled under.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    padding: Spacing.one,
+    gap: Spacing.two,
+    minHeight: 58,
+    borderBottomWidth: 1,
+    paddingVertical: Spacing.one + Spacing.half,
   },
+  // A tiny print of the snap.
   frame: {
     width: FrameSize,
     height: FrameSize,
-    borderRadius: Radius.xsmall,
-    borderCurve: 'continuous',
-    borderWidth: 1,
+    borderWidth: 2,
     overflow: 'hidden',
   },
   placeholder: {
     width: FrameSize,
     height: FrameSize,
-    borderRadius: Radius.xsmall,
-    borderCurve: 'continuous',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: { flex: 1, gap: Spacing.one, justifyContent: 'center' },
+  body: { flex: 1, minWidth: 0, gap: Spacing.half, justifyContent: 'center' },
+  label: { fontWeight: 700 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -250,7 +255,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.half },
+  actions: { flexDirection: 'row', gap: Spacing.one, marginLeft: -Spacing.two },
   controls: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   arrows: { gap: Spacing.half },
   control: {

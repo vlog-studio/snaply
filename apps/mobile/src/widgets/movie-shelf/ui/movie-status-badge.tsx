@@ -1,8 +1,5 @@
-import { StyleSheet, View } from 'react-native';
-
 import type { MovieStatus } from '@/entities/movie';
-import { Colors, Spacing, useTheme } from '@/shared/ui/theme';
-import { ThemedText } from '@/shared/ui/themed-text';
+import { Tag, type TagTone } from '@/shared/ui/tag';
 
 export const MovieStatusLabels: Record<MovieStatus, string> = {
   draft: '초안',
@@ -23,29 +20,12 @@ export type MovieStatusBadgeProps = {
  * Sticker colours keep their value at night, so the ink does too.
  */
 export function MovieStatusBadge({ status }: MovieStatusBadgeProps) {
-  const theme = useTheme();
-  const { fill, ink } =
-    status === 'failed'
-      ? { fill: theme.primary, ink: theme.onPrimary }
-      : status === 'generating'
-        ? { fill: theme.sky, ink: theme.stickerInk }
-        : status === 'ready'
-          ? { fill: theme.mint, ink: theme.stickerInk }
-          : { fill: Colors.light.backgroundElement, ink: theme.stickerInk };
-
-  return (
-    <View style={[styles.tag, { backgroundColor: fill, borderColor: theme.border }]}>
-      <ThemedText selectable={false} type="xsmall" style={{ color: ink }}>
-        {MovieStatusLabels[status]}
-      </ThemedText>
-    </View>
-  );
+  return <Tag label={MovieStatusLabels[status]} tone={StatusTones[status]} />;
 }
 
-const styles = StyleSheet.create({
-  tag: {
-    borderWidth: 1,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 1,
-  },
-});
+const StatusTones: Record<MovieStatus, TagTone> = {
+  draft: 'sheet',
+  generating: 'sky',
+  ready: 'mint',
+  failed: 'cherry',
+};
