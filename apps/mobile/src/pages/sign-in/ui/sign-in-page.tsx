@@ -29,7 +29,7 @@ export function SignInPage() {
                 style={styles.glyph}
               />
             </View>
-            <ThemedText type="eyebrow" themeColor="primary">
+            <ThemedText type="eyebrow" themeColor="cherryInk">
               SNAPLY
             </ThemedText>
             <ThemedText type="title" style={styles.centerText}>

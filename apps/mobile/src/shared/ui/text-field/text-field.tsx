@@ -84,6 +84,6 @@ const styles = StyleSheet.create({
     // own vertical centering on Android, and `minHeight` already sets the height.
     fontFamily: Fonts.sans,
     fontSize: Typography.body.fontSize,
-    fontWeight: '500',
+    fontWeight: '400',
   },
 });

@@ -133,7 +133,7 @@ export function MeCreditsPage() {
             accessibilityLabel="잔액 다시 불러오기"
             onPress={() => void balanceQuery.refetch()}
           >
-            <ThemedText type="smallBold" themeColor="primary">
+            <ThemedText type="smallBold" themeColor="cherryInk">
               다시 불러오기
             </ThemedText>
           </Pressable>
@@ -148,7 +148,7 @@ export function MeCreditsPage() {
             sub={adRowSub}
             right={
               running ? undefined : (
-                <ThemedText type="smallBold" themeColor="primary">
+                <ThemedText type="smallBold" themeColor="cherryInk">
                   보기
                 </ThemedText>
               )

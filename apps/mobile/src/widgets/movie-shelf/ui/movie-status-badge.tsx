@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import type { MovieStatus } from '@/entities/movie';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Colors, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export const MovieStatusLabels: Record<MovieStatus, string> = {
@@ -16,23 +16,26 @@ export type MovieStatusBadgeProps = {
 };
 
 /**
- * Where a movie stands, as a pill. Shared by the board row and the grid tile so
- * a status reads as the same word and color wherever a movie is drawn.
+ * Where a movie stands, as a tag (the design system's `jj-tag`): a square of
+ * sticker colour with dark ink — 초안 sheet, 만드는 중 sky, 완성 mint — and the
+ * one failure in cherry with white. Shared by the board row and the grid tile
+ * so a status reads as the same word and colour wherever a movie is drawn.
+ * Sticker colours keep their value at night, so the ink does too.
  */
 export function MovieStatusBadge({ status }: MovieStatusBadgeProps) {
   const theme = useTheme();
-  const color =
+  const { fill, ink } =
     status === 'failed'
-      ? theme.danger
+      ? { fill: theme.primary, ink: theme.onPrimary }
       : status === 'generating'
-        ? theme.ai
+        ? { fill: theme.sky, ink: theme.stickerInk }
         : status === 'ready'
-          ? theme.lumen
-          : theme.amber;
+          ? { fill: theme.mint, ink: theme.stickerInk }
+          : { fill: Colors.light.backgroundElement, ink: theme.stickerInk };
 
   return (
-    <View style={[styles.pill, { borderColor: color }]}>
-      <ThemedText selectable={false} type="note" style={{ color }}>
+    <View style={[styles.tag, { backgroundColor: fill, borderColor: theme.border }]}>
+      <ThemedText selectable={false} type="xsmall" style={{ color: ink }}>
         {MovieStatusLabels[status]}
       </ThemedText>
     </View>
@@ -40,10 +43,8 @@ export function MovieStatusBadge({ status }: MovieStatusBadgeProps) {
 }
 
 const styles = StyleSheet.create({
-  pill: {
+  tag: {
     borderWidth: 1,
-    borderRadius: Radius.pill,
-    borderCurve: 'continuous',
     paddingHorizontal: Spacing.two,
     paddingVertical: 1,
   },

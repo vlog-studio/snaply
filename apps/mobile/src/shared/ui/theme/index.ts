@@ -1,4 +1,14 @@
-export { Colors, Fonts, MaxContentWidth, Radius, Spacing, Typography } from './theme';
+export {
+  Colors,
+  Fonts,
+  MaxContentWidth,
+  OpacityDisabled,
+  Radius,
+  Shadows,
+  Sizes,
+  Spacing,
+  Typography,
+} from './theme';
 export type { ThemeColor } from './theme';
 export { useSetThemeMode, useThemeMode } from './theme-mode';
 export type { ThemeMode } from './theme-mode';

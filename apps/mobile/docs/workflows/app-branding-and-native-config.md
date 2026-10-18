@@ -33,30 +33,36 @@ Consequences you must internalize:
 
 ## App font
 
-The app font is **Pretendard GOV** ([upstream package](https://github.com/orioncactus/pretendard/tree/main/packages/pretendard-gov), SIL OFL 1.1 — `assets/fonts/OFL.txt` ships beside the files as the license requires). It is embedded at build time by the `expo-font` config plugin rather than loaded at runtime with `useFonts`, which is why there is no font gate in the root layout and no first-frame flash of a system face.
+The app embeds **three families**, each with one job (root `docs/decisions/junk-journal-design-system.md`, decisions 2 and 5):
 
-### Which weights are embedded, and why only four
+| Family (`Fonts` key) | Files in `assets/fonts/` | Weights | Job | License |
+| --- | --- | --- | --- | --- |
+| **Pretendard GOV** (`sans`) | `PretendardGOV-Regular.ttf`, `PretendardGOV-Bold.ttf` | 400, 700 | body text and every control | SIL OFL 1.1 — `OFL.txt` ([upstream package](https://github.com/orioncactus/pretendard/tree/main/packages/pretendard-gov)) |
+| **D2Coding** (`mono`) | `D2Coding-Regular.ttf`, `D2Coding-Bold.ttf` | 400, 700 | data — counts, durations, meta, receipt values | SIL OFL 1.1 — `OFL-D2Coding.txt` (NAVER, [d2codingfont](https://github.com/naver/d2codingfont) release 1.3.2) |
+| **Gaegu** (`hand`) | `Gaegu-Bold.ttf` | 700 | handwritten titles, 22px and up | SIL OFL 1.1 — `OFL-Gaegu.txt` ([Google Fonts](https://github.com/google/fonts/tree/main/ofl/gaegu)) |
 
-`assets/fonts/` holds exactly the four weights the type roles in `ThemedText` use — **400, 500, 700, 800** — and `app.json` links all four. Each `.ttf` is ~5.3MB (23,410 glyphs; Pretendard GOV's coverage is the point of choosing it), so the family costs ~21MB of app binary on each platform and a fifth weight would cost another ~5.3MB. Upstream ships nine; the other five were deleted rather than left unlinked, so adding one means fetching it again from the [upstream package](https://github.com/orioncactus/pretendard/tree/main/packages/pretendard-gov).
+Each license file ships beside the files as the OFL requires. All three are embedded at build time by the `expo-font` config plugin rather than loaded at runtime with `useFonts`, which is why there is no font gate in the root layout and no first-frame flash of a system face.
 
-`600` is deliberately **not** embedded, and it is the one weight to avoid adding to a style: it sits exactly between 500 and 700, and both platforms resolve a missing weight to the nearest embedded face — iOS breaks that tie toward the *lighter* one, so `fontWeight: 600` silently renders as Medium. React Navigation's default header title weight is 600, which is why `root-layout.tsx` sets an explicit 700 in `headerTitleStyle`.
+### Which weights are embedded, and why so few
 
-To add or drop a weight: link/unlink it in **both** the `android.fonts[].fontDefinitions` array and the `ios.fonts` array, then prebuild and rebuild.
+Every face is large — Pretendard GOV ~5.5MB (23,410 glyphs), D2Coding ~4.2MB, Gaegu ~3MB — so only the weights a `ThemedText` role uses are embedded, and the type roles use only **400 and 700**. Pretendard 500 and 800 were dropped with the junk-journal redesign (2026-10-18, about 11MB) to make room for D2Coding and Gaegu, so the five files cost about 22.7MB against the four Pretendard weights' 21.7MB before. Upstream ships more; the others are not in the repo, so adding one means fetching it again from its source above.
+
+A weight outside the embedded set resolves to the nearest face, and **600 lands exactly between 400 and 700**, a tie iOS breaks toward the lighter one — keep every style on 400 or 700. React Navigation's default header title weight is 600, which is why `root-layout.tsx` sets an explicit 700 in `headerTitleStyle`.
+
+To add or drop a weight or a family: link/unlink it in **both** the `android.fonts[]` array (one entry per family, `fontDefinitions` per weight) and the `ios.fonts` array of the `expo-font` plugin in `app.json`, then prebuild and rebuild.
 
 ### One family name, both platforms
 
-Styles say `fontFamily: Fonts.sans` (`'Pretendard GOV'`) and let `fontWeight` choose the face. Nothing names a single face like `'PretendardGOV-Bold'`. This works because of two separate mechanisms that happen to agree:
+Styles say `fontFamily: Fonts.sans` / `Fonts.mono` / `Fonts.hand` and let `fontWeight` choose the face. Nothing names a single face like `'PretendardGOV-Bold'`. This works because of two separate mechanisms that happen to agree:
 
-- **Android** — `fontDefinitions` generates `res/font/xml_pretendard_gov.xml`, a `<font-family>` mapping each `app:fontWeight` to a file, and the plugin registers it under the family name from the config with `ReactFontManager.getInstance().addCustomFont(this, "Pretendard GOV", …)`. The JS `fontFamily` string must match that config value **exactly**, spaces included.
-- **iOS** — the plugin only lists the files in `UIAppFonts`; the family name comes from inside the font. CoreText groups faces by the **typographic family** (name ID 16), which is `Pretendard GOV` in all four embedded files — including Medium and ExtraBold, whose per-weight legacy family name (name ID 1) differs (`Pretendard GOV Medium`) — and React Native then picks the face in that family whose weight trait is closest to the requested one (`RCTFontWithFontProperties` in `RCTFontUtils.mm`). A font whose ID 16 is unset does **not** group this way, and its heavier weights silently collapse onto Regular on iOS — check name ID 16 before assuming a new family behaves like this one.
+- **Android** — each `fontDefinitions` entry generates a `res/font/xml_<family>.xml` `<font-family>` mapping each `app:fontWeight` to a file, registered under the family name from the config (`ReactFontManager.getInstance().addCustomFont(this, "Pretendard GOV", …)`). The JS `fontFamily` string must match that config value **exactly**, spaces included.
+- **iOS** — the plugin only lists the files in `UIAppFonts`; the family name comes from inside the font. CoreText groups faces by the **typographic family** (name ID 16) — `Pretendard GOV` and `D2Coding` in their files — and React Native then picks the face whose weight trait is closest to the requested one (`RCTFontWithFontProperties` in `RCTFontUtils.mm`). Gaegu has no name ID 16, but it embeds a single face whose legacy family (name ID 1) is `Gaegu`, so there is nothing to group. A family with several weights and no ID 16 would collapse its heavier weights onto Regular on iOS — check name ID 16 before adding one.
 
 ### Where the font reaches text, and where it does not
 
-`ThemedText` applies `Fonts.sans` once in its base style, so every variant inherits it and only the two mono roles (`edge`, `code`) override it. Text outside `ThemedText` must name the family itself — currently `shared/ui/text-field` (a `TextInput`) and the `headerTitleStyle` in `root-layout.tsx`. Add a new one to that list, not a new font token.
+`ThemedText` applies the family per role (`sans` in its base style; the data roles and the title roles name `mono` and `hand`). Text outside `ThemedText` must name the family itself — currently `shared/ui/text-field` (a `TextInput`) and the `headerTitleStyle` in `root-layout.tsx`. Add a new one to that list, not a new font token. D2Coding carries Hangul, so a data line may mix Korean and digits in the mono face; the older rule that kept Hangul out of the mono roles went with the system monospace — see [cookbook §14 Consuming the design system](../conventions/cookbook.md#14-consuming-the-design-system).
 
-The two mono roles reach less text than their names suggest, because **the system monospace carries no Hangul**. A Korean string styled with `Fonts.mono` is drawn by the OS CJK fallback instead — Noto Sans CJK KR on Android, Apple SD Gothic Neo on iOS — so it is neither Pretendard nor monospaced, and no amount of native font config changes that. `edge` is therefore reserved for Latin-and-digit stamps, and the sans `note` role carries every Korean micro-label; see [cookbook §14 Consuming the design system](../conventions/cookbook.md#14-consuming-the-design-system).
-
-The font cannot reach text the OS draws: permission dialogs, `Alert`, notifications, and the share sheet stay on the system font. Nor does it reach web, and that is settled rather than pending — the app ships to iOS and Android only, so no webfont is served and `npm run web` renders down the `--font-body` fallback stack (see `_app/styles/global.css`).
+The fonts cannot reach text the OS draws: permission dialogs, `Alert`, notifications, and the share sheet stay on the system font. Nor do they reach web, and that is settled rather than pending — the app ships to iOS and Android only, so no webfont is served and `npm run web` renders down the fallback stacks in `_app/styles/global.css`.
 
 ## Standard procedure
 

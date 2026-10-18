@@ -53,7 +53,7 @@ export function RecentlyDeletedPage() {
             hitSlop={12}
             onPress={retry}
           >
-            <ThemedText selectable={false} type="smallBold" themeColor="primary">
+            <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
               다시 시도
             </ThemedText>
           </Pressable>
@@ -140,7 +140,7 @@ function TrashedSnapRow({
           { borderColor: theme.border, opacity: disabled && !restoring ? 0.5 : pressed ? 0.7 : 1 },
         ]}
       >
-        <ThemedText selectable={false} type="smallBold" themeColor="primary">
+        <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
           {restoring ? '되살리는 중…' : '되살리기'}
         </ThemedText>
       </Pressable>

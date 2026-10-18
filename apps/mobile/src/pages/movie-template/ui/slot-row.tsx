@@ -107,7 +107,7 @@ export function SlotRow({
         {snap === undefined || confidence === undefined ? (
           <View style={styles.actions}>
             {snap ? (
-              <ThemedText selectable={false} type="note" themeColor="primary">
+              <ThemedText selectable={false} type="note" themeColor="cherryInk">
                 방금 찍은 컷
               </ThemedText>
             ) : (
@@ -118,7 +118,7 @@ export function SlotRow({
                   hitSlop={8}
                   onPress={() => onShoot(slot.id)}
                 >
-                  <ThemedText selectable={false} type="note" themeColor="primary">
+                  <ThemedText selectable={false} type="note" themeColor="cherryInk">
                     지금 찍기
                   </ThemedText>
                 </Pressable>

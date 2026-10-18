@@ -71,7 +71,7 @@ export function Toast({
               onPress={action.onPress}
               style={({ pressed }) => ({ opacity: action.disabled ? 0.5 : pressed ? 0.7 : 1 })}
             >
-              <ThemedText selectable={false} type="smallBold" themeColor="primary">
+              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
                 {action.label}
               </ThemedText>
             </Pressable>

@@ -161,7 +161,7 @@ export function MovieWatch({
                 { borderColor: theme.primary, opacity: pressed ? 0.7 : 1 },
               ]}
             >
-              <ThemedText selectable={false} type="smallBold" themeColor="primary">
+              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
                 다시 시도
               </ThemedText>
             </Pressable>
@@ -210,7 +210,7 @@ export function MovieWatch({
               hitSlop={Spacing.two}
               style={({ pressed }) => [styles.review, { opacity: pressed ? 0.7 : 1 }]}
             >
-              <ThemedText selectable={false} type="smallBold" themeColor="primary">
+              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
                 구성 확인하고 다시 만들기
               </ThemedText>
             </Pressable>
@@ -251,7 +251,7 @@ export function MovieWatch({
               hitSlop={Spacing.two}
               style={({ pressed }) => [styles.review, { opacity: pressed ? 0.7 : 1 }]}
             >
-              <ThemedText selectable={false} type="smallBold" themeColor="primary">
+              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
                 정리하기
               </ThemedText>
             </Pressable>

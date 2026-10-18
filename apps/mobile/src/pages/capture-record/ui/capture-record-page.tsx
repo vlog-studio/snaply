@@ -169,7 +169,7 @@ function CaptureRecordScreen() {
           <View style={[styles.permissionIcon, { borderColor: theme.primary }]}>
             <ThemedText
               selectable={false}
-              style={[styles.permissionIconText, { color: theme.primary }]}
+              style={[styles.permissionIconText, { color: theme.cherryInk }]}
             >
               ●
             </ThemedText>
@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   utilityIcon: { color: '#FFFFFF', fontSize: 30, lineHeight: 32 },
-  soundIcon: { color: '#FFFFFF', fontSize: 19, fontWeight: '800' },
+  soundIcon: { color: '#FFFFFF', fontSize: 19, fontWeight: '700' },
   modePill: {
     backgroundColor: 'rgba(0,0,0,0.36)',
     borderRadius: Radius.pill,

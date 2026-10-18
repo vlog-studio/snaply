@@ -144,13 +144,13 @@ export function SnapDeleteDialog({
             style={({ pressed }) => [
               styles.action,
               {
-                backgroundColor: theme.danger,
-                borderColor: theme.danger,
+                backgroundColor: theme.kraft,
+                borderColor: theme.kraft,
                 opacity: isDeleting ? 0.5 : pressed ? 0.8 : 1,
               },
             ]}
           >
-            <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
+            <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
               {runningScope === 'everywhere' ? '삭제하는 중…' : '모든 기기에서 삭제'}
             </ThemedText>
           </Pressable>
@@ -217,13 +217,13 @@ export function SnapDeleteDialog({
             styles.action,
             styles.rowAction,
             {
-              backgroundColor: theme.danger,
-              borderColor: theme.danger,
+              backgroundColor: theme.kraft,
+              borderColor: theme.kraft,
               opacity: isDeleting ? 0.5 : pressed ? 0.8 : 1,
             },
           ]}
         >
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
+          <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
             {isDeleting ? '삭제하는 중…' : '삭제'}
           </ThemedText>
         </Pressable>

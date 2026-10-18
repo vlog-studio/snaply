@@ -122,7 +122,7 @@ export function CutInspector({
               hitSlop={6}
               onPress={() => onResetTrim(index)}
             >
-              <ThemedText selectable={false} type="note" themeColor="primary">
+              <ThemedText selectable={false} type="note" themeColor="cherryInk">
                 전체 사용
               </ThemedText>
             </Pressable>

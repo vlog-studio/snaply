@@ -49,7 +49,7 @@ export function AnalysisOffer({ onAccept, onDecline }: AnalysisOfferProps) {
           onPress={onAccept}
           style={styles.action}
         >
-          <ThemedText selectable={false} type="smallBold" style={{ color: theme.primary }}>
+          <ThemedText selectable={false} type="smallBold" style={{ color: theme.cherryInk }}>
             분석해서 채우기
           </ThemedText>
         </Pressable>

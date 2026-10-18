@@ -188,7 +188,7 @@ export function MoviesPage() {
                 onPress={() => (selecting ? exitSelection() : setSelecting(true))}
                 style={styles.headerAction}
               >
-                <ThemedText selectable={false} type="smallBold" themeColor="primary">
+                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
                   {selecting ? '취소' : '선택'}
                 </ThemedText>
               </Pressable>

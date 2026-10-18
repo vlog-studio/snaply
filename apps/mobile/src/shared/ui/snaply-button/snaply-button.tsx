@@ -23,10 +23,13 @@ export function SnaplyButton({
   const backgroundColor = {
     primary: theme.primary,
     secondary: theme.backgroundElement,
-    ai: theme.ai,
+    ai: theme.aiFill,
     ghost: 'transparent',
   }[variant];
-  const color = variant === 'primary' || variant === 'ai' ? theme.onPrimary : theme.text;
+  // Cherry carries white; lavender is a sticker colour, so it carries dark ink
+  // in both schemes.
+  const color =
+    variant === 'primary' ? theme.onPrimary : variant === 'ai' ? theme.stickerInk : theme.text;
 
   return (
     <Pressable

@@ -112,12 +112,12 @@ export function MovieSelectionBar({
           style={({ pressed }) => [
             styles.primaryAction,
             {
-              backgroundColor: theme.danger,
+              backgroundColor: theme.kraft,
               opacity: selectedCount > 0 ? (pressed ? 0.78 : 1) : 0.45,
             },
           ]}
         >
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
+          <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
             삭제
           </ThemedText>
         </Pressable>

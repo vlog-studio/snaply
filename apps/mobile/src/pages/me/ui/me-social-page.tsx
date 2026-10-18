@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useConnectSns } from '@/features/connect-sns';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { MaxContentWidth, Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { RowDivider, SettingRow, SettingsSection } from './rows';
@@ -75,7 +75,7 @@ export function MeSocialPage() {
                 hitSlop={Spacing.two}
                 style={({ pressed }) => ({ opacity: !action.run ? 0.6 : pressed ? 0.7 : 1 })}
               >
-                <ThemedText selectable={false} type="smallBold" themeColor="primary">
+                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
                   {action.label}
                 </ThemedText>
               </Pressable>
@@ -90,7 +90,9 @@ export function MeSocialPage() {
         <View
           style={[styles.notice, { borderColor: theme.border, backgroundColor: theme.warmSurface }]}
         >
-          <ThemedText type="small">{actions.error}</ThemedText>
+          <ThemeScope scheme="light">
+            <ThemedText type="small">{actions.error}</ThemedText>
+          </ThemeScope>
         </View>
       ) : null}
     </ScrollView>

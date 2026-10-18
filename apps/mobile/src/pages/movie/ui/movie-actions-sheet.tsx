@@ -178,13 +178,13 @@ export function MovieActionsSheet({
               style={({ pressed }) => [
                 styles.confirmAction,
                 {
-                  backgroundColor: theme.danger,
-                  borderColor: theme.danger,
+                  backgroundColor: theme.kraft,
+                  borderColor: theme.kraft,
                   opacity: pressed ? 0.8 : 1,
                 },
               ]}
             >
-              <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
+              <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
                 삭제
               </ThemedText>
             </Pressable>

@@ -3,11 +3,11 @@ import type { ComponentProps } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
+import { MaxContentWidth, Sizes, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
-/** The tap target keeps the 44dp minimum; the glyph inside it is 24. */
-const TargetSize = 44;
+/** The tap target keeps the 48dp minimum (`Sizes.touchMin`); the glyph inside it is 24. */
+const TargetSize = Sizes.touchMin;
 const IconSize = 24;
 
 /**
@@ -55,7 +55,7 @@ export type BackBarProps = {
  * A scrolling screen keeps that shape: bare bar, title in the content. A
  * screen whose zones are all fixed (`/movie/[id]`, where the stage lives on
  * whatever height the rest leaves over) hands its title to the bar instead,
- * because the row under the arrow is 44dp of tap target with a 28dp line's
+ * because the row under the arrow is 48dp of tap target with a 24dp line's
  * worth of empty space in it — the title rides along for free, and the row it
  * used to occupy goes to the stage.
  *
@@ -87,7 +87,7 @@ export function BackBar({
           accessibilityRole="header"
           selectable={false}
           numberOfLines={1}
-          type="heading"
+          type="barTitle"
           style={styles.title}
         >
           {title}

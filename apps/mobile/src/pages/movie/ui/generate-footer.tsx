@@ -102,7 +102,7 @@ export function GenerateFooter({
             hitSlop={Spacing.two}
             style={({ pressed }) => [styles.restore, { opacity: pressed ? 0.7 : 1 }]}
           >
-            <ThemedText selectable={false} type="smallBold" themeColor="primary">
+            <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
               완성 당시 구성으로 되돌리기
             </ThemedText>
           </Pressable>

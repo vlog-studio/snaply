@@ -190,7 +190,7 @@ export function StudioPage() {
                 hitSlop={8}
                 onPress={() => router.navigate('/movies')}
               >
-                <ThemedText selectable={false} type="note" themeColor="primary">
+                <ThemedText selectable={false} type="note" themeColor="cherryInk">
                   전체 보기
                 </ThemedText>
               </Pressable>

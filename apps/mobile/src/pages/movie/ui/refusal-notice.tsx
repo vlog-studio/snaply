@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { CutsRefusal } from '@/features/compose-movie';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 /** Why a cut edit was refused, in the user's words. */
@@ -46,20 +46,22 @@ export function RefusalNotice({ message, action }: { message: string; action?: R
     <View
       style={[styles.notice, { borderColor: theme.border, backgroundColor: theme.warmSurface }]}
     >
-      <ThemedText type="small">{message}</ThemedText>
-      {action ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={action.label}
-          onPress={action.onPress}
-          hitSlop={Spacing.two}
-          style={({ pressed }) => [styles.action, { opacity: pressed ? 0.7 : 1 }]}
-        >
-          <ThemedText selectable={false} type="smallBold" themeColor="primary">
-            {action.label}
-          </ThemedText>
-        </Pressable>
-      ) : null}
+      <ThemeScope scheme="light">
+        <ThemedText type="small">{message}</ThemedText>
+        {action ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
+            onPress={action.onPress}
+            hitSlop={Spacing.two}
+            style={({ pressed }) => [styles.action, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
+              {action.label}
+            </ThemedText>
+          </Pressable>
+        ) : null}
+      </ThemeScope>
     </View>
   );
 }

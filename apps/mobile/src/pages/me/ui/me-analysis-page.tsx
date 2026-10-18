@@ -7,7 +7,7 @@ import {
   useAnalysisConsentActions,
 } from '@/features/analysis-consent';
 import { formatFullDate } from '@/shared/lib/datetime';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { MaxContentWidth, Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { SettingRow, SettingsSection } from './rows';
@@ -69,7 +69,9 @@ export function MeAnalysisPage() {
         <View
           style={[styles.notice, { borderColor: theme.border, backgroundColor: theme.warmSurface }]}
         >
-          <ThemedText type="small">{actions.error}</ThemedText>
+          <ThemeScope scheme="light">
+            <ThemedText type="small">{actions.error}</ThemedText>
+          </ThemeScope>
         </View>
       ) : null}
 

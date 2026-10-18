@@ -132,7 +132,7 @@ export const SnapCell = memo(function SnapCell({
           style={[
             styles.syncBadge,
             syncStatus === 'failed' || syncStatus === 'expired'
-              ? { backgroundColor: theme.danger }
+              ? { backgroundColor: theme.primary }
               : styles.syncBadgeInProgress,
           ]}
         >
@@ -141,8 +141,8 @@ export const SnapCell = memo(function SnapCell({
           </ThemedText>
         </View>
       ) : countdown ? (
-        <View style={[styles.syncBadge, { backgroundColor: theme.amber }]}>
-          <ThemedText selectable={false} type="note" style={styles.syncBadgeText}>
+        <View style={[styles.syncBadge, { backgroundColor: theme.pink }]}>
+          <ThemedText selectable={false} type="note" style={{ color: theme.stickerInk }}>
             {countdown}
           </ThemedText>
         </View>
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   syncBadgeInProgress: { backgroundColor: 'rgba(0,0,0,0.55)' },
-  // Drawn over arbitrary video (or the danger fill), so plain white.
+  // Drawn over arbitrary video (or the cherry fill of a failed upload), so plain white.
   syncBadgeText: { color: '#FFFFFF' },
   duration: {
     position: 'absolute',

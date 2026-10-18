@@ -34,6 +34,7 @@ import {
   MaxContentWidth,
   Radius,
   Spacing,
+  ThemeScope,
   useTabBarHeight,
   useTheme,
   useTopContentInset,
@@ -490,7 +491,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
                 onPress={() => (selecting ? exitSelection() : setSelecting(true))}
                 style={styles.headerAction}
               >
-                <ThemedText selectable={false} type="smallBold" themeColor="primary">
+                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
                   {selecting ? '취소' : '선택'}
                 </ThemedText>
               </Pressable>
@@ -512,7 +513,9 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
               { borderColor: theme.danger, backgroundColor: theme.warmSurface },
             ]}
           >
-            <ThemedText type="small">{importError}</ThemedText>
+            <ThemeScope scheme="light">
+              <ThemedText type="small">{importError}</ThemedText>
+            </ThemeScope>
           </Pressable>
         ) : null}
 
@@ -526,7 +529,9 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
               { borderColor: theme.border, backgroundColor: theme.warmSurface },
             ]}
           >
-            <ThemedText type="small">{notice}</ThemedText>
+            <ThemeScope scheme="light">
+              <ThemedText type="small">{notice}</ThemedText>
+            </ThemeScope>
           </View>
         ) : null}
 
@@ -538,19 +543,21 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
               { borderColor: theme.danger, backgroundColor: theme.warmSurface },
             ]}
           >
-            <ThemedText type="small" style={styles.uploadNoticeText}>
-              스냅 {failedUploadCount}개를 올리지 못했어요.
-            </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="다시 올리기"
-              hitSlop={12}
-              onPress={retryFailedUploads}
-            >
-              <ThemedText selectable={false} type="smallBold" themeColor="primary">
-                다시 올리기
+            <ThemeScope scheme="light">
+              <ThemedText type="small" style={styles.uploadNoticeText}>
+                스냅 {failedUploadCount}개를 올리지 못했어요.
               </ThemedText>
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="다시 올리기"
+                hitSlop={12}
+                onPress={retryFailedUploads}
+              >
+                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
+                  다시 올리기
+                </ThemedText>
+              </Pressable>
+            </ThemeScope>
           </View>
         ) : null}
 

@@ -43,7 +43,7 @@ export function GenerationProgress({ movie }: GenerationProgressProps) {
       <View style={styles.ringRow}>
         <ProgressRing progress={movieJobRatio(movie.job)} size={RingSize} />
       </View>
-      <ThemedText type="heading" style={styles.centerText}>
+      <ThemedText type="barTitle" themeColor="ai" style={styles.centerText}>
         만드는 중…
       </ThemedText>
 

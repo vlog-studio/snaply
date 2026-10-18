@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
@@ -48,10 +49,8 @@ export function SnapImportCell({ width, disabled = false, onPress }: SnapImportC
         },
       ]}
     >
-      <ThemedText selectable={false} type="heading" themeColor="primary">
-        +
-      </ThemedText>
-      <ThemedText selectable={false} type="note" themeColor="primary">
+      <Ionicons name="add" size={24} color={theme.cherryInk} />
+      <ThemedText selectable={false} type="note" themeColor="cherryInk">
         가져오기
       </ThemedText>
     </Pressable>

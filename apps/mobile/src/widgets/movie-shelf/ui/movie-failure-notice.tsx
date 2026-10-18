@@ -104,7 +104,7 @@ export function MovieFailureNotice({
             { borderColor: theme.primary, opacity: starting ? 0.45 : pressed ? 0.7 : 1 },
           ]}
         >
-          <ThemedText selectable={false} type="note" themeColor="primary">
+          <ThemedText selectable={false} type="note" themeColor="cherryInk">
             다시 시도
           </ThemedText>
         </Pressable>

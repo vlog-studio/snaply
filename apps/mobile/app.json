@@ -60,19 +60,29 @@
                 "fontFamily": "Pretendard GOV",
                 "fontDefinitions": [
                   { "path": "./assets/fonts/PretendardGOV-Regular.ttf", "weight": 400 },
-                  { "path": "./assets/fonts/PretendardGOV-Medium.ttf", "weight": 500 },
-                  { "path": "./assets/fonts/PretendardGOV-Bold.ttf", "weight": 700 },
-                  { "path": "./assets/fonts/PretendardGOV-ExtraBold.ttf", "weight": 800 }
+                  { "path": "./assets/fonts/PretendardGOV-Bold.ttf", "weight": 700 }
                 ]
+              },
+              {
+                "fontFamily": "D2Coding",
+                "fontDefinitions": [
+                  { "path": "./assets/fonts/D2Coding-Regular.ttf", "weight": 400 },
+                  { "path": "./assets/fonts/D2Coding-Bold.ttf", "weight": 700 }
+                ]
+              },
+              {
+                "fontFamily": "Gaegu",
+                "fontDefinitions": [{ "path": "./assets/fonts/Gaegu-Bold.ttf", "weight": 700 }]
               }
             ]
           },
           "ios": {
             "fonts": [
               "./assets/fonts/PretendardGOV-Regular.ttf",
-              "./assets/fonts/PretendardGOV-Medium.ttf",
               "./assets/fonts/PretendardGOV-Bold.ttf",
-              "./assets/fonts/PretendardGOV-ExtraBold.ttf"
+              "./assets/fonts/D2Coding-Regular.ttf",
+              "./assets/fonts/D2Coding-Bold.ttf",
+              "./assets/fonts/Gaegu-Bold.ttf"
             ]
           }
         }

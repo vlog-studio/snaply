@@ -33,7 +33,7 @@ export function SnsReturnPage() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ActivityIndicator color={theme.primary} />
+      <ActivityIndicator color={theme.cherryInk} />
     </View>
   );
 }

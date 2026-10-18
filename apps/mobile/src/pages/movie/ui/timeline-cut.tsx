@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   duration: {
     fontSize: 9,
     lineHeight: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: 'rgba(255,255,255,0.9)',
     fontVariant: ['tabular-nums'],
     textShadowColor: 'rgba(0,0,0,0.7)',

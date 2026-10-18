@@ -45,7 +45,7 @@ export function AuthCallbackPage({ mode }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ActivityIndicator color={theme.primary} />
+      <ActivityIndicator color={theme.cherryInk} />
       <ThemedText themeColor="textSecondary">인증을 완료하는 중…</ThemedText>
     </View>
   );

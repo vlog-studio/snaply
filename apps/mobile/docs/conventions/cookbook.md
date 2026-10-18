@@ -770,35 +770,47 @@ export function XPage() {
 ```
 
 **Rules**
-- Read colors from `useTheme()`; use `Spacing`, `Radius`, `Typography`, `MaxContentWidth`
-  tokens instead of magic numbers. `useTheme()` resolves the light or dark palette from
+- The visual language is the junk journal — paper, tape, stickers, receipts, cherry as the
+  one action colour (root `docs/decisions/junk-journal-design-system.md`; role-by-role
+  mapping in root `docs/plans/junk-journal-redesign.md`). Behaviour still follows the specs.
+- Read colors from `useTheme()`; use `Spacing`, `Radius`, `Typography`, `Sizes`, `Shadows`,
+  `OpacityDisabled`, `MaxContentWidth` tokens instead of magic numbers. `useTheme()` resolves the light or dark palette from
   the user's theme mode (system / light / dark) — never import `Colors.dark` directly in
   a screen.
+- **A colour role that split by use has a text half.** `primary` is the cherry *fill*
+  (with `onPrimary` white on it); text, icons and lines in cherry are `cherryInk` —
+  cherry as text fails at night (2.56). `ai` is lavender-ink for AI lines and text;
+  `aiFill` is the lavender fill. `danger` is error *text* (cherry-ink): a delete is a
+  kraft fill with `stickerInk`, not red, because red is the main action. `border` is
+  decoration only (1.46 on paper); a line that is the control — a field underline, a
+  check box — is `fieldLine`.
+- **Sticker colours keep their value at night** (`pink`, `mint`, `butter`, `lavender`,
+  `sky`, `kraft`, `warmSurface`), so text on them is `stickerInk`, never `text`. A
+  standing notice on `warmSurface` wraps its contents in `<ThemeScope scheme="light">`
+  so every `ThemedText` and `useTheme()` inside resolves the day ink (see
+  `refusal-notice.tsx`).
+- Paper is cut, not rounded: `Radius` steps are 0; `Radius.pill` is only for round
+  objects (a button sticker, the capture disc, a price sticker, a reel). Elevation is
+  `boxShadow: Shadows.paper(theme.shadowInk)` — a hard offset, no blur.
 - A screen whose ground is a video surface (the viewfinder) pins its subtree with
   `<ThemeScope scheme="dark">` (see `capture-record-page.tsx`), so chrome stays legible
   over near-black in both theme modes. White glyphs and `rgba` scrims drawn **over
   video** stay literal — they must not follow the theme.
 - Render text with `ThemedText` (`type` + `themeColor`) rather than raw `Text`.
 - `Typography` owns the size steps and their leading; `ThemedText` variants add only
-  weight, letter spacing, and casing on top of a step. Text that cannot be a
+  family, weight, letter spacing, and casing on top of a step. Nothing is below 12px. Text that cannot be a
   `ThemedText` — a `TextInput`, a glyph drawn over video — still reads its size from
   `Typography` (`Typography.body.fontSize`) rather than a literal.
-- The family comes from `Fonts` (`Fonts.sans` is Pretendard GOV, embedded natively;
-  `Fonts.mono` is the system monospace for the `edge`/`code` roles). `ThemedText`
-  applies it once for every variant, so only text outside `ThemedText` names a family —
-  and it names `Fonts.sans`, never a single face like `'PretendardGOV-Bold'`. Pair it
-  with a `fontWeight` that is embedded — which weights are, and why not `600`, is in
-  [app branding and native config](../workflows/app-branding-and-native-config.md#app-font).
-- **A micro-label picks its role by the script it holds, not by what it means.** `edge`
-  and `note` are one tier — both are `Typography.micro` — and differ only in family:
-  `edge` is the mono stamp for **Latin and digits** (`REC`, a bare count, `70%`, a
-  ticking `12s`), `note` is the Pretendard label for **anything containing Hangul**
-  (`스냅 3개`, `7.8초`, `4/6컷 · 2컷 더`). Putting Hangul in an `edge` string does not
-  fail loudly; it draws in the OS CJK fallback, which is neither monospaced nor the
-  app's voice, and `edge`'s 2dp tracking then wraps the line. When a string switches
-  script by branch, switch the role with it
-  (`type={remaining > 0 ? 'edge' : 'note'}`) — unless the switch would happen under
-  the user's eye, in which case pick `note` for both branches and keep the row stable.
+- **Three families, three jobs.** `Fonts.sans` (Pretendard GOV 400 · 700) is body text and
+  every control; `Fonts.mono` (D2Coding 400 · 700) is data — a count, a duration, a meta
+  line, a receipt value (`data`, `dataSm`, `note`, `edge`, `eyebrow`); `Fonts.hand` (Gaegu
+  700) is titles only (`heading`, `subtitle`, `title`), never below 22px. D2Coding carries
+  Hangul, so a data line may mix Korean and digits in one face. Text that is not a title
+  takes a sans role even when it is large — a pushed screen's name is `barTitle`, a
+  progress line is `barTitle`, an add glyph is an icon. `ThemedText` applies the family per
+  role, so only text outside `ThemedText` names one — and it names a `Fonts` key, never a
+  single face like `'PretendardGOV-Bold'`. Pair it with an embedded weight, 400 or 700 —
+  see [app branding and native config](../workflows/app-branding-and-native-config.md#app-font).
 - Respect insets with `useTopContentInset()` / `useTabBarHeight()`.
 - **A tab screen's scroll container takes a ref and `useScrollToTop`** (imported from
   `expo-router`, not `@react-navigation/native`). Tab screens stay mounted, so scroll
@@ -815,7 +827,7 @@ export function XPage() {
   (and at most one `action`, an icon + its accessibility label) only when the screen has
   no row to spend on a title — a screen whose zones are all fixed, like `/movie/[id]`,
   where the stage lives on the height everything else leaves over. The bar's row is a
-  44dp tap target either way, so a title there is free.
+  48dp tap target either way (`Sizes.touchMin`), so a title there is free.
 - **`hitSlop` does not cross a clipping ancestor on Android.** A small control inside a
   container with `overflow: 'hidden'` — the rounded frames the app draws everywhere — only
   receives touches that land inside that container, however much slop it declares. Spend

@@ -357,7 +357,7 @@ export function TimelineStrip({
                   { borderColor: theme.border, opacity: room === 0 ? 0.45 : 1 },
                 ]}
               >
-                <Ionicons name="add" size={20} color={theme.primary} />
+                <Ionicons name="add" size={20} color={theme.cherryInk} />
                 <ThemedText selectable={false} type="xsmall" themeColor="textSecondary">
                   {room > 0 ? `${room}개 더` : '가득 참'}
                 </ThemedText>

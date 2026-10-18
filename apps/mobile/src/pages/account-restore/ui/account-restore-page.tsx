@@ -34,7 +34,7 @@ export function AccountRestorePage() {
       ]}
     >
       <View style={styles.copy}>
-        <Ionicons color={theme.amber} name="hourglass-outline" size={40} />
+        <Ionicons color={theme.textSecondary} name="hourglass-outline" size={40} />
         <ThemedText type="subtitle">삭제 대기 중인 계정</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           {purgeAfter
