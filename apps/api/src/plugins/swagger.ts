@@ -51,7 +51,11 @@ function errorDescription(payload: SupabaseTokenResponse): string {
   return '이메일 또는 비밀번호를 확인하세요.';
 }
 
-/** Swagger OAuth2 password flow를 Supabase 이메일 로그인으로 변환한다. */
+/**
+ * Swagger OAuth2 password flow를 Supabase 이메일 로그인으로 변환한다.
+ *
+ * 받는 `app` 은 이 라우트만의 플러그인 스코프여야 한다(`registerDocs` 참고) — 폼 파서가 함께 걸린다.
+ */
 function registerDevLogin(app: FastifyInstance, config: DocsConfig): void {
   if (!app.hasContentTypeParser(FORM_URLENCODED)) {
     app.addContentTypeParser(
@@ -211,7 +215,11 @@ export async function registerDocs(app: FastifyInstance, config: DocsConfig): Pr
   });
 
   if (devLoginEnabled) {
-    registerDevLogin(app, config);
+    // 자기 스코프에 둔다. 폼 파서가 루트에 걸리면 뒤에 등록되는 라우트 스코프가 모두 물려받아, 자기 폼 파서를
+    // 거는 SNS 웹훅 스코프가 `FST_ERR_CTP_ALREADY_PRESENT` 로 서버를 띄우지 못한다.
+    await app.register(async (scope) => {
+      registerDevLogin(scope, config);
+    });
   }
 
   await app.register(swaggerUi, {
