@@ -31,6 +31,7 @@ import { pickTransitions, type TransitionTaste } from './transition-director.js'
 import { emitTasteSignals, readTasteProfile } from './taste/taste.service.js';
 import { buildTasteLookup, moodsOfAnalysis, transitionsSuiting } from './taste/taste-affinity.js';
 import { ANALYSIS_VERSION } from './video-analysis.service.js';
+import { VIDEO_ASSET_SELECT, ownedObjectKeys } from './video-assets.js';
 import {
   draftComparisonSignals,
   finishedMovieSignals,
@@ -626,13 +627,45 @@ export async function updateMovie(params: {
 /**
  * 무비를 지운다. **참조하던 스냅은 그대로 둔다**(decisions/movie-export-policy.md ③) —
  * 한 스냅을 여러 무비가 나눠 쓸 수 있으므로 함께 지우면 다른 무비의 컷이 사라진다.
+ *
+ * **결과물은 함께 지운다**(specs/movie.md MOV-26). 지운 무비는 다시 열 수 없어 결과물이 사용자에게 닿지 않는데,
+ * 30일 상한(MOV-16)은 살아 있는 무비의 결과물만 보므로 남기면 영영 남는다. 결과물은 생성마다 새로 만든 행이라
+ * (`createEditJob`) 다른 무비와 나눠 쓰지 않는다.
+ *
+ * 행을 먼저 지운 것으로 만들고 파일은 그 뒤에 지우며, `purgedAt` 은 남기지 않는다 — 파일 삭제가 실패했거나 생성 중이던
+ * 작업이 지운 뒤에 파일을 써도(워커는 무비를 모른다) 남은 객체 정리 배치가 회수한다(retention.service.ts `findOrphanedObjects`).
  */
 export async function deleteMovie(params: { userId: string; movieId: string }): Promise<void> {
   const current = await findOwned(params.userId, params.movieId);
-  await getPrisma().movie.update({
-    where: { id: current.id },
-    data: { deletedAt: new Date() },
-  });
+  const prisma = getPrisma();
+  const result = current.resultVideoId
+    ? await prisma.video.findFirst({
+        where: { id: current.resultVideoId, userId: params.userId, kind: 'result', deletedAt: null },
+        select: VIDEO_ASSET_SELECT,
+      })
+    : null;
+
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.movie.update({ where: { id: current.id }, data: { deletedAt: now } }),
+    ...(result
+      ? [
+          prisma.video.update({
+            where: { id: result.id },
+            data: { deletedAt: now, status: 'deleted', removalReason: 'user' },
+          }),
+        ]
+      : []),
+  ]);
+
+  // 결과물의 원본 키는 스냅에서 빌려 온 것이라 지우지 않는다(video-assets.ts).
+  for (const key of result ? ownedObjectKeys(result) : []) {
+    try {
+      await deleteObject(key);
+    } catch {
+      /* 정리 배치가 회수한다 */
+    }
+  }
 }
 
 /**
