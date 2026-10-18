@@ -1,8 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Radius, Spacing } from '@/shared/ui/theme';
-import { ThemedText } from '@/shared/ui/themed-text';
 import { Reel } from '@/shared/ui/reel';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
 
 import type { SocialProviderMeta } from '../model/social-provider';
 import { ProviderIcon } from './provider-icon';
@@ -20,54 +19,34 @@ export function SocialLoginButton({
   disabled = false,
   onPress,
 }: SocialLoginButtonProps) {
+  // The provider's own colours on the app's ticket: the brand is theirs, the
+  // shape is the app's.
   return (
-    <Pressable
-      accessibilityRole="button"
+    <SnaplyButton
+      title={provider.label}
       accessibilityLabel={provider.label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
       onPress={onPress}
-      style={(state) => [
-        styles.button,
-        {
-          backgroundColor: provider.backgroundColor,
-          borderColor: provider.borderColor,
-          opacity: disabled ? 0.5 : state.pressed ? 0.85 : 1,
-        },
-      ]}
-    >
-      {loading ? (
-        <Reel color={provider.textColor} />
-      ) : (
-        <>
+      colors={{
+        face: provider.backgroundColor,
+        label: provider.textColor,
+        perforation: provider.borderColor,
+      }}
+      leading={
+        loading ? (
+          <Reel color={provider.textColor} size={18} />
+        ) : (
           <View style={styles.icon}>
             <ProviderIcon provider={provider.id} />
           </View>
-          <ThemedText selectable={false} type="button" style={{ color: provider.textColor }}>
-            {provider.label}
-          </ThemedText>
-        </>
-      )}
-    </Pressable>
+        )
+      }
+      style={{ transform: [{ rotate: '-0.4deg' }] }}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    minHeight: 56,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    paddingHorizontal: Spacing.five,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.two,
-  },
-  icon: {
-    position: 'absolute',
-    left: Spacing.four,
-    width: 24,
-    alignItems: 'center',
-  },
+  icon: { width: 20, alignItems: 'center' },
 });

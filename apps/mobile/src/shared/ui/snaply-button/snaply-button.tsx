@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   type LayoutChangeEvent,
   Pressable,
@@ -17,6 +17,13 @@ export type SnaplyButtonProps = Omit<PressableProps, 'children'> & {
   title: string;
   icon?: string;
   variant?: SnaplyButtonVariant;
+  /**
+   * A ticket in someone else's colours — a sign-in provider's button keeps its
+   * brand. Overrides the variant's face; the shape stays the app's.
+   */
+  colors?: { face: string; label: string; perforation: string };
+  /** Drawn before the label instead of `icon` — a brand mark, a spinner. */
+  leading?: ReactNode;
 };
 
 /** The admission ticket's notch at each short end, and where its perforation runs. */
@@ -42,6 +49,8 @@ export function SnaplyButton({
   style,
   title,
   variant = 'primary',
+  colors,
+  leading,
   ...props
 }: SnaplyButtonProps) {
   const theme = useTheme();
@@ -79,7 +88,9 @@ export function SnaplyButton({
   } as const;
   const { face, label, perf } = disabled
     ? { face: theme.border, label: theme.textSecondary, perf: 'rgba(43,43,43,0.18)' }
-    : faces[variant];
+    : colors
+      ? { face: colors.face, label: colors.label, perf: colors.perforation }
+      : faces[variant];
 
   const onLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -130,11 +141,12 @@ export function SnaplyButton({
               variant === 'danger' && styles.dangerLabel,
             ]}
           >
-            {icon ? (
-              <ThemedText selectable={false} style={[styles.icon, { color: label }]}>
-                {icon}
-              </ThemedText>
-            ) : null}
+            {leading ??
+              (icon ? (
+                <ThemedText selectable={false} style={[styles.icon, { color: label }]}>
+                  {icon}
+                </ThemedText>
+              ) : null)}
             <ThemedText selectable={false} type="button" style={{ color: label }}>
               {title}
             </ThemedText>

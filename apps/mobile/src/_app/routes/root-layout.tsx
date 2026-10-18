@@ -100,7 +100,7 @@ function RootStack() {
       <Stack.Protected guard={isRecovering}>
         <Stack.Screen
           name="update-password"
-          options={{ title: '새 비밀번호 설정', headerBackVisible: false, gestureEnabled: false }}
+          options={{ title: '새 비밀번호 설정', headerShown: false, gestureEnabled: false }}
         />
       </Stack.Protected>
 
@@ -165,8 +165,13 @@ function RootStack() {
 
       <Stack.Protected guard={!isAuthenticated && !isRecovering}>
         <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-        <Stack.Screen name="sign-up" options={{ title: '회원가입' }} />
-        <Stack.Screen name="reset-password" options={{ title: '비밀번호 재설정' }} />
+        {/* The page names itself in a hand title (one title per screen), so the
+            header keeps only the way back. */}
+        <Stack.Screen name="sign-up" options={{ title: '회원가입', headerTitle: '' }} />
+        <Stack.Screen
+          name="reset-password"
+          options={{ title: '비밀번호 재설정', headerTitle: '' }}
+        />
       </Stack.Protected>
 
       {/* Auth email deep-link landing screens. Declared outside every guard so

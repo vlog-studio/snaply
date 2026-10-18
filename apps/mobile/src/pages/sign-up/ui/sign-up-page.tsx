@@ -2,9 +2,11 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { SignUpFlow } from '@/features/sign-up';
+import { PaperGround, PaperPiece } from '@/shared/ui/paper';
 import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
+/** A form on a sheet of its own over ruled paper, under the screen's one hand title. */
 export function SignUpPage() {
   const theme = useTheme();
 
@@ -22,8 +24,13 @@ export function SignUpPage() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <ThemedText type="title">계정 만들기</ThemedText>
-          <SignUpFlow />
+          <PaperGround kind="ruled" />
+          <ThemedText type="title" accessibilityRole="header">
+            계정 만들기
+          </ThemedText>
+          <PaperPiece tilt={-0.6} style={styles.sheet}>
+            <SignUpFlow />
+          </PaperPiece>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -39,8 +46,13 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
     paddingHorizontal: Spacing.five,
-    paddingTop: Spacing.five,
+    paddingTop: Spacing.four,
     paddingBottom: Spacing.six,
     gap: Spacing.four,
+  },
+  sheet: {
+    paddingTop: Spacing.three,
+    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.four,
   },
 });

@@ -47,10 +47,10 @@ Snaply opens into a four-tab application — 스튜디오 (`/`), 스냅 (`/snaps
 | `/sns/connected`, `/sns/error` | Headerless root-stack screens with no transition animation (`animation: 'none'`), signed-in group; where the backend's SNS-link return lands when the link reaches the router — they re-read the account's links and step back ([Me tab](me.md#ownership-and-state)) | `pages/sns-return` |
 | `/settings/delete-account` | Root-stack screen with the stack's titled header (계정 삭제); the deletion consequence read-out and confirm button | `pages/me` |
 | `/account-restore` | Headerless full-screen block (back gesture disabled), forced by its own guard group while the account is pending deletion; restore or sign out | `pages/account-restore` |
-| `/update-password` | Root-stack screen with a titled header (새 비밀번호 설정), no back button and the back gesture disabled, forced by the recovery guard group until the new password is saved | `pages/update-password` |
+| `/update-password` | Root-stack screen with no header — the page's hand title names it (새 비밀번호 설정) — and the back gesture disabled, forced by the recovery guard group until the new password is saved | `pages/update-password` |
 | `/sign-in` | Headerless; the signed-out group's first screen, so the fallback whenever no session exists | `pages/sign-in` |
-| `/sign-up` | Root-stack screen with a titled header (회원가입), signed-out group | `pages/sign-up` |
-| `/reset-password` | Root-stack screen with a titled header (비밀번호 재설정), signed-out group | `pages/reset-password` |
+| `/sign-up` | Root-stack screen whose header keeps only the back button; the page's hand title names it (계정 만들기). Signed-out group | `pages/sign-up` |
+| `/reset-password` | Root-stack screen whose header keeps only the back button; the page's hand title names it (비밀번호 재설정). Signed-out group | `pages/reset-password` |
 | `/auth/callback`, `/auth/reset` | Headerless spinner screens outside every guard, declared last; the email and OAuth deep-link landings, which exchange the link's `code` and redirect ([Authentication](authentication.md#route-flow)) | `pages/auth-callback` (`mode` `signin` / `recovery`) |
 
 `src/app` parses string search parameters where needed and passes them to page components as explicit props (`snaps.tsx` turns `?select=1` / `?select=draft` / `?select=album` into `startSelecting` (`'movie'` / `'draft'` / `'album'`) and `?at=` into `selectionRequest`, `add-snaps.tsx` turns `?only=left-out` into `onlyLeftOut`, `extract.tsx` turns `?source&duration` into `sourceUri` / `knownDurationSec`). The `src/_app/routes` module owns stack and tab policies; page slices own screen content.
