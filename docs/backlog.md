@@ -20,7 +20,7 @@
 둔다. 번호는 재사용하지 않으며, 빠진 번호는 닫은 항목에 있다. `progress 날짜 "제목"` 은 [progress.md](./progress.md)(이번 달)와
 `archive/progress-YYYY-MM.md`(지난달)에서 날짜로 찾는다 — progress.md 머리말의 grep.
 
-다음 번호: A-16 · B-9 · C-9 · D-7 · E-58 · H-19
+다음 번호: A-17 · B-9 · C-9 · D-7 · E-58 · H-19
 
 ---
 
@@ -494,13 +494,35 @@ A-12 의 에이전트가 한다.
       제목 하나, 선택 바의 삭제 글자 동작 — 과 사용자에게 보이는 라벨 · 구조가 바뀌는 곳은 기능 문서를 같이 고친다
 - [ ] **글자 크기 확대** — 시스템 글꼴 1.3배 · 2배에서 종이 조각(테이프 라벨 · 입장권 버튼 · 탭 스텁)이 넘치지 않는지 확인한다. 지금 앱에는
       `maxFontSizeMultiplier` 가 없다
-- [ ] **기기 확인** — Android 에뮬레이터 · 휴대폰에서 낮 · 밤 · 동작 줄이기. iOS 확인은 iOS 출시 전에 한다(A-4)
+- [ ] **기기 확인** — Android 에뮬레이터 · 휴대폰에서 낮 · 밤 · 동작 줄이기. 같은 빌드에서 계정 삭제 확인 화면의 `소셜 연결이 모두 끊겨요` 줄(H-16, 2026-10-18)도
+      보고 ACC-8 라벨의 괄호를 지운다. iOS 확인은 iOS 출시 전에 한다(A-4)
 - [ ] **앱 크기** — 글꼴을 바꾼 뒤 빌드 크기를 재서 [progress.md](./progress.md)에 적는다
 
 **후속 후보(완료 조건 아님)**:
 
 - (제안) **완성 축하** — 시안의 `완성!` 화면은 지금 앱에 없는 새 동작이다. 넣으려면 [specs/movie.md](./specs/movie.md)와 기능 문서
   `apps/mobile/docs/features/movie.md` 부터 고친다
+
+
+### A-16. `앱` 촬영 리마인더 · 하루 빈도 — 나중에 붙일 기능
+
+알림 화면(`/settings/notifications`, `apps/mobile/src/pages/me/ui/me-notifications-page.tsx`)의 `촬영 리마인더` · `하루 빈도` 는 `준비 중` 자리 행이다
+(2026-09-24 오너 결정 — 알림을 보낼 스케줄러가 없어 스위치를 두면 오지 않는 알림을 약속하게 된다). 2026-10-18 오너가 **나중에 붙여야 하는 기능**으로 정했다
+(H-17 을 여기로 옮김). 자동으로 스냅을 모으는 길이 없어 이것이 앱이 먼저 촬영을 권하는 유일한 넛지다(기능 문서 me.md ·
+[product-concept.md](./decisions/product-concept.md) §3).
+
+**지금 있는 것**: 화면의 두 자리 행, `features/notification-settings` 저장소의 `reminderWindows` · `reminderFrequency` 와 훅(`useReminderWindows` ·
+`useReminderFrequency` — 아무 화면도 읽지 않는다, 기기에만 있는 값). 스펙 요구 · 스케줄러 · 알림 종류는 없다.
+
+**정할 것**:
+
+- [ ] **요구(스펙)** — [specs/notifications.md](./specs/notifications.md)에 새 NTF 요구: 언제(시간대 · 요일), 하루 몇 번, 기본값(알림 결정
+      [notification-preferences.md](./decisions/notification-preferences.md)의 "기본은 꺼짐"), 조용한 시간과의 관계, 오늘 이미 찍었으면 보내지 않는지
+- [ ] **어디서 보내나** — 기기의 로컬 알림(서버 없이, 기기 하나) 또는 서버 푸시(계정 단위 · 여러 기기는 B-2). 설정을 계정에 둘지(다른 알림처럼
+      `GET`/`PATCH /auth/me`) 기기에 둘지. 결정 문서로 남긴다
+- [ ] **구현** — 고른 쪽의 스케줄러 · 설정 저장 · 화면(자리 행을 실제 컨트롤로) · 기능 문서 me.md · 계약(서버에 두면)
+
+**완료 조건**: 스펙 요구가 `구현됨` 이 되고, 알림 화면의 두 행이 실제로 동작하며 에뮬레이터에서 알림이 온다(휴대폰 수신은 F).
 
 ---
 
@@ -829,32 +851,6 @@ AI 편집 에이전트가 2026-10-13 부터 공모전 서버에서 서버 시크
 문서 감사 · 리뷰에서 나온, **규칙이나 문서를 어느 쪽으로 맞출지만 정하면 되는** 작은 판단이다 — 고르는 쪽에 따라 문서만 고치거나 작은
 코드 변경이 따른다. 각 항목에 배경 · 선택지 · 권장(있으면) · 완료 조건을 적었다. 정하면 해당 문서(와 필요한 경우 코드 · 테스트)를 고치고 닫는다.
 
-### H-16. 계정 삭제 화면이 SNS 연결 해제를 말하지 않는다
-
-계정을 지우면 SNS 연동(Instagram)이 바로 지워지는데(ACC-8), 삭제 확인 화면(`/settings/delete-account`,
-`apps/mobile/src/pages/me/ui/me-delete-account-page.tsx`)은 결과 셋(만드는 중인 무비 취소 · 알림 꺼짐 · 30일 안에 되돌리기)만 보인다.
-
-- **선택지** — (a) 화면에 한 줄 더한다(스펙 ACC-8 · UX 문구를 먼저 정한다) (b) 말하지 않고 그 이유를 적는다
-- **완료 조건** — 고른 쪽을 [specs/account.md](./specs/account.md) 와 [apps/mobile/docs/features/me.md](../apps/mobile/docs/features/me.md) 에 적는다((a) 면 화면도)
-
-### H-17. 촬영 리마인더 · 하루 빈도의 `준비 중` 행
-
-알림 화면(`/settings/notifications`, `apps/mobile/src/pages/me/ui/me-notifications-page.tsx`)에 `촬영 리마인더` · `하루 빈도` 가 `준비 중` 으로
-남아 있다. 스펙에 요구가 없고 백로그 항목도 없는데, [기능 문서](../apps/mobile/docs/features/me.md)는 스케줄러가 생기면 돌아올 기능으로 적는다.
-`features/notification-settings` 의 저장소는 `reminderWindows` · `reminderFrequency` 를 갖고(`useReminderWindows` · `useReminderFrequency`) 아무 화면도
-읽지 않는다.
-
-- **선택지** — (a) 실제 항목으로 연다(스펙 요구부터 — 언제 · 몇 번 알릴지와 스케줄러) (b) 자리 행과 저장소 필드를 걷는다
-- **완료 조건** — 둘 중 하나를 한다((a) 면 스펙 요구와 이 문서의 새 항목, (b) 면 화면 · 저장소 · 기능 문서)
-
-### H-18. 앱이 무비 1편 값 100 을 상수로 안다
-
-나 탭의 잔액 줄은 `apps/mobile/src/pages/me/model/balance-read-out.ts` 의 `MovieRunCredits = 100` 으로 "무비 1편 = 100"과 만들 수 있는 편수를
-보인다(CRD-1 의 고정값). 그런데 무비 생성 화면은 값을 보이지 않고(C-1), 값이 바뀌면 앱을 다시 내야 한다.
-
-- **선택지** — (a) 앱이 CRD-1 을 상수로 알아도 된다고 정하고 그 규칙을 적는다 (b) 서버에서 읽는다(계약에 값을 싣는다)
-- **완료 조건** — 고른 규칙을 [apps/mobile/docs/features/credits-and-rewarded-ads.md](../apps/mobile/docs/features/credits-and-rewarded-ads.md) 에 적는다((b) 면 계약 · 코드도)
-
 ---
 
 ## 닫은 항목
@@ -1017,3 +1013,6 @@ AI 편집 에이전트가 2026-10-13 부터 공모전 서버에서 서버 시크
 - **H-13** 모바일 기능 문서의 상태 라벨 두 개와 앱 맵 순서 — 2026-10-11, 스냅 추출은 `Partial` 유지(에뮬레이터 확인만, 실기기 · iOS 미검증) · 서버 추천(Stage 2)은 `Not implemented`(dormant) · 앱 맵은 `root-layout.tsx` 선언 순서 유지 → progress 2026-10-11 "기능 문서 상태 라벨 정리"
 - **H-14** 백로그 A-1 ② 의 통과 판정(통과 유지 — 오너 확인) — 2026-10-10 → progress 2026-10-10 "A-1 ② 의 통과를 유지한다"
 - **H-15** "실기기 미검증"을 지우는 기준 — 2026-10-16, (b) 앱 동작은 Android 에뮬레이터 확인으로 지우고 기기에만 있는 것(푸시 수신 · 권한 · 카메라 · 앨범 · 다른 앱 열기)만 휴대폰을 기다린다. iOS 는 A-4 "iOS 출시 전" → progress 2026-10-16 "문서 정리 3차 — 감사와 정리"
+- **H-16** 계정 삭제 화면이 SNS 연결 해제를 말하지 않는다 — 2026-10-18, (a) 한 줄 더함(`소셜 연결이 모두 끊겨요` · `되돌려도 다시 연결해야 해요`, ACC-8 — 에뮬레이터 확인은 A-15 빌드) → progress 2026-10-18 "H-16 ~ 18 판단"
+- **H-17** 촬영 리마인더 · 하루 빈도의 `준비 중` 행 — 2026-10-18, 나중에 붙일 기능으로 정해 A-16 으로 옮김(자리 행은 그대로) → progress 2026-10-18 "H-16 ~ 18 판단"
+- **H-18** 앱이 무비 1편 값 100 을 상수로 안다 — 2026-10-18, (a) 상수로 둔다(CRD-1 을 바꾸면 앱도 함께 낸다 — 크레딧 기능 문서, A-2 · C-1 때 다시 본다) → progress 2026-10-18 "H-16 ~ 18 판단"
