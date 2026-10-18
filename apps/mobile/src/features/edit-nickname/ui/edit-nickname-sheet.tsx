@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { FormTextField } from '@/shared/ui/form-text-field';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { NicknameMaxLength, nicknameSchema, type NicknameValues } from '../model/nickname-schema';
@@ -26,7 +26,6 @@ export type EditNicknameSheetProps = {
  * server's own text is never shown.
  */
 export function EditNicknameSheet({ visible, name, onClose }: EditNicknameSheetProps) {
-  const theme = useTheme();
   const save = useSaveNickname();
   const { control, handleSubmit } = useForm<NicknameValues>({
     resolver: zodResolver(nicknameSchema),
@@ -57,7 +56,9 @@ export function EditNicknameSheet({ visible, name, onClose }: EditNicknameSheetP
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="이름 바꾸기">
       <View style={styles.form}>
-        <ThemedText type="heading">이름 바꾸기</ThemedText>
+        <ThemedText type="subtitle" accessibilityRole="header">
+          이름 바꾸기
+        </ThemedText>
         <FormTextField
           control={control}
           name="nickname"
@@ -70,24 +71,21 @@ export function EditNicknameSheet({ visible, name, onClose }: EditNicknameSheetP
           onSubmitEditing={submit}
         />
         {save.isError ? (
-          <ThemedText type="small" themeColor="danger">
+          <ThemedText type="small" themeColor="cherryInk">
             이름을 저장하지 못했어요. 다시 시도해 주세요.
           </ThemedText>
         ) : null}
         <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
+          <SnaplyButton
+            variant="secondary"
+            title="취소"
             accessibilityLabel="이름 바꾸기 취소"
             onPress={onClose}
-            style={[styles.cancel, { borderColor: theme.border }]}
-          >
-            <ThemedText selectable={false} type="button" themeColor="textSecondary">
-              취소
-            </ThemedText>
-          </Pressable>
+            style={styles.cancel}
+          />
           <SnaplyButton
             title={save.isPending ? '저장하는 중…' : '저장'}
-            disabled={save.isPending}
+            busy={save.isPending}
             onPress={submit}
             style={styles.save}
           />
@@ -98,16 +96,8 @@ export function EditNicknameSheet({ visible, name, onClose }: EditNicknameSheetP
 }
 
 const styles = StyleSheet.create({
-  form: { gap: Spacing.two },
-  actions: { flexDirection: 'row', gap: Spacing.two },
+  form: { gap: Spacing.three },
+  actions: { flexDirection: 'row', gap: Spacing.two + Spacing.half },
   save: { flex: 1 },
-  cancel: {
-    minHeight: 56,
-    paddingHorizontal: Spacing.six,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  cancel: { flexBasis: '36%' },
 });

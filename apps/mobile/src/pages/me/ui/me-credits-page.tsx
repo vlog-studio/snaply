@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { creditQueries } from '@/entities/credit';
 import {
@@ -11,7 +11,10 @@ import {
   type WatchRewardAdPhase,
 } from '@/features/watch-reward-ad';
 import { formatTimestamp } from '@/shared/lib/datetime';
-import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperGround } from '@/shared/ui/paper';
+import { TapeLabel } from '@/shared/ui/tape-chip';
+import { TextButton } from '@/shared/ui/text-button';
+import { Fonts, MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { balanceReadOut } from '../model/balance-read-out';
@@ -116,11 +119,14 @@ export function MeCreditsPage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       <View style={styles.hero}>
         {balanceQuery.data ? (
-          <ThemedText type="title">{balanceQuery.data.balance.toLocaleString('ko-KR')}</ThemedText>
+          <ThemedText style={[styles.balance, { color: theme.text }]}>
+            {balanceQuery.data.balance.toLocaleString('ko-KR')}
+          </ThemedText>
         ) : (
-          <ThemedText type="title" themeColor="textSecondary">
+          <ThemedText themeColor="textSecondary" style={styles.balance}>
             {balanceQuery.isError ? '—' : ' '}
           </ThemedText>
         )}
@@ -128,15 +134,11 @@ export function MeCreditsPage() {
           {balanceReadOut(balanceQuery.data?.balance)}
         </ThemedText>
         {balanceQuery.isError ? (
-          <Pressable
-            accessibilityRole="button"
+          <TextButton
+            label="다시 불러오기"
             accessibilityLabel="잔액 다시 불러오기"
             onPress={() => void balanceQuery.refetch()}
-          >
-            <ThemedText type="smallBold" themeColor="cherryInk">
-              다시 불러오기
-            </ThemedText>
-          </Pressable>
+          />
         ) : null}
       </View>
 
@@ -148,9 +150,9 @@ export function MeCreditsPage() {
             sub={adRowSub}
             right={
               running ? undefined : (
-                <ThemedText type="smallBold" themeColor="cherryInk">
+                <TapeLabel fill={theme.tapePink} tilt={1}>
                   보기
-                </ThemedText>
+                </TapeLabel>
               )
             }
             onPress={running || availability.remainingToday <= 0 ? undefined : () => void runAd()}
@@ -162,7 +164,7 @@ export function MeCreditsPage() {
               <View style={styles.outcomeLine}>
                 <ThemedText
                   type="small"
-                  themeColor={lastOutcome?.granted ? 'primary' : 'textSecondary'}
+                  themeColor={lastOutcome?.granted ? 'cherryInk' : 'textSecondary'}
                 >
                   {outcomeLine}
                 </ThemedText>
@@ -208,5 +210,13 @@ const styles = StyleSheet.create({
     gap: Spacing.five,
   },
   hero: { alignItems: 'center', gap: Spacing.one },
-  outcomeLine: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three },
+  // The balance as the one big receipt figure on the page.
+  balance: {
+    fontFamily: Fonts.mono,
+    fontWeight: 700,
+    fontSize: 40,
+    lineHeight: 48,
+    fontVariant: ['tabular-nums'],
+  },
+  outcomeLine: { paddingHorizontal: Spacing.one, paddingVertical: Spacing.three },
 });

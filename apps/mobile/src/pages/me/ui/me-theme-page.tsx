@@ -1,5 +1,6 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { PaperGround } from '@/shared/ui/paper';
 import {
   MaxContentWidth,
   Spacing,
@@ -33,6 +34,7 @@ export function MeThemePage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       <SettingsSection>
         <View style={styles.options}>
           {themeModeOptions.map(({ mode, label }) => (

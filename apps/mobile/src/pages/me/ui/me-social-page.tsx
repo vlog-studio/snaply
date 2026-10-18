@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useConnectSns } from '@/features/connect-sns';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperGround } from '@/shared/ui/paper';
+import { TapeChip } from '@/shared/ui/tape-chip';
+import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { AlertCard } from '@/shared/ui/notice';
-import { ThemedText } from '@/shared/ui/themed-text';
 
 import { RowDivider, SettingRow, SettingsSection } from './rows';
 
@@ -60,6 +61,7 @@ export function MeSocialPage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       <SettingsSection>
         <SettingRow
           icon="logo-instagram"
@@ -67,19 +69,13 @@ export function MeSocialPage() {
           sub={readOut}
           right={
             action ? (
-              <Pressable
-                accessibilityRole="button"
+              <TapeChip
+                label={action.label}
                 accessibilityLabel={`Instagram ${action.label}`}
                 accessibilityState={{ disabled: !action.run, busy: !action.run }}
                 disabled={!action.run}
                 onPress={action.run}
-                hitSlop={Spacing.two}
-                style={({ pressed }) => ({ opacity: !action.run ? 0.6 : pressed ? 0.7 : 1 })}
-              >
-                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-                  {action.label}
-                </ThemedText>
-              </Pressable>
+              />
             ) : undefined
           }
         />
@@ -101,11 +97,5 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.five,
     paddingBottom: Spacing.eight,
     gap: Spacing.five,
-  },
-  notice: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
   },
 });

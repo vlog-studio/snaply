@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   useLocationAlerts,
   useMovieReadyAlerts,
   useQuietHours,
 } from '@/features/notification-settings';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { StickerButton } from '@/shared/ui/sticker-button';
+import { PaperGround } from '@/shared/ui/paper';
+import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Toggle } from '@/shared/ui/toggle';
 
@@ -41,6 +43,7 @@ export function MeNotificationsPage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       {/* Reminders are a placeholder for the planned capability (owner
           decision, 2026-09-24): no scheduler consumes the stored windows or
           frequency, so a control would promise a notification that never
@@ -141,7 +144,7 @@ export function MeNotificationsPage() {
       </SettingsSection>
 
       {saveError ? (
-        <ThemedText type="small" themeColor="danger" style={styles.saveError}>
+        <ThemedText type="small" themeColor="cherryInk" style={styles.saveError}>
           {saveError}
         </ThemedText>
       ) : null}
@@ -180,39 +183,25 @@ function HourStepper({
       title={label}
       right={
         <View style={styles.stepper}>
-          <Pressable
-            accessibilityRole="button"
+          <StickerButton
+            icon="minus"
             accessibilityLabel={`${label} 시간 줄이기`}
-            accessibilityState={{ disabled }}
             disabled={disabled}
             onPress={() => onChange((value + 23) % 24)}
-            style={[
-              styles.stepperButton,
-              { borderColor: theme.border, opacity: disabled ? 0.4 : 1 },
-            ]}
+          />
+          <ThemedText
+            selectable={false}
+            type="data"
+            style={[styles.stepperValue, { color: theme.text }]}
           >
-            <ThemedText selectable={false} type="smallBold">
-              −
-            </ThemedText>
-          </Pressable>
-          <ThemedText selectable={false} type="smallBold" style={styles.stepperValue}>
             {formatHour(value)}
           </ThemedText>
-          <Pressable
-            accessibilityRole="button"
+          <StickerButton
+            icon="plus"
             accessibilityLabel={`${label} 시간 늘리기`}
-            accessibilityState={{ disabled }}
             disabled={disabled}
             onPress={() => onChange((value + 1) % 24)}
-            style={[
-              styles.stepperButton,
-              { borderColor: theme.border, opacity: disabled ? 0.4 : 1 },
-            ]}
-          >
-            <ThemedText selectable={false} type="smallBold">
-              +
-            </ThemedText>
-          </Pressable>
+          />
         </View>
       }
     />
@@ -229,16 +218,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.eight,
     gap: Spacing.five,
   },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
-  stepperButton: {
-    width: 40,
-    height: 40,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperValue: { minWidth: 56, textAlign: 'center' },
-  quietHint: { paddingHorizontal: Spacing.four, paddingVertical: Spacing.three },
-  saveError: { paddingHorizontal: Spacing.four },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  stepperValue: { minWidth: 52, textAlign: 'center', fontWeight: 700 },
+  quietHint: { paddingHorizontal: Spacing.one, paddingVertical: Spacing.three },
+  saveError: { paddingHorizontal: Spacing.one },
 });

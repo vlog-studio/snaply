@@ -6,6 +6,7 @@ import {
   useToggleInterest,
 } from '@/features/choose-interests';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { PaperGround } from '@/shared/ui/paper';
 import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -37,6 +38,7 @@ export function MeInterestsPage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       {loadFailed && !ready ? (
         <View style={styles.failed}>
           <ThemedText type="small" themeColor="textSecondary">
@@ -60,7 +62,7 @@ export function MeInterestsPage() {
         </SettingsSection>
       ) : null}
       {saveFailed ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           관심사를 저장하지 못했어요. 다시 시도해 주세요.
         </ThemedText>
       ) : null}

@@ -1,6 +1,7 @@
 import { Linking, ScrollView, StyleSheet } from 'react-native';
 
 import { useAlbumAutoSave } from '@/features/save-snap-to-album';
+import { PaperGround } from '@/shared/ui/paper';
 import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { Toggle } from '@/shared/ui/toggle';
 
@@ -26,6 +27,7 @@ export function MeAlbumPage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       <SettingsSection>
         <SettingRow
           icon="images-outline"

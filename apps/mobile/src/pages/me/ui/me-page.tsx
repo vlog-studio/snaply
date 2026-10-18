@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useRouter, useScrollToTop } from 'expo-router';
@@ -21,7 +20,7 @@ import { useNotificationPreferences } from '@/features/notification-settings';
 import { useAlbumAutoSaveEnabled } from '@/features/save-snap-to-album';
 import {
   MaxContentWidth,
-  Radius,
+  Sizes,
   Spacing,
   useTabBarHeight,
   useTheme,
@@ -29,10 +28,13 @@ import {
   useTopContentInset,
   type ThemeMode,
 } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { PaperGround, PaperPiece } from '@/shared/ui/paper';
+import { RansomTitle } from '@/shared/ui/ransom-title';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { recordedDayCount, weekRecord } from '../model/week-record';
-import { RowDivider, SettingRow } from './rows';
+import { RowChevron, RowDivider, SettingRow, SettingsSection } from './rows';
 import { WeekRing } from './week-ring';
 
 const appVersion = Constants.expoConfig?.version;
@@ -121,6 +123,9 @@ export function MePage() {
         { paddingTop: Spacing.six + topInset, paddingBottom: Spacing.eight + tabBarHeight },
       ]}
     >
+      <PaperGround kind="ruled" />
+      <RansomTitle word="나" />
+
       <View style={styles.hero}>
         <WeekRing days={days} initial={(name ?? '?').charAt(0)} size={148} />
         <View style={styles.heroCopy}>
@@ -133,27 +138,22 @@ export function MePage() {
             hitSlop={Spacing.two}
             style={({ pressed }) => [styles.nameRow, { opacity: pressed ? 0.7 : 1 }]}
           >
-            <ThemedText type="subtitle" numberOfLines={1} style={styles.name}>
+            <ThemedText numberOfLines={1} style={styles.name}>
               {name ?? '로그인하지 않음'}
             </ThemedText>
-            {currentUser ? <Ionicons name="pencil" size={16} color={theme.textSecondary} /> : null}
+            {currentUser ? (
+              <DoodleIcon name="pencil" size={18} color={theme.textSecondary} />
+            ) : null}
           </Pressable>
-          <ThemedText type="small" themeColor="textSecondary">
-            {`이번 주 ${recordedDays}일 기록`}
-          </ThemedText>
-        </View>
-        <View style={styles.statPills}>
-          <StatPill label="스냅" value={snaps.length} />
-          <StatPill label="무비" value={movies.length} />
+          <ThemedText type="data">{`이번 주 ${recordedDays}일 기록`}</ThemedText>
+          <View style={styles.stats}>
+            <Stat label="스냅" value={snaps.length} tilt={-4} />
+            <Stat label="무비" value={movies.length} tilt={5} />
+          </View>
         </View>
       </View>
 
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-        ]}
-      >
+      <SettingsSection title="SETTINGS · 설정">
         <SettingRow
           icon="ticket-outline"
           title="크레딧"
@@ -165,7 +165,7 @@ export function MePage() {
               : undefined
           }
           subLines={1}
-          right={<Chevron />}
+          right={<RowChevron />}
           onPress={() => router.push('/settings/credits')}
         />
         <RowDivider />
@@ -174,7 +174,7 @@ export function MePage() {
           title="알림"
           sub={alertSummary}
           subLines={1}
-          right={<Chevron />}
+          right={<RowChevron />}
           onPress={() => router.push('/settings/notifications')}
         />
         <RowDivider />
@@ -183,7 +183,7 @@ export function MePage() {
           title="화면 테마"
           sub={themeModeLabels[themeMode]}
           subLines={1}
-          right={<Chevron />}
+          right={<RowChevron />}
           onPress={() => router.push('/settings/theme')}
         />
         <RowDivider />
@@ -192,7 +192,7 @@ export function MePage() {
           title="스냅 분석"
           sub={analysisReadOut}
           subLines={1}
-          right={analysisReachable ? <Chevron /> : undefined}
+          right={analysisReachable ? <RowChevron /> : undefined}
           onPress={analysisReachable ? () => router.push('/settings/analysis') : undefined}
         />
         <RowDivider />
@@ -203,7 +203,7 @@ export function MePage() {
           title="앨범 저장"
           sub={albumAutoSave ? '자동 저장 켜짐' : '자동 저장 꺼짐'}
           subLines={1}
-          right={<Chevron />}
+          right={<RowChevron />}
           onPress={() => router.push('/settings/album')}
         />
         <RowDivider />
@@ -214,7 +214,7 @@ export function MePage() {
           title="관심사"
           sub={interests}
           subLines={1}
-          right={<Chevron />}
+          right={<RowChevron />}
           onPress={() => router.push('/settings/interests')}
         />
         <RowDivider />
@@ -226,33 +226,24 @@ export function MePage() {
           title="소셜 연결"
           sub={socialReadOut}
           subLines={1}
-          right={<Chevron />}
+          right={<RowChevron />}
           onPress={() => router.push('/settings/social')}
         />
-      </View>
+      </SettingsSection>
 
-      <View
-        style={[
-          styles.card,
-          { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-        ]}
-      >
-        <Pressable accessibilityRole="button" style={styles.accountAction} onPress={clearSession}>
-          <ThemedText type="smallBold">로그아웃</ThemedText>
-        </Pressable>
+      {/* The account's own acts on a plain slip of their own — 계정 삭제 in
+          bold ink, not red: red is the main action. */}
+      <PaperPiece tilt={0.5} style={styles.account}>
+        <SettingRow title="로그아웃" onPress={clearSession} />
         <RowDivider />
-        <Pressable
-          accessibilityRole="button"
-          style={styles.accountAction}
+        <SettingRow
+          title="계정 삭제"
+          right={<RowChevron />}
           onPress={() => router.push('/settings/delete-account')}
-        >
-          <ThemedText type="smallBold" themeColor="danger">
-            계정 삭제
-          </ThemedText>
-        </Pressable>
-      </View>
+        />
+      </PaperPiece>
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.version}>
+      <ThemedText type="dataSm" themeColor="textSecondary" style={styles.version}>
         {appVersion ? `Snaply ${appVersion}` : 'Snaply'}
       </ThemedText>
 
@@ -264,25 +255,23 @@ export function MePage() {
   );
 }
 
-function Chevron() {
-  const theme = useTheme();
-  return <Ionicons color={theme.textSecondary} name="chevron-forward" size={16} />;
-}
-
-function StatPill({ label, value }: { label: string; value: number }) {
+/** A count on a cherry price disc, the word beside it. */
+function Stat({ label, value, tilt }: { label: string; value: number; tilt: number }) {
   const theme = useTheme();
 
   return (
-    <View
-      style={[
-        styles.statPill,
-        { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-      ]}
-    >
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText type="smallBold">{value}</ThemedText>
+    <View style={styles.stat}>
+      <View
+        style={[
+          styles.price,
+          { backgroundColor: theme.primary, transform: [{ rotate: `${tilt}deg` }] },
+        ]}
+      >
+        <ThemedText type="dataSm" style={[styles.priceText, { color: theme.onPrimary }]}>
+          {value}
+        </ThemedText>
+      </View>
+      <ThemedText type="smallBold">{label}</ThemedText>
     </View>
   );
 }
@@ -292,29 +281,32 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.four,
     gap: Spacing.five,
   },
-  hero: { alignItems: 'center', gap: Spacing.four },
-  heroCopy: { alignItems: 'center', gap: Spacing.half },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, maxWidth: '100%' },
-  name: { flexShrink: 1 },
-  statPills: { flexDirection: 'row', gap: Spacing.two },
-  statPill: {
+  // The ring beside who it is about.
+  hero: { flexDirection: 'row', alignItems: 'center', gap: Spacing.four },
+  heroCopy: { flex: 1, minWidth: 0, gap: Spacing.one + Spacing.half },
+  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    minHeight: 36,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-    borderRadius: Radius.pill,
+    gap: Spacing.one + Spacing.half,
+    minHeight: Sizes.touchMin,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
-  card: {
-    borderWidth: 1,
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
+  name: { flexShrink: 1, fontSize: 24, lineHeight: 32, fontWeight: 700 },
+  stats: { flexDirection: 'row', gap: Spacing.three + Spacing.half, paddingTop: Spacing.one },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half },
+  price: {
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  accountAction: { minHeight: 54, justifyContent: 'center', paddingHorizontal: Spacing.four },
-  version: { textAlign: 'center', paddingTop: Spacing.three },
+  priceText: { fontWeight: 700 },
+  account: { paddingHorizontal: Spacing.three + Spacing.half, paddingVertical: Spacing.half },
+  version: { textAlign: 'center' },
 });

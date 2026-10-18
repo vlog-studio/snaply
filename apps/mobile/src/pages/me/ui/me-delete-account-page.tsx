@@ -1,7 +1,9 @@
-import { Pressable, ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { useDeleteAccount } from '@/features/delete-account';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperGround } from '@/shared/ui/paper';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { RowDivider, SettingRow, SettingsSection } from './rows';
@@ -24,6 +26,7 @@ export function MeDeleteAccountPage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       <SettingsSection>
         <SettingRow
           icon="film-outline"
@@ -42,29 +45,20 @@ export function MeDeleteAccountPage() {
       </SettingsSection>
 
       {error ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           {error}
         </ThemedText>
       ) : null}
 
-      <Pressable
-        accessibilityRole="button"
+      {/* A delete is kraft with the VOID stamp, not red: red is the main action. */}
+      <SnaplyButton
+        variant="danger"
+        title={isPending ? '삭제하는 중…' : '계정 삭제'}
         accessibilityLabel="계정 삭제"
-        disabled={isPending}
+        busy={isPending}
         onPress={() => void deleteAccount()}
-        style={({ pressed }) => [
-          styles.deleteButton,
-          {
-            borderColor: theme.danger,
-            backgroundColor: theme.backgroundElement,
-            opacity: isPending ? 0.45 : pressed ? 0.78 : 1,
-          },
-        ]}
-      >
-        <ThemedText selectable={false} type="button" themeColor="danger">
-          {isPending ? '삭제하는 중…' : '계정 삭제'}
-        </ThemedText>
-      </Pressable>
+        style={styles.deleteButton}
+      />
     </ScrollView>
   );
 }
@@ -80,13 +74,5 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.eight,
     gap: Spacing.five,
   },
-  deleteButton: {
-    marginTop: 'auto',
-    minHeight: 56,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  deleteButton: { marginTop: 'auto' },
 });

@@ -7,7 +7,8 @@ import {
   useAnalysisConsentActions,
 } from '@/features/analysis-consent';
 import { formatFullDate } from '@/shared/lib/datetime';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperGround } from '@/shared/ui/paper';
+import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { AlertCard } from '@/shared/ui/notice';
 import { Toggle } from '@/shared/ui/toggle';
 
@@ -42,6 +43,7 @@ export function MeAnalysisPage() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={styles.content}
     >
+      <PaperGround kind="ruled" />
       <SettingsSection>
         <SettingRow
           icon="scan-outline"
@@ -87,11 +89,5 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.five,
     paddingBottom: Spacing.eight,
     gap: Spacing.five,
-  },
-  notice: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
   },
 });

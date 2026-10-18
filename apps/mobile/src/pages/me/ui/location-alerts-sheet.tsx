@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type LocationAlertsSheetProps = {
@@ -21,61 +22,36 @@ export type LocationAlertsSheetProps = {
  * flips the switch again.
  */
 export function LocationAlertsSheet({ visible, onAccept, onDecline }: LocationAlertsSheetProps) {
-  const theme = useTheme();
-
   return (
     <BottomSheet accessibilityLabel="위치 알림 켜기" visible={visible} onClose={onDecline}>
-      <ThemedText type="heading">주변 장소 알림을 받을까요?</ThemedText>
-      <ThemedText themeColor="textSecondary">
+      <ThemedText type="subtitle" accessibilityRole="header">
+        주변 장소 알림을 받을까요?
+      </ThemedText>
+      <ThemedText type="bodySm" themeColor="textSecondary">
         찍기 좋은 장소에 도착하면 알려드려요. 앱을 열지 않아도 알리려면 위치를 &apos;항상
         허용&apos;해야 해요.
       </ThemedText>
 
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="안 받기"
           accessibilityLabel="알림 안 받기"
           onPress={onDecline}
-          style={({ pressed }) => [
-            styles.action,
-            { borderColor: theme.border, opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          <ThemedText selectable={false} type="button">
-            안 받기
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+          style={styles.action}
+        />
+        <SnaplyButton
+          title="알림 받기"
           accessibilityLabel="알림 받기"
           onPress={onAccept}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: theme.primary,
-              borderColor: theme.primary,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
-            알림 받기
-          </ThemedText>
-        </Pressable>
+          style={styles.action}
+        />
       </View>
     </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.one },
-  action: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  actions: { flexDirection: 'row', gap: Spacing.two + Spacing.half, marginTop: Spacing.one },
+  action: { flex: 1 },
 });

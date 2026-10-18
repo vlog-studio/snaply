@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type AnalysisConsentSheetProps = {
@@ -35,11 +36,11 @@ export function AnalysisConsentSheet({
   onAccept,
   onDecline,
 }: AnalysisConsentSheetProps) {
-  const theme = useTheme();
-
   return (
     <BottomSheet accessibilityLabel="스냅 분석 켜기" visible={visible} onClose={onDecline}>
-      <ThemedText type="heading">스냅 분석을 켤까요?</ThemedText>
+      <ThemedText type="subtitle" accessibilityRole="header">
+        스냅 분석을 켤까요?
+      </ThemedText>
       <View style={styles.facts}>
         <ThemedText type="small" themeColor="textSecondary">
           컷에 넣을 스냅마다 정지 이미지를 4장까지 OpenAI(미국)로 보내 분석해요. 소리는 보내지
@@ -56,46 +57,27 @@ export function AnalysisConsentSheet({
       </View>
 
       {error ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           {error}
         </ThemedText>
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="안 켜기"
           accessibilityLabel="스냅 분석 안 켜기"
-          accessibilityState={{ disabled: pending }}
           disabled={pending}
           onPress={onDecline}
-          style={({ pressed }) => [
-            styles.action,
-            { borderColor: theme.border, opacity: pressed || pending ? 0.6 : 1 },
-          ]}
-        >
-          <ThemedText selectable={false} type="button">
-            안 켜기
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+          style={styles.action}
+        />
+        <SnaplyButton
+          title={pending ? '켜는 중…' : '분석 켜기'}
           accessibilityLabel="스냅 분석 켜기"
-          accessibilityState={{ disabled: pending, busy: pending }}
-          disabled={pending}
+          busy={pending}
           onPress={onAccept}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: theme.primary,
-              borderColor: theme.primary,
-              opacity: pressed || pending ? 0.8 : 1,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
-            {pending ? '켜는 중…' : '분석 켜기'}
-          </ThemedText>
-        </Pressable>
+          style={styles.action}
+        />
       </View>
     </BottomSheet>
   );
@@ -104,13 +86,5 @@ export function AnalysisConsentSheet({
 const styles = StyleSheet.create({
   facts: { gap: Spacing.two },
   actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.one },
-  action: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  action: { flex: 1 },
 });
