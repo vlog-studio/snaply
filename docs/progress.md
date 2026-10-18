@@ -2202,3 +2202,28 @@ DB 에서 롤백 트랜잭션으로 대신한 결과물(작업 끝남) · 작업
 - **검증** — `npm run verify:mobile`. 처음 돌렸을 때 lint 가 `expo-network` 를 찾지 못했다 — 10-15 커밋(`0cb99d8`)이 더한 의존성이 이 Mac 에 설치되지
   않았던 것으로, `npm install`(lockfile 그대로)로 깔고 `expo lint` 의 캐시(`apps/mobile/.expo/cache/eslint`)를 지운 뒤 204 스위트 1563건이 통과했다.
 
+## 2026-10-18 (이어서) — 정크 저널 1단계 — 토큰 · 글꼴 · 글자 역할(backlog A-15)
+
+A-15 구현의 토대. 순서는 토대 → 공용 컴포넌트 → 셸(탭 바) → 화면 묶음 → 마무리(글자 크기 · 기기 · 앱 크기)로 나눴다. 기준은
+[decisions/junk-journal-design-system.md](./decisions/junk-journal-design-system.md) · [plans/junk-journal-redesign.md](./plans/junk-journal-redesign.md) ·
+캔버스의 `jj-tokens.css`(값이 대응표와 같다).
+
+- **색** — 역할 이름(`text` · `primary` · `background` …)은 그대로 두고 값을 정크 저널로 바꿨다(낮 / 밤). 쓰임에 따라 갈라지는 색은 글자 쪽 역할을 새로 뒀다:
+  `primary` = cherry 채움 · `cherryInk` = cherry 글자(밤 대비 때문 — cherry 를 글자로 쓰면 2.56), `ai` = lavender-ink(선 · 글자) · `aiFill` = lavender, `danger` =
+  cherry-ink(오류 글자), `border` = paper-edge(장식) · `fieldLine`(기능 선). 스티커 색(`pink` · `mint` · `butter` · `lavender` · `sky` · `kraft` …) · 테이프 · 종이 무늬 ·
+  `navy` · `receiptBlue` · `ribbon` · `tabbar`(밤 `#6B5238`) · `shadowInk` 를 더했다. `Radius` 단계는 0(`pill` 만 둥근 물건용), `Shadows` · `Sizes`(터치 48) ·
+  `OpacityDisabled` 를 더했다.
+- **대비가 깨지는 곳만 이번에 고쳤다** — 글자 · 아이콘으로 쓰던 `primary` 28곳 → `cherryInk`. 버터 띠(`warmSurface`) 8곳은 안쪽을 `ThemeScope scheme="light"` 로
+  감쌌다(밤에 크림 글자가 버터 위에서 사라지던 것). 빨간 채움 + 흰 글자의 삭제 · 취소 버튼 6곳 → 크래프트 + `stickerInk`(삭제는 빨강이 아니다). 무비 상태 배지를
+  태그로(초안 sheet · 만드는 중 sky · 완성 mint · 실패 cherry), 스냅 칸의 실패 배지 cherry · 만료 임박 배지 pink + 진한 잉크, `ai` 버튼은 lavender + 진한 잉크.
+- **글꼴** — Gaegu 700(Google Fonts, OFL) · D2Coding 400 · 700(NAVER 1.3.2, OFL)을 넣고 Pretendard GOV 500 · 800 을 뺐다(`app.json` 의 `expo-font` 양 플랫폼,
+  라이선스 파일 `OFL-Gaegu.txt` · `OFL-D2Coding.txt`). 다섯 파일 약 22.7MB(전 네 파일 약 21.7MB). iOS 묶음 이름(name ID 16)은 `Pretendard GOV` · `D2Coding`,
+  Gaegu 는 한 굵기라 ID 1 `Gaegu` 로 충분하다.
+- **글자 역할** — 단계에 `data` 13/20 · `bodySm` 15/22 · `barTitle` 17/24 를 더하고 `micro` · `display` 를 지웠다(12px 미만 없음). `heading` · `subtitle` · `title` 은
+  Gaegu, `data` · `dataSm` · `note` · `edge` · `eyebrow` 는 D2Coding, 나머지는 Pretendard 400 / 700. 제목이 아닌 `heading` 셋 — `BackBar` 의 화면 이름 → `barTitle`,
+  가져오기 칸의 `+` → 아이콘, `만드는 중…` → `barTitle` + `ai` 색 — 은 손글씨로 바꾸지 않았다(결정 5). `link` · `linkPrimary` 는 빨간 글자가 아니라 잉크 700(형광펜
+  밑줄은 글자 버튼 컴포넌트 몫). 500 · 600 · 800 을 직접 쓰던 세 곳을 400 / 700 으로, `BackBar` 터치 44 → 48.
+- **문서** — cookbook §14(색의 두 쪽 · 스티커 색 위 글자 · 세 글꼴), 앱 글꼴 절차(세 글꼴 표 · 굵기 · iOS 묶음), 기능 문서 app-shell-and-navigation 의 글꼴 행.
+- **검증** — `npm run verify:mobile` 204 스위트 1563건(경고 2건은 원래 있던 관심사 테스트의 `Array<T>`). 기기 확인은 아직 — 글꼴은 네이티브에 들어가 새 빌드가
+  있어야 보인다. 공용 컴포넌트 · 탭 바 · 화면은 아직 옛 모양(둥근 모서리만 사라졌다)이라 지금 빌드는 섞인 모습이다.
+

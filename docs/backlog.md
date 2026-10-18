@@ -486,8 +486,9 @@ A-12 의 에이전트가 한다.
 
 **완료 조건**:
 
-- [ ] **토큰 이식** — `apps/mobile/src/shared/ui/theme/theme.ts` 와 `themed-text.tsx` 를 대응표대로 바꾸고 글꼴을 바꾼다(Gaegu · D2Coding 추가,
-      Pretendard 500 · 800 제거 — [앱 글꼴](../apps/mobile/docs/workflows/app-branding-and-native-config.md#app-font) 절차). cookbook §14 를 같이 고친다
+- [x] **토큰 이식** — `apps/mobile/src/shared/ui/theme/theme.ts` 와 `themed-text.tsx` 를 대응표대로 바꾸고 글꼴을 바꾼다(Gaegu · D2Coding 추가,
+      Pretendard 500 · 800 제거 — [앱 글꼴](../apps/mobile/docs/workflows/app-branding-and-native-config.md#app-font) 절차). cookbook §14 를 같이 고친다.
+      2026-10-18 끝 — progress 2026-10-18 "정크 저널 1단계 — 토큰 · 글꼴 · 글자 역할". 기기에서 본 것은 아직 없다(새 글꼴은 빌드가 있어야 보인다)
 - [ ] **공용 컴포넌트** — 대응표 §5 의 "겉모습" · "새로" 행
 - [ ] **화면** — 캔버스대로 화면마다 바꾼다. 앱과 달라도 캔버스를 따른다(통일성 우선 — 결정 문서 §결정). 캔버스가 지금 앱과 다르게 그린 곳 —
       녹화 보관함의 시스템 알림 두 개를 어두운 시트로, 스냅 탭 첫 로딩의 스케치 자리 표시, 생성 거절 안내를 머리 아래 띠로, 로그인 · 재설정 화면의
