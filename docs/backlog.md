@@ -769,6 +769,10 @@ AI 편집 에이전트가 2026-10-13 부터 공모전 서버에서 서버 시크
 [ONBOARDING.md](../ONBOARDING.md) 는 새 설정에 `SUPABASE_PUBLISHABLE_KEY` 를 쓰라고 하고 `SUPABASE_ANON_KEY` 는 레거시 대체값이라, 새로 셋업한
 환경에서는 `apikey` 가 비어 이메일 로그인이 실패한다(`--token` 으로 JWT 를 넘기면 로그인을 건너뛴다). API 는 `apps/api/src/config.ts` 에서 둘 다 읽는다.
 
+**진행(2026-10-18)**: `login()` 이 `config.ts` 와 같은 순서(`SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY`)로 읽고, 둘 다 없으면 요청 전에 멈추며
+`--token` 을 안내한다. 가짜 Supabase(로컬 HTTP 서버)로 네 경우(publishable 만 · anon 만 · 둘 다 · 없음)에 실린 `apikey` 를 확인했다(progress 2026-10-18
+"media:e2e 가 publishable 키로 로그인한다"). 남은 것은 실제 실행이다 — 테스트 계정 비밀번호로 호스팅 Supabase 에 로그인해야 해서 에이전트가 돌리지 않았다.
+
 **완료 조건**: `config.ts` 처럼 `SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY` 를 읽고 `npm run media:e2e` 를 한 번 돌린다.
 
 ---

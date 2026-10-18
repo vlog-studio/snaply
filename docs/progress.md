@@ -2175,3 +2175,15 @@ main 머지 때 공유 MinIO 이미지를 다시 빌드해 올린다. `schema.pr
 냈다. 고치기 전 코드에서는 첫째와 셋째가 실패했다(이전 결과물이 지워지지 않음 · 남은 객체 후보에 없음). 마이그레이션 SQL 은 테스트
 DB 에서 롤백 트랜잭션으로 대신한 결과물(작업 끝남) · 작업이 도는 무비 없는 결과물 · 살아 있는 무비의 결과물을 넣어 첫째만 바뀌는 것을
 봤다. `npm test -w apps/api` 48개 파일 834건과 `storage.service.test.mjs` 2건, API `typecheck` · `lint` 통과.
+
+## 2026-10-18 — media:e2e 가 publishable 키로 로그인한다(backlog E-57 — 실행 확인 남음)
+
+`scripts/media-e2e.mjs` 의 이메일 로그인이 `SUPABASE_ANON_KEY` 만 읽어, 새 설정(`SUPABASE_PUBLISHABLE_KEY` 만 둔 `apps/api/.env`)에서는 `apikey` 가 비어
+로그인이 실패했다. API(`apps/api/src/config.ts`)와 같은 순서로 `SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY` 를 읽고, 둘 다 없으면 Supabase 에 요청하기 전에
+멈추며 `--token` 을 안내한다. env-spec 의 `SUPABASE_ANON_KEY` 설명도 맞췄다.
+
+- **검증** — 스크립트 사본에 가짜 `.env` 를 물리고 로컬 HTTP 서버를 Supabase · API 대신 세워, 로그인 요청에 실린 `apikey` 를 봤다: publishable 만 → `pub-test`,
+  anon 만 → `anon-test`, 둘 다 → `pub-test`, 없음 → 요청 없이 "Supabase 키가 없습니다". `node --check` 통과.
+- **남은 것** — `npm run media:e2e` 실제 실행(테스트 계정으로 호스팅 Supabase 에 로그인해야 해서 오너가 돌린다). 이 머신의 `apps/api/.env` 는 아직
+  `SUPABASE_ANON_KEY` 만 갖고 있어 이번 변경과 무관하게 지금처럼 돈다.
+
