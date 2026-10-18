@@ -658,12 +658,14 @@ export async function deleteMovie(params: { userId: string; movieId: string }): 
       : []),
   ]);
 
+  if (!result) return;
   // 결과물의 원본 키는 스냅에서 빌려 온 것이라 지우지 않는다(video-assets.ts).
-  for (const key of result ? ownedObjectKeys(result) : []) {
+  for (const key of ownedObjectKeys(result)) {
     try {
       await deleteObject(key);
-    } catch {
-      /* 정리 배치가 회수한다 */
+    } catch (err) {
+      // 정리 배치가 회수한다.
+      captureException(err, { videoId: result.id, phase: 'movie-delete-result' });
     }
   }
 }
@@ -710,16 +712,31 @@ export async function exportMovie(params: {
     movieId: movie.id,
   });
 
-  await getPrisma().movie.update({
-    where: { id: movie.id },
-    data: {
-      status: 'generating',
-      // 다시 만들면 이전 결과물을 대신한다(movie-export-policy ②: 누적이 아니라 교체).
-      resultVideoId: videoId,
-      // 새로 만들었으므로 "끝냈다"는 사실도 초기화된다.
-      finishedAt: null,
-    },
-  });
+  const prisma = getPrisma();
+  await prisma.$transaction([
+    prisma.movie.update({
+      where: { id: movie.id },
+      data: {
+        status: 'generating',
+        // 다시 만들면 이전 결과물을 대신한다(movie-export-policy ②: 누적이 아니라 교체).
+        resultVideoId: videoId,
+        // 새로 만들었으므로 "끝냈다"는 사실도 초기화된다.
+        finishedAt: null,
+      },
+    }),
+    // 대신한 이전 결과물은 지운 것으로 만든다(specs/movie.md MOV-23). 어떤 무비도 가리키지 않는 결과물은 30일 상한(MOV-16)에도
+    // 걸리지 않으므로 여기서 놓치면 파일이 영영 남는다. 파일은 남은 객체 정리 배치에 맡긴다 — `purgedAt` 을 비워 두면 그
+    // 배치가 지운다. 그 자리에서 지우지 않는 것은 이전 결과물로 진행 중인 SNS 게시(틱톡은 플랫폼이 나중에 가져간다)가
+    // 있을 수 있어서다.
+    ...(movie.resultVideoId
+      ? [
+          prisma.video.updateMany({
+            where: { id: movie.resultVideoId, userId: params.userId, kind: 'result', deletedAt: null },
+            data: { deletedAt: new Date(), status: 'deleted', removalReason: 'user' },
+          }),
+        ]
+      : []),
+  ]);
   return { jobId };
 }
 
@@ -746,7 +763,7 @@ async function applyFinish(params: {
   const result = params.resultVideoId
     ? await prisma.video.findFirst({
         where: { id: params.resultVideoId, userId: params.userId },
-        select: { id: true, editedS3Key: true, thumbnailS3Key: true },
+        select: VIDEO_ASSET_SELECT,
       })
     : null;
 
@@ -754,22 +771,24 @@ async function applyFinish(params: {
   if (result) {
     // S3 삭제가 실패해도 끝내기 자체는 되돌리지 않는다 — 남은 객체는 정리 배치가 회수한다
     // (backlog E-3). 여기서 예외를 던지면 사용자는 이미 파일을 가져갔는데 화면은 실패로 남는다.
-    for (const key of [result.editedS3Key, result.thumbnailS3Key]) {
-      if (!key) continue;
+    // 결과물의 원본 키는 스냅에서 빌려 온 것이라 지우지 않는다(video-assets.ts).
+    let leftover = false;
+    for (const key of ownedObjectKeys(result)) {
       try {
         await deleteObject(key);
-      } catch {
-        /* 정리 배치가 회수한다 */
+      } catch (err) {
+        leftover = true;
+        captureException(err, { videoId: result.id, phase: 'movie-finish-delete' });
       }
     }
     await prisma.video.update({
       where: { id: result.id },
-      // 사용자가 가져가서 지운 것이므로 사유는 `user` 다. `purgedAt` 이 있으면 남은 객체
-      // 정리 배치가 다시 훑지 않는다.
+      // 사용자가 가져가서 지운 것이므로 사유는 `user` 다. `purgedAt` 은 다 지웠을 때만 남긴다 — 그 값이 있으면
+      // 남은 객체 정리 배치가 다시 훑지 않으므로, 남은 것이 있을 때 남기면 회수되지 않는다.
       data: {
         deletedAt: new Date(),
         removalReason: 'user',
-        purgedAt: new Date(),
+        ...(leftover ? {} : { purgedAt: new Date() }),
         editedUrl: null,
         thumbnailUrl: null,
       },

@@ -14,8 +14,23 @@
  * 삭제 경로는 실제 MinIO 에 DeleteObject 를 보낸다. 없는 **키** 삭제는 no-op 이지만 없는 **버킷**은
  * NoSuchBucket 이라, 이 파일이 버킷을 만드는 다른 테스트보다 먼저 돌면(신선한 MinIO · 실행 순서
  * 캐시 없음 = CI) 모든 purge 가 `failed` 로 떨어진다. 그래서 beforeAll 에서 버킷을 보장한다.
+ *
+ * S3 삭제 실패는 `failingKeys` 에 넣은 키로만 흉내 낸다 — 그 밖의 삭제는 실제 MinIO 로 그대로 간다.
  */
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+
+const failingKeys = vi.hoisted(() => new Set<string>());
+vi.mock('../src/services/storage.service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../src/services/storage.service.js')>();
+  return {
+    ...actual,
+    deleteObject: async (key: string) => {
+      if (failingKeys.has(key)) throw new Error(`S3 삭제 실패(테스트): ${key}`);
+      return actual.deleteObject(key);
+    },
+  };
+});
+
 import {
   MOVIE_RESULT_RETENTION_DAYS,
   SNAP_RETENTION_DAYS,
@@ -34,6 +49,7 @@ import {
   ensureBucketForDev,
   getObjectSize,
 } from '../src/services/storage.service.js';
+import { MOVIE_EXPORT_COST } from '../src/services/billing/credit-policy.js';
 import { ANALYSIS_VERSION } from '../src/services/video-analysis.service.js';
 import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
 
@@ -517,6 +533,120 @@ describe('영상 삭제는 자기가 소유한 객체만 지운다', () => {
 
     expect(await getObjectSize(editedS3Key)).toBeNull();
     expect(await getObjectSize(snap.s3Key)).not.toBeNull();
+  });
+
+  /** 다 만들어진 결과물 — 작업은 끝났고 편집본 · 썸네일 파일이 있다. */
+  async function finishedResultOf(user: TestUser, snap: { s3Key: string }) {
+    const editedS3Key = await putObject(user, `edited/${crypto.randomUUID()}`);
+    const thumbnailS3Key = await putObject(user, `thumbnails/${crypto.randomUUID()}`);
+    const { resultId, jobId } = await resultOf(user, snap, editedS3Key);
+    await h.prisma.editJob.update({ where: { id: jobId }, data: { status: 'done' } });
+    await h.prisma.video.update({ where: { id: resultId }, data: { status: 'done', thumbnailS3Key } });
+    return { resultId, editedS3Key, thumbnailS3Key };
+  }
+
+  it('다시 만들면 이전 결과물은 지운 것이 되고 그 파일은 정리 배치가 지운다(MOV-23)', async () => {
+    const user = await h.createUser();
+    await h.prisma.creditLedger.create({
+      data: { userId: user.id, delta: MOVIE_EXPORT_COST, reason: 'promo' },
+    });
+    const snap = await snapWithRendition(user);
+    const previous = await finishedResultOf(user, snap);
+    const movieId = await movieWith(user, snap, previous.resultId, 'ready');
+
+    const res = await h.app.inject({
+      method: 'POST',
+      url: `/movies/${movieId}/export`,
+      headers: user.auth,
+    });
+    expect(res.statusCode).toBe(202);
+
+    const row = await h.prisma.video.findUnique({ where: { id: previous.resultId } });
+    expect(row).toMatchObject({ removalReason: 'user', purgedAt: null });
+    expect(row?.deletedAt).not.toBeNull();
+    // 파일은 그 자리에서 지우지 않는다 — 이전 결과물로 진행 중인 SNS 게시가 아직 가져가고 있을 수 있다.
+    expect(await getObjectSize(previous.editedS3Key)).not.toBeNull();
+
+    await purgeOrphanedObjects();
+
+    expect(await getObjectSize(previous.editedS3Key)).toBeNull();
+    expect(await getObjectSize(previous.thumbnailS3Key)).toBeNull();
+    expect(await getObjectSize(snap.s3Key)).not.toBeNull();
+    // 새 결과물은 건드리지 않는다.
+    const movie = await h.prisma.movie.findUnique({ where: { id: movieId } });
+    expect(movie?.resultVideoId).not.toBe(previous.resultId);
+    const next = await h.prisma.video.findUnique({ where: { id: movie?.resultVideoId ?? '' } });
+    expect(next?.deletedAt).toBeNull();
+  });
+
+  it('다시 만들기가 시작되지 않으면 이전 결과물은 그대로다 — 크레딧이 모자란 402', async () => {
+    const user = await h.createUser();
+    const snap = await snapWithRendition(user);
+    const previous = await finishedResultOf(user, snap);
+    const movieId = await movieWith(user, snap, previous.resultId, 'ready');
+
+    const res = await h.app.inject({
+      method: 'POST',
+      url: `/movies/${movieId}/export`,
+      headers: user.auth,
+    });
+    expect(res.statusCode).toBe(402);
+
+    expect((await h.prisma.video.findUnique({ where: { id: previous.resultId } }))?.deletedAt).toBeNull();
+    expect((await h.prisma.movie.findUnique({ where: { id: movieId } }))?.resultVideoId).toBe(
+      previous.resultId,
+    );
+  });
+
+  it('끝내기에서 파일 삭제가 실패하면 정리 배치가 다시 지운다(MOV-17)', async () => {
+    const user = await h.createUser();
+    const snap = await snapWithRendition(user);
+    const result = await finishedResultOf(user, snap);
+    const movieId = await movieWith(user, snap, result.resultId, 'ready');
+
+    failingKeys.add(result.editedS3Key);
+    try {
+      const res = await h.app.inject({
+        method: 'POST',
+        url: `/movies/${movieId}/finish`,
+        headers: user.auth,
+      });
+      // 사용자는 이미 파일을 가져갔다 — 저장소 사정으로 끝내기를 실패로 돌리지 않는다.
+      expect(res.statusCode).toBe(200);
+    } finally {
+      failingKeys.clear();
+    }
+    expect(await getObjectSize(result.editedS3Key)).not.toBeNull();
+    expect(await getObjectSize(result.thumbnailS3Key)).toBeNull();
+
+    expect((await findOrphanedObjects()).map((candidate) => candidate.id)).toContain(result.resultId);
+    await purgeOrphanedObjects();
+
+    expect(await getObjectSize(result.editedS3Key)).toBeNull();
+    const row = await h.prisma.video.findUnique({ where: { id: result.resultId } });
+    expect(row).toMatchObject({ removalReason: 'user', editedS3Key: null });
+    expect(row?.purgedAt).not.toBeNull();
+  });
+
+  it('끝내기에서 파일을 다 지웠으면 정리 배치가 다시 보지 않는다', async () => {
+    const user = await h.createUser();
+    const snap = await snapWithRendition(user);
+    const result = await finishedResultOf(user, snap);
+    const movieId = await movieWith(user, snap, result.resultId, 'ready');
+
+    const res = await h.app.inject({
+      method: 'POST',
+      url: `/movies/${movieId}/finish`,
+      headers: user.auth,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(await getObjectSize(result.editedS3Key)).toBeNull();
+    expect(await getObjectSize(result.thumbnailS3Key)).toBeNull();
+    expect((await findOrphanedObjects()).map((candidate) => candidate.id)).not.toContain(
+      result.resultId,
+    );
+    expect((await h.prisma.video.findUnique({ where: { id: result.resultId } }))?.purgedAt).not.toBeNull();
   });
 
   it('사용자가 지운 스냅은 보관 기간이 끝날 때까지 파일이 남고, 끝나면 렌디션까지 사라진다(SNAP-20)', async () => {
