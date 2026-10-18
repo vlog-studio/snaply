@@ -284,7 +284,7 @@ step('1. 로그인');
 const token = await login(env, opts);
 const api = makeApi(baseUrl, token);
 const me = await api('GET', '/auth/me');
-ok(`유저 ${me.nickname ?? '(닉네임 없음)'} plan=${me.plan}`);
+ok(`유저 ${me.nickname ?? '(닉네임 없음)'} id=${me.id}`);
 
 step(`2. 클립 업로드 (${opts.files.length}개)`);
 const videoIds = [];
