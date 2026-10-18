@@ -46,7 +46,13 @@ import { PaperGround } from '@/shared/ui/paper';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoPlayerModal } from '@/shared/ui/video-player-modal';
 import { RansomTitle } from '@/shared/ui/ransom-title';
-import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/widgets/snap-grid';
+import {
+  SnapDayGrid,
+  SnapGridSketch,
+  SnapSelectionBar,
+  useSnapDays,
+  useSnapPicking,
+} from '@/widgets/snap-grid';
 
 import { draftCostReadOut } from '../model/draft-cost';
 import {
@@ -503,9 +509,14 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
           {/* The library's total, on a strip torn off a guest check. */}
           <CheckStrip brand head={todayStamp(now)}>
             <CheckStripRow>
-              <ThemedText type="data">
-                {totalCount}개 · {formatDuration(totalDurationSec)}
-              </ThemedText>
+              {isHydrated ? (
+                <ThemedText type="data">
+                  {totalCount}개 · {formatDuration(totalDurationSec)}
+                </ThemedText>
+              ) : (
+                // Not 0개 while the library is still being read: a sketched figure.
+                <View style={[styles.sketchFigure, { borderColor: theme.textSecondary }]} />
+              )}
             </CheckStripRow>
           </CheckStrip>
         </View>
@@ -526,20 +537,25 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
           />
         ) : null}
 
-        <SnapDayGrid
-          days={days}
-          selecting={selecting}
-          picked={picked}
-          heldIds={NoHeldIds}
-          onPress={handlePress}
-          onLongPress={handleLongPress}
-          // Held back until the store has read itself back from disk, so the
-          // tile does not stand alone for a frame in a library that is only
-          // hydrating. During selection the grid keeps the cell and disables
-          // it — unmounting it here shifted the whole leading row one cell
-          // over under the user's finger.
-          onImport={isHydrated ? () => void openExtract() : undefined}
-        />
+        {isHydrated ? (
+          <SnapDayGrid
+            days={days}
+            selecting={selecting}
+            picked={picked}
+            heldIds={NoHeldIds}
+            onPress={handlePress}
+            onLongPress={handleLongPress}
+            // Held back until the store has read itself back from disk, so the
+            // tile does not stand alone for a frame in a library that is only
+            // hydrating. During selection the grid keeps the cell and disables
+            // it — unmounting it here shifted the whole leading row one cell
+            // over under the user's finger.
+            onImport={isHydrated ? () => void openExtract() : undefined}
+          />
+        ) : (
+          // Before the library has read itself back, its shape in pencil.
+          <SnapGridSketch />
+        )}
 
         {/* Deleted everywhere is not gone at once: 최근 삭제 keeps what the
             server held until its retention ends (SNAP-20). Always offered,
@@ -680,5 +696,13 @@ const styles = StyleSheet.create({
     gap: Spacing.five,
   },
   header: { gap: Spacing.three },
+  sketchFigure: {
+    width: 92,
+    height: 14,
+    marginVertical: 3,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    opacity: 0.55,
+  },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
 });

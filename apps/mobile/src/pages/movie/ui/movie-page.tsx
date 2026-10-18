@@ -399,6 +399,15 @@ export function MoviePage({ movieId }: MoviePageProps) {
           {/* Above the stage, because it is about what the stage holds: the
           snaps that are not in it. Gone once dismissed or once none is left
           to offer; a job freezes the cut list, so it waits until the run ends. */}
+          {/* A refused run is answered right under the head, where the eye
+          lands coming back from the press — a band of its own above the stage
+          rather than a line over the button (the canvas's 생성 거절 board). */}
+          {refusalMessage && !isGenerating ? (
+            <View style={styles.leftOut}>
+              <RefusalNotice message={refusalMessage} action={refusalAction} />
+            </View>
+          ) : null}
+
           {canEdit && leftOut.length > 0 ? (
             <View style={styles.leftOut}>
               <LeftOutNotice
@@ -564,8 +573,6 @@ export function MoviePage({ movieId }: MoviePageProps) {
               <GenerateFooter
                 movie={movie}
                 cutCount={cuts.length}
-                refusalMessage={refusalMessage}
-                refusalAction={refusalAction}
                 cutsRefusal={refusal}
                 editedSinceRender={list.editedSinceRender}
                 onRestoreCuts={list.restoreRenderCuts}

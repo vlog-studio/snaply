@@ -8,25 +8,13 @@ import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { Spacing } from '@/shared/ui/theme';
 import { AlertCard, NoticeBand } from '@/shared/ui/notice';
 
-import { CutsRefusalMessages, RefusalNotice, type RefusalAction } from './refusal-notice';
+import { CutsRefusalMessages, RefusalNotice } from './refusal-notice';
 import { RemakeConfirm } from './remake-confirm';
 
 export type GenerateFooterProps = {
   movie: Movie;
   /** Cuts the movie holds; nothing to generate is a refusal, not a run. */
   cutCount: number;
-  /**
-   * Why the last attempt to start was refused, already in the user's words — the
-   * page resolves it, because one of the refusals is worded by the backend and
-   * this footer cannot tell that one from the rest.
-   */
-  refusalMessage: string | undefined;
-  /**
-   * What the user can do about that refusal from here, when there is one — the
-   * page resolves it with the message (a `busy` refusal opens the movie being
-   * made).
-   */
-  refusalAction?: RefusalAction;
   /** Why the last cut edit was refused, if it was. */
   cutsRefusal: CutsRefusal | undefined;
   /**
@@ -68,8 +56,6 @@ export type GenerateFooterProps = {
 export function GenerateFooter({
   movie,
   cutCount,
-  refusalMessage,
-  refusalAction,
   cutsRefusal,
   editedSinceRender,
   onRestoreCuts,
@@ -107,8 +93,6 @@ export function GenerateFooter({
       ) : null}
 
       {cutsRefusal ? <RefusalNotice message={CutsRefusalMessages[cutsRefusal]} /> : null}
-
-      {refusalMessage ? <RefusalNotice message={refusalMessage} action={refusalAction} /> : null}
 
       <View style={styles.actionSlot}>
         {inspector ??

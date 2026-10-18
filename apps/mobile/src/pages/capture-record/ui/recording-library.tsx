@@ -1,11 +1,14 @@
-import { Alert, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatDateTime } from '@/shared/lib/datetime';
 import { formatFileSize } from '@/shared/lib/format-file-size';
 import type { LocalRecording } from '@/shared/lib/recording-files';
 import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { StickerButton } from '@/shared/ui/sticker-button';
+import { TextButton } from '@/shared/ui/text-button';
 import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -38,41 +41,25 @@ export function RecordingLibrary({
   const theme = useTheme();
 
   // A recording whose snap the server still keeps gets the same question as the
-  // snap tab: from this device only, or everywhere. The system alert holds both
-  // answers — a sheet here would open over this modal. Either way the snap can
+  // snap tab: from this device only, or everywhere. Either way the snap can
   // still come back from 최근 삭제 until its retention ends (SNAP-20); the
   // other recordings never reached the server, so their delete is final.
-  const confirmDelete = (recording: LocalRecording) => {
-    if (canDeleteFromDevice(recording)) {
-      Alert.alert(
-        '스냅을 삭제할까요?',
-        '이 기기에서만 삭제하면 보관 기간 동안 스냅 탭에 남아요. 모든 기기에서 삭제해도 그동안은 최근 삭제에서 되살릴 수 있어요.',
-        [
-          { text: '취소', style: 'cancel' },
-          { text: '이 기기에서만 삭제', onPress: () => void onDeleteFromDevice(recording) },
-          {
-            text: '모든 기기에서 삭제',
-            style: 'destructive',
-            onPress: () => void onDelete(recording),
-          },
-        ],
-      );
-      return;
-    }
-    Alert.alert('스냅을 삭제할까요?', '삭제한 스냅은 되돌릴 수 없어요.', [
-      { text: '취소', style: 'cancel' },
-      {
-        text: '삭제',
-        style: 'destructive',
-        onPress: () => void onDelete(recording),
-      },
-    ]);
+  // The question is a plain dark sheet drawn inside this modal (the capture
+  // screens stay undecorated) — a bottom sheet of its own would be a second
+  // modal opening over this one.
+  const [confirming, setConfirming] = useState<LocalRecording>();
+  const closeConfirm = () => setConfirming(undefined);
+  const answer = (run: (recording: LocalRecording) => Promise<void>) => {
+    const target = confirming;
+    setConfirming(undefined);
+    if (target) void run(target);
   };
+  const kept = confirming ? canDeleteFromDevice(confirming) : false;
 
   return (
     <Modal
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={confirming ? closeConfirm : onClose}
       presentationStyle="fullScreen"
       visible={visible}
     >
@@ -146,7 +133,7 @@ export function RecordingLibrary({
                   accessibilityLabel={`${formatDateTime(item.createdAt)} 스냅 삭제`}
                   accessibilityRole="button"
                   disabled={isDeleting}
-                  onPress={() => confirmDelete(item)}
+                  onPress={() => setConfirming(item)}
                   style={styles.deleteButton}
                 >
                   {/* A delete is ink, not red: red is the main action. */}
@@ -156,6 +143,76 @@ export function RecordingLibrary({
             );
           }}
         />
+        {confirming ? (
+          <View style={StyleSheet.absoluteFill}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="시트 닫기"
+              onPress={closeConfirm}
+              style={[StyleSheet.absoluteFill, styles.scrim]}
+            />
+            <View
+              accessibilityViewIsModal
+              accessibilityLabel="스냅 삭제 확인"
+              style={[styles.sheet, { paddingBottom: insets.bottom + Spacing.five }]}
+            >
+              <ThemedText type="subtitle" accessibilityRole="header">
+                스냅을 삭제할까요?
+              </ThemedText>
+              <View style={styles.target}>
+                <ThemedText type="bodySm" style={styles.date}>
+                  {formatDateTime(confirming.createdAt)}
+                </ThemedText>
+                <ThemedText type="data">{formatFileSize(confirming.size)}</ThemedText>
+              </View>
+              {kept ? (
+                <>
+                  <ThemedText type="bodySm">
+                    이 기기에서만 삭제하면 보관 기간 동안 스냅 탭에 남아요. 모든 기기에서 삭제해도
+                    그동안은 최근 삭제에서 되살릴 수 있어요.
+                  </ThemedText>
+                  <View style={styles.stack}>
+                    <SnaplyButton
+                      variant="secondary"
+                      title="이 기기에서만 삭제"
+                      onPress={() => answer(onDeleteFromDevice)}
+                    />
+                    <SnaplyButton
+                      variant="danger"
+                      title="모든 기기에서 삭제"
+                      onPress={() => answer(onDelete)}
+                    />
+                    <TextButton
+                      label="취소"
+                      accessibilityLabel="삭제 취소"
+                      onPress={closeConfirm}
+                      style={styles.cancel}
+                    />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <ThemedText type="bodySm">삭제한 스냅은 되돌릴 수 없어요.</ThemedText>
+                  <View style={styles.row}>
+                    <SnaplyButton
+                      variant="secondary"
+                      title="취소"
+                      accessibilityLabel="삭제 취소"
+                      onPress={closeConfirm}
+                      style={styles.rowAction}
+                    />
+                    <SnaplyButton
+                      variant="danger"
+                      title="삭제"
+                      onPress={() => answer(onDelete)}
+                      style={styles.rowAction}
+                    />
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -163,6 +220,33 @@ export function RecordingLibrary({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  scrim: { backgroundColor: 'rgba(43,35,28,0.5)' },
+  // Plain and dark like the screen under it: no holes, spiral or paper strip.
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#1C1712',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(243,231,207,0.16)',
+    paddingTop: Spacing.five - Spacing.half,
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.three,
+  },
+  target: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(243,231,207,0.22)',
+  },
+  stack: { gap: Spacing.two + Spacing.half },
+  cancel: { alignSelf: 'center' },
+  row: { flexDirection: 'row', gap: Spacing.two + Spacing.half },
+  rowAction: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
