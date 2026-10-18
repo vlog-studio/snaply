@@ -763,18 +763,6 @@ AI 편집 에이전트가 2026-10-13 부터 공모전 서버에서 서버 시크
 **완료 조건**: 휴대폰에서 앱을 연 직후 · 다시 가져온 직후 · 와이파이↔데이터 전환 직후 저장해 보고, 수 초를 넘지 않으면 닫는다. 넘으면 그때 계측을
 다시 넣는다(이번 계측 코드는 커밋하지 않았다).
 
-### E-57. `서버` `npm run media:e2e` 의 이메일 로그인이 `SUPABASE_ANON_KEY` 만 읽는다
-
-`scripts/media-e2e.mjs` 의 `login()` 이 Supabase 토큰 요청에 `apikey: env.SUPABASE_ANON_KEY` 를 싣는다. 그런데 [.env.example](../.env.example) 과
-[ONBOARDING.md](../ONBOARDING.md) 는 새 설정에 `SUPABASE_PUBLISHABLE_KEY` 를 쓰라고 하고 `SUPABASE_ANON_KEY` 는 레거시 대체값이라, 새로 셋업한
-환경에서는 `apikey` 가 비어 이메일 로그인이 실패한다(`--token` 으로 JWT 를 넘기면 로그인을 건너뛴다). API 는 `apps/api/src/config.ts` 에서 둘 다 읽는다.
-
-**진행(2026-10-18)**: `login()` 이 `config.ts` 와 같은 순서(`SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY`)로 읽고, 둘 다 없으면 요청 전에 멈추며
-`--token` 을 안내한다. 가짜 Supabase(로컬 HTTP 서버)로 네 경우(publishable 만 · anon 만 · 둘 다 · 없음)에 실린 `apikey` 를 확인했다(progress 2026-10-18
-"media:e2e 가 publishable 키로 로그인한다"). 남은 것은 실제 실행이다 — 테스트 계정 비밀번호로 호스팅 Supabase 에 로그인해야 해서 에이전트가 돌리지 않았다.
-
-**완료 조건**: `config.ts` 처럼 `SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY` 를 읽고 `npm run media:e2e` 를 한 번 돌린다.
-
 ---
 
 ## F. 남은 실검증
@@ -1001,6 +989,7 @@ AI 편집 에이전트가 2026-10-13 부터 공모전 서버에서 서버 시크
 - **E-54** 앨범 저장 중에 선택을 바꾸거나 나갈 수 있다 — 2026-10-15 → progress 2026-10-15 "main 리뷰에서 남은 결함 열하나"
 - **E-55** 일반 선택의 앨범 저장이 무비 한도 10개에 걸린다(선택은 제한 없이, 무비 버튼만 10개) — 2026-10-15 → progress 2026-10-15 "main 리뷰에서 남은 결함 열하나"
 - **E-56** 닉네임 시트가 완료 키로 두 번 저장할 수 있다 — 2026-10-15 → progress 2026-10-15 "main 리뷰에서 남은 결함 열하나"
+- **E-57** `npm run media:e2e` 의 이메일 로그인이 `SUPABASE_ANON_KEY` 만 읽는다(`SUPABASE_PUBLISHABLE_KEY || SUPABASE_ANON_KEY` 로 — 가짜 Supabase 로 네 경우 확인, 로컬 실행 로그인 · 업로드 통과) — 2026-10-18 → progress 2026-10-18 "media:e2e 가 publishable 키로 로그인한다"
 - **F** HDR · 장시간 · 10클립 스트레스 실검증 — 2026-09-15 → progress 2026-09-15 "스트레스 실검증과 HDR 색 태그 결함"(돌비비전 실물은 F 에 남음)
 - **F** 한 번에 하나씩 만들기의 실기기 확인(MOV-11 `구현됨`) · 다른 기기에서 지운 스냅의 컷 표시(SNAP-12) — 2026-10-09 → progress 2026-10-09 "휴대폰과 에뮬레이터로 — 다른 기기 · 삭제 · 업로드 전 무비"
 - **F** 워커 쪽 취소 중단 · 실패 환급 — 2026-10-09, 로컬 실워커로 취소는 다음 진행률 갱신에서 멈추고 환급 1회, 실패는 `failed` · 환급 1회 → progress 2026-10-09 "워커 쪽 취소 중단 · 실패 환급 실검증"(재시도 문제는 E-27)
