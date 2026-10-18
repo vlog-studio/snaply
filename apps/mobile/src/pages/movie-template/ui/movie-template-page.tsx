@@ -17,7 +17,8 @@ import { formatSeconds } from '@/shared/lib/datetime';
 import { movieHref } from '@/shared/routes';
 import { BackBar } from '@/shared/ui/back-bar';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { MaxContentWidth, Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
+import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { AlertCard } from '@/shared/ui/notice';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { AnalysisOffer } from './analysis-offer';
@@ -170,18 +171,7 @@ export function MovieTemplatePage({ templateId }: MovieTemplatePageProps) {
           <AnalysisOffer onAccept={() => setConsentSheetVisible(true)} onDecline={offer.decline} />
         ) : null}
 
-        {error ? (
-          <View
-            style={[
-              styles.notice,
-              { borderColor: theme.border, backgroundColor: theme.warmSurface },
-            ]}
-          >
-            <ThemeScope scheme="light">
-              <ThemedText type="small">{error}</ThemedText>
-            </ThemeScope>
-          </View>
-        ) : null}
+        {error ? <AlertCard message={error} /> : null}
       </ScrollView>
 
       <View

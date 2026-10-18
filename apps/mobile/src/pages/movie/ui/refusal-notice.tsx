@@ -1,8 +1,5 @@
-import { Pressable, StyleSheet, View } from 'react-native';
-
 import type { CutsRefusal } from '@/features/compose-movie';
-import { Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
-import { ThemedText } from '@/shared/ui/themed-text';
+import { NoticeBand } from '@/shared/ui/notice';
 
 /** Why a cut edit was refused, in the user's words. */
 export const CutsRefusalMessages: Record<CutsRefusal, string> = {
@@ -35,44 +32,11 @@ export type RefusalAction = {
  * surfaces come to disagree about it, which the rules the refusals stand for
  * (`features/compose-movie`) exist to prevent.
  *
- * A refusal the user can resolve somewhere else carries the way there under
- * the line (`action`), drawn as the footer's other in-notice action is — a
- * link, not a second button competing with the one that refused.
+ * A refusal the user can resolve somewhere else carries the way there
+ * (`action`) as a text button in the band — not a second button competing
+ * with the one that refused. It is a standing notice (`NoticeBand`): it stays
+ * while the refusal holds.
  */
 export function RefusalNotice({ message, action }: { message: string; action?: RefusalAction }) {
-  const theme = useTheme();
-
-  return (
-    <View
-      style={[styles.notice, { borderColor: theme.border, backgroundColor: theme.warmSurface }]}
-    >
-      <ThemeScope scheme="light">
-        <ThemedText type="small">{message}</ThemedText>
-        {action ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={action.label}
-            onPress={action.onPress}
-            hitSlop={Spacing.two}
-            style={({ pressed }) => [styles.action, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-              {action.label}
-            </ThemedText>
-          </Pressable>
-        ) : null}
-      </ThemeScope>
-    </View>
-  );
+  return <NoticeBand message={message} action={action} />;
 }
-
-const styles = StyleSheet.create({
-  notice: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  action: { alignSelf: 'flex-start' },
-});

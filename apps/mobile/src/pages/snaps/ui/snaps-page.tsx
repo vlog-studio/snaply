@@ -34,11 +34,11 @@ import {
   MaxContentWidth,
   Radius,
   Spacing,
-  ThemeScope,
   useTabBarHeight,
   useTheme,
   useTopContentInset,
 } from '@/shared/ui/theme';
+import { AlertCard, NoticeBand } from '@/shared/ui/notice';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoPlayerModal } from '@/shared/ui/video-player-modal';
 import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/widgets/snap-grid';
@@ -505,60 +505,19 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
         </View>
 
         {importError ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setImportError(undefined)}
-            style={[
-              styles.notice,
-              { borderColor: theme.danger, backgroundColor: theme.warmSurface },
-            ]}
-          >
-            <ThemeScope scheme="light">
-              <ThemedText type="small">{importError}</ThemedText>
-            </ThemeScope>
-          </Pressable>
+          <AlertCard message={importError} onDismiss={() => setImportError(undefined)} />
         ) : null}
 
         {/* While selecting, refusals show in the selection bar instead — the
             user's eye and thumb are down there, and a block appearing up here
             would shift the grid they are picking from. */}
-        {notice && !selecting ? (
-          <View
-            style={[
-              styles.notice,
-              { borderColor: theme.border, backgroundColor: theme.warmSurface },
-            ]}
-          >
-            <ThemeScope scheme="light">
-              <ThemedText type="small">{notice}</ThemedText>
-            </ThemeScope>
-          </View>
-        ) : null}
+        {notice && !selecting ? <NoticeBand message={notice} /> : null}
 
         {failedUploadCount > 0 ? (
-          <View
-            style={[
-              styles.notice,
-              styles.uploadNotice,
-              { borderColor: theme.danger, backgroundColor: theme.warmSurface },
-            ]}
-          >
-            <ThemeScope scheme="light">
-              <ThemedText type="small" style={styles.uploadNoticeText}>
-                스냅 {failedUploadCount}개를 올리지 못했어요.
-              </ThemedText>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="다시 올리기"
-                hitSlop={12}
-                onPress={retryFailedUploads}
-              >
-                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-                  다시 올리기
-                </ThemedText>
-              </Pressable>
-            </ThemeScope>
-          </View>
+          <AlertCard
+            message={`스냅 ${failedUploadCount}개를 올리지 못했어요.`}
+            action={{ label: '다시 올리기', onPress: retryFailedUploads }}
+          />
         ) : null}
 
         <SnapDayGrid

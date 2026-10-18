@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { FadeInView } from '@/shared/ui/fade-in-view';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Shadows, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
+import { TextButton } from '@/shared/ui/text-button';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type ToastProps = {
@@ -23,8 +24,10 @@ const DefaultDurationMs = 6000;
 /**
  * A one-line notice over the bottom of the screen that goes away by itself — the
  * shape for "act immediately, offer 되돌리기" (docs/ux/interaction-patterns.md
- * §4). Business-agnostic: the caller owns the words, the action, and what
- * dismissing means.
+ * §4). Drawn as a post-it (the design system's `jj-note`): butter, a degree off
+ * straight, a short hard shadow. Only a notice that leaves by itself is a
+ * post-it; a standing one is a `NoticeBand`. Business-agnostic: the caller owns
+ * the words, the action, and what dismissing means.
  *
  * It never takes focus or blocks the screen; screen readers hear it through the
  * live region.
@@ -55,27 +58,23 @@ export function Toast({
           accessibilityLiveRegion="polite"
           style={[
             styles.toast,
-            { backgroundColor: theme.backgroundSelected, borderColor: theme.border },
+            { backgroundColor: theme.butter, boxShadow: Shadows.paper(theme.shadowInk) },
           ]}
         >
-          <ThemedText type="small" style={styles.message}>
-            {message}
-          </ThemedText>
-          {action ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={action.accessibilityLabel ?? action.label}
-              accessibilityState={{ disabled: action.disabled === true }}
-              disabled={action.disabled}
-              hitSlop={Spacing.two}
-              onPress={action.onPress}
-              style={({ pressed }) => ({ opacity: action.disabled ? 0.5 : pressed ? 0.7 : 1 })}
-            >
-              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-                {action.label}
-              </ThemedText>
-            </Pressable>
-          ) : null}
+          {/* Butter keeps its value at night, so the ink inside stays the day ink. */}
+          <ThemeScope scheme="light">
+            <ThemedText type="bodySm" style={styles.message}>
+              {message}
+            </ThemedText>
+            {action ? (
+              <TextButton
+                label={action.label}
+                accessibilityLabel={action.accessibilityLabel ?? action.label}
+                disabled={action.disabled}
+                onPress={action.onPress}
+              />
+            ) : null}
+          </ThemeScope>
         </View>
       </FadeInView>
     </View>
@@ -88,11 +87,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.four,
+    paddingLeft: Spacing.four,
+    paddingRight: Spacing.two,
     paddingVertical: Spacing.three,
+    transform: [{ rotate: '-1deg' }],
   },
   message: { flex: 1 },
 });

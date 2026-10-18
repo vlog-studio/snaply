@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch } from 'react-native';
 
 import {
   AnalysisConsentSheet,
@@ -7,8 +7,8 @@ import {
   useAnalysisConsentActions,
 } from '@/features/analysis-consent';
 import { formatFullDate } from '@/shared/lib/datetime';
-import { MaxContentWidth, Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
-import { ThemedText } from '@/shared/ui/themed-text';
+import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { AlertCard } from '@/shared/ui/notice';
 
 import { SettingRow, SettingsSection } from './rows';
 
@@ -65,15 +65,7 @@ export function MeAnalysisPage() {
         />
       </SettingsSection>
 
-      {actions.error && !sheetVisible ? (
-        <View
-          style={[styles.notice, { borderColor: theme.border, backgroundColor: theme.warmSurface }]}
-        >
-          <ThemeScope scheme="light">
-            <ThemedText type="small">{actions.error}</ThemedText>
-          </ThemeScope>
-        </View>
-      ) : null}
+      {actions.error && !sheetVisible ? <AlertCard message={actions.error} /> : null}
 
       <AnalysisConsentSheet
         visible={sheetVisible}

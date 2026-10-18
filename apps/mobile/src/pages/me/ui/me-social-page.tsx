@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useConnectSns } from '@/features/connect-sns';
-import { MaxContentWidth, Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
+import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { AlertCard } from '@/shared/ui/notice';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { RowDivider, SettingRow, SettingsSection } from './rows';
@@ -86,15 +87,7 @@ export function MeSocialPage() {
         <SettingRow icon="logo-tiktok" title="TikTok" sub="준비 중" />
       </SettingsSection>
 
-      {actions.error ? (
-        <View
-          style={[styles.notice, { borderColor: theme.border, backgroundColor: theme.warmSurface }]}
-        >
-          <ThemeScope scheme="light">
-            <ThemedText type="small">{actions.error}</ThemedText>
-          </ThemeScope>
-        </View>
-      ) : null}
+      {actions.error ? <AlertCard message={actions.error} /> : null}
     </ScrollView>
   );
 }

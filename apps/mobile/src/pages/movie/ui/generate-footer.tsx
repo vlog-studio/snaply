@@ -6,6 +6,7 @@ import type { CutsRefusal } from '@/features/compose-movie';
 import type { MovieSharing } from '@/features/share-movie';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { AlertCard } from '@/shared/ui/notice';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { CutsRefusalMessages, RefusalNotice, type RefusalAction } from './refusal-notice';
@@ -116,11 +117,7 @@ export function GenerateFooter({
         // diagnostic (`movie.errorDetail`) stays in the store for debugging but
         // is never drawn: it is what a bug report needs, not what the failure
         // means, and raw server text is not user copy.
-        <View style={[styles.notice, { borderColor: theme.danger }]}>
-          <ThemedText type="small" themeColor="danger">
-            {movie.error ?? '무비를 만들지 못했어요.'}
-          </ThemedText>
-        </View>
+        <AlertCard message={movie.error ?? '무비를 만들지 못했어요.'} />
       ) : null}
 
       {cutsRefusal ? <RefusalNotice message={CutsRefusalMessages[cutsRefusal]} /> : null}
