@@ -41,6 +41,7 @@ import {
 import { AlertCard, NoticeBand } from '@/shared/ui/notice';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoPlayerModal } from '@/shared/ui/video-player-modal';
+import { RansomTitle } from '@/shared/ui/ransom-title';
 import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/widgets/snap-grid';
 
 import { draftCostReadOut } from '../model/draft-cost';
@@ -479,7 +480,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
       >
         <View style={styles.header}>
           <View style={styles.titleRow}>
-            <ThemedText type="title">스냅</ThemedText>
+            <RansomTitle word="스냅" />
             {totalCount > 0 ? (
               <Pressable
                 accessibilityRole="button"

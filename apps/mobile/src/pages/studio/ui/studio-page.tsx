@@ -17,6 +17,7 @@ import {
 } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
+import { RansomTitle } from '@/shared/ui/ransom-title';
 import { MovieRow, useBoardMovies } from '@/widgets/movie-shelf';
 import { useSnapDays } from '@/widgets/snap-grid';
 
@@ -95,7 +96,7 @@ export function StudioPage() {
       ]}
     >
       <View style={styles.header}>
-        <ThemedText type="title">스튜디오</ThemedText>
+        <RansomTitle word="스튜디오" />
       </View>
 
       <FadeInView duration={260} style={styles.blocks}>

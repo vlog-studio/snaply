@@ -25,6 +25,7 @@ import {
   useTopContentInset,
 } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { RansomTitle } from '@/shared/ui/ransom-title';
 import { MovieTile, useMovieSummaries, type MovieSummary } from '@/widgets/movie-shelf';
 
 import { MovieDeleteConfirm } from './movie-delete-confirm';
@@ -172,7 +173,7 @@ export function MoviesPage() {
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <View style={styles.titleText}>
-              <ThemedText type="title">무비</ThemedText>
+              <RansomTitle word="무비" />
               {/* "모두" because the grid holds drafts and failures too: a bare
                   count under a 무비 heading reads as a count of finished ones,
                   and the number would then contradict what the tiles say. */}

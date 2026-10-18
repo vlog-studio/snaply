@@ -1,257 +1,298 @@
-import { Ionicons } from '@expo/vector-icons';
-import { BlurTargetView, BlurView } from 'expo-blur';
-import { Tabs, useIsFocused, useRouter } from 'expo-router';
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type Dispatch,
-  type PropsWithChildren,
-  type SetStateAction,
-} from 'react';
-import { Pressable, StyleSheet, View, type ColorValue } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
+import { useState, type ComponentProps } from 'react';
+import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Line, Path } from 'react-native-svg';
 
 import { impactFeedback } from '@/shared/lib/haptics';
+import { DoodleIcon, type DoodleIconName } from '@/shared/ui/doodle-icon';
 import { useTabBarHidden } from '@/shared/ui/tab-bar-chrome';
 import {
-  Radius,
-  TabBarContentHeight,
+  Shadows,
+  Sizes,
+  Spacing,
+  TabBarPadding,
   useReducedMotion,
   useResolvedColorScheme,
   useTheme,
 } from '@/shared/ui/theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type TabIconName = keyof typeof Ionicons.glyphMap;
+type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
-// On Android the BlurView cannot sample the hierarchy behind it by itself: it
-// must be pointed at a BlurTargetView, and that target must not contain the
-// BlurView (Dimezis BlurView v3 constraint) — so wrapping the whole navigator
-// is not an option. Instead every tab scene is wrapped in a BlurTargetView
-// (a plain View on iOS/web) and the focused scene registers itself as the tab
-// bar's blur source.
-const SceneBlurTargetContext = createContext<Dispatch<SetStateAction<View | null>>>(() => {});
-
-function SceneBlurTarget({ children }: PropsWithChildren) {
-  const theme = useTheme();
-  const setBlurTarget = useContext(SceneBlurTargetContext);
-  const sceneRef = useRef<View | null>(null);
-  const isFocused = useIsFocused();
-
-  useEffect(() => {
-    if (!isFocused) return;
-    const view = sceneRef.current;
-    setBlurTarget(view);
-    // Deregister on blur/unmount: a stale unmounted view left registered makes
-    // the BlurView's findNodeHandle throw ("Unable to find node on an unmounted
-    // component"). Clear only if another scene hasn't registered itself since.
-    return () => {
-      setBlurTarget((current) => (current === view ? null : current));
-    };
-  }, [isFocused, setBlurTarget]);
-
-  return (
-    // The blur samples only this subtree, so it must paint its own opaque
-    // background even though the scene container behind it already has one.
-    <BlurTargetView ref={sceneRef} style={[styles.scene, { backgroundColor: theme.background }]}>
-      {children}
-    </BlurTargetView>
-  );
-}
+/**
+ * Each tab's stub: its icon, and the fixed tilt it is taped at. Fixed so a tab
+ * leans the same way on every launch (root docs/plans/junk-journal-redesign.md
+ * §3); the press target itself never rotates.
+ */
+const TabStubs: Record<string, { icon: DoodleIconName; tilt: number }> = {
+  index: { icon: 'studio', tilt: -1 },
+  snaps: { icon: 'snaps', tilt: 1 },
+  movies: { icon: 'movies', tilt: -0.5 },
+  me: { icon: 'me', tilt: 1.5 },
+};
 
 export function AppTabs() {
   const theme = useTheme();
-  const scheme = useResolvedColorScheme();
-  // A fixed `height` overrides the automatic bottom safe-area inset, so add it
-  // back explicitly — otherwise the bar overlaps the Android navigation bar.
-  const inset = useSafeAreaInsets();
-  const [blurTargetView, setBlurTargetView] = useState<View | null>(null);
-  // A screen can take the bottom of the shell over with an action bar of its
-  // own; while it does, the bar and the capture button step aside entirely
-  // rather than painting on top of it.
-  const tabBarHidden = useTabBarHidden();
   const reducedMotion = useReducedMotion();
 
   return (
-    <SceneBlurTargetContext value={setBlurTargetView}>
-      <Tabs
-        // Four tabs with the capture button centered over them as an overlay
-        // (CaptureButton below), not as a tab, because /capture is a modal in
-        // the root stack rather than a tab route. Four flex:1 items would put
-        // the button on top of the inner two, so those two give up half of
-        // `CaptureLane` as a margin: the bar reads and behaves as five slots,
-        // and the button owns the middle one outright.
-        screenLayout={({ children }) => <SceneBlurTarget>{children}</SceneBlurTarget>}
-        screenOptions={{
-          headerShown: false,
-          tabBarShowLabel: false,
-          // Tab switches cross-fade with a slight lateral shift on both
-          // platforms — the JS tab navigator animates nothing by default,
-          // which reads as a hard cut on Android especially.
-          animation: reducedMotion ? 'none' : 'shift',
-          // All four scenes mount at launch: a lazily-mounted scene's first
-          // frame is its empty background, and the cross-fade stretches that
-          // blank frame into a visible blink on the first visit to a tab.
-          // Visited tabs stay mounted anyway (per-tab scroll retention), so
-          // this only moves render cost to startup, behind the splash overlay.
-          lazy: false,
-          sceneStyle: { backgroundColor: theme.background },
-          tabBarActiveTintColor: theme.primary,
-          tabBarInactiveTintColor: theme.tabInactive,
-          // The bar floats over the scene so its blur has content to sample;
-          // screens offset their scroll content with `useTabBarHeight`.
-          tabBarBackground: () => (
-            <BlurView
-              tint={scheme === 'dark' ? 'dark' : 'light'}
-              intensity={60}
-              // Real background blur on Android SDK 31+, graceful semi-transparent
-              // fallback on older versions.
-              blurMethod="dimezisBlurViewSdk31Plus"
-              blurTarget={{ current: blurTargetView }}
-              style={StyleSheet.absoluteFill}
-            />
-          ),
-          tabBarStyle: {
-            position: 'absolute',
-            display: tabBarHidden ? 'none' : 'flex',
-            backgroundColor: 'transparent',
-            borderTopColor: theme.border,
-            borderTopWidth: StyleSheet.hairlineWidth,
-            height: inset.bottom + TabBarContentHeight,
-            paddingBottom: inset.bottom,
-          },
-          tabBarItemStyle: styles.tabItem,
-          tabBarButton: ({ ref, ...props }) => <Pressable {...props} android_ripple={null} />,
-        }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: '스튜디오',
-            tabBarAccessibilityLabel: '스튜디오',
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon color={color} name={focused ? 'albums' : 'albums-outline'} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="snaps"
-          options={{
-            title: '스냅',
-            tabBarAccessibilityLabel: '스냅',
-            // Last item before the capture lane; see `CaptureLane`.
-            tabBarItemStyle: [styles.tabItem, styles.tabItemBeforeCapture],
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon color={color} name={focused ? 'grid' : 'grid-outline'} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="movies"
-          options={{
-            title: '무비',
-            tabBarAccessibilityLabel: '무비',
-            // First item after the capture lane; see `CaptureLane`.
-            tabBarItemStyle: [styles.tabItem, styles.tabItemAfterCapture],
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon color={color} name={focused ? 'film' : 'film-outline'} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="me"
-          options={{
-            title: '나',
-            tabBarAccessibilityLabel: '나',
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon color={color} name={focused ? 'person' : 'person-outline'} />
-            ),
-          }}
-        />
-      </Tabs>
-      {/* Capture is always one tap, centered over the bar on every tab. It opens
-          the /capture modal in the root stack. It leaves with the bar: a screen
-          that owns the bottom is not offering to shoot. */}
-      {tabBarHidden ? null : <CaptureButton bottom={inset.bottom} />}
-    </SceneBlurTargetContext>
+    <Tabs
+      tabBar={(props) => <TicketTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        // Tab switches cross-fade with a slight lateral shift on both
+        // platforms — the JS tab navigator animates nothing by default,
+        // which reads as a hard cut on Android especially.
+        animation: reducedMotion ? 'none' : 'shift',
+        // All four scenes mount at launch: a lazily-mounted scene's first
+        // frame is its empty background, and the cross-fade stretches that
+        // blank frame into a visible blink on the first visit to a tab.
+        // Visited tabs stay mounted anyway (per-tab scroll retention), so
+        // this only moves render cost to startup, behind the splash overlay.
+        lazy: false,
+        sceneStyle: { backgroundColor: theme.background },
+      }}
+    >
+      <Tabs.Screen name="index" options={{ title: '스튜디오' }} />
+      <Tabs.Screen name="snaps" options={{ title: '스냅' }} />
+      <Tabs.Screen name="movies" options={{ title: '무비' }} />
+      <Tabs.Screen name="me" options={{ title: '나' }} />
+    </Tabs>
   );
 }
 
-// Capture button, seated in the lane the two inner tab items keep clear for it
-// and lifted just clear of the bar's top edge. Lives outside <Tabs> because
-// /capture is a root-stack modal, not a tab route; the container is
-// pointer-transparent so only the button itself is tappable. Its touch area is
-// exactly the circle the user can see — no tab item's area is taken, and no
-// invisible margin around it opens the camera by surprise.
-function CaptureButton({ bottom }: { bottom: number }) {
+/**
+ * The tab bar (the design system's `jj-tabbar`): a strip of kraft with a
+ * perforated top edge, four ticket stubs, and the capture disc in the middle
+ * lane, raised over the strip. The chosen tab's stub is pink and stands 4dp
+ * proud. The strip is `tabbar` — kraft by day, a dark kraft at night (decision
+ * 3), so no light band is left under a dark screen.
+ *
+ * It floats over the scene (screens pad with `useTabBarHeight`), and a screen
+ * that takes the bottom of the shell over with an action bar of its own hides
+ * it entirely, capture disc included — a screen that owns the bottom is not
+ * offering to shoot.
+ */
+function TicketTabBar({ state, descriptors, navigation, insets }: TabBarProps) {
   const theme = useTheme();
-  const router = useRouter();
+  const scheme = useResolvedColorScheme();
+  const tabBarHidden = useTabBarHidden();
+  if (tabBarHidden) return null;
 
-  const openCapture = () => {
-    // A full-screen modal is a large jump for one small button, so the press
-    // is acknowledged in the hand as well as on screen.
-    impactFeedback('light');
-    router.push('/capture');
-  };
+  const stubs = state.routes.map((route, index) => {
+    const focused = state.index === index;
+    const { options } = descriptors[route.key]!;
+    const label = typeof options.title === 'string' ? options.title : route.name;
+    return (
+      <TabStub
+        key={route.key}
+        label={label}
+        icon={TabStubs[route.name]?.icon ?? 'studio'}
+        tilt={TabStubs[route.name]?.tilt ?? 0}
+        focused={focused}
+        onPress={() => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+        }}
+        onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+      />
+    );
+  });
 
   return (
-    <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-      <Pressable
-        accessibilityLabel="스냅 찍기"
-        accessibilityRole="button"
-        onPress={openCapture}
-        style={[
-          styles.capture,
-          {
-            bottom: bottom + TabBarContentHeight + CaptureLift - CaptureSize,
-            backgroundColor: theme.primary,
-            borderColor: theme.background,
-          },
-        ]}
-      >
-        <Ionicons color={theme.onPrimary} name="ellipse" size={20} />
-      </Pressable>
+    <View
+      style={[
+        styles.bar,
+        { backgroundColor: theme.tabbar, paddingBottom: TabBarPadding.bottom + insets.bottom },
+      ]}
+    >
+      <Perforation color={scheme === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(43,43,43,0.18)'} />
+      {stubs.slice(0, 2)}
+      <View style={styles.captureLane}>
+        <CaptureDisc />
+      </View>
+      {stubs.slice(2)}
     </View>
   );
 }
 
-function TabBarIcon({ color, name }: { color: ColorValue; name: TabIconName }) {
-  return <Ionicons color={color} name={name} size={24} />;
+/** The dashed tear line along the top of the strip. */
+function Perforation({ color }: { color: string }) {
+  return (
+    <Svg pointerEvents="none" style={styles.perforation} width="100%" height={4}>
+      <Line x1={6} x2="100%" y1={2} y2={2} stroke={color} strokeWidth={4} strokeDasharray="2 6" />
+    </Svg>
+  );
 }
 
-/** Diameter of the capture button, its ring included. */
-const CaptureSize = 52;
-/** Clearance kept between the button and the nearest tab item on either side. */
-const CaptureGutter = 14;
 /**
- * Width the bar reserves in its middle for the capture button. The two inner
- * tab items each give up half of it, which is what turns four flex:1 items
- * into a five-slot bar. Derived from `CaptureSize` so resizing the button
- * cannot leave the lane behind.
+ * One tab, as a ticket stub: a half-circle notch punched at the top and the
+ * bottom, a dotted tear line near the bottom. The chosen stub is pink, lifted,
+ * and torn along that line instead.
  */
-const CaptureLane = CaptureSize + CaptureGutter * 2;
-/** How far the button's top edge rises above the bar's top edge. */
-const CaptureLift = 10;
+function TabStub({
+  label,
+  icon,
+  tilt,
+  focused,
+  onPress,
+  onLongPress,
+}: {
+  label: string;
+  icon: DoodleIconName;
+  tilt: number;
+  focused: boolean;
+  onPress: () => void;
+  onLongPress: () => void;
+}) {
+  const theme = useTheme();
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    if (!size || size.width !== width || size.height !== height) setSize({ width, height });
+  };
+  const face = focused ? theme.pink : theme.backgroundElement;
+  const ink = focused ? theme.stickerInk : theme.text;
+
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={label}
+      accessibilityState={{ selected: focused }}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      onLayout={onLayout}
+      style={styles.stub}
+    >
+      <View
+        style={[
+          styles.stubFace,
+          { transform: [{ translateY: focused ? -4 : 0 }, { rotate: `${tilt}deg` }] },
+        ]}
+      >
+        {size ? (
+          <Svg
+            width={size.width + 1}
+            height={size.height + 2}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          >
+            <Path d={stubPath(size.width, size.height, focused, 1, 2)} fill={theme.shadowInk} />
+            <Path d={stubPath(size.width, size.height, focused, 0, 0)} fill={face} />
+            {focused ? null : (
+              <Line
+                x1={6}
+                x2={size.width - 6}
+                y1={size.height - 8}
+                y2={size.height - 8}
+                stroke={theme.border}
+                strokeWidth={2}
+                strokeDasharray="2 3"
+              />
+            )}
+          </Svg>
+        ) : null}
+        <DoodleIcon name={icon} size={26} color={ink} />
+      </View>
+    </Pressable>
+  );
+}
+
+const StubNotch = 5;
+
+/**
+ * A stub `w`×`h` at (`dx`, `dy`): notched at the top and the bottom centre, or
+ * — chosen — notched at the top and torn in a zigzag across the bottom.
+ */
+function stubPath(w: number, h: number, torn: boolean, dx: number, dy: number): string {
+  const cx = w / 2 + dx;
+  const r = StubNotch;
+  const top = [`M${dx},${dy}`, `H${cx - r}`, `A${r},${r} 0 0 0 ${cx + r},${dy}`, `H${w + dx}`];
+  if (torn) {
+    // The tear: 78–86% of the height, alternating along the width.
+    const teeth = [1, 0.92, 0.84, 0.75, 0.66, 0.58, 0.5, 0.42, 0.33, 0.25, 0.16, 0.08, 0].map(
+      (x, index) => `L${x * w + dx},${(index % 2 === 0 ? 0.79 : 0.85) * h + dy}`,
+    );
+    return [...top, `V${0.78 * h + dy}`, ...teeth, 'Z'].join(' ');
+  }
+  return [
+    ...top,
+    `V${h + dy}`,
+    `H${cx + r}`,
+    `A${r},${r} 0 0 0 ${cx - r},${h + dy}`,
+    `H${dx}`,
+    'Z',
+  ].join(' ');
+}
+
+/**
+ * Capture, as a cherry disc with a stitched ring (the design system's
+ * `jj-capture`), raised 18dp over the strip in the middle lane. It opens the
+ * /capture modal in the root stack. Its touch area is exactly the disc.
+ */
+function CaptureDisc() {
+  const theme = useTheme();
+  const router = useRouter();
+  return (
+    <Pressable
+      accessibilityLabel="스냅 찍기"
+      accessibilityRole="button"
+      onPress={() => {
+        // A full-screen modal is a large jump for one small button, so the
+        // press is acknowledged in the hand as well as on screen.
+        impactFeedback('light');
+        router.push('/capture');
+      }}
+      style={({ pressed }) => [
+        styles.capture,
+        {
+          backgroundColor: theme.primary,
+          boxShadow: (pressed ? Shadows.pressed : Shadows.paper)(theme.shadowInk),
+          transform: [{ translateY: -18 }, { scale: pressed ? 0.97 : 1 }],
+        },
+      ]}
+    >
+      <View pointerEvents="none" style={styles.captureStitch} />
+      <DoodleIcon name="camera" size={26} color={theme.onPrimary} />
+    </Pressable>
+  );
+}
 
 const styles = StyleSheet.create({
-  scene: { flex: 1 },
-  tabItem: { borderRadius: Radius.pill },
-  tabItemBeforeCapture: { marginEnd: CaptureLane / 2 },
-  tabItemAfterCapture: { marginStart: CaptureLane / 2 },
-  capture: {
+  bar: {
     position: 'absolute',
-    alignSelf: 'center',
-    width: CaptureSize,
-    height: CaptureSize,
-    borderRadius: CaptureSize / 2,
-    // A ring in the ground color separates the button from the blurred bar.
-    borderWidth: 4,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    paddingTop: TabBarPadding.top,
+    paddingHorizontal: Spacing.two,
+  },
+  perforation: { position: 'absolute', top: 0, left: 0, right: 0 },
+  stub: { flex: 1, minHeight: Sizes.touchMin },
+  stubFace: { flex: 1, minHeight: Sizes.touchMin, alignItems: 'center', justifyContent: 'center' },
+  captureLane: { width: 64, alignItems: 'center', justifyContent: 'flex-end' },
+  capture: {
+    width: Sizes.captureDisc,
+    height: Sizes.captureDisc,
+    borderRadius: Sizes.captureDisc / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    // The button now nests into the bar rather than floating over it, so it
-    // casts elevation rather than the halo it used to bleed onto its neighbors.
-    boxShadow: '0 4px 12px rgba(234,94,56,0.35)',
+  },
+  captureStitch: {
+    position: 'absolute',
+    top: 5,
+    left: 5,
+    right: 5,
+    bottom: 5,
+    borderRadius: (Sizes.captureDisc - 10) / 2,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.7)',
   },
 });
