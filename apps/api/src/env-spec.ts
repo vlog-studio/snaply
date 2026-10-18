@@ -76,7 +76,7 @@ export const ENV_VARS = [
     required: false,
     origin: 'shared',
     description:
-      '레거시 fallback. 신규 프로젝트는 PUBLISHABLE 을 쓴다. media:e2e 로그인(scripts/media-e2e.mjs)은 아직 이 값을 읽는다(backlog E-57)',
+      '레거시 fallback. 신규 프로젝트는 PUBLISHABLE 을 쓴다. API 와 media:e2e 로그인(scripts/media-e2e.mjs) 모두 PUBLISHABLE 이 없을 때만 읽는다',
   },
   {
     key: 'SUPABASE_SERVICE_ROLE_KEY',

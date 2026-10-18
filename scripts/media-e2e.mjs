@@ -143,9 +143,17 @@ async function login(env, opts) {
       'TEST_EMAIL / TEST_PASSWORD 환경변수 또는 --email / --password 를 지정하세요.',
     );
   }
+  // API 와 같은 순서로 읽는다(apps/api/src/config.ts) — 새 설정은 publishable 키만 두고, anon 은 레거시 대체값이다.
+  const apikey = env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY;
+  if (!apikey) {
+    fail(
+      'Supabase 키가 없습니다.',
+      'apps/api/.env 에 SUPABASE_PUBLISHABLE_KEY(또는 레거시 SUPABASE_ANON_KEY)를 넣거나, --token 으로 JWT 를 넘기세요.',
+    );
+  }
   const res = await fetch(`${env.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
-    headers: { apikey: env.SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+    headers: { apikey, 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
   const json = await res.json();
