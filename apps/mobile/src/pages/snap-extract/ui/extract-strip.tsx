@@ -6,7 +6,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ExtractStepSec } from '@/features/extract-snap';
 import { formatDuration } from '@/shared/lib/datetime';
 import type { TrimTrack } from '@/shared/lib/trim-geometry';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { ExtractPxPerSec, stripRulerTicks, stripTiles } from '../model/extract-strip-layout';
@@ -174,8 +174,6 @@ const styles = StyleSheet.create({
   reel: {
     flexDirection: 'row',
     height: '100%',
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
     overflow: 'hidden',
   },
 });

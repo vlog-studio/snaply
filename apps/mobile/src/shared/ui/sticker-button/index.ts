@@ -1,1 +1,1 @@
-export { StickerButton, type StickerButtonProps } from './sticker-button';
+export { StickerButton, StickerFace, type StickerButtonProps } from './sticker-button';

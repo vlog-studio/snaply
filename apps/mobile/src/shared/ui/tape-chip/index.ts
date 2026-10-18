@@ -1,1 +1,1 @@
-export { TapeChip, type TapeChipColor, type TapeChipProps } from './tape-chip';
+export { TapeChip, TapeLabel, type TapeChipColor, type TapeChipProps } from './tape-chip';

@@ -11,6 +11,38 @@ export type StickerButtonProps = Omit<PressableProps, 'children'> & {
 };
 
 /**
+ * The sticker's face alone, for a control whose press target is larger than
+ * the disc — a camera side control, where the disc sits over its word.
+ */
+export function StickerFace({
+  icon,
+  selected = false,
+}: {
+  icon: DoodleIconName;
+  selected?: boolean;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      style={[
+        styles.disc,
+        {
+          backgroundColor: selected ? theme.primary : theme.backgroundElement,
+          borderColor: selected ? theme.primary : theme.border,
+          boxShadow: Shadows.paper(theme.shadowInk),
+        },
+      ]}
+    >
+      <View
+        pointerEvents="none"
+        style={[styles.stitch, { borderColor: selected ? 'rgba(255,255,255,0.6)' : theme.border }]}
+      />
+      <DoodleIcon name={icon} size={22} color={selected ? theme.onPrimary : theme.text} />
+    </View>
+  );
+}
+
+/**
  * An icon-only control as a round sticker (the design system's
  * `jj-button-sticker`): a disc of sheet paper with a dashed stitch inside its
  * edge and the short paper shadow, one doodle icon on it. For back, close and

@@ -161,7 +161,7 @@ export type ExtractWindowProps = {
 };
 
 /**
- * The extraction window over the source strip: an ember frame whose amber
+ * The extraction window over the source strip: a butter frame whose butter
  * edge handles set the cut's bounds and whose body drags the whole window
  * along the video — the movie editor's trim language, pointed at a gallery
  * video. The frame's position and width follow the finger on the UI thread;
@@ -231,9 +231,7 @@ export function ExtractWindow({
   };
 
   // The frame is a flow row — [handle][body][handle] — so the three pieces
-  // join flush, like the movie editor's focused clip: the body stays square
-  // and the rounded corners belong to the handles' outer edges, because a
-  // rounded body against a straight handle leaves a notch at every join.
+  // join flush, like the movie editor's focused clip.
   const frameStyle = useAnimatedStyle(() => ({
     left: startX.value - HandleWidth - FrameBorderWidth,
   }));
@@ -295,9 +293,12 @@ export function ExtractWindow({
             accessibilityRole="adjustable"
             accessibilityLabel="구간 시작 지점"
             accessibilityValue={{ text: formatPositionSec(shown.startSec) }}
-            style={[styles.handle, styles.handleStart, { backgroundColor: theme.amber }]}
+            style={[
+              styles.handle,
+              { backgroundColor: theme.butter, borderColor: theme.stickerInk },
+            ]}
           >
-            <View style={styles.grip} />
+            <View style={[styles.grip, { backgroundColor: theme.stickerInk }]} />
           </View>
         </GestureDetector>
 
@@ -310,7 +311,7 @@ export function ExtractWindow({
             accessibilityValue={{
               text: `${formatPositionSec(shown.startSec)}부터 ${formatSeconds(shown.endSec - shown.startSec)}`,
             }}
-            style={[styles.body, { borderColor: theme.amber }, bodyStyle]}
+            style={[styles.body, { borderColor: theme.butter }, bodyStyle]}
           >
             {isPlaying ? (
               <Animated.View pointerEvents="none" style={[styles.progressLine, progressStyle]} />
@@ -325,9 +326,12 @@ export function ExtractWindow({
             accessibilityRole="adjustable"
             accessibilityLabel="구간 끝 지점"
             accessibilityValue={{ text: formatPositionSec(shown.endSec) }}
-            style={[styles.handle, styles.handleEnd, { backgroundColor: theme.amber }]}
+            style={[
+              styles.handle,
+              { backgroundColor: theme.butter, borderColor: theme.stickerInk },
+            ]}
           >
-            <View style={styles.grip} />
+            <View style={[styles.grip, { backgroundColor: theme.stickerInk }]} />
           </View>
         </GestureDetector>
       </Animated.View>
@@ -357,7 +361,7 @@ const styles = StyleSheet.create({
     bottom: -FrameBorderWidth,
     flexDirection: 'row',
   },
-  // Square on purpose — the outer radii live on the handles (see above).
+  // Square, like everything on paper.
   body: {
     borderWidth: FrameBorderWidth,
     overflow: 'hidden',
@@ -370,23 +374,12 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
+  // A butter grip outlined in sticker ink — the timeline's trim handle.
   handle: {
     width: HandleWidth,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  handleStart: {
-    borderTopLeftRadius: 8,
-    borderBottomLeftRadius: 8,
-  },
-  handleEnd: {
-    borderTopRightRadius: 8,
-    borderBottomRightRadius: 8,
-  },
-  grip: {
-    width: 3,
-    height: 16,
-    borderRadius: 1.5,
-    backgroundColor: '#FFFFFF',
-  },
+  grip: { width: 2.5, height: 14, borderRadius: 1.25 },
 });

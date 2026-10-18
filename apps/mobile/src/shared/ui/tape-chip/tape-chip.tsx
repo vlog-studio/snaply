@@ -1,4 +1,12 @@
-import { Pressable, StyleSheet, type PressableProps } from 'react-native';
+import type { ReactNode } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  type PressableProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { Sizes, Spacing, useTheme, type ThemeColor } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -52,6 +60,14 @@ export function TapeChip({
 }
 
 const styles = StyleSheet.create({
+  label: {
+    minHeight: 32,
+    paddingHorizontal: Spacing.four,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    alignSelf: 'center',
+  },
   chip: {
     minHeight: Sizes.touchMin,
     paddingHorizontal: Spacing.four + Spacing.half,
@@ -59,3 +75,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+/**
+ * A status written on tape — not a press target: a counter, a stage read-out.
+ * `fill` is any ground (a tape colour, kraft, a smoke wash over video);
+ * the ink stays dark unless `ink` says otherwise.
+ */
+export function TapeLabel({
+  children,
+  fill,
+  ink,
+  tilt = -1,
+  style,
+}: {
+  children: ReactNode;
+  fill: string;
+  ink?: string;
+  tilt?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = useTheme();
+  return (
+    <View
+      style={[
+        styles.label,
+        { backgroundColor: fill, transform: [{ rotate: `${tilt}deg` }] },
+        style,
+      ]}
+    >
+      {typeof children === 'string' ? (
+        <ThemedText
+          selectable={false}
+          type="dataSm"
+          style={{ color: ink ?? theme.stickerInk, fontWeight: 700 }}
+        >
+          {children}
+        </ThemedText>
+      ) : (
+        children
+      )}
+    </View>
+  );
+}

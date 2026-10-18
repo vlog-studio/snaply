@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView } from 'expo-video';
@@ -15,7 +14,11 @@ import {
 import { formatDuration, formatSeconds } from '@/shared/lib/datetime';
 import { impactFeedback, selectionFeedback, successFeedback } from '@/shared/lib/haptics';
 import { pickVideoFromLibrary } from '@/shared/lib/video-picker';
-import { Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { AlertCard } from '@/shared/ui/notice';
+import { StickerButton, StickerFace } from '@/shared/ui/sticker-button';
+import { TapeLabel } from '@/shared/ui/tape-chip';
+import { Shadows, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Reel } from '@/shared/ui/reel';
 
@@ -156,33 +159,19 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
       ]}
     >
       <View style={styles.topBar}>
-        <Pressable
+        <StickerButton
+          icon="close"
           accessibilityLabel="가져오기 닫기"
           onPress={() => router.back()}
-          style={styles.utilityButton}
-        >
-          <ThemedText selectable={false} style={styles.utilityIcon}>
-            ×
-          </ThemedText>
-        </Pressable>
-        <View style={styles.modePill}>
-          <ThemedText selectable={false} type="note" style={styles.whiteText}>
-            {collectedCount > 0 ? `스냅 ${collectedCount}개 담김` : '스냅 가져오기'}
-          </ThemedText>
-        </View>
-        <Pressable
+        />
+        <TapeLabel fill={theme.tapeButter}>
+          {collectedCount > 0 ? `스냅 ${collectedCount}개 담김` : '스냅 가져오기'}
+        </TapeLabel>
+        <StickerButton
+          icon={playback.muted ? 'noteOff' : 'note'}
           accessibilityLabel={playback.muted ? '소리 켜기' : '소리 끄기'}
           onPress={playback.toggleMuted}
-          style={styles.utilityButton}
-        >
-          {/* An icon glyph, not the capture screen's text glyphs — `∅` falls
-              back to an oversized emoji face on Samsung's font stack. */}
-          <Ionicons
-            name={playback.muted ? 'volume-mute' : 'volume-high'}
-            size={22}
-            color="#FFFFFF"
-          />
-        </Pressable>
+        />
       </View>
 
       <View style={styles.stage}>
@@ -201,41 +190,28 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
         >
           {!playback.isPlaying ? (
             <View style={styles.playButton}>
-              <Ionicons name="play" size={24} color="#F1E6DA" />
+              <StickerFace icon="play" />
             </View>
           ) : null}
         </Pressable>
 
         {showSaved ? (
           <View style={styles.stageBadge} pointerEvents="none">
-            <View style={[styles.completedBadge, { backgroundColor: 'rgba(14,11,8,0.82)' }]}>
-              <ThemedText selectable={false} type="note" style={{ color: theme.lumen }}>
-                담김 · 스냅 {collectedCount}개
-              </ThemedText>
-            </View>
+            <TapeLabel fill={theme.tapeMint} tilt={-0.5}>
+              {`담김 · 스냅 ${collectedCount}개`}
+            </TapeLabel>
           </View>
         ) : null}
 
         {bannerMessage ? (
           <View style={styles.stageBadge}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={dismissBanner}
-              style={styles.errorBanner}
-            >
-              <ThemedText type="smallBold" style={styles.whiteText}>
-                {bannerMessage}
-              </ThemedText>
-              <ThemedText selectable={false} type="small" style={styles.errorDismiss}>
-                닫기
-              </ThemedText>
-            </Pressable>
+            <AlertCard message={bannerMessage} onDismiss={dismissBanner} style={styles.errorCard} />
           </View>
         ) : null}
 
         {durationSec !== undefined ? (
           <View style={styles.readout} pointerEvents="none">
-            <ThemedText selectable={false} type="edge" style={styles.whiteText}>
+            <ThemedText selectable={false} type="data" style={{ color: theme.text }}>
               {formatDuration(playback.positionSec)} / {formatDuration(durationSec)}
             </ThemedText>
           </View>
@@ -244,7 +220,7 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
 
       <View style={styles.windowReadout}>
         {shown ? (
-          <ThemedText selectable={false} type="note" style={styles.mutedWhite}>
+          <ThemedText selectable={false} type="data" themeColor="textSecondary">
             {formatPositionSec(shown.startSec)} – {formatPositionSec(shown.endSec)} ·{' '}
             {formatSeconds(shown.endSec - shown.startSec)}
           </ThemedText>
@@ -281,8 +257,8 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
           onPress={() => void changeSource()}
           style={[styles.sideControl, isExtracting && styles.disabledControl]}
         >
-          <Ionicons name="images-outline" size={24} color="#FFFFFF" />
-          <ThemedText selectable={false} type="small" style={styles.mutedWhite}>
+          <StickerFace icon="gallery" />
+          <ThemedText selectable={false} type="smallBold" themeColor="textSecondary">
             영상 변경
           </ThemedText>
         </Pressable>
@@ -293,13 +269,23 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
           accessibilityState={{ disabled: isExtracting || window === undefined }}
           disabled={isExtracting || window === undefined}
           onPress={() => void handleExtract()}
-          style={[styles.extractOuter, window === undefined && styles.disabledControl]}
+          style={[
+            styles.extractOuter,
+            { borderColor: theme.text },
+            window === undefined && styles.disabledControl,
+          ]}
         >
-          <View style={[styles.extractInner, { backgroundColor: theme.primary }]}>
+          <View
+            style={[
+              styles.extractInner,
+              { backgroundColor: theme.primary, boxShadow: Shadows.paper(theme.shadowInk) },
+            ]}
+          >
+            <View pointerEvents="none" style={styles.extractStitch} />
             {isExtracting ? (
               <Reel color={theme.onPrimary} />
             ) : (
-              <Ionicons name="cut" size={26} color={theme.onPrimary} />
+              <DoodleIcon name="scissors" size={26} color={theme.onPrimary} />
             )}
           </View>
         </Pressable>
@@ -310,8 +296,8 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
           onPress={() => router.back()}
           style={styles.sideControl}
         >
-          <Ionicons name="checkmark" size={24} color="#FFFFFF" />
-          <ThemedText selectable={false} type="small" style={styles.mutedWhite}>
+          <StickerFace icon="check" />
+          <ThemedText selectable={false} type="smallBold" themeColor="textSecondary">
             완료
           </ThemedText>
         </Pressable>
@@ -329,27 +315,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.three,
   },
-  utilityButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.36)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  utilityIcon: { color: '#FFFFFF', fontSize: 30, lineHeight: 32 },
-  modePill: {
-    backgroundColor: 'rgba(0,0,0,0.36)',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-  },
   stage: {
     flex: 1,
     marginTop: Spacing.three,
     marginHorizontal: Spacing.four,
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
     overflow: 'hidden',
     backgroundColor: '#000000',
   },
@@ -362,16 +331,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(20,15,11,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  playButton: { transform: [{ scale: 1.25 }] },
+  errorCard: { alignSelf: 'stretch' },
   stageBadge: {
     position: 'absolute',
     top: Spacing.four,
@@ -379,32 +340,13 @@ const styles = StyleSheet.create({
     right: Spacing.four,
     alignItems: 'center',
   },
-  completedBadge: {
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-  },
-  errorBanner: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: 'rgba(120,20,20,0.92)',
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.four,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  errorDismiss: { color: 'rgba(255,255,255,0.72)' },
   readout: {
     position: 'absolute',
     right: Spacing.three,
     bottom: Spacing.three,
-    backgroundColor: 'rgba(0,0,0,0.42)',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
+    backgroundColor: 'rgba(14,11,8,0.6)',
+    paddingHorizontal: Spacing.two + Spacing.half,
+    paddingVertical: Spacing.half,
   },
   windowReadout: {
     minHeight: 20,
@@ -439,7 +381,6 @@ const styles = StyleSheet.create({
     height: 78,
     borderRadius: 39,
     borderWidth: 5,
-    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -449,9 +390,17 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
-    boxShadow: '0 0 22px rgba(234,94,56,0.5)',
+  },
+  extractStitch: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderRadius: 23,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.7)',
   },
   disabledControl: { opacity: 0.42 },
-  whiteText: { color: '#FFFFFF' },
-  mutedWhite: { color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 18 },
 });

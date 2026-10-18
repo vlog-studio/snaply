@@ -13,8 +13,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type CaptureDuration } from '@/entities/capture-session';
 import { useSnaps } from '@/entities/snap';
+import { AlertCard } from '@/shared/ui/notice';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { Radius, Spacing, ThemeScope, useReducedMotion, useTheme } from '@/shared/ui/theme';
+import { StickerButton, StickerFace } from '@/shared/ui/sticker-button';
+import { TapeChip, TapeLabel } from '@/shared/ui/tape-chip';
+import { TextButton } from '@/shared/ui/text-button';
+import { Shadows, Spacing, ThemeScope, useReducedMotion, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoPreview } from '@/shared/ui/video-preview';
 
@@ -156,28 +160,22 @@ function CaptureRecordScreen() {
           { backgroundColor: theme.media, paddingTop: insets.top, paddingBottom: insets.bottom },
         ]}
       >
-        <Pressable
+        <StickerButton
+          icon="close"
           accessibilityLabel="카메라 닫기"
           onPress={closePage}
           style={[styles.permissionClose, { top: insets.top + Spacing.three }]}
-        >
-          <ThemedText selectable={false} style={styles.utilityIcon}>
-            ×
-          </ThemedText>
-        </Pressable>
+        />
         <View style={styles.permissionContent}>
           <View style={[styles.permissionIcon, { borderColor: theme.primary }]}>
-            <ThemedText
-              selectable={false}
-              style={[styles.permissionIconText, { color: theme.cherryInk }]}
-            >
-              ●
-            </ThemedText>
+            <View style={[styles.permissionDot, { backgroundColor: theme.primary }]} />
           </View>
-          <ThemedText type="title" style={styles.whiteText}>
+          <ThemedText type="subtitle" accessibilityRole="header" style={styles.centerText}>
             카메라를 사용할 수 없어요
           </ThemedText>
-          <ThemedText style={styles.permissionDescription}>{permissions.message}</ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.centerText}>
+            {permissions.message}
+          </ThemedText>
           {permissions.isPermissionReady ? (
             <SnaplyButton
               title={permissions.canAskAgain ? '카메라·마이크 권한 허용' : '설정에서 권한 켜기'}
@@ -196,7 +194,7 @@ function CaptureRecordScreen() {
             style={styles.permissionAction}
           />
           {library.errorMessage ? (
-            <ThemedText type="small" style={styles.permissionError}>
+            <ThemedText type="small" themeColor="cherryInk" style={styles.centerText}>
               {library.errorMessage}
             </ThemedText>
           ) : null}
@@ -247,52 +245,37 @@ function CaptureRecordScreen() {
         ) : null}
 
         <View style={styles.topBar}>
-          <Pressable
-            accessibilityLabel="카메라 닫기"
-            onPress={closePage}
-            style={styles.utilityButton}
-          >
-            <ThemedText selectable={false} style={styles.utilityIcon}>
-              ×
-            </ThemedText>
-          </Pressable>
-          <Animated.View style={[styles.modePill, counterStyle]}>
-            <ThemedText selectable={false} type="note" style={styles.whiteText}>
-              스냅{displayedCount > 0 ? ` ${displayedCount}개` : ''}
-            </ThemedText>
+          <StickerButton icon="close" accessibilityLabel="카메라 닫기" onPress={closePage} />
+          <Animated.View style={counterStyle}>
+            <TapeLabel fill={theme.tapeButter}>
+              {`스냅${displayedCount > 0 ? ` ${displayedCount}개` : ''}`}
+            </TapeLabel>
           </Animated.View>
-          <Pressable
+          <StickerButton
+            icon={soundEnabled ? 'note' : 'noteOff'}
             accessibilityLabel={soundEnabled ? '녹음 소리 끄기' : '녹음 소리 켜기'}
-            accessibilityState={{ disabled: session.isBusy }}
             disabled={session.isBusy}
             onPress={toggleSound}
-            style={[styles.utilityButton, session.isBusy && styles.disabledControl]}
-          >
-            <ThemedText selectable={false} style={styles.soundIcon}>
-              {soundEnabled ? '♪' : '∅'}
-            </ThemedText>
-          </Pressable>
+          />
         </View>
 
         <View style={styles.focusArea} pointerEvents="box-none">
           {stage === 'idle' && !showCollectedBadge ? (
             <View style={styles.focusFrame} pointerEvents="none">
-              <ThemedText selectable={false} type="note" style={styles.frameMeta}>
+              <ThemedText selectable={false} type="data" themeColor="textSecondary">
                 꾹 눌러 찍기
               </ThemedText>
             </View>
           ) : null}
           {stage === 'idle' && showCollectedBadge ? (
-            <View style={[styles.completedBadge, { backgroundColor: 'rgba(14,11,8,0.82)' }]}>
-              <ThemedText selectable={false} type="note" style={{ color: theme.lumen }}>
-                담김 · 스냅 {displayedCount}개
-              </ThemedText>
-            </View>
+            <TapeLabel fill={theme.tapeMint} tilt={-0.5}>
+              {`담김 · 스냅 ${displayedCount}개`}
+            </TapeLabel>
           ) : null}
           {stage === 'recording' ? (
-            <View style={styles.recordingStatus}>
+            <TapeLabel fill="rgba(243,231,207,0.14)" tilt={0.5}>
               <View style={[styles.recordingDot, { backgroundColor: theme.primary }]} />
-              <ThemedText type="edge" style={styles.whiteText}>
+              <ThemedText type="edge" style={{ color: theme.text }}>
                 REC
               </ThemedText>
               {/* The countdown is Latin and reruns every second, so it stays a
@@ -301,39 +284,24 @@ function CaptureRecordScreen() {
                   takes `note` for that one frame. */}
               <ThemedText
                 type={session.remaining > 0 ? 'edge' : 'note'}
-                style={[styles.whiteText, styles.tabularNumber]}
+                style={[{ color: theme.text }, styles.tabularNumber]}
               >
                 {session.remaining > 0 ? `${session.remaining}초` : '마무리 중…'}
               </ThemedText>
-            </View>
+            </TapeLabel>
           ) : null}
           {stage === 'saving' ? (
-            <View style={[styles.completedBadge, { backgroundColor: 'rgba(14,11,8,0.82)' }]}>
-              <ThemedText selectable={false} type="note" style={{ color: theme.amber }}>
-                스냅을 저장하는 중…
-              </ThemedText>
-            </View>
+            <TapeLabel fill={theme.kraft} tilt={0.5}>
+              스냅을 저장하는 중…
+            </TapeLabel>
           ) : null}
           {stage === 'review' ? (
-            <View style={[styles.completedBadge, { backgroundColor: 'rgba(14,11,8,0.82)' }]}>
-              <ThemedText selectable={false} type="note" style={{ color: theme.lumen }}>
-                저장됨
-              </ThemedText>
-            </View>
+            <TapeLabel fill={theme.tapeMint} tilt={-0.5}>
+              저장됨
+            </TapeLabel>
           ) : null}
           {errorMessage ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={dismissErrors}
-              style={styles.errorBanner}
-            >
-              <ThemedText type="smallBold" style={styles.whiteText}>
-                {errorMessage}
-              </ThemedText>
-              <ThemedText selectable={false} type="small" style={styles.errorDismiss}>
-                닫기
-              </ThemedText>
-            </Pressable>
+            <AlertCard message={errorMessage} onDismiss={dismissErrors} style={styles.errorCard} />
           ) : null}
         </View>
 
@@ -343,30 +311,22 @@ function CaptureRecordScreen() {
               {DURATION_OPTIONS.map((seconds) => {
                 const isSelected = session.duration === seconds;
                 return (
-                  <Pressable
+                  <TapeChip
                     key={seconds}
+                    label={`${seconds}초`}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={`${seconds}초`}
+                    tilt={seconds === DURATION_OPTIONS[0] ? -1.5 : 1}
                     onPress={() => session.selectDuration(seconds)}
-                    style={[styles.durationSeg, isSelected && styles.durationSegActive]}
-                  >
-                    <ThemedText
-                      selectable={false}
-                      type="smallBold"
-                      style={isSelected ? { color: theme.media } : styles.mutedWhite}
-                    >
-                      {seconds}초
-                    </ThemedText>
-                  </Pressable>
+                    style={[styles.durationChip, !isSelected && styles.durationOff]}
+                  />
                 );
               })}
             </View>
           ) : null}
           {stage === 'review' ? (
-            <View style={styles.reviewActions}>
-              <SnaplyButton title="다시 찍기" style={styles.reviewButton} onPress={retake} />
-            </View>
+            <SnaplyButton title="다시 찍기" onPress={retake} />
           ) : (
             <View style={styles.captureControls}>
               <Pressable
@@ -376,10 +336,8 @@ function CaptureRecordScreen() {
                 onPress={openLibrary}
                 style={[styles.sideControl, session.isBusy && styles.disabledControl]}
               >
-                <ThemedText selectable={false} style={styles.sideControlIcon}>
-                  ▣
-                </ThemedText>
-                <ThemedText selectable={false} type="small" style={styles.mutedWhite}>
+                <StickerFace icon="snaps" />
+                <ThemedText selectable={false} type="smallBold" themeColor="textSecondary">
                   스냅 {library.recordings.length}
                 </ThemedText>
               </Pressable>
@@ -401,6 +359,7 @@ function CaptureRecordScreen() {
                   onPressOut={session.endHold}
                   style={[
                     styles.shutterOuter,
+                    { borderColor: theme.text },
                     stage === 'recording' && styles.shutterRecording,
                     (!isReady || !isRecordingSupported) && styles.disabledControl,
                   ]}
@@ -408,10 +367,18 @@ function CaptureRecordScreen() {
                   <View
                     style={[
                       styles.shutterInner,
-                      { backgroundColor: theme.primary },
+                      { backgroundColor: theme.primary, boxShadow: Shadows.paper(theme.shadowInk) },
                       stage === 'recording' && styles.shutterInnerRecording,
                     ]}
-                  />
+                  >
+                    {/* The stitch of the capture disc, as on the tab bar. */}
+                    <View
+                      style={[
+                        styles.shutterStitch,
+                        stage === 'recording' && styles.shutterStitchRecording,
+                      ]}
+                    />
+                  </View>
                 </Pressable>
               </View>
               <Pressable
@@ -421,10 +388,8 @@ function CaptureRecordScreen() {
                 onPress={toggleFacing}
                 style={[styles.sideControl, session.isBusy && styles.disabledControl]}
               >
-                <ThemedText selectable={false} style={styles.sideControlIcon}>
-                  ↻
-                </ThemedText>
-                <ThemedText selectable={false} type="small" style={styles.mutedWhite}>
+                <StickerFace icon="flip" />
+                <ThemedText selectable={false} type="smallBold" themeColor="textSecondary">
                   전환
                 </ThemedText>
               </Pressable>
@@ -434,16 +399,16 @@ function CaptureRecordScreen() {
               badges say what stage it is in. The only line left is the one the
               UI cannot show — a platform that has no recorder at all. */}
           {!isRecordingSupported ? (
-            <ThemedText type="small" style={styles.helperText}>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
               촬영은 iOS 또는 Android 기기에서 사용할 수 있어요
             </ThemedText>
           ) : null}
           {stage === 'review' ? (
-            <Pressable accessibilityRole="button" onPress={openLibrary} style={styles.libraryLink}>
-              <ThemedText selectable={false} type="smallBold" style={styles.whiteText}>
-                찍어둔 스냅 {library.recordings.length}개 관리
-              </ThemedText>
-            </Pressable>
+            <TextButton
+              label={`찍어둔 스냅 ${library.recordings.length}개 관리`}
+              onPress={openLibrary}
+              style={styles.libraryLink}
+            />
           ) : null}
         </View>
       </View>
@@ -481,22 +446,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.three,
   },
-  utilityButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.36)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  utilityIcon: { color: '#FFFFFF', fontSize: 30, lineHeight: 32 },
-  soundIcon: { color: '#FFFFFF', fontSize: 19, fontWeight: '700' },
-  modePill: {
-    backgroundColor: 'rgba(0,0,0,0.36)',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-  },
   focusArea: {
     flex: 1,
     alignItems: 'center',
@@ -504,64 +453,24 @@ const styles = StyleSheet.create({
     gap: Spacing.five,
     paddingHorizontal: Spacing.five,
   },
+  // A plain frame line: the capture screens stay dark and undecorated.
   focusFrame: {
-    width: '72%',
-    maxWidth: 340,
+    width: '64%',
+    maxWidth: 300,
     aspectRatio: 0.8,
-    borderRadius: Radius.xlarge,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.38)',
-    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(243,231,207,0.38)',
     alignItems: 'center',
     justifyContent: 'flex-end',
     paddingBottom: Spacing.four,
   },
-  frameMeta: { color: 'rgba(255,255,255,0.66)' },
-  recordingStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    backgroundColor: 'rgba(0,0,0,0.48)',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-  },
   recordingDot: { width: 8, height: 8, borderRadius: 4 },
-  completedBadge: {
-    backgroundColor: 'rgba(46,173,113,0.9)',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-  },
-  errorBanner: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: 'rgba(120,20,20,0.92)',
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.four,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-  },
-  errorDismiss: { color: 'rgba(255,255,255,0.72)' },
-  bottomControls: { paddingHorizontal: Spacing.five, gap: Spacing.three },
-  durationToggle: {
-    flexDirection: 'row',
-    gap: Spacing.one,
-    padding: Spacing.one,
-    borderRadius: Radius.pill,
-    backgroundColor: 'rgba(0,0,0,0.36)',
-  },
-  durationSeg: {
-    minWidth: 56,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-  },
-  durationSegActive: { backgroundColor: '#FFFFFF' },
+  errorCard: { alignSelf: 'stretch' },
+  bottomControls: { paddingHorizontal: Spacing.five, gap: Spacing.three, alignItems: 'stretch' },
+  durationToggle: { flexDirection: 'row', gap: Spacing.two, alignSelf: 'center' },
+  durationChip: { minWidth: 64 },
+  // An unchosen length is a strip of smoke rather than colour.
+  durationOff: { backgroundColor: 'rgba(243,231,207,0.14)' },
   captureControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   shutterArea: {
     width: HOLD_RING_SIZE,
@@ -574,18 +483,32 @@ const styles = StyleSheet.create({
     height: 88,
     borderRadius: 44,
     borderWidth: 5,
-    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shutterInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    boxShadow: '0 0 22px rgba(234,94,56,0.5)',
+  shutterInner: { width: 68, height: 68, borderRadius: 34 },
+  shutterStitch: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.7)',
   },
   shutterRecording: { transform: [{ scale: 0.92 }] },
-  shutterInnerRecording: { width: 32, height: 32, borderRadius: Radius.small },
+  // Held, the disc becomes a square: stop.
+  shutterInnerRecording: { width: 32, height: 32, borderRadius: 0 },
+  shutterStitchRecording: {
+    top: 4,
+    left: 4,
+    right: 4,
+    bottom: 4,
+    borderRadius: 0,
+    borderWidth: 1.5,
+  },
   sideControl: {
     flex: 1,
     minHeight: 64,
@@ -593,42 +516,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.one,
   },
-  sideControlIcon: { color: '#FFFFFF', fontSize: 26, lineHeight: 28 },
   disabledControl: { opacity: 0.42 },
-  reviewActions: { flexDirection: 'row', gap: Spacing.three },
-  reviewButton: { flex: 1 },
-  helperText: { color: 'rgba(255,255,255,0.72)', textAlign: 'center' },
-  libraryLink: {
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-  },
-  whiteText: { color: '#FFFFFF' },
-  mutedWhite: { color: 'rgba(255,255,255,0.72)', textAlign: 'center', lineHeight: 18 },
+  libraryLink: { alignSelf: 'center' },
+  centerText: { textAlign: 'center' },
   tabularNumber: { fontVariant: ['tabular-nums'] },
   permissionScreen: { flex: 1, justifyContent: 'center', paddingHorizontal: Spacing.five },
-  permissionClose: {
-    position: 'absolute',
-    left: Spacing.four,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  permissionClose: { position: 'absolute', left: Spacing.four },
   permissionContent: { alignItems: 'center', gap: Spacing.four },
   permissionIcon: {
     width: 82,
     height: 82,
     borderRadius: 41,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  permissionIconText: { fontSize: 44, lineHeight: 48 },
-  permissionDescription: { color: 'rgba(255,255,255,0.72)', textAlign: 'center' },
-  permissionError: { color: '#FFB4AB', textAlign: 'center' },
+  permissionDot: { width: 40, height: 40, borderRadius: 20 },
   permissionAction: { width: '100%', maxWidth: 360 },
 });

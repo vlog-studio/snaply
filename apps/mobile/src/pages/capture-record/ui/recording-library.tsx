@@ -4,7 +4,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatDateTime } from '@/shared/lib/datetime';
 import { formatFileSize } from '@/shared/lib/format-file-size';
 import type { LocalRecording } from '@/shared/lib/recording-files';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { StickerButton } from '@/shared/ui/sticker-button';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 type RecordingLibraryProps = {
@@ -78,7 +80,7 @@ export function RecordingLibrary({
         style={[
           styles.screen,
           {
-            backgroundColor: theme.background,
+            backgroundColor: theme.media,
             paddingTop: insets.top + Spacing.three,
             paddingBottom: insets.bottom,
           },
@@ -86,21 +88,12 @@ export function RecordingLibrary({
       >
         <View style={styles.header}>
           <View style={styles.titleBlock}>
-            <ThemedText type="heading">찍은 스냅</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              앱에 저장된 스냅 {recordings.length}개
+            <ThemedText type="subtitle" accessibilityRole="header">
+              찍은 스냅
             </ThemedText>
+            <ThemedText type="data">앱에 저장된 스냅 {recordings.length}개</ThemedText>
           </View>
-          <Pressable
-            accessibilityLabel="스냅 목록 닫기"
-            accessibilityRole="button"
-            onPress={onClose}
-            style={[styles.closeButton, { backgroundColor: theme.backgroundElement }]}
-          >
-            <ThemedText selectable={false} style={styles.closeIcon}>
-              ×
-            </ThemedText>
-          </Pressable>
+          <StickerButton icon="close" accessibilityLabel="스냅 목록 닫기" onPress={onClose} />
         </View>
 
         <FlatList
@@ -113,10 +106,8 @@ export function RecordingLibrary({
           keyExtractor={(item) => item.id}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundElement }]}>
-                <ThemedText selectable={false} style={styles.emptyIconText}>
-                  ▶
-                </ThemedText>
+              <View style={[styles.emptyIcon, { borderColor: theme.textSecondary }]}>
+                <DoodleIcon name="play" size={26} />
               </View>
               <ThemedText type="heading">
                 {isLoading ? '스냅을 불러오는 중' : '아직 찍은 스냅이 없어요'}
@@ -127,12 +118,7 @@ export function RecordingLibrary({
             const isDeleting = deletingId === item.id;
 
             return (
-              <View
-                style={[
-                  styles.recordingRow,
-                  { backgroundColor: theme.backgroundElement, borderColor: theme.border },
-                ]}
-              >
+              <View style={[styles.recordingRow, { borderBottomColor: theme.ruleLine }]}>
                 <Pressable
                   accessibilityHint="스냅을 재생하고 쓸 수 있어요"
                   accessibilityLabel={`${formatDateTime(item.createdAt)} 찍은 스냅`}
@@ -141,16 +127,19 @@ export function RecordingLibrary({
                   onPress={() => onSelect(item)}
                   style={styles.recordingMain}
                 >
-                  <View style={[styles.playIcon, { backgroundColor: theme.media }]}>
-                    <ThemedText selectable={false} style={styles.playIconText}>
-                      ▶
-                    </ThemedText>
+                  <View
+                    style={[
+                      styles.playIcon,
+                      { backgroundColor: theme.ribbon, borderColor: theme.border },
+                    ]}
+                  >
+                    <DoodleIcon name="play" size={20} />
                   </View>
                   <View style={styles.recordingCopy}>
-                    <ThemedText type="smallBold">{formatDateTime(item.createdAt)}</ThemedText>
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {formatFileSize(item.size)} · 앱에 저장됨
+                    <ThemedText type="bodySm" style={styles.date}>
+                      {formatDateTime(item.createdAt)}
                     </ThemedText>
+                    <ThemedText type="data">{formatFileSize(item.size)} · 앱에 저장됨</ThemedText>
                   </View>
                 </Pressable>
                 <Pressable
@@ -160,9 +149,8 @@ export function RecordingLibrary({
                   onPress={() => confirmDelete(item)}
                   style={styles.deleteButton}
                 >
-                  <ThemedText type="smallBold" themeColor="danger">
-                    {isDeleting ? '삭제하는 중…' : '삭제'}
-                  </ThemedText>
+                  {/* A delete is ink, not red: red is the main action. */}
+                  <ThemedText type="smallBold">{isDeleting ? '삭제하는 중…' : '삭제'}</ThemedText>
                 </Pressable>
               </View>
             );
@@ -183,50 +171,41 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.four,
     gap: Spacing.four,
   },
-  titleBlock: { flex: 1, gap: Spacing.one },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeIcon: { fontSize: 28, lineHeight: 30 },
-  listContent: { paddingHorizontal: Spacing.five, paddingBottom: Spacing.five, gap: Spacing.three },
+  titleBlock: { flex: 1, gap: Spacing.half },
+  listContent: { paddingHorizontal: Spacing.five, paddingBottom: Spacing.five },
   emptyListContent: { flexGrow: 1, justifyContent: 'center' },
   emptyState: { alignItems: 'center', gap: Spacing.three, padding: Spacing.six },
   emptyIcon: {
     width: 72,
     height: 72,
     borderRadius: 36,
+    borderWidth: 2,
+    borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyIconText: { fontSize: 26 },
   recordingRow: {
     minHeight: 84,
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
+    borderBottomWidth: 1,
   },
   recordingMain: {
     flex: 1,
     minHeight: 84,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.three,
+    paddingVertical: Spacing.three,
     gap: Spacing.three,
   },
   playIcon: {
     width: 54,
     height: 54,
-    borderRadius: Radius.small,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playIconText: { color: '#FFFFFF', fontSize: 20 },
-  recordingCopy: { flex: 1, gap: Spacing.one },
+  recordingCopy: { flex: 1, gap: Spacing.half },
+  date: { fontWeight: 700 },
   deleteButton: { minWidth: 64, minHeight: 64, alignItems: 'center', justifyContent: 'center' },
 });
