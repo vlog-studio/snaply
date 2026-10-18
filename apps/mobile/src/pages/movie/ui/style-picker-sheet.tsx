@@ -7,7 +7,8 @@ import {
   type MovieStylePatch,
 } from '@/entities/movie';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Tape, tiltFor } from '@/shared/ui/paper';
+import { Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type StylePickerSheetProps = {
@@ -43,10 +44,10 @@ export function StylePickerSheet({
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="스타일 선택">
       <View style={styles.sheet}>
         <View style={styles.head}>
-          <ThemedText type="heading">스타일</ThemedText>
-          <ThemedText type="note" themeColor="textSecondary">
-            1개 선택
+          <ThemedText type="subtitle" accessibilityRole="header">
+            스타일
           </ThemedText>
+          <ThemedText type="data">1개 선택</ThemedText>
         </View>
 
         <View style={styles.grid}>
@@ -63,13 +64,18 @@ export function StylePickerSheet({
                 style={({ pressed }) => [
                   styles.card,
                   {
-                    backgroundColor: theme.backgroundSelected,
+                    backgroundColor: theme.backgroundElement,
                     borderColor: selected ? theme.primary : theme.border,
                     borderWidth: selected ? 2 : 1,
+                    boxShadow: Shadows.paper(theme.shadowInk),
+                    transform: [{ rotate: `${tiltFor(option.id, 1.5)}deg` }],
                     opacity: !canEdit && !selected ? 0.55 : pressed ? 0.85 : 1,
                   },
                 ]}
               >
+                {selected ? (
+                  <Tape color="tapePink" width={30} height={12} tilt={35} style={styles.pickTape} />
+                ) : null}
                 {/* Two flat tones rather than a gradient: the palette carries one
                     accent, and three looks need three identities of their own. */}
                 <View style={styles.swatch}>
@@ -79,7 +85,7 @@ export function StylePickerSheet({
                 <ThemedText selectable={false} type="smallBold">
                   {option.label}
                 </ThemedText>
-                <ThemedText selectable={false} type="note" themeColor="textSecondary">
+                <ThemedText selectable={false} type="xsmall" themeColor="textSecondary">
                   {option.description}
                 </ThemedText>
               </Pressable>
@@ -99,20 +105,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three },
+  // Each look as an instant print: the swatch is the picture, the words its foot.
   card: {
-    // Two per row, whatever the sheet width is: half the row minus the gap.
-    flexBasis: '48%',
+    // Three per row, whatever the sheet width is.
+    flexBasis: '30%',
     flexGrow: 1,
     gap: Spacing.half,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
+    padding: Spacing.one,
+    paddingBottom: Spacing.two,
   },
+  pickTape: { position: 'absolute', top: -6, right: -8, zIndex: 2 },
   swatch: {
-    height: 44,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
+    aspectRatio: 1,
     overflow: 'hidden',
     marginBottom: Spacing.one,
   },

@@ -12,7 +12,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { MovieSnapLimit, transitionAfter, transitionSpec } from '@/entities/movie';
-import { Radius, Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { Shadows, Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { PlaybackProgressIntervalSec } from '../model/playback-cuts';
@@ -278,7 +279,9 @@ export function TimelineStrip({
   };
 
   return (
-    <View>
+    // The timeline is drawn on a ribbon of dark film ground, whatever the
+    // theme — the clips are frames of sheet paper on it.
+    <View style={{ backgroundColor: theme.ribbon }}>
       <Animated.ScrollView
         ref={scrollRef}
         horizontal
@@ -308,21 +311,35 @@ export function TimelineStrip({
         >
           {/* The ruler shares the clips' origin and scale, so a mark is over the
               moment it names. */}
-          <View style={[styles.ruler, { width: stripWidth }]}>
+          <View
+            style={[
+              styles.ruler,
+              {
+                width: stripWidth + halfViewport * 2,
+                // Runs under the lead-ins too, edge to edge; marks are offset
+                // by the lead-in to stay over their moments.
+                marginHorizontal: -halfViewport,
+                backgroundColor: theme.butter,
+              },
+            ]}
+          >
             {ticks.map((tick) =>
               tick.labelSec !== undefined ? (
                 <View
                   key={tick.x}
-                  style={[styles.tickLabel, { left: tick.x - TickLabelWidth / 2 }]}
+                  style={[styles.tickLabel, { left: halfViewport + tick.x - TickLabelWidth / 2 }]}
                 >
-                  <ThemedText selectable={false} type="xsmall" themeColor="textSecondary">
+                  <ThemedText selectable={false} type="dataSm" style={{ color: theme.stickerInk }}>
                     {tick.labelSec}초
                   </ThemedText>
                 </View>
               ) : (
                 <View
                   key={tick.x}
-                  style={[styles.tickDot, { left: tick.x - 1.5, backgroundColor: theme.border }]}
+                  style={[
+                    styles.tickDot,
+                    { left: halfViewport + tick.x - 0.5, backgroundColor: theme.stickerInk },
+                  ]}
                 />
               ),
             )}
@@ -354,11 +371,11 @@ export function TimelineStrip({
                 onPress={onAddSnaps}
                 style={[
                   styles.addTile,
-                  { borderColor: theme.border, opacity: room === 0 ? 0.45 : 1 },
+                  { borderColor: theme.butter, opacity: room === 0 ? 0.45 : 1 },
                 ]}
               >
-                <Ionicons name="add" size={20} color={theme.cherryInk} />
-                <ThemedText selectable={false} type="xsmall" themeColor="textSecondary">
+                <DoodleIcon name="plus" size={20} color={theme.butter} />
+                <ThemedText selectable={false} type="xsmall" style={{ color: theme.butter }}>
                   {room > 0 ? `${room}개 더` : '가득 참'}
                 </ThemedText>
               </Pressable>
@@ -380,7 +397,9 @@ export function TimelineStrip({
                   const seam = metrics[index].x + metrics[index].width;
                   const label = transition ? transitionSpec(transition.kind).label : '고르는 중';
                   const owner = transition?.owner === 'user' ? '직접 고름' : '자동';
-                  const tint = transition?.owner === 'user' ? theme.primary : theme.ai;
+                  // Lavender for the agent's pick (or one still being picked),
+                  // cherry for the user's own.
+                  const user = transition?.owner === 'user';
                   return (
                     <Pressable
                       key={`${cut.ref.snapId}-${index}`}
@@ -392,8 +411,9 @@ export function TimelineStrip({
                         styles.handoverChip,
                         {
                           left: seam - HandoverChipSize / 2,
-                          borderColor: transition ? tint : theme.border,
-                          backgroundColor: theme.background,
+                          borderColor: user ? theme.primary : theme.border,
+                          backgroundColor: user ? theme.primary : theme.aiFill,
+                          boxShadow: Shadows.paper(theme.shadowInk),
                           opacity: pressed ? 0.7 : 1,
                         },
                       ]}
@@ -403,7 +423,7 @@ export function TimelineStrip({
                           transition ? TransitionGlyph[transition.kind] : PendingTransitionGlyph
                         }
                         size={14}
-                        color={transition ? tint : theme.textSecondary}
+                        color={user ? theme.onPrimary : theme.stickerInk}
                       />
                     </Pressable>
                   );
@@ -420,7 +440,8 @@ export function TimelineStrip({
           pointerEvents="none"
           style={[styles.playhead, { left: halfViewport - PlayheadWidth / 2 }]}
         >
-          <View style={[styles.playheadKnob, { backgroundColor: theme.primary }]} />
+          {/* A pink pennant on a cherry line. */}
+          <View style={[styles.playheadKnob, { backgroundColor: theme.pink }]} />
           <View style={[styles.playheadLine, { backgroundColor: theme.primary }]} />
         </View>
       ) : null}
@@ -433,21 +454,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   ruler: {
-    height: 18,
-    marginBottom: Spacing.one,
+    height: 22,
+    marginBottom: Spacing.two,
   },
   tickLabel: {
     position: 'absolute',
-    top: 0,
+    top: 2,
     width: TickLabelWidth,
     alignItems: 'center',
   },
   tickDot: {
     position: 'absolute',
-    top: 8,
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
+    bottom: 0,
+    width: 1,
+    height: 6,
+    opacity: 0.55,
   },
   row: {
     flexDirection: 'row',
@@ -475,23 +496,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   playheadKnob: {
-    width: 10,
+    position: 'absolute',
+    top: 0,
+    left: PlayheadWidth / 2 + 1.5,
+    width: 14,
     height: 10,
-    borderRadius: 5,
   },
   playheadLine: {
-    width: 2,
+    width: 3,
     flex: 1,
-    marginTop: -2,
-    borderRadius: 1,
   },
   addTile: {
     width: TimelineCutHeight,
     height: TimelineCutHeight,
     marginLeft: Spacing.two,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',

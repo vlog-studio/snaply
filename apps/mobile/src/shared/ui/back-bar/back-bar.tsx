@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { DoodleIconName } from '@/shared/ui/doodle-icon';
+import { PaperPiece, Tape } from '@/shared/ui/paper';
 import { StickerButton } from '@/shared/ui/sticker-button';
 import { MaxContentWidth, Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -31,6 +32,12 @@ export type BackBarProps = {
   title?: string;
   /** An action on that thing; only meaningful beside a `title`. */
   action?: BackBarAction;
+  /**
+   * The title is something the user named (a movie), so it is written on a
+   * torn label taped to the page rather than printed as a bar title — the
+   * design system keeps tape labels for user-named things.
+   */
+  titleLabel?: boolean;
 };
 
 /**
@@ -59,6 +66,7 @@ export function BackBar({
   accessibilityLabel = '뒤로 가기',
   title,
   action,
+  titleLabel = false,
 }: BackBarProps) {
   const insets = useSafeAreaInsets();
 
@@ -66,7 +74,21 @@ export function BackBar({
     <View style={[styles.bar, { paddingTop: insets.top + Spacing.one }]}>
       <StickerButton icon="back" accessibilityLabel={accessibilityLabel} onPress={onPress} />
 
-      {title ? (
+      {title && titleLabel ? (
+        <View style={styles.title}>
+          <Tape color="tapeButter" width={44} height={14} style={styles.labelTape} />
+          <PaperPiece edge="tornBottom" tilt={-1} style={styles.label}>
+            <ThemedText
+              accessibilityRole="header"
+              selectable={false}
+              numberOfLines={1}
+              type="barTitle"
+            >
+              {title}
+            </ThemedText>
+          </PaperPiece>
+        </View>
+      ) : title ? (
         <ThemedText
           accessibilityRole="header"
           selectable={false}
@@ -102,4 +124,10 @@ const styles = StyleSheet.create({
   },
   // Takes the room between the two stickers.
   title: { flex: 1 },
+  labelTape: { position: 'absolute', top: -6, alignSelf: 'center', zIndex: 2 },
+  label: {
+    paddingTop: Spacing.two,
+    paddingHorizontal: Spacing.three + Spacing.half,
+    paddingBottom: Spacing.two + Spacing.half,
+  },
 });

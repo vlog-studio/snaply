@@ -1,11 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { MovieTitleMaxLength, useRenameMovie } from '@/entities/movie';
 import { FormTextField } from '@/shared/ui/form-text-field';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { renameMovieSchema, type RenameMovieValues } from '../model/rename-movie-schema';
@@ -32,7 +32,6 @@ export type RenameMovieFormProps = {
  * after the day it was started.
  */
 export function RenameMovieForm({ movieId, title, onCancel, onSaved }: RenameMovieFormProps) {
-  const theme = useTheme();
   const renameMovie = useRenameMovie();
   const { control, handleSubmit } = useForm<RenameMovieValues>({
     resolver: zodResolver(renameMovieSchema),
@@ -46,7 +45,9 @@ export function RenameMovieForm({ movieId, title, onCancel, onSaved }: RenameMov
 
   return (
     <View style={styles.form}>
-      <ThemedText type="heading">이름 바꾸기</ThemedText>
+      <ThemedText type="subtitle" accessibilityRole="header">
+        이름 바꾸기
+      </ThemedText>
       <FormTextField
         control={control}
         name="title"
@@ -59,16 +60,13 @@ export function RenameMovieForm({ movieId, title, onCancel, onSaved }: RenameMov
         onSubmitEditing={() => void submit()}
       />
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="취소"
           accessibilityLabel="이름 바꾸기 취소"
           onPress={onCancel}
-          style={[styles.cancel, { borderColor: theme.border }]}
-        >
-          <ThemedText selectable={false} type="button" themeColor="textSecondary">
-            취소
-          </ThemedText>
-        </Pressable>
+          style={styles.cancel}
+        />
         <SnaplyButton title="저장" onPress={() => void submit()} style={styles.save} />
       </View>
     </View>
@@ -76,16 +74,8 @@ export function RenameMovieForm({ movieId, title, onCancel, onSaved }: RenameMov
 }
 
 const styles = StyleSheet.create({
-  form: { gap: Spacing.two },
-  actions: { flexDirection: 'row', gap: Spacing.two },
+  form: { gap: Spacing.three },
+  actions: { flexDirection: 'row', gap: Spacing.two + Spacing.half },
   save: { flex: 1 },
-  cancel: {
-    minHeight: 56,
-    paddingHorizontal: Spacing.six,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  cancel: { flexBasis: '36%' },
 });

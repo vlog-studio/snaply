@@ -1,8 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { formatSeconds } from '@/shared/lib/datetime';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { StickerButton } from '@/shared/ui/sticker-button';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import type { Cut } from '../model/use-movie-cuts';
@@ -64,20 +65,12 @@ export function CutInspector({
   const moveButton = (direction: -1 | 1) => {
     const disabled = direction === -1 ? isFirst : isLast;
     return (
-      <Pressable
-        accessibilityRole="button"
+      <StickerButton
+        icon={direction === -1 ? 'chevronLeft' : 'chevronRight'}
         accessibilityLabel={`컷 ${number} ${direction === -1 ? '앞으로' : '뒤로'}`}
-        accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={() => onMove(index, direction)}
-        style={[styles.tool, { borderColor: theme.border, opacity: disabled ? 0.35 : 1 }]}
-      >
-        <Ionicons
-          name={direction === -1 ? 'chevron-back' : 'chevron-forward'}
-          size={18}
-          color={theme.text}
-        />
-      </Pressable>
+      />
     );
   };
 
@@ -90,7 +83,7 @@ export function CutInspector({
         onPress={onDeselect}
         style={({ pressed }) => [styles.release, { opacity: pressed ? 0.6 : 1 }]}
       >
-        <Ionicons name="close" size={20} color={theme.textSecondary} />
+        <DoodleIcon name="close" size={20} color={theme.textSecondary} />
       </Pressable>
 
       <View style={styles.meta}>
@@ -101,7 +94,7 @@ export function CutInspector({
           <ThemedText
             type="small"
             numberOfLines={1}
-            themeColor={missing ? 'danger' : 'textSecondary'}
+            themeColor={missing ? 'cherryInk' : 'textSecondary'}
             style={styles.readout}
           >
             {missing
@@ -133,20 +126,13 @@ export function CutInspector({
       <View style={styles.tools}>
         {moveButton(-1)}
         {moveButton(1)}
-        <Pressable
-          accessibilityRole="button"
+        {/* Taking a cut out is ink, not red: red is the main action. */}
+        <StickerButton
+          icon="trash"
           accessibilityLabel={`컷 ${number} 빼기`}
-          accessibilityState={{ disabled: !canRemove }}
           disabled={!canRemove}
           onPress={() => onRemove(index)}
-          style={[styles.tool, { borderColor: theme.border }]}
-        >
-          <Ionicons
-            name="trash-outline"
-            size={18}
-            color={canRemove ? theme.danger : theme.textSecondary}
-          />
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -167,14 +153,5 @@ const styles = StyleSheet.create({
   readout: { flexShrink: 1 },
   // Matches the `edge` line's height (`Typography.micro`), reserved always.
   resetSlot: { height: 16, justifyContent: 'center' },
-  tools: { flexDirection: 'row', gap: Spacing.one },
-  tool: {
-    minWidth: 44,
-    minHeight: 40,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  tools: { flexDirection: 'row', gap: Spacing.one + Spacing.half },
 });

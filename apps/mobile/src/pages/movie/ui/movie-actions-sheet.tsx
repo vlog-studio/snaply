@@ -10,7 +10,9 @@ import { RenameMovieForm } from '@/features/rename-movie';
 import { ShareBlockMessages, type InstagramHandoff, type ShareBlock } from '@/features/share-movie';
 import { formatSeconds } from '@/shared/lib/datetime';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { CheckStrip, CheckStripRow } from '@/shared/ui/check-strip';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { InstagramPostStep } from './instagram-post-sheet';
@@ -142,57 +144,45 @@ export function MovieActionsSheet({
         />
       ) : confirmingDelete ? (
         <View style={styles.step}>
-          <ThemedText type="note" themeColor="danger">
-            무비 삭제
+          <ThemedText type="subtitle" accessibilityRole="header">
+            이 무비를 삭제할까요?
           </ThemedText>
-          <ThemedText type="heading">이 무비를 삭제할까요?</ThemedText>
 
-          <View style={[styles.summary, { borderColor: theme.border }]}>
-            <ThemedText type="smallBold" numberOfLines={1}>
-              {movie.title}
-            </ThemedText>
-            <ThemedText type="note" themeColor="textSecondary">
-              컷 {cutCount} · {formatSeconds(totalSec)}
-            </ThemedText>
-          </View>
+          <CheckStrip>
+            <CheckStripRow>
+              <ThemedText type="bodySm" numberOfLines={1} style={styles.summaryTitle}>
+                {movie.title}
+              </ThemedText>
+              <ThemedText type="data">
+                컷 {cutCount} · {formatSeconds(totalSec)}
+              </ThemedText>
+            </CheckStripRow>
+          </CheckStrip>
 
-          <ThemedText themeColor="textSecondary">
+          <ThemedText type="bodySm" themeColor="textSecondary">
             컷 구성과 완성된 무비가 함께 사라져요. 스냅은 그대로 남아요.
           </ThemedText>
 
           <View style={styles.confirmActions}>
-            <Pressable
-              accessibilityRole="button"
+            <SnaplyButton
+              variant="secondary"
+              title="취소"
               accessibilityLabel="삭제 취소"
               onPress={() => setStep('menu')}
-              style={[styles.confirmAction, { borderColor: theme.border }]}
-            >
-              <ThemedText selectable={false} type="button">
-                취소
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
+              style={styles.confirmAction}
+            />
+            <SnaplyButton
+              variant="danger"
+              title="삭제"
               accessibilityLabel={`${movie.title} 삭제`}
               onPress={act(onConfirmDelete)}
-              style={({ pressed }) => [
-                styles.confirmAction,
-                {
-                  backgroundColor: theme.kraft,
-                  borderColor: theme.kraft,
-                  opacity: pressed ? 0.8 : 1,
-                },
-              ]}
-            >
-              <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
-                삭제
-              </ThemedText>
-            </Pressable>
+              style={styles.confirmAction}
+            />
           </View>
         </View>
       ) : (
         <View style={styles.step}>
-          <View style={[styles.group, { borderColor: theme.border }]}>
+          <View style={[styles.group, { borderColor: theme.ruleLine }]}>
             <ActionRow icon="film" label="무비 편집하기" onPress={act(onEdit)} />
             <ActionRow
               icon="pencil"
@@ -228,7 +218,7 @@ export function MovieActionsSheet({
               />
             ) : null}
           </View>
-          <View style={[styles.group, { borderColor: theme.border }]}>
+          <View style={[styles.group, { borderColor: theme.ruleLine }]}>
             <ActionRow
               icon="trash"
               label="무비 삭제하기"
@@ -265,7 +255,10 @@ export function ActionRow({
   onPress,
 }: ActionRowProps) {
   const theme = useTheme();
-  const color = danger ? theme.danger : theme.text;
+  // A destructive line is not red — red is the main action; it is set apart
+  // by its own group and by the confirm step it opens instead.
+  void danger;
+  const color = theme.text;
 
   return (
     <Pressable
@@ -276,8 +269,8 @@ export function ActionRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
-        divider ? [styles.rowDivider, { borderTopColor: theme.border }] : null,
-        { opacity: disabled ? 0.45 : pressed ? 0.7 : 1 },
+        divider ? [styles.rowDivider, { borderTopColor: theme.ruleLine }] : null,
+        { backgroundColor: pressed ? theme.pink : 'transparent', opacity: disabled ? 0.45 : 1 },
       ]}
     >
       <Ionicons name={icon} size={19} color={color} />
@@ -286,7 +279,7 @@ export function ActionRow({
           {label}
         </ThemedText>
         {note ? (
-          <ThemedText selectable={false} type="note" themeColor="textSecondary">
+          <ThemedText selectable={false} type="data">
             {note}
           </ThemedText>
         ) : null}
@@ -297,11 +290,11 @@ export function ActionRow({
 
 const styles = StyleSheet.create({
   step: { gap: Spacing.three },
+  // A group of lines on the note sheet, ruled above and below.
   group: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingHorizontal: Spacing.one,
   },
   row: {
     flexDirection: 'row',
@@ -310,24 +303,9 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingVertical: Spacing.two,
   },
-  rowDivider: { borderTopWidth: StyleSheet.hairlineWidth },
+  rowDivider: { borderTopWidth: 1 },
   rowText: { flex: 1, gap: Spacing.half },
-  summary: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    gap: Spacing.half,
-  },
+  summaryTitle: { flex: 1, minWidth: 0 },
   confirmActions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.one },
-  confirmAction: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  confirmAction: { flex: 1 },
 });

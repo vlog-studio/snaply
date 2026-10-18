@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -9,7 +8,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Line, Path } from 'react-native-svg';
 
 import { CutTrimStepSec, MinCutSec } from '@/entities/movie';
 import { formatSeconds } from '@/shared/lib/datetime';
@@ -21,7 +20,7 @@ import {
   xToSec,
   type TrimTrack,
 } from '@/shared/lib/trim-geometry';
-import { Radius, Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
+import { Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
 
@@ -61,8 +60,8 @@ function TrimChevron({ edge }: { edge: TrimEdge }) {
     <Svg width={9} height={16} viewBox="0 0 9 16">
       <Path
         d={edge === 'start' ? 'M7 2 L2.5 8 L7 14' : 'M2 2 L6.5 8 L2 14'}
-        stroke="#FFFFFF"
-        strokeWidth={3}
+        stroke="#2B2B2B"
+        strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"
@@ -307,9 +306,16 @@ export function TimelineCut({
             accessibilityRole="adjustable"
             accessibilityLabel="컷 시작 지점"
             accessibilityValue={{ text: formatSeconds(shown.startSec) }}
-            style={[styles.handle, styles.handleStart, { backgroundColor: theme.amber }]}
+            style={[
+              styles.handle,
+              { backgroundColor: theme.butter, borderColor: theme.stickerInk },
+            ]}
           >
-            {canExtendStart ? <TrimChevron edge="start" /> : <View style={styles.grip} />}
+            {canExtendStart ? (
+              <TrimChevron edge="start" />
+            ) : (
+              <View style={[styles.grip, { backgroundColor: theme.stickerInk }]} />
+            )}
           </View>
         </GestureDetector>
       ) : null}
@@ -323,18 +329,36 @@ export function TimelineCut({
         style={[
           styles.clip,
           {
-            backgroundColor: theme.media,
-            borderColor: cut.gone ? theme.danger : selected ? theme.amber : theme.border,
-            borderWidth: cut.gone || selected ? 2 : 1,
+            // A frame of sheet paper with sprocket holes, the footage inside it.
+            backgroundColor: theme.backgroundElement,
+            borderColor: cut.gone ? theme.primary : selected ? theme.butter : 'transparent',
+            borderWidth: cut.gone || selected ? 3 : 0,
           },
-          // Square while the handles are on: the rounded corners belong to the
-          // handles' outer edges, so the three pieces read as one frame rather
-          // than a pill–rectangle–pill with notches at the joins.
-          focused ? styles.clipFocused : null,
           // A dead cut has no handles to size it; the stand-in width applies.
           missing ? { width } : clipWidthStyle,
         ]}
       >
+        {/* Sprocket holes along both edges of the frame. */}
+        <Svg pointerEvents="none" width="100%" height="100%" style={StyleSheet.absoluteFill}>
+          <Line
+            x1={2}
+            x2="100%"
+            y1={3.5}
+            y2={3.5}
+            stroke={theme.ribbon}
+            strokeWidth={3}
+            strokeDasharray="3 4"
+          />
+          <Line
+            x1={2}
+            x2="100%"
+            y1={TimelineCutHeight - 3.5}
+            y2={TimelineCutHeight - 3.5}
+            stroke={theme.ribbon}
+            strokeWidth={3}
+            strokeDasharray="3 4"
+          />
+        </Svg>
         {snap ? (
           <Animated.View style={[styles.reel, { width: reelWidth }, reelStyle]}>
             {Array.from({ length: tileCount }, (_, tile) => (
@@ -345,7 +369,9 @@ export function TimelineCut({
           </Animated.View>
         ) : (
           <View style={styles.missingMark}>
-            <Ionicons name="alert-circle-outline" size={18} color={theme.danger} />
+            <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
+              !
+            </ThemedText>
           </View>
         )}
 
@@ -356,7 +382,10 @@ export function TimelineCut({
           {/* Worded apart from a deleted original: this one is our retention,
               not the user's act, and the fix is to take the cut out. */}
           {expired ? (
-            <ThemedText selectable={false} style={[styles.expired, { color: theme.danger }]}>
+            <ThemedText
+              selectable={false}
+              style={[styles.expired, { backgroundColor: theme.primary, color: theme.onPrimary }]}
+            >
               만료
             </ThemedText>
           ) : null}
@@ -374,9 +403,16 @@ export function TimelineCut({
             accessibilityRole="adjustable"
             accessibilityLabel="컷 끝 지점"
             accessibilityValue={{ text: formatSeconds(shown.endSec) }}
-            style={[styles.handle, styles.handleEnd, { backgroundColor: theme.amber }]}
+            style={[
+              styles.handle,
+              { backgroundColor: theme.butter, borderColor: theme.stickerInk },
+            ]}
           >
-            {canExtendEnd ? <TrimChevron edge="end" /> : <View style={styles.grip} />}
+            {canExtendEnd ? (
+              <TrimChevron edge="end" />
+            ) : (
+              <View style={[styles.grip, { backgroundColor: theme.stickerInk }]} />
+            )}
           </View>
         </GestureDetector>
       ) : null}
@@ -396,28 +432,22 @@ const styles = StyleSheet.create({
   },
   clip: {
     height: TimelineCutHeight,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
     overflow: 'hidden',
-  },
-  clipFocused: {
-    borderRadius: 0,
   },
   reel: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
+    top: 7,
+    bottom: 7,
     left: 0,
     flexDirection: 'row',
   },
   tile: { width: TileWidth, height: '100%' },
   expired: {
-    fontSize: 10,
-    lineHeight: 12,
-    fontWeight: '700',
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: Radius.small,
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: 700,
     paddingHorizontal: 4,
+    transform: [{ rotate: '-4deg' }],
   },
   missingMark: {
     position: 'absolute',
@@ -428,48 +458,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Butter grips outlined in sticker ink.
   handle: {
     width: HandleWidth,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  handleStart: {
-    borderTopLeftRadius: Radius.small,
-    borderBottomLeftRadius: Radius.small,
-  },
-  handleEnd: {
-    borderTopRightRadius: Radius.small,
-    borderBottomRightRadius: Radius.small,
-  },
-  grip: {
-    width: 3,
-    height: 16,
-    borderRadius: 1.5,
-    backgroundColor: '#FFFFFF',
-  },
+  grip: { width: 2.5, height: 14, borderRadius: 1.25 },
   badges: {
     position: 'absolute',
     left: Spacing.one,
     right: Spacing.one,
-    bottom: Spacing.one,
+    bottom: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
   // Drawn over arbitrary video, so plain white with a shadow rather than a
   // palette color (the counter in the stage does the same).
+  // Drawn over arbitrary video, so plain white with a shadow rather than a
+  // palette color (the counter in the stage does the same). 12 is the floor.
   number: {
-    fontSize: 10,
-    lineHeight: 12,
-    fontWeight: '700',
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: 700,
     color: '#FFFFFF',
     textShadowColor: 'rgba(0,0,0,0.7)',
     textShadowRadius: 3,
   },
   duration: {
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: '700',
+    fontSize: 12,
+    lineHeight: 14,
+    fontWeight: 700,
     color: 'rgba(255,255,255,0.9)',
     fontVariant: ['tabular-nums'],
     textShadowColor: 'rgba(0,0,0,0.7)',

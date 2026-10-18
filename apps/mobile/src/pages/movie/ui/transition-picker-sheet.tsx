@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { CutTransition, TransitionKind } from '@/entities/movie';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { RadioMark } from '@/shared/ui/choice-mark';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { transitionPickerRows } from '../model/transition-picker-rows';
@@ -48,8 +49,10 @@ export function TransitionPickerSheet({
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="컷 사이 전환 선택">
       <View style={styles.sheet}>
         <View style={styles.head}>
-          <ThemedText type="heading">전환</ThemedText>
-          <ThemedText type="note" themeColor="textSecondary">
+          <ThemedText type="subtitle" accessibilityRole="header">
+            전환
+          </ThemedText>
+          <ThemedText type="data">
             컷 {index + 1} → {index + 2}
           </ThemedText>
         </View>
@@ -65,28 +68,37 @@ export function TransitionPickerSheet({
               style={({ pressed }) => [
                 styles.row,
                 {
-                  backgroundColor: theme.backgroundSelected,
-                  borderColor: row.selected ? theme.primary : theme.border,
-                  borderWidth: row.selected ? 2 : 1,
-                  opacity: !canEdit && !row.selected ? 0.55 : pressed ? 0.85 : 1,
+                  borderBottomColor: theme.ruleLine,
+                  backgroundColor: pressed ? theme.pink : 'transparent',
+                  opacity: !canEdit && !row.selected ? 0.55 : 1,
                 },
               ]}
             >
-              <Ionicons
-                name={row.kind ? TransitionGlyph[row.kind] : 'sparkles-outline'}
-                size={20}
-                color={row.selected ? theme.primary : theme.textSecondary}
-              />
+              {/* The glyph on a small sheet disc, as on the timeline's seam. */}
+              <View
+                style={[
+                  styles.glyph,
+                  {
+                    backgroundColor: row.kind ? theme.backgroundElement : theme.aiFill,
+                    borderColor: theme.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={row.kind ? TransitionGlyph[row.kind] : 'sparkles-outline'}
+                  size={16}
+                  color={row.kind ? theme.text : theme.stickerInk}
+                />
+              </View>
               <View style={styles.rowText}>
-                <ThemedText selectable={false} type="smallBold">
-                  {row.label}
-                </ThemedText>
+                <ThemedText selectable={false}>{row.label}</ThemedText>
                 {row.note ? (
-                  <ThemedText selectable={false} type="note" themeColor="textSecondary">
+                  <ThemedText selectable={false} type="data">
                     {row.note}
                   </ThemedText>
                 ) : null}
               </View>
+              <RadioMark selected={row.selected} />
             </Pressable>
           ))}
         </View>
@@ -103,16 +115,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  list: { gap: Spacing.two },
+  list: {},
+  // A line of the note sheet: rule under it, pink when pressed.
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
+    borderBottomWidth: 1,
+    paddingHorizontal: Spacing.one,
     paddingVertical: Spacing.two,
-    minHeight: 48,
+    minHeight: 52,
+  },
+  glyph: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowText: { flex: 1, gap: Spacing.half },
 });

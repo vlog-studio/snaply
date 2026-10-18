@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useConnectSns } from '@/features/connect-sns';
 import { PostToInstagramConfirm, type PostOutcome } from '@/features/post-to-instagram';
 import { InstagramHandoffMessages, type InstagramHandoff } from '@/features/share-movie';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Reel } from '@/shared/ui/reel';
 
@@ -127,31 +128,22 @@ function InstagramHandoffRow({
 }) {
   const theme = useTheme();
   return (
-    <View style={[styles.handoff, { borderTopColor: theme.border }]}>
+    <View style={[styles.handoff, { borderTopColor: theme.ruleLine }]}>
       <ThemedText type="small" themeColor="textSecondary">
         연결하지 않아도 올릴 수 있어요. 무비를 앨범에 저장하고 Instagram 앱을 열어요.
       </ThemedText>
       {problem ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           {problem}
         </ThemedText>
       ) : null}
-      <Pressable
-        accessibilityRole="button"
+      <SnaplyButton
+        variant="secondary"
+        title={busy ? '앨범에 저장하는 중…' : 'Instagram 앱에서 올리기'}
         accessibilityLabel="Instagram 앱에서 올리기"
-        accessibilityState={{ disabled: busy, busy }}
-        disabled={busy}
+        busy={busy}
         onPress={onPress}
-        style={({ pressed }) => [
-          styles.action,
-          styles.handoffAction,
-          { borderColor: theme.border, opacity: busy ? 0.6 : pressed ? 0.8 : 1 },
-        ]}
-      >
-        <ThemedText selectable={false} type="button">
-          {busy ? '앨범에 저장하는 중…' : 'Instagram 앱에서 올리기'}
-        </ThemedText>
-      </Pressable>
+      />
     </View>
   );
 }
@@ -185,58 +177,39 @@ function ConnectStep({
   onCancel: () => void;
   onConnect: () => void;
 }) {
-  const theme = useTheme();
   const label = reconnect ? '다시 연결' : 'Instagram 연결';
 
   return (
     <View style={styles.step}>
-      <ThemedText type="note" themeColor="textSecondary">
-        Instagram에 게시
-      </ThemedText>
-      <ThemedText type="heading">
+      <ThemedText type="subtitle" accessibilityRole="header">
         {reconnect ? 'Instagram을 다시 연결해 주세요' : 'Instagram을 먼저 연결해 주세요'}
       </ThemedText>
-      <ThemedText themeColor="textSecondary">
+      <ThemedText type="bodySm" themeColor="textSecondary">
         {reconnect ? '다시 연결하면 게시할 수 있어요.' : '프로페셔널 계정만 연결할 수 있어요.'}
       </ThemedText>
 
       {error ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           {error}
         </ThemedText>
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="취소"
           accessibilityLabel="게시 취소"
           disabled={pending}
           onPress={onCancel}
-          style={[styles.action, { borderColor: theme.border, opacity: pending ? 0.6 : 1 }]}
-        >
-          <ThemedText selectable={false} type="button">
-            취소
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+          style={styles.action}
+        />
+        <SnaplyButton
+          title={pending ? '연결하는 중…' : label}
           accessibilityLabel={label}
-          accessibilityState={{ disabled: pending, busy: pending }}
-          disabled={pending}
+          busy={pending}
           onPress={onConnect}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: theme.primary,
-              borderColor: theme.primary,
-              opacity: pending ? 0.6 : pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
-            {pending ? '연결하는 중…' : label}
-          </ThemedText>
-        </Pressable>
+          style={styles.action}
+        />
       </View>
     </View>
   );
@@ -249,16 +222,7 @@ const styles = StyleSheet.create({
   handoff: {
     gap: Spacing.two,
     paddingTop: Spacing.three,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
   },
-  handoffAction: { flex: 0 },
-  action: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  action: { flex: 1 },
 });

@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
@@ -13,7 +12,8 @@ import Animated, {
 
 import { transitionSpec } from '@/entities/movie';
 
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Spacing, useTheme } from '@/shared/ui/theme';
+import { StickerFace } from '@/shared/ui/sticker-button';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
 
@@ -694,7 +694,7 @@ export function CutPlayer({
     },
   }));
 
-  const overlayIcon = isEnded ? 'refresh' : isPlaying ? 'pause' : 'play';
+  const overlayIcon = isEnded ? 'replay' : isPlaying ? 'pause' : 'play';
   const overlayLabel = isEnded ? '무비 다시 재생' : isPlaying ? '일시정지' : '재생';
 
   return (
@@ -739,7 +739,7 @@ export function CutPlayer({
       ) : null}
 
       <View style={styles.top} pointerEvents="none">
-        <ThemedText selectable={false} style={styles.counter}>
+        <ThemedText selectable={false} type="dataSm" style={styles.counter}>
           컷 {currentIndex + 1} / {cuts.length}
         </ThemedText>
       </View>
@@ -752,7 +752,7 @@ export function CutPlayer({
       >
         {!isPlaying || isEnded ? (
           <View style={styles.playButton}>
-            <Ionicons name={overlayIcon} size={24} color="#F1E6DA" />
+            <StickerFace icon={overlayIcon} />
           </View>
         ) : null}
       </Pressable>
@@ -777,8 +777,6 @@ const styles = StyleSheet.create({
   stage: {
     width: '100%',
     aspectRatio: 9 / 16,
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   top: {
@@ -792,13 +790,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   // Drawn over arbitrary video, so plain white rather than a palette color.
-  counter: {
-    fontSize: 11,
-    letterSpacing: 1.2,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-  },
+  counter: { color: '#FFFFFF', fontWeight: 700, fontVariant: ['tabular-nums'] },
   tapLayer: {
     position: 'absolute',
     top: 0,
@@ -808,16 +800,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(20,15,11,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  playButton: { transform: [{ scale: 1.25 }] },
   segments: {
     position: 'absolute',
     left: Spacing.four,
@@ -826,5 +809,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.one,
   },
-  segment: { flex: 1, height: 3, borderRadius: 2 },
+  segment: { flex: 1, height: 3 },
 });

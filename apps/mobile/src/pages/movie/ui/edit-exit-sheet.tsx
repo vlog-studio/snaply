@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { ActionRow } from './movie-actions-sheet';
@@ -51,17 +51,19 @@ export function EditExitSheet({
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="편집 마치기">
       <View style={styles.step}>
-        <ThemedText type="heading">편집을 마칠까요?</ThemedText>
-        <ThemedText themeColor="textSecondary">
+        <ThemedText type="subtitle" accessibilityRole="header">
+          편집을 마칠까요?
+        </ThemedText>
+        <ThemedText type="bodySm" themeColor="textSecondary">
           완성한 뒤에 컷 구성이 달라졌어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요.
           다시 만들면 지금 완성된 무비는 사라지고, 크레딧을 다시 써요.
         </ThemedText>
 
-        <View style={[styles.group, { borderColor: theme.border }]}>
+        <View style={[styles.group, { borderColor: theme.ruleLine }]}>
           <ActionRow icon="sparkles" label="이 구성으로 다시 만들기" onPress={onRemake} />
           <ActionRow icon="time" label="나중에 만들기" divider onPress={onKeep} />
         </View>
-        <View style={[styles.group, { borderColor: theme.border }]}>
+        <View style={[styles.group, { borderColor: theme.ruleLine }]}>
           <ActionRow icon="arrow-undo" label="편집 취소" danger onPress={onDiscard} />
         </View>
       </View>
@@ -71,10 +73,5 @@ export function EditExitSheet({
 
 const styles = StyleSheet.create({
   step: { gap: Spacing.three },
-  group: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
-  },
+  group: { borderTopWidth: 1, borderBottomWidth: 1, paddingHorizontal: Spacing.one },
 });

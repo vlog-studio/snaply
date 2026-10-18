@@ -275,3 +275,37 @@ const holeStyles = StyleSheet.create({
   },
   hole: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 1 },
 });
+
+/**
+ * A dotted rule — a receipt's leader, a "또는" divider. Drawn, not a border:
+ * Android draws a one-sided dotted border solid.
+ */
+export function DottedRule({
+  color,
+  thickness = 2,
+  style,
+}: {
+  color: string;
+  thickness?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <Svg
+      pointerEvents="none"
+      width="100%"
+      height={thickness}
+      style={[{ flex: 1, minWidth: 12 }, style]}
+    >
+      <Line
+        x1={thickness / 2}
+        x2="100%"
+        y1={thickness / 2}
+        y2={thickness / 2}
+        stroke={color}
+        strokeWidth={thickness}
+        strokeLinecap="round"
+        strokeDasharray={`0.01 ${thickness * 2}`}
+      />
+    </Svg>
+  );
+}

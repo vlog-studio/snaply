@@ -1,4 +1,5 @@
 export {
+  DottedRule,
   PaperGround,
   PaperPiece,
   PunchedHoles,

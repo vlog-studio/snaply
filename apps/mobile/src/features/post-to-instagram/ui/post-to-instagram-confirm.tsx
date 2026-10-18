@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { CheckStrip, CheckStripRow } from '@/shared/ui/check-strip';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { TextField } from '@/shared/ui/text-field';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import type { PostOutcome } from '../api/post-movie';
@@ -38,7 +40,6 @@ export function PostToInstagramConfirm({
   onCancel,
   onPosted,
 }: PostToInstagramConfirmProps) {
-  const theme = useTheme();
   const { post, busy, error } = usePostToInstagram();
   const [caption, setCaption] = useState('');
 
@@ -50,21 +51,22 @@ export function PostToInstagramConfirm({
 
   return (
     <View style={styles.step}>
-      <ThemedText type="note" themeColor="textSecondary">
-        Instagram에 게시
+      <ThemedText type="subtitle" accessibilityRole="header">
+        Instagram에 게시할까요?
       </ThemedText>
-      <ThemedText type="heading">Instagram에 게시할까요?</ThemedText>
 
-      <View style={[styles.summary, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold" numberOfLines={1}>
-          {title}
-        </ThemedText>
-        {username ? (
-          <ThemedText type="note" themeColor="textSecondary" numberOfLines={1}>
-            @{username}
+      <CheckStrip>
+        <CheckStripRow>
+          <ThemedText type="bodySm" numberOfLines={1} style={styles.title}>
+            {title}
           </ThemedText>
-        ) : null}
-      </View>
+          {username ? (
+            <ThemedText type="data" numberOfLines={1}>
+              @{username}
+            </ThemedText>
+          ) : null}
+        </CheckStripRow>
+      </CheckStrip>
 
       <TextField
         label="설명 (선택)"
@@ -77,47 +79,32 @@ export function PostToInstagramConfirm({
         editable={!busy}
       />
 
-      <ThemedText themeColor="textSecondary">
+      <ThemedText type="bodySm" themeColor="textSecondary">
         게시하면 이 앱에서는 무비가 정리돼요. 컷 구성은 남아서 고쳐 다시 만들 수 있어요.
       </ThemedText>
 
       {error ? (
-        <ThemedText type="small" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           {error}
         </ThemedText>
       ) : null}
 
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="취소"
           accessibilityLabel="게시 취소"
           disabled={busy}
           onPress={onCancel}
-          style={[styles.action, { borderColor: theme.border, opacity: busy ? 0.6 : 1 }]}
-        >
-          <ThemedText selectable={false} type="button">
-            취소
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+          style={styles.action}
+        />
+        <SnaplyButton
+          title={busy ? '게시하는 중…' : 'Instagram에 게시'}
           accessibilityLabel={`${title} Instagram에 게시`}
-          accessibilityState={{ disabled: busy, busy }}
-          disabled={busy}
+          busy={busy}
           onPress={confirm}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: theme.primary,
-              borderColor: theme.primary,
-              opacity: busy ? 0.6 : pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
-            {busy ? '게시하는 중…' : 'Instagram에 게시'}
-          </ThemedText>
-        </Pressable>
+          style={styles.action}
+        />
       </View>
     </View>
   );
@@ -125,22 +112,7 @@ export function PostToInstagramConfirm({
 
 const styles = StyleSheet.create({
   step: { gap: Spacing.three },
-  summary: {
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    gap: Spacing.half,
-  },
-  actions: { flexDirection: 'row', gap: Spacing.three, marginTop: Spacing.one },
-  action: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  title: { flex: 1, minWidth: 0 },
+  actions: { flexDirection: 'row', gap: Spacing.two + Spacing.half, marginTop: Spacing.one },
+  action: { flex: 1 },
 });

@@ -1,11 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ImageFrame } from '@/shared/ui/image-frame';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { StickerFace } from '@/shared/ui/sticker-button';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
 
@@ -110,7 +110,7 @@ export function RenderPlayer({ uri, coverUri, fallbackFrameUri, style }: RenderP
     }
   };
 
-  const overlayIcon = isEnded ? 'refresh' : isPlaying ? 'pause' : 'play';
+  const overlayIcon = isEnded ? 'replay' : isPlaying ? 'pause' : 'play';
   const overlayLabel = isEnded ? '무비 다시 재생' : isPlaying ? '일시정지' : '재생';
 
   return (
@@ -150,7 +150,7 @@ export function RenderPlayer({ uri, coverUri, fallbackFrameUri, style }: RenderP
             </ThemedText>
           ) : !isPlaying || isEnded ? (
             <View style={styles.playButton}>
-              <Ionicons name={overlayIcon} size={24} color="#F1E6DA" />
+              <StickerFace icon={overlayIcon} />
             </View>
           ) : null}
         </Pressable>
@@ -163,8 +163,6 @@ const styles = StyleSheet.create({
   stage: {
     width: '100%',
     aspectRatio: 9 / 16,
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
     overflow: 'hidden',
   },
   tapLayer: {
@@ -189,14 +187,5 @@ const styles = StyleSheet.create({
   // Drawn over arbitrary video, so plain white rather than a palette color —
   // the same reason CutPlayer's counter is.
   stateText: { color: '#FFFFFF', textAlign: 'center' },
-  playButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: 'rgba(20,15,11,0.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  playButton: { transform: [{ scale: 1.25 }] },
 });

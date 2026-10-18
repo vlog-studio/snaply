@@ -1,8 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { BackHandler, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -28,7 +27,11 @@ import { adRewardQueries } from '@/features/watch-reward-ad';
 import { movieHref } from '@/shared/routes';
 import { BackBar } from '@/shared/ui/back-bar';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { KeyButton } from '@/shared/ui/key-button';
+import { PaperPiece, Tape } from '@/shared/ui/paper';
+import { Tag } from '@/shared/ui/tag';
+import { TapeChip } from '@/shared/ui/tape-chip';
+import { MaxContentWidth, Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Toast } from '@/shared/ui/toast';
 
@@ -372,6 +375,7 @@ export function MoviePage({ movieId }: MoviePageProps) {
       <BackBar
         onPress={studioOnReady ? leaveStudio : goBack}
         title={movie.title}
+        titleLabel
         action={
           viewing
             ? { icon: 'more', label: '더보기', onPress: () => setActionsOpen(true) }
@@ -415,7 +419,25 @@ export function MoviePage({ movieId }: MoviePageProps) {
             ) : playbackCuts.length > 0 && !previewReady ? (
               <CutFilesStage files={previewFiles} />
             ) : playbackCuts.length > 0 ? (
-              <View style={styles.playerBox}>
+              <View
+                style={[
+                  styles.playerBox,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: theme.border,
+                    boxShadow: Shadows.paper(theme.shadowInk),
+                  },
+                ]}
+              >
+                {/* The stage as an instant print taped to the page at two corners. */}
+                <Tape color="tapeMint" width={40} height={14} tilt={-35} style={styles.tapeLeft} />
+                <Tape
+                  color="tapeButter"
+                  width={40}
+                  height={14}
+                  tilt={35}
+                  style={styles.tapeRight}
+                />
                 <CutPlayer
                   ref={playerRef}
                   cuts={playbackCuts}
@@ -431,21 +453,17 @@ export function MoviePage({ movieId }: MoviePageProps) {
                     saying so would be the screen explaining itself; the badge
                     is the state, and it sits opposite the player's own 컷 n/N
                     so the two never collide. */}
-                <View style={[styles.previewTag, { backgroundColor: theme.media }]}>
-                  <ThemedText selectable={false} type="note" style={styles.previewTagText}>
-                    미리보기
-                  </ThemedText>
-                </View>
+                <Tag label="미리보기" tone="sheet" style={styles.previewTag} />
               </View>
             ) : (
-              <View style={[styles.empty, { borderColor: theme.border }]}>
+              <PaperPiece edge="tornBottom" tilt={-1} style={styles.empty}>
                 <ThemedText type="heading">재생할 컷이 없어요</ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.centerText}>
+                <ThemedText type="bodySm" themeColor="textSecondary" style={styles.centerText}>
                   {emptyStageReason(cuts) === 'expired'
                     ? '이 무비가 쓰던 스냅의 보관 기간이 끝났어요.'
                     : '이 무비가 쓰던 스냅이 모두 삭제됐어요.'}
                 </ThemedText>
-              </View>
+              </PaperPiece>
             )}
           </View>
 
@@ -454,48 +472,30 @@ export function MoviePage({ movieId }: MoviePageProps) {
           stage just showed. */}
           {!isGenerating ? (
             <View style={styles.transport}>
-              <Pressable
-                accessibilityRole="button"
+              <KeyButton
+                tone="pink"
+                icon={isPlaying ? 'pause' : 'play'}
                 accessibilityLabel={isPlaying ? '일시정지' : '재생'}
-                accessibilityState={{ disabled: !canPlay }}
                 disabled={!canPlay}
                 onPress={() => playerRef.current?.togglePlayback()}
-                style={[
-                  styles.transportTool,
-                  { borderColor: theme.border, opacity: canPlay ? 1 : 0.35 },
-                ]}
-              >
-                <Ionicons name={isPlaying ? 'pause' : 'play'} size={20} color={theme.text} />
-              </Pressable>
+              />
 
               {canEdit ? (
                 <View style={styles.historyTools}>
-                  <Pressable
-                    accessibilityRole="button"
+                  <KeyButton
+                    tone="sky"
+                    icon="undo"
                     accessibilityLabel="되돌리기"
-                    accessibilityState={{ disabled: !list.canUndo }}
                     disabled={!list.canUndo}
                     onPress={list.undo}
-                    style={[
-                      styles.transportTool,
-                      { borderColor: theme.border, opacity: list.canUndo ? 1 : 0.35 },
-                    ]}
-                  >
-                    <Ionicons name="arrow-undo" size={18} color={theme.text} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
+                  />
+                  <KeyButton
+                    tone="sky"
+                    icon="redo"
                     accessibilityLabel="다시 실행"
-                    accessibilityState={{ disabled: !list.canRedo }}
                     disabled={!list.canRedo}
                     onPress={list.redo}
-                    style={[
-                      styles.transportTool,
-                      { borderColor: theme.border, opacity: list.canRedo ? 1 : 0.35 },
-                    ]}
-                  >
-                    <Ionicons name="arrow-redo" size={18} color={theme.text} />
-                  </Pressable>
+                  />
                 </View>
               ) : null}
             </View>
@@ -519,35 +519,23 @@ export function MoviePage({ movieId }: MoviePageProps) {
             {/* Settings are visited, cuts are worked on: the chips carry the current
             values so the sheets only need opening to change something. */}
             <View style={styles.chips}>
-              <Pressable
-                accessibilityRole="button"
+              <TapeChip
+                label={`스타일 · ${movieStyleLabel(movie.style)}`}
                 accessibilityLabel={`스타일 ${movieStyleLabel(movie.style)}`}
+                color="tapeButter"
+                tilt={-1}
                 onPress={() => setStyleOpen(true)}
-                style={[styles.chip, { borderColor: theme.border }]}
-              >
-                <ThemedText selectable={false} type="smallBold">
-                  스타일
-                </ThemedText>
-                <ThemedText selectable={false} type="small" themeColor="textSecondary">
-                  {movieStyleLabel(movie.style)}
-                </ThemedText>
-              </Pressable>
+              />
               {/* The chip's second line is the one thing inside the sheet the
                   user can still change — since 배경 음악 left it (2026-08-13),
                   that is 순서 고정, read out in the sheet's own words. */}
-              <Pressable
-                accessibilityRole="button"
+              <TapeChip
+                label={`세부 · ${arrangementLabel}`}
                 accessibilityLabel={`세부 설정, 컷 순서 ${arrangementLabel}`}
+                color="tapeSky"
+                tilt={1}
                 onPress={() => setDetailOpen(true)}
-                style={[styles.chip, { borderColor: theme.border }]}
-              >
-                <ThemedText selectable={false} type="smallBold">
-                  세부
-                </ThemedText>
-                <ThemedText selectable={false} type="small" themeColor="textSecondary">
-                  {arrangementLabel}
-                </ThemedText>
-              </Pressable>
+              />
             </View>
           </View>
 
@@ -555,7 +543,6 @@ export function MoviePage({ movieId }: MoviePageProps) {
             style={[
               styles.footer,
               {
-                borderTopColor: theme.border,
                 paddingBottom: insets.bottom + Spacing.three,
               },
             ]}
@@ -762,27 +749,18 @@ const styles = StyleSheet.create({
   },
   // Height-bound: the stage hands the player its leftover height and the 9:16
   // ratio sets the width, so the timeline never gets pushed off screen.
-  playerBox: { flex: 1, aspectRatio: 9 / 16, maxWidth: '100%' },
+  playerBox: { flex: 1, aspectRatio: 9 / 16, maxWidth: '100%', padding: 6, borderWidth: 1 },
+  tapeLeft: { position: 'absolute', top: -4, left: -12, zIndex: 2 },
+  tapeRight: { position: 'absolute', top: -4, right: -12, zIndex: 2 },
   player: { width: '100%', height: '100%' },
-  previewTag: {
-    position: 'absolute',
-    top: Spacing.two,
-    right: Spacing.two,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 2,
-  },
+  previewTag: { position: 'absolute', top: Spacing.three, right: Spacing.three },
   // Drawn over arbitrary footage, so plain white rather than a palette color.
-  previewTagText: { color: '#FFFFFF' },
   progressScroll: { flexGrow: 1, justifyContent: 'center', paddingVertical: Spacing.four },
   centerText: { textAlign: 'center' },
   empty: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
-    padding: Spacing.five,
+    paddingTop: Spacing.five,
+    paddingHorizontal: Spacing.five,
+    paddingBottom: Spacing.five,
     gap: Spacing.two,
     alignItems: 'center',
     alignSelf: 'stretch',
@@ -795,22 +773,12 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingBottom: Spacing.two,
   },
-  chips: { flexDirection: 'row', gap: Spacing.two },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    minHeight: 44,
-    paddingHorizontal: Spacing.four,
-    borderWidth: 1,
-    borderRadius: Radius.pill,
-  },
+  chips: { flexDirection: 'row', gap: Spacing.three, paddingTop: Spacing.two },
   footer: {
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
     gap: Spacing.two,
   },
@@ -824,13 +792,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.five,
     paddingTop: Spacing.two,
   },
-  historyTools: { flexDirection: 'row', gap: Spacing.two },
-  transportTool: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  historyTools: { flexDirection: 'row', gap: Spacing.one + Spacing.half },
 });

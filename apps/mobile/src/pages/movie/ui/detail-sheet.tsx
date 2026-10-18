@@ -3,7 +3,8 @@ import { StyleSheet, View } from 'react-native';
 import { isAiArranged, type Movie } from '@/entities/movie';
 import { formatDateTime, formatSeconds } from '@/shared/lib/datetime';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { ListRow } from '@/shared/ui/list-row';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Toggle } from '@/shared/ui/toggle';
 
@@ -50,64 +51,42 @@ export function DetailSheet({
   onChangeArranger,
   onClose,
 }: DetailSheetProps) {
-  const theme = useTheme();
   const isLocked = !isAiArranged(movie);
 
   return (
     <BottomSheet visible={visible} onClose={onClose} accessibilityLabel="세부 설정">
       <View style={styles.sheet}>
-        <ThemedText type="heading">세부</ThemedText>
+        <ThemedText type="subtitle" accessibilityRole="header">
+          세부
+        </ThemedText>
 
-        <View style={[styles.rows, { backgroundColor: theme.backgroundSelected }]}>
-          <View style={styles.row}>
-            <View style={styles.rowCopy}>
-              <ThemedText type="small">순서 고정</ThemedText>
-              {/* A read-out of which order wins, not an explanation of the
-                  switch: the two states differ in outcome, and the outcome is
-                  the only part the user cannot see from the toggle itself. */}
-              <ThemedText type="xsmall" themeColor="textSecondary">
-                {isLocked ? '지금 순서' : '찍은 시각 순'}
-              </ThemedText>
-            </View>
-            <Toggle
-              accessibilityLabel="컷 순서 고정"
-              disabled={!canEdit}
-              value={isLocked}
-              onValueChange={onChangeArranger}
-            />
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-          <View style={styles.row}>
-            <ThemedText type="small">비율</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {movie.ratio}
-            </ThemedText>
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-          <View style={styles.row}>
-            <ThemedText type="small">전체 길이</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              컷 합계 ({formatSeconds(totalSec)})
-            </ThemedText>
-          </View>
-
+        {/* Receipt lines: a name, a dotted leader, the figure. */}
+        <View>
+          <ListRow
+            name="순서 고정"
+            // A read-out of which order wins, not an explanation of the
+            // switch: the two states differ in outcome, and the outcome is the
+            // only part the user cannot see from the toggle itself.
+            sub={<ThemedText type="data">{isLocked ? '지금 순서' : '찍은 시각 순'}</ThemedText>}
+            trailing={
+              <Toggle
+                accessibilityLabel="컷 순서 고정"
+                disabled={!canEdit}
+                value={isLocked}
+                onValueChange={onChangeArranger}
+              />
+            }
+          />
+          <ListRow name="비율" value={movie.ratio} />
           {/* When the movie was last finished. It reads out here rather than on
               the screen, where a whole row under the title bought one date. */}
+          <ListRow
+            name="전체 길이"
+            value={`컷 합계 (${formatSeconds(totalSec)})`}
+            divider={movie.render !== undefined}
+          />
           {movie.render ? (
-            <>
-              <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-              <View style={styles.row}>
-                <ThemedText type="small">완성</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {formatDateTime(movie.render.renderedAt)}
-                </ThemedText>
-              </View>
-            </>
+            <ListRow name="완성" value={formatDateTime(movie.render.renderedAt)} divider={false} />
           ) : null}
         </View>
       </View>
@@ -117,20 +96,4 @@ export function DetailSheet({
 
 const styles = StyleSheet.create({
   sheet: { gap: Spacing.three },
-  rows: {
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-  },
-  row: {
-    minHeight: 52,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  rowCopy: { flex: 1, gap: Spacing.half },
-  divider: { height: StyleSheet.hairlineWidth },
 });

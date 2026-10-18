@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { DottedRule } from '@/shared/ui/paper';
 import { Sizes, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -41,7 +42,7 @@ export function ListRow({
       <View style={styles.copy}>
         <View style={styles.line}>
           <ThemedText style={pressed ? { color: theme.stickerInk } : undefined}>{name}</ThemedText>
-          <View style={[styles.leader, { borderColor: theme.backgroundSelected }]} />
+          <DottedRule color={theme.backgroundSelected} style={styles.leader} />
           {value ? (
             <ThemedText type="data" style={pressed ? { color: theme.stickerInk } : undefined}>
               {value}
@@ -85,11 +86,5 @@ const styles = StyleSheet.create({
   icon: { width: 28, alignItems: 'center' },
   copy: { flex: 1, minWidth: 0, gap: 1 },
   line: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  leader: {
-    flex: 1,
-    minWidth: 12,
-    borderBottomWidth: 2,
-    borderStyle: 'dotted',
-    transform: [{ translateY: 4 }],
-  },
+  leader: { transform: [{ translateY: 6 }] },
 });

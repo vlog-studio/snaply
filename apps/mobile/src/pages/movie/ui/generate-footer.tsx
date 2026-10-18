@@ -1,13 +1,12 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { Movie } from '@/entities/movie';
 import type { CutsRefusal } from '@/features/compose-movie';
 import type { MovieSharing } from '@/features/share-movie';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
-import { AlertCard } from '@/shared/ui/notice';
-import { ThemedText } from '@/shared/ui/themed-text';
+import { Spacing } from '@/shared/ui/theme';
+import { AlertCard, NoticeBand } from '@/shared/ui/notice';
 
 import { CutsRefusalMessages, RefusalNotice, type RefusalAction } from './refusal-notice';
 import { RemakeConfirm } from './remake-confirm';
@@ -78,7 +77,6 @@ export function GenerateFooter({
   inspector,
   onStart,
 }: GenerateFooterProps) {
-  const theme = useTheme();
   const hasFailed = movie.status === 'failed';
   const isReady = movie.status === 'ready';
   // A finished movie's run replaces its result and is paid again, so that one
@@ -92,22 +90,10 @@ export function GenerateFooter({
           render as it was made, and only 다시 만들기 closes that gap. The restore is the one-tap way back when the edit was a
           mis-tap — screen-local undo dies with the visit, this does not. */}
       {isReady && editedSinceRender ? (
-        <View style={[styles.notice, { borderColor: theme.border }]}>
-          <ThemedText type="small" themeColor="textSecondary">
-            완성한 뒤에 컷 구성이 달라졌어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요.
-          </ThemedText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="완성 당시 구성으로 되돌리기"
-            onPress={onRestoreCuts}
-            hitSlop={Spacing.two}
-            style={({ pressed }) => [styles.restore, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-              완성 당시 구성으로 되돌리기
-            </ThemedText>
-          </Pressable>
-        </View>
+        <NoticeBand
+          message="완성한 뒤에 컷 구성이 달라졌어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요."
+          action={{ label: '완성 당시 구성으로 되돌리기', onPress: onRestoreCuts }}
+        />
       ) : null}
 
       {hasFailed ? (
@@ -149,7 +135,6 @@ export function GenerateFooter({
                 title={
                   hasFailed ? '다시 시도' : isReady ? '이 구성으로 다시 만들기' : '무비 만들기'
                 }
-                variant="ai"
                 disabled={cutCount === 0}
                 onPress={isReady ? () => setAskingRemake(true) : onStart}
                 style={styles.generate}
@@ -165,14 +150,6 @@ const styles = StyleSheet.create({
   footer: { gap: Spacing.two },
   // One button tall (`SnaplyButton` minHeight), whichever occupant is in.
   actionSlot: { minHeight: 56, justifyContent: 'center' },
-  notice: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  restore: { alignSelf: 'flex-start' },
   actions: { flexDirection: 'row', gap: Spacing.two },
   share: { flexBasis: '32%' },
   generate: { flex: 1 },

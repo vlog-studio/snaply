@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { movieStyleLabel, type Movie } from '@/entities/movie';
@@ -8,7 +8,10 @@ import type { RenderSource } from '@/features/compose-movie';
 import { ShareBlockMessages, type MovieSharing } from '@/features/share-movie';
 import { formatDateTime, formatSeconds } from '@/shared/lib/datetime';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { NoticeBand } from '@/shared/ui/notice';
+import { PaperPiece, Tape } from '@/shared/ui/paper';
+import { MaxContentWidth, Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { emptyStageReason } from '../model/cut-gone';
@@ -120,6 +123,11 @@ export function MovieWatch({
   // is a deadline in days, and a screen left open across midnight is rare.
   const [now] = useState(Date.now);
   const expiry = movie.render ? resultExpiry(movie.render.renderedAt, now) : undefined;
+  const printStyle = {
+    backgroundColor: theme.backgroundElement,
+    borderColor: theme.border,
+    boxShadow: Shadows.paper(theme.shadowInk),
+  };
 
   return (
     <View style={styles.body}>
@@ -133,7 +141,9 @@ export function MovieWatch({
             </ThemedText>
           </View>
         ) : renderSource.uri !== undefined ? (
-          <View style={styles.playerBox}>
+          <View style={[styles.playerBox, styles.print, printStyle]}>
+            <Tape color="tapeMint" width={40} height={14} tilt={-35} style={styles.tapeLeft} />
+            <Tape color="tapePink" width={40} height={14} tilt={35} style={styles.tapeRight} />
             <RenderPlayer
               uri={renderSource.uri}
               coverUri={movie.render?.thumbnailUri}
@@ -146,51 +156,46 @@ export function MovieWatch({
           // Falling through to the cuts below would put the raw material on the
           // stage in the finished movie's place — the substitution 공유 refuses
           // to make — and it would look like the run had produced nothing.
-          <View style={[styles.empty, { borderColor: theme.border }]}>
-            <ThemedText type="heading">완성된 무비를 불러오지 못했어요</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.centerText}>
+          <PaperPiece edge="tornBottom" tilt={-1} style={styles.empty}>
+            <ThemedText type="heading" style={styles.centerText}>
+              완성된 무비를 불러오지 못했어요
+            </ThemedText>
+            <ThemedText type="bodySm" themeColor="textSecondary" style={styles.centerText}>
               연결을 확인하고 다시 시도해 주세요.
             </ThemedText>
-            <Pressable
-              accessibilityRole="button"
+            <SnaplyButton
+              title="다시 시도"
               accessibilityLabel="완성된 무비 다시 불러오기"
               onPress={renderSource.retry}
-              hitSlop={Spacing.two}
-              style={({ pressed }) => [
-                styles.retry,
-                { borderColor: theme.primary, opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-                다시 시도
-              </ThemedText>
-            </Pressable>
-          </View>
+            />
+          </PaperPiece>
         ) : playbackCuts.length > 0 && (cutFiles.fetching || cutFiles.failed) ? (
           <CutFilesStage files={cutFiles} />
         ) : playbackCuts.length > 0 ? (
-          <View style={styles.playerBox}>
+          <View style={[styles.playerBox, styles.print, printStyle]}>
+            <Tape color="tapeMint" width={40} height={14} tilt={-35} style={styles.tapeLeft} />
+            <Tape color="tapePink" width={40} height={14} tilt={35} style={styles.tapeRight} />
             <CutPlayer cuts={playbackCuts} style={styles.player} />
           </View>
         ) : (
-          <View style={[styles.empty, { borderColor: theme.border }]}>
+          <PaperPiece edge="tornBottom" tilt={-1} style={styles.empty}>
             <ThemedText type="heading">재생할 컷이 없어요</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.centerText}>
+            <ThemedText type="bodySm" themeColor="textSecondary" style={styles.centerText}>
               {emptyStageReason(cuts) === 'expired'
                 ? '이 무비가 쓰던 스냅의 보관 기간이 끝났어요.'
                 : '이 무비가 쓰던 스냅이 모두 삭제됐어요.'}
             </ThemedText>
-          </View>
+          </PaperPiece>
         )}
       </View>
 
-      <ThemedText type="small" themeColor="textSecondary" style={styles.facts}>
+      <ThemedText type="data" style={styles.facts}>
         {facts.join(' · ')}
       </ThemedText>
       {expiry ? (
         <ThemedText
-          type="small"
-          themeColor={expiry.urgent ? 'danger' : 'textSecondary'}
+          type={expiry.urgent ? 'smallBold' : 'small'}
+          themeColor={expiry.urgent ? 'cherryInk' : 'textSecondary'}
           style={styles.facts}
         >
           {expiry.text}
@@ -199,28 +204,20 @@ export function MovieWatch({
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + Spacing.three }]}>
         {editedSinceRender ? (
-          <View style={[styles.notice, { borderColor: theme.border }]}>
-            <ThemedText type="small" themeColor="textSecondary">
-              편집한 컷 구성이 있어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요.
-            </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="편집한 구성 확인하고 다시 만들기"
-              onPress={onReviewEdits}
-              hitSlop={Spacing.two}
-              style={({ pressed }) => [styles.review, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-                구성 확인하고 다시 만들기
-              </ThemedText>
-            </Pressable>
-          </View>
+          <NoticeBand
+            message="편집한 컷 구성이 있어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요."
+            action={{
+              label: '구성 확인하고 다시 만들기',
+              accessibilityLabel: '편집한 구성 확인하고 다시 만들기',
+              onPress: onReviewEdits,
+            }}
+          />
         ) : null}
         <SnaplyButton
           // The file downloads to the cache before the sheet can open, so the
           // button says what the wait is instead of looking ignored.
           title={sharing.busy ? '공유 준비 중…' : '공유'}
-          variant="secondary"
+          leading={<DoodleIcon name="share" size={20} color={theme.onPrimary} />}
           disabled={sharing.blocked !== undefined || sharing.busy}
           onPress={sharing.share}
         />
@@ -228,11 +225,11 @@ export function MovieWatch({
           <SnaplyButton title="Instagram에 게시" variant="secondary" onPress={onPostToInstagram} />
         ) : null}
         {sharing.blocked !== undefined ? (
-          <ThemedText type="note" themeColor="textSecondary" style={styles.centerText}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
             {ShareBlockMessages[sharing.blocked]}
           </ThemedText>
         ) : sharing.failed ? (
-          <ThemedText type="note" themeColor="textSecondary" style={styles.centerText}>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
             완성된 무비를 내려받지 못했어요. 연결을 확인하고 다시 시도해 주세요.
           </ThemedText>
         ) : sharing.offered ? (
@@ -240,22 +237,10 @@ export function MovieWatch({
           // worth offering — and offering is all this does. The sheet never
           // says whether the file was saved (MOV-18), so nothing here decides
           // for the user; the confirm asks them.
-          <View style={[styles.notice, { borderColor: theme.border }]}>
-            <ThemedText type="small" themeColor="textSecondary">
-              기기에 저장했다면 무비를 정리할 수 있어요.
-            </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="무비 정리하기"
-              onPress={onFinish}
-              hitSlop={Spacing.two}
-              style={({ pressed }) => [styles.review, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
-                정리하기
-              </ThemedText>
-            </Pressable>
-          </View>
+          <NoticeBand
+            message="기기에 저장했다면 무비를 정리할 수 있어요."
+            action={{ label: '정리하기', accessibilityLabel: '무비 정리하기', onPress: onFinish }}
+          />
         ) : null}
       </View>
     </View>
@@ -278,12 +263,11 @@ const styles = StyleSheet.create({
   // Height-bound like the studio stage: the leftover height and the 9:16 ratio
   // decide the width, so the rows below never leave the screen.
   playerBox: { flex: 1, aspectRatio: 9 / 16, maxWidth: '100%' },
-  resolving: {
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // The finished movie as an instant print taped at two corners.
+  print: { padding: 6, borderWidth: 1 },
+  tapeLeft: { position: 'absolute', top: -4, left: -12, zIndex: 2 },
+  tapeRight: { position: 'absolute', top: -4, right: -12, zIndex: 2 },
+  resolving: { alignItems: 'center', justifyContent: 'center' },
   // Over the stage's media backdrop, same as RenderPlayer's own state text.
   resolvingText: { color: '#FFFFFF' },
   player: { width: '100%', height: '100%' },
@@ -303,31 +287,12 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   empty: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
-    padding: Spacing.five,
-    gap: Spacing.two,
+    paddingTop: Spacing.five,
+    paddingHorizontal: Spacing.five,
+    paddingBottom: Spacing.five,
+    gap: Spacing.two + Spacing.half,
     alignItems: 'center',
     alignSelf: 'stretch',
   },
   centerText: { textAlign: 'center' },
-  retry: {
-    borderWidth: 1,
-    borderRadius: Radius.pill,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.four,
-    minHeight: 40,
-    justifyContent: 'center',
-    marginTop: Spacing.one,
-  },
-  notice: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  review: { alignSelf: 'flex-start' },
 });

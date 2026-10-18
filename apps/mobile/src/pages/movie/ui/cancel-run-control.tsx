@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { generationRefusalMessage, type CancellationOutcome } from '@/features/compose-movie';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperPiece } from '@/shared/ui/paper';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type CancelRunControlProps = {
@@ -30,7 +31,6 @@ export type CancelRunControlProps = {
  * a line about it would race the status change it describes.
  */
 export function CancelRunControl({ cancel }: CancelRunControlProps) {
-  const theme = useTheme();
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
@@ -57,52 +57,33 @@ export function CancelRunControl({ cancel }: CancelRunControlProps) {
   }
 
   return (
-    <View style={styles.slot}>
-      <ThemedText type="small" themeColor="textSecondary">
-        지금까지의 진행은 사라지고, 컷 구성은 그대로 남아요.
-      </ThemedText>
+    // The confirm, on a slip torn off the top of the footer.
+    <PaperPiece edge="tornTop" style={styles.confirm}>
+      <ThemedText type="bodySm">지금까지의 진행은 사라지고, 컷 구성은 그대로 남아요.</ThemedText>
       {unreachable ? (
-        <ThemedText type="note" themeColor="danger">
+        <ThemedText type="small" themeColor="cherryInk">
           {generationRefusalMessage('unreachable')}
         </ThemedText>
       ) : null}
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="계속 만들기"
           accessibilityLabel="계속 만들기"
-          accessibilityState={{ disabled: busy }}
           disabled={busy}
           onPress={() => setAsking(false)}
-          style={({ pressed }) => [
-            styles.action,
-            { borderColor: theme.border, opacity: busy ? 0.45 : pressed ? 0.7 : 1 },
-          ]}
-        >
-          <ThemedText selectable={false} type="button">
-            계속 만들기
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+          style={styles.action}
+        />
+        <SnaplyButton
+          variant="danger"
+          title={busy ? '취소하는 중…' : '만들기 취소'}
           accessibilityLabel="만들기 취소"
-          accessibilityState={{ disabled: busy }}
-          disabled={busy}
+          busy={busy}
           onPress={() => void confirm()}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: theme.kraft,
-              borderColor: theme.kraft,
-              opacity: busy ? 0.6 : pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.stickerInk }}>
-            {busy ? '취소하는 중…' : '만들기 취소'}
-          </ThemedText>
-        </Pressable>
+          style={styles.action}
+        />
       </View>
-    </View>
+    </PaperPiece>
   );
 }
 
@@ -111,14 +92,12 @@ const styles = StyleSheet.create({
   // so a run starting or ending does not resize the zones the stage is sized
   // against. The confirm step grows by its own lines — transient on purpose.
   slot: { minHeight: 56, justifyContent: 'center', gap: Spacing.two },
-  actions: { flexDirection: 'row', gap: Spacing.three },
-  action: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
+  confirm: {
+    paddingTop: Spacing.four,
+    paddingHorizontal: Spacing.three + Spacing.half,
+    paddingBottom: Spacing.four,
+    gap: Spacing.three,
   },
+  actions: { flexDirection: 'row', gap: Spacing.two + Spacing.half },
+  action: { flex: 1 },
 });

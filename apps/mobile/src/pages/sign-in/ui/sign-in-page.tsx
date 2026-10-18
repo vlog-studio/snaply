@@ -4,7 +4,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmailSignInForm, SocialLoginList } from '@/features/sign-in';
-import { PaperGround, PaperPiece, Tape } from '@/shared/ui/paper';
+import { DottedRule, PaperGround, PaperPiece, Tape } from '@/shared/ui/paper';
 import { MaxContentWidth, Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -63,11 +63,11 @@ export function SignInPage() {
           </PaperPiece>
 
           <View style={styles.divider}>
-            <View style={[styles.dividerLine, { borderColor: theme.textSecondary }]} />
+            <DottedRule color={theme.textSecondary} style={styles.dividerLine} />
             <ThemedText type="small" themeColor="textSecondary">
               또는
             </ThemedText>
-            <View style={[styles.dividerLine, { borderColor: theme.textSecondary }]} />
+            <DottedRule color={theme.textSecondary} style={styles.dividerLine} />
           </View>
 
           <SocialLoginList />
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   form: { paddingTop: Spacing.three, paddingHorizontal: Spacing.four, paddingBottom: Spacing.four },
   divider: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, minHeight: 20 },
-  dividerLine: { flex: 1, borderTopWidth: 2, borderStyle: 'dotted', opacity: 0.6 },
+  dividerLine: { opacity: 0.6 },
   links: { alignItems: 'center', marginTop: -Spacing.two },
   quietLink: { paddingVertical: Spacing.three, paddingHorizontal: Spacing.two },
   dotted: { textDecorationLine: 'underline', textDecorationStyle: 'dotted' },

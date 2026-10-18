@@ -1,6 +1,8 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperPiece } from '@/shared/ui/paper';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type RemakeConfirmProps = {
@@ -23,58 +25,37 @@ export type RemakeConfirmProps = {
  * how many.
  */
 export function RemakeConfirm({ onConfirm, onCancel }: RemakeConfirmProps) {
-  const theme = useTheme();
   return (
-    <View style={styles.slot}>
-      <ThemedText type="small" themeColor="textSecondary">
-        지금 완성된 무비는 사라지고, 크레딧을 다시 써요.
-      </ThemedText>
+    <PaperPiece edge="tornTop" style={styles.slot}>
+      <ThemedText type="bodySm">지금 완성된 무비는 사라지고, 크레딧을 다시 써요.</ThemedText>
       <View style={styles.actions}>
-        <Pressable
-          accessibilityRole="button"
+        <SnaplyButton
+          variant="secondary"
+          title="그대로 두기"
           accessibilityLabel="그대로 두기"
           onPress={onCancel}
-          style={({ pressed }) => [
-            styles.action,
-            { borderColor: theme.border, opacity: pressed ? 0.7 : 1 },
-          ]}
-        >
-          <ThemedText selectable={false} type="button">
-            그대로 두기
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+          style={styles.action}
+        />
+        <SnaplyButton
+          title="다시 만들기"
           accessibilityLabel="다시 만들기"
           onPress={onConfirm}
-          style={({ pressed }) => [
-            styles.action,
-            {
-              backgroundColor: theme.primary,
-              borderColor: theme.primary,
-              opacity: pressed ? 0.8 : 1,
-            },
-          ]}
-        >
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
-            다시 만들기
-          </ThemedText>
-        </Pressable>
+          style={styles.action}
+        />
       </View>
-    </View>
+    </PaperPiece>
   );
 }
 
 const styles = StyleSheet.create({
-  slot: { minHeight: 56, justifyContent: 'center', gap: Spacing.two },
-  actions: { flexDirection: 'row', gap: Spacing.three },
-  action: {
-    flex: 1,
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    alignItems: 'center',
+  slot: {
+    minHeight: 56,
     justifyContent: 'center',
+    gap: Spacing.three,
+    paddingTop: Spacing.four,
+    paddingHorizontal: Spacing.three + Spacing.half,
+    paddingBottom: Spacing.four,
   },
+  actions: { flexDirection: 'row', gap: Spacing.two + Spacing.half },
+  action: { flex: 1 },
 });
