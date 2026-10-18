@@ -1,7 +1,8 @@
-import { Linking, ScrollView, StyleSheet, Switch } from 'react-native';
+import { Linking, ScrollView, StyleSheet } from 'react-native';
 
 import { useAlbumAutoSave } from '@/features/save-snap-to-album';
 import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
+import { Toggle } from '@/shared/ui/toggle';
 
 import { RowDivider, SettingRow, SettingsSection } from './rows';
 
@@ -36,13 +37,10 @@ export function MeAlbumPage() {
           }
           subColor={autoSave.blocked ? 'danger' : 'textSecondary'}
           right={
-            <Switch
+            <Toggle
               accessibilityLabel="찍은 스냅을 앨범에도 저장"
               value={autoSave.enabled}
               onValueChange={autoSave.setEnabled}
-              trackColor={{ false: theme.border, true: theme.primary }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor={theme.border}
             />
           }
         />

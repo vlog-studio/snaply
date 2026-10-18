@@ -1,10 +1,11 @@
-import { StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { isAiArranged, type Movie } from '@/entities/movie';
 import { formatDateTime, formatSeconds } from '@/shared/lib/datetime';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Toggle } from '@/shared/ui/toggle';
 
 export type DetailSheetProps = {
   visible: boolean;
@@ -68,12 +69,11 @@ export function DetailSheet({
                 {isLocked ? '지금 순서' : '찍은 시각 순'}
               </ThemedText>
             </View>
-            <Switch
+            <Toggle
               accessibilityLabel="컷 순서 고정"
               disabled={!canEdit}
               value={isLocked}
               onValueChange={onChangeArranger}
-              trackColor={{ true: theme.primary }}
             />
           </View>
 

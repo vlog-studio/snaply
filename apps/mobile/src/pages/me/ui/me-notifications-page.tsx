@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   useLocationAlerts,
@@ -8,6 +8,7 @@ import {
 } from '@/features/notification-settings';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Toggle } from '@/shared/ui/toggle';
 
 import { LocationAlertsSheet } from './location-alerts-sheet';
 import { RowDivider, SettingRow, SettingsSection } from './rows';
@@ -63,14 +64,11 @@ export function MeNotificationsPage() {
           }
           subColor="danger"
           right={
-            <Switch
+            <Toggle
               accessibilityLabel="무비 완성 알림 받기"
               disabled={!movieReadyAlerts.ready}
               value={movieReadyAlerts.enabled}
               onValueChange={movieReadyAlerts.setEnabled}
-              trackColor={{ false: theme.border, true: theme.primary }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor={theme.border}
             />
           }
         />
@@ -97,7 +95,7 @@ export function MeNotificationsPage() {
           }
           subColor="danger"
           right={
-            <Switch
+            <Toggle
               accessibilityLabel="위치 알림 받기"
               disabled={!locationAlerts.ready}
               value={locationAlerts.enabled}
@@ -105,9 +103,6 @@ export function MeNotificationsPage() {
                 if (value) setLocationSheetVisible(true);
                 else locationAlerts.setEnabled(false);
               }}
-              trackColor={{ false: theme.border, true: theme.primary }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor={theme.border}
             />
           }
         />

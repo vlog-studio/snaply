@@ -113,9 +113,7 @@ beforeEach(() => {
 /** Renders and waits for the account's preferences to arrive. */
 async function renderLoaded() {
   await renderPage();
-  await waitFor(() =>
-    expect(screen.getByLabelText(locationSwitchLabel).props.disabled).toBe(false),
-  );
+  await waitFor(() => expect(screen.getByLabelText(locationSwitchLabel)).toBeEnabled());
 }
 
 // 위치 알림 받기
@@ -144,7 +142,7 @@ describe('MeNotificationsPage location alerts', () => {
 
     await waitFor(() => expect(mockForegroundPermission).toHaveBeenCalledTimes(1));
     expect(mockBackgroundPermission).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.getByLabelText(locationSwitchLabel).props.value).toBe(true));
+    await waitFor(() => expect(screen.getByLabelText(locationSwitchLabel)).toBeChecked());
     expect(mockUpdate).toHaveBeenCalledWith({ locationAlerts: true });
   });
 
@@ -155,7 +153,7 @@ describe('MeNotificationsPage location alerts', () => {
     await fireEvent.press(screen.getByRole('button', { name: declineLabel }));
 
     expect(mockForegroundPermission).not.toHaveBeenCalled();
-    expect(screen.getByLabelText(locationSwitchLabel).props.value).toBe(false);
+    expect(screen.getByLabelText(locationSwitchLabel)).not.toBeChecked();
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 });
@@ -178,7 +176,7 @@ describe('MeNotificationsPage movie-ready alerts', () => {
     await fireEvent(screen.getByLabelText(movieSwitchLabel), 'valueChange', true);
 
     await waitFor(() => expect(screen.getByLabelText(settingsRowLabel)).toBeTruthy());
-    expect(screen.getByLabelText(movieSwitchLabel).props.value).toBe(false);
+    expect(screen.getByLabelText(movieSwitchLabel)).not.toBeChecked();
   });
 
   it('an account switch this device cannot honor stays on and points to the settings', async () => {
@@ -187,7 +185,7 @@ describe('MeNotificationsPage movie-ready alerts', () => {
     await renderLoaded();
 
     await waitFor(() => expect(screen.getByLabelText(settingsRowLabel)).toBeTruthy());
-    expect(screen.getByLabelText(movieSwitchLabel).props.value).toBe(true);
+    expect(screen.getByLabelText(movieSwitchLabel)).toBeChecked();
   });
 });
 
@@ -196,8 +194,8 @@ describe('MeNotificationsPage account preferences', () => {
     mockGet.mockReturnValue(new Promise(() => {}));
     await renderPage();
 
-    expect(screen.getByLabelText(movieSwitchLabel).props.disabled).toBe(true);
-    expect(screen.getByLabelText(locationSwitchLabel).props.disabled).toBe(true);
+    expect(screen.getByLabelText(movieSwitchLabel)).toBeDisabled();
+    expect(screen.getByLabelText(locationSwitchLabel)).toBeDisabled();
     expect(screen.getByRole('button', { name: quietStartLater })).toBeDisabled();
   });
 

@@ -111,6 +111,6 @@ describe('MeAnalysisPage', () => {
     mockConsent.mockReturnValue({ ...off, available: false });
     await renderPage();
 
-    expect(screen.getByLabelText(switchLabel).props.disabled).toBe(true);
+    expect(screen.getByLabelText(switchLabel)).toBeDisabled();
   });
 });

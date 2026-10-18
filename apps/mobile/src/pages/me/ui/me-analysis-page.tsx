@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import {
   AnalysisConsentSheet,
@@ -9,6 +9,7 @@ import {
 import { formatFullDate } from '@/shared/lib/datetime';
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { AlertCard } from '@/shared/ui/notice';
+import { Toggle } from '@/shared/ui/toggle';
 
 import { SettingRow, SettingsSection } from './rows';
 
@@ -47,7 +48,7 @@ export function MeAnalysisPage() {
           title="스냅 분석"
           sub={consent.isLoaded ? readOut : undefined}
           right={
-            <Switch
+            <Toggle
               accessibilityLabel="스냅 분석"
               value={consent.granted}
               // Off with nothing to turn on is a switch that cannot move; the
@@ -57,9 +58,6 @@ export function MeAnalysisPage() {
                 if (value) setSheetVisible(true);
                 else void actions.withdraw();
               }}
-              trackColor={{ false: theme.border, true: theme.primary }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor={theme.border}
             />
           }
         />
