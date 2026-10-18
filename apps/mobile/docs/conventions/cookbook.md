@@ -786,12 +786,26 @@ export function XPage() {
   check box — is `fieldLine`.
 - **Sticker colours keep their value at night** (`pink`, `mint`, `butter`, `lavender`,
   `sky`, `kraft`, `warmSurface`), so text on them is `stickerInk`, never `text`. A
-  standing notice on `warmSurface` wraps its contents in `<ThemeScope scheme="light">`
-  so every `ThemedText` and `useTheme()` inside resolves the day ink (see
-  `refusal-notice.tsx`).
+  standing notice is a `NoticeBand` (butter), an error an `AlertCard` — both resolve
+  their own ink, so a screen does not wrap them.
 - Paper is cut, not rounded: `Radius` steps are 0; `Radius.pill` is only for round
   objects (a button sticker, the capture disc, a price sticker, a reel). Elevation is
   `boxShadow: Shadows.paper(theme.shadowInk)` — a hard offset, no blur.
+- **Reach for the journal's pieces before drawing one** (all under `src/shared/ui`):
+  `PaperGround` (ruled · pink grid · plain page, first child of the scroll content),
+  `PaperPiece` (a cut or torn sheet), `Tape`, `TitleLabel` (a hand-lettered name on a
+  taped label), `PunchedHoles` and `DottedRule` (`paper`); `Polaroid` (a snap or movie as
+  a print, with `overlay` on the picture and `children` on the print); `SnaplyButton` (the
+  ticket — `primary` cherry, `secondary` sheet, `ai` lavender, `danger` kraft with VOID;
+  `busy` keeps the face while it waits); `TextButton`; `StickerButton` / `StickerFace`
+  (an icon-only round sticker — back, close, sound, move); `KeyButton` (a transport key —
+  play, undo); `TapeChip` / `TapeLabel` (an action or a status on tape); `ModeTab` (선택 /
+  취소 beside a title); `Tag` (a state on sticker paper); `CheckStrip` (a guest check:
+  totals, what a delete touches); `ListRow` (a receipt line with a dotted leader);
+  `NoticeBand` / `AlertCard` / `Toast`; `Toggle`, `CheckMark`, `RadioMark`; `Reel` for
+  waiting; `DoodleIcon` for glyphs — add a path in the canvas's hand rather than an
+  Ionicons glyph. A one-sided `dotted`/`dashed` border draws solid on Android: use
+  `DottedRule` or an SVG line.
 - A screen whose ground is a video surface (the viewfinder) pins its subtree with
   `<ThemeScope scheme="dark">` (see `capture-record-page.tsx`), so chrome stays legible
   over near-black in both theme modes. White glyphs and `rgba` scrims drawn **over

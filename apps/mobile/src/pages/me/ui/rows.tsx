@@ -1,12 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View, type AccessibilityRole } from 'react-native';
 
-import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { DoodleIcon, type DoodleIconName } from '@/shared/ui/doodle-icon';
 import { DottedRule, PaperPiece } from '@/shared/ui/paper';
 import { Shadows, Sizes, Spacing, useTheme, type ThemeColor } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type RowIconName = keyof typeof Ionicons.glyphMap;
+
+/**
+ * The rows' icons drawn in the journal's own hand where the canvas has one;
+ * the rest stay the vector glyph, in ink.
+ */
+const DoodleFor: Partial<Record<RowIconName, DoodleIconName>> = {
+  'ticket-outline': 'coin',
+  'notifications-outline': 'bell',
+  'contrast-outline': 'moon',
+  'scan-outline': 'eye',
+  'images-outline': 'picture',
+  'heart-outline': 'heart',
+  'link-outline': 'link',
+};
 
 /**
  * One settings line on the receipt (the design system's `jj-row`): an icon in
@@ -48,7 +62,15 @@ export function SettingRow({
     <>
       {icon ? (
         <View style={styles.rowIcon}>
-          <Ionicons color={pressed ? theme.stickerInk : theme.text} name={icon} size={20} />
+          {DoodleFor[icon] ? (
+            <DoodleIcon
+              name={DoodleFor[icon]}
+              size={22}
+              color={pressed ? theme.stickerInk : theme.text}
+            />
+          ) : (
+            <Ionicons color={pressed ? theme.stickerInk : theme.text} name={icon} size={20} />
+          )}
         </View>
       ) : null}
       <View style={styles.rowCopy}>
