@@ -25,20 +25,26 @@ import {
   useSaveSnapToAlbum,
   useSaveSnapsToAlbum,
 } from '@/features/save-snap-to-album';
-import { formatDuration, formatSeconds } from '@/shared/lib/datetime';
+import { formatDuration, formatSeconds, useNow } from '@/shared/lib/datetime';
 import { movieHref } from '@/shared/routes';
 import { pickVideoFromLibrary } from '@/shared/lib/video-picker';
 import { useSetTabBarHidden } from '@/shared/ui/tab-bar-chrome';
 import { Toast } from '@/shared/ui/toast';
 import {
   MaxContentWidth,
-  Radius,
+  OpacityDisabled,
+  Shadows,
+  Sizes,
   Spacing,
   useTabBarHeight,
   useTheme,
   useTopContentInset,
 } from '@/shared/ui/theme';
+import { CheckStrip, CheckStripRow } from '@/shared/ui/check-strip';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { ListRow } from '@/shared/ui/list-row';
 import { AlertCard, NoticeBand } from '@/shared/ui/notice';
+import { PaperGround } from '@/shared/ui/paper';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoPlayerModal } from '@/shared/ui/video-player-modal';
 import { RansomTitle } from '@/shared/ui/ransom-title';
@@ -104,6 +110,8 @@ export type SnapsPageProps = {
  */
 export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) {
   const theme = useTheme();
+  // The check's head date; an hour is fine enough for a day's figure.
+  const now = useNow(60 * 60 * 1000);
   const router = useRouter();
   const topInset = useTopContentInset();
   const tabBarHeight = useTabBarHeight();
@@ -478,6 +486,9 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
           },
         ]}
       >
+        {/* Pink grid paper: the picking screens are drawn on it. */}
+        <PaperGround kind="grid" />
+
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <RansomTitle word="스냅" />
@@ -488,21 +499,34 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
                 // Leaving mid-request would still open the movie it makes.
                 accessibilityState={{ disabled: holding }}
                 disabled={holding}
-                hitSlop={12}
                 onPress={() => (selecting ? exitSelection() : setSelecting(true))}
-                style={styles.headerAction}
+                style={({ pressed }) => [
+                  styles.modeTab,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    boxShadow: (pressed ? Shadows.pressed : Shadows.paper)(theme.shadowInk),
+                    opacity: holding ? OpacityDisabled : 1,
+                  },
+                ]}
               >
-                <ThemedText selectable={false} type="smallBold" themeColor="cherryInk">
+                <ThemedText
+                  selectable={false}
+                  type="bodySm"
+                  style={[styles.modeLabel, { color: theme.navy }]}
+                >
                   {selecting ? '취소' : '선택'}
                 </ThemedText>
               </Pressable>
             ) : null}
           </View>
-          <View style={styles.stateRow}>
-            <ThemedText type="small" themeColor="textSecondary">
-              {totalCount}개 · {formatDuration(totalDurationSec)}
-            </ThemedText>
-          </View>
+          {/* The library's total, on a strip torn off a guest check. */}
+          <CheckStrip brand head={todayStamp(now)}>
+            <CheckStripRow>
+              <ThemedText type="data">
+                {totalCount}개 · {formatDuration(totalDurationSec)}
+              </ThemedText>
+            </CheckStripRow>
+          </CheckStrip>
         </View>
 
         {importError ? (
@@ -541,16 +565,12 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
             quietly, at the end of the library — whether anything waits there
             is the next screen's to say. */}
         {!selecting ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="최근 삭제"
+          <ListRow
+            icon={<DoodleIcon name="trash" size={22} />}
+            name="최근 삭제"
+            divider={false}
             onPress={() => router.push('/recently-deleted')}
-            style={({ pressed }) => [styles.trashRow, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <ThemedText selectable={false} type="small" themeColor="textSecondary">
-              최근 삭제
-            </ThemedText>
-          </Pressable>
+          />
         ) : null}
       </ScrollView>
 
@@ -586,6 +606,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
             setDeleteOpen(true);
           }}
           onHeight={setSelectionBarHeight}
+          tone={purpose === 'draft' ? 'ai' : 'primary'}
         />
       ) : null}
 
@@ -639,6 +660,12 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
   );
 }
 
+/** Today as the check's head figure, `10.16`. */
+function todayStamp(now: number): string {
+  const date = new Date(now);
+  return `${date.getMonth() + 1}.${String(date.getDate()).padStart(2, '0')}`;
+}
+
 /** Stable reference, so the impact hook does not recompute on every render. */
 const EmptySelection: string[] = [];
 
@@ -671,22 +698,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.five,
     gap: Spacing.five,
   },
-  header: { gap: Spacing.half },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  stateRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  headerAction: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' },
-  notice: {
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-  },
-  uploadNotice: {
-    flexDirection: 'row',
+  header: { gap: Spacing.three },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  // The mode switch as a tab of sheet paper standing off the page.
+  modeTab: {
+    minHeight: Sizes.touchMin,
+    minWidth: 64,
+    paddingHorizontal: Spacing.four,
+    marginTop: Spacing.one,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
+    justifyContent: 'center',
+    transform: [{ rotate: '1.5deg' }],
   },
-  uploadNoticeText: { flexShrink: 1 },
-  trashRow: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  modeLabel: { fontWeight: 700 },
 });

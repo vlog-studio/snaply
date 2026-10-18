@@ -24,6 +24,11 @@ export type SnaplyButtonProps = Omit<PressableProps, 'children'> & {
   colors?: { face: string; label: string; perforation: string };
   /** Drawn before the label instead of `icon` — a brand mark, a spinner. */
   leading?: ReactNode;
+  /**
+   * Waiting on its own request: it takes no press but keeps its colour — a
+   * request in flight is not a refusal. Announced as busy and disabled.
+   */
+  busy?: boolean;
 };
 
 /** The admission ticket's notch at each short end, and where its perforation runs. */
@@ -51,6 +56,8 @@ export function SnaplyButton({
   variant = 'primary',
   colors,
   leading,
+  busy = false,
+  accessibilityState,
   ...props
 }: SnaplyButtonProps) {
   const theme = useTheme();
@@ -60,6 +67,7 @@ export function SnaplyButton({
     return (
       <Pressable
         accessibilityRole="button"
+        accessibilityState={accessibilityState}
         disabled={disabled}
         style={(state) => [
           styles.textButton,
@@ -100,7 +108,8 @@ export function SnaplyButton({
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={disabled}
+      accessibilityState={busy ? { ...accessibilityState, busy: true } : accessibilityState}
+      disabled={disabled || busy}
       onLayout={onLayout}
       style={(state) => [styles.ticket, typeof style === 'function' ? style(state) : style]}
       {...props}

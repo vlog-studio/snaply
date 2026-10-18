@@ -2,7 +2,7 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import type { Snap } from '@/entities/snap';
 import { formatDuration } from '@/shared/lib/datetime';
-import { MaxContentWidth, Spacing } from '@/shared/ui/theme';
+import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import type { SnapDay } from '../model/use-snap-days';
@@ -36,7 +36,7 @@ const Columns = 3;
 const NoLongPress = () => {};
 
 /**
- * The snap library drawn as day sections of square cells — the block both
+ * The snap library drawn as day sections of instant prints — the block both
  * screens that pick snaps are built around: the Snap tab, where picks go to the
  * studio's tray, and a movie's 스냅 더 넣기, where they go to its cut list.
  *
@@ -60,10 +60,13 @@ export function SnapDayGrid({
   onLongPress = NoLongPress,
   onImport,
 }: SnapDayGridProps) {
+  const theme = useTheme();
   const { width: windowWidth } = useWindowDimensions();
 
   const gridWidth = Math.min(windowWidth, MaxContentWidth) - Spacing.five * 2;
-  const cellWidth = Math.floor((gridWidth - Spacing.one * (Columns - 1)) / Columns);
+  // Cells carry their own breathing room (each print sits padded on its
+  // cell), so the columns divide the width with no gap between them.
+  const cellWidth = Math.floor(gridWidth / Columns);
 
   // The import cell leads the newest day's row, and stands alone when there is
   // no day at all: an empty library still has to offer the way out of being
@@ -83,8 +86,17 @@ export function SnapDayGrid({
       {days.map((day, dayIndex) => (
         <View key={day.key} style={styles.day}>
           <View style={styles.dayHead}>
-            <ThemedText type="smallBold">{day.label}</ThemedText>
-            <ThemedText type="note" themeColor="textSecondary">
+            {/* The day, on a strip of butter tape. */}
+            <View style={[styles.dayLabel, { backgroundColor: theme.tapeButter }]}>
+              <ThemedText
+                type="smallBold"
+                accessibilityRole="header"
+                style={{ color: theme.stickerInk }}
+              >
+                {day.label}
+              </ThemedText>
+            </View>
+            <ThemedText type="data">
               {day.snaps.length}개 · {formatDuration(totalSecOf(day.snaps))}
             </ThemedText>
           </View>
@@ -119,11 +131,16 @@ function totalSecOf(snaps: readonly Snap[]): number {
 const styles = StyleSheet.create({
   day: { gap: Spacing.two },
   dayHead: {
-    minHeight: 24,
+    minHeight: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one },
+  dayLabel: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 2,
+    transform: [{ rotate: '-2deg' }],
+  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: Spacing.one },
 });

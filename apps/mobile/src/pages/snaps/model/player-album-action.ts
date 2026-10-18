@@ -6,7 +6,14 @@ import {
 
 export type PlayerAlbumAction = {
   /** The player's top-edge control; its label is also where the save stands. */
-  action: { label: string; accessibilityLabel?: string; onPress?: () => void; disabled?: boolean };
+  action: {
+    label: string;
+    accessibilityLabel?: string;
+    onPress?: () => void;
+    disabled?: boolean;
+    /** The tape the control is on: butter to save, mint saved, pink to retry, sky to settings. */
+    tape?: 'tapeButter' | 'tapeMint' | 'tapePink' | 'tapeSky';
+  };
   /** One line under the video for a save that made no copy. */
   problem?: string;
 };
@@ -27,19 +34,24 @@ export function playerAlbumAction(
     case 'saving':
       return { action: { label: AlbumSaveCopy.saving, disabled: true } };
     case 'saved':
-      return { action: { label: AlbumSaveCopy.saved } };
+      return { action: { label: AlbumSaveCopy.saved, tape: 'tapeMint' } };
     case 'failed':
       return {
         action: {
           label: AlbumSaveCopy.retry,
           accessibilityLabel: AlbumSaveCopy.retryLabel,
           onPress: handlers.save,
+          tape: 'tapePink',
         },
         problem: AlbumSaveProblem.failed,
       };
     case 'blocked':
       return {
-        action: { label: AlbumSaveCopy.openSettings, onPress: handlers.openSettings },
+        action: {
+          label: AlbumSaveCopy.openSettings,
+          onPress: handlers.openSettings,
+          tape: 'tapeSky',
+        },
         problem: AlbumSaveProblem.blocked,
       };
   }

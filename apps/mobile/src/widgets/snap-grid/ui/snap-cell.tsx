@@ -9,13 +9,15 @@ import {
   type SnapSyncStatus,
 } from '@/entities/snap';
 import { daysLeftBadge, formatSeconds } from '@/shared/lib/datetime';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { Tape, tiltFor } from '@/shared/ui/paper';
+import { Polaroid } from '@/shared/ui/polaroid';
+import { Tag } from '@/shared/ui/tag';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { VideoFrame } from '@/shared/ui/video-frame';
 
 export type SnapCellProps = {
   snap: Snap;
-  /** Cell width in points; the cell is square, so this is its height too. */
+  /** Cell width in points; the print inside it sets the height. */
   width: number;
   /** Selection order, 1-based. Undefined when not selected. */
   pickNumber?: number;
@@ -84,6 +86,11 @@ export const SnapCell = memo(function SnapCell({
   // count until something re-renders the cell, as the day headings do.
   const countdown = syncLabel ? undefined : expiryCountdownOf(expiresAt, Date.now());
 
+  // A badge per corner of the picture: the state of the copy at the bottom
+  // left, 담김 at the top left. The pick number sits on the print's corner.
+  const syncTone =
+    syncStatus === 'failed' ? 'cherry' : syncStatus === 'expired' ? 'sheet' : 'butter';
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -92,126 +99,71 @@ export const SnapCell = memo(function SnapCell({
       accessibilityHint={selecting ? '탭하면 선택해요' : '탭하면 재생해요. 길게 누르면 선택해요'}
       onPress={() => onPress(snap)}
       onLongPress={() => onLongPress(snap)}
-      style={[
-        styles.cell,
-        {
-          width,
-          height: width,
-          borderColor: isPicked ? theme.primary : theme.border,
-        },
-        isPicked && styles.picked,
-      ]}
+      style={[styles.cell, { width }]}
     >
-      <VideoFrame uri={snap.uri} />
-      {selecting ? (
-        <View
-          style={[
-            styles.pick,
-            {
-              backgroundColor: isPicked ? theme.primary : 'rgba(0,0,0,0.45)',
-              borderColor: isPicked ? theme.primary : 'rgba(255,255,255,0.7)',
-            },
-          ]}
-        >
-          {isPicked ? (
-            <ThemedText selectable={false} type="smallBold" style={{ color: theme.onPrimary }}>
-              {pickNumber}
-            </ThemedText>
-          ) : null}
-        </View>
-      ) : null}
-      {isHeld ? (
-        <View style={[styles.heldBadge, { backgroundColor: theme.primary }]}>
-          <ThemedText selectable={false} type="note" style={{ color: theme.onPrimary }}>
-            담김
+      <Polaroid
+        uri={snap.uri}
+        border={4}
+        foot={20}
+        tilt={tiltFor(snap.id, 2)}
+        style={isPicked ? { borderColor: theme.primary, borderWidth: 2 } : undefined}
+        footer={
+          <ThemedText selectable={false} type="dataSm" style={{ color: theme.text }}>
+            {formatSeconds(snap.durationSec)}
           </ThemedText>
-        </View>
-      ) : null}
-      {syncLabel ? (
-        <View
-          style={[
-            styles.syncBadge,
-            syncStatus === 'failed' || syncStatus === 'expired'
-              ? { backgroundColor: theme.primary }
-              : styles.syncBadgeInProgress,
-          ]}
-        >
-          <ThemedText selectable={false} type="note" style={styles.syncBadgeText}>
-            {syncLabel}
-          </ThemedText>
-        </View>
-      ) : countdown ? (
-        <View style={[styles.syncBadge, { backgroundColor: theme.pink }]}>
-          <ThemedText selectable={false} type="note" style={{ color: theme.stickerInk }}>
-            {countdown}
-          </ThemedText>
-        </View>
-      ) : null}
-      <View style={styles.duration}>
-        <ThemedText selectable={false} type="note" style={styles.durationText}>
-          {formatSeconds(snap.durationSec)}
-        </ThemedText>
-      </View>
+        }
+        overlay={
+          <>
+            {isHeld ? <Tag label="담김" tone="mint" style={styles.heldBadge} /> : null}
+            {syncLabel ? (
+              <Tag label={syncLabel} tone={syncTone} style={styles.stateBadge} />
+            ) : countdown ? (
+              <Tag label={countdown} tone="pink" style={styles.stateBadge} />
+            ) : null}
+          </>
+        }
+      >
+        {isPicked ? (
+          <>
+            <Tape color="tapePink" width={30} height={12} tilt={35} style={styles.pickTape} />
+            <View style={[styles.pick, { backgroundColor: theme.primary }]}>
+              <ThemedText selectable={false} type="dataSm" style={{ color: theme.onPrimary }}>
+                {pickNumber}
+              </ThemedText>
+            </View>
+          </>
+        ) : selecting ? (
+          <View
+            style={[
+              styles.pick,
+              styles.pickEmpty,
+              { borderColor: theme.textSecondary, backgroundColor: theme.backgroundElement },
+            ]}
+          />
+        ) : null}
+      </Polaroid>
     </Pressable>
   );
 });
 
 const styles = StyleSheet.create({
-  // A square cell whose width and height are both given in points by the
-  // caller. A thumbnail only has to be recognizable, so the grid crops the 9:16
-  // frame to a square instead of standing three tall columns up: at 9/16 of
-  // their old height, nearly twice as many rows fit on one screen.
-  // Sized rather than shaped with `aspectRatio` on purpose: a wrapped flex cell
-  // whose only children are absolutely positioned collapses to zero height when
-  // its size comes from a percentage width plus an aspect ratio. `overflow:
-  // hidden` clips the absolutely-filled frame to the rounded corners.
-  cell: {
-    borderRadius: Radius.xsmall,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  picked: { borderWidth: 2 },
+  // The print sits on its cell with a little room around it, so the tilt of
+  // one never touches the next.
+  cell: { padding: Spacing.one },
+  heldBadge: { position: 'absolute', top: Spacing.one, left: Spacing.one },
+  stateBadge: { position: 'absolute', bottom: Spacing.one, left: Spacing.one },
+  pickTape: { position: 'absolute', top: -6, right: -10 },
   pick: {
     position: 'absolute',
-    top: Spacing.one,
-    right: Spacing.one,
+    right: -2,
+    bottom: -2,
     minWidth: 22,
     height: 22,
     borderRadius: 11,
-    borderWidth: 1.5,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
+    transform: [{ rotate: '-6deg' }],
   },
-  heldBadge: {
-    position: 'absolute',
-    top: Spacing.one,
-    left: Spacing.one,
-    borderRadius: Radius.small,
-    paddingHorizontal: Spacing.one,
-    paddingVertical: 1,
-  },
-  // Opposite corner from the duration, mirroring how 담김 avoids the pick circle.
-  syncBadge: {
-    position: 'absolute',
-    bottom: Spacing.one,
-    left: Spacing.one,
-    borderRadius: Radius.small,
-    paddingHorizontal: Spacing.one,
-    paddingVertical: 1,
-  },
-  syncBadgeInProgress: { backgroundColor: 'rgba(0,0,0,0.55)' },
-  // Drawn over arbitrary video (or the cherry fill of a failed upload), so plain white.
-  syncBadgeText: { color: '#FFFFFF' },
-  duration: {
-    position: 'absolute',
-    bottom: Spacing.one,
-    right: Spacing.one,
-    borderRadius: Radius.small,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    paddingHorizontal: Spacing.one,
-    paddingVertical: 1,
-  },
-  // Drawn over arbitrary video, so plain white rather than a palette color.
-  durationText: { color: '#FFFFFF' },
+  pickEmpty: { borderWidth: 1.5, borderStyle: 'dashed' },
 });

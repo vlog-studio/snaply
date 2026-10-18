@@ -7,7 +7,8 @@ import { useExpiredSnapIds, type Snap } from '@/entities/snap';
 import { canEditMovie, useComposeMovie } from '@/features/compose-movie';
 import { movieHref } from '@/shared/routes';
 import { BackBar } from '@/shared/ui/back-bar';
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperGround, PaperPiece, Tape } from '@/shared/ui/paper';
+import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { SnapDayGrid, SnapSelectionBar, useSnapDays, useSnapPicking } from '@/widgets/snap-grid';
 
@@ -107,16 +108,22 @@ export function AddSnapsPage({ movieId, onlyLeftOut = false }: AddSnapsPageProps
   if (!movie || !canEditMovie(movie)) {
     return (
       <View style={[styles.screen, { backgroundColor: theme.background }]}>
+        <PaperGround kind="grid" />
         <BackBar onPress={goBack} />
         <View style={[styles.screen, styles.centered]}>
-          <ThemedText type="heading">
-            {movie ? '지금은 스냅을 더 넣을 수 없어요' : '무비를 찾을 수 없어요'}
-          </ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.centerText}>
-            {movie
-              ? '다 만들어지면 이 무비에 스냅을 더 넣을 수 있어요.'
-              : '이미 삭제됐거나 없는 무비예요.'}
-          </ThemedText>
+          <View style={styles.sheetWrap}>
+            <Tape color="tapePink" style={styles.sheetTape} />
+            <PaperPiece edge="tornBottom" tilt={1} style={styles.sheet}>
+              <ThemedText type="heading" accessibilityRole="header" style={styles.centerText}>
+                {movie ? '지금은 스냅을 더 넣을 수 없어요' : '무비를 찾을 수 없어요'}
+              </ThemedText>
+              <ThemedText type="bodySm" themeColor="textSecondary" style={styles.centerText}>
+                {movie
+                  ? '다 만들어지면 이 무비에 스냅을 더 넣을 수 있어요.'
+                  : '이미 삭제됐거나 없는 무비예요.'}
+              </ThemedText>
+            </PaperPiece>
+          </View>
         </View>
       </View>
     );
@@ -137,6 +144,7 @@ export function AddSnapsPage({ movieId, onlyLeftOut = false }: AddSnapsPageProps
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <PaperGround kind="grid" />
       <BackBar
         onPress={goBack}
         accessibilityLabel="무비로 돌아가기"
@@ -158,8 +166,11 @@ export function AddSnapsPage({ movieId, onlyLeftOut = false }: AddSnapsPageProps
         />
 
         {isHydrated && totalCount === 0 ? (
-          <View style={[styles.empty, { borderColor: theme.border }]}>
-            <ThemedText type="heading">넣을 스냅이 없어요</ThemedText>
+          <View style={styles.sheetWrap}>
+            <Tape color="tapeMint" style={styles.sheetTape} />
+            <PaperPiece edge="tornBottom" tilt={-1} style={styles.sheet}>
+              <ThemedText type="heading">넣을 스냅이 없어요</ThemedText>
+            </PaperPiece>
           </View>
         ) : null}
       </ScrollView>
@@ -194,14 +205,14 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
     gap: Spacing.five,
   },
-  empty: {
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderRadius: Radius.large,
-    borderCurve: 'continuous',
-    padding: Spacing.five,
-    gap: Spacing.two,
+  sheetWrap: { alignSelf: 'stretch', marginHorizontal: Spacing.five, marginTop: Spacing.five },
+  sheetTape: { position: 'absolute', top: -8, alignSelf: 'center', zIndex: 2 },
+  sheet: {
     alignItems: 'center',
+    gap: Spacing.two,
+    paddingTop: Spacing.six,
+    paddingHorizontal: Spacing.five,
+    paddingBottom: Spacing.five,
   },
   centerText: { textAlign: 'center' },
 });

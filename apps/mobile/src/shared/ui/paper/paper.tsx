@@ -248,3 +248,30 @@ function edgePoints(edge: PaperEdge, w: number, h: number, dx: number, dy: numbe
   }
   return points.map(([x, y]) => `${x},${y}`).join(' ');
 }
+
+/**
+ * A row of punched holes along a sheet's top edge — the ground showing
+ * through the page. Place it as a child of the sheet; it positions itself.
+ */
+export function PunchedHoles({ count = 12 }: { count?: number }) {
+  const theme = useTheme();
+  return (
+    <View pointerEvents="none" style={holeStyles.holes}>
+      {Array.from({ length: count }, (_, index) => (
+        <View key={index} style={[holeStyles.hole, { backgroundColor: theme.background }]} />
+      ))}
+    </View>
+  );
+}
+
+const holeStyles = StyleSheet.create({
+  holes: {
+    position: 'absolute',
+    top: 8,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  hole: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 1 },
+});

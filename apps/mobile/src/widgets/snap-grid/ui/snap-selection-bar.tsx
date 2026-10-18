@@ -1,7 +1,9 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PunchedHoles } from '@/shared/ui/paper';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { MaxContentWidth, Sizes, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Reel } from '@/shared/ui/reel';
 
@@ -49,6 +51,8 @@ export type SnapSelectionBarProps = {
    * saving is the confirm itself, or not this screen's to offer.
    */
   onSaveToAlbum?: () => void;
+  /** The confirm's ticket: cherry for a movie made by hand, lavender for the agent's edit. */
+  tone?: 'primary' | 'ai';
 };
 
 /**
@@ -73,6 +77,7 @@ export function SnapSelectionBar({
   onHeight,
   busy = false,
   confirmDisabled = false,
+  tone = 'primary',
 }: SnapSelectionBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -87,22 +92,30 @@ export function SnapSelectionBar({
         styles.bar,
         {
           backgroundColor: theme.backgroundElement,
-          borderTopColor: theme.border,
+          boxShadow: `0 -2px 0 ${theme.shadowInk}`,
           paddingBottom: insets.bottom + Spacing.four,
         },
       ]}
     >
+      <PunchedHoles />
       {notice ? (
-        <ThemedText type="note" themeColor="danger" accessibilityLiveRegion="polite">
-          {notice}
-        </ThemedText>
+        <View style={styles.notice} accessibilityLiveRegion="polite">
+          <ThemedText type="smallBold" themeColor="cherryInk" importantForAccessibility="no">
+            !
+          </ThemedText>
+          <ThemedText type="small" themeColor="cherryInk" style={styles.noticeText}>
+            {notice}
+          </ThemedText>
+        </View>
       ) : null}
 
       <View style={styles.counts}>
-        <ThemedText type="smallBold">{selectedCount}개 선택</ThemedText>
+        <ThemedText type="bodySm" style={styles.count}>
+          {selectedCount}개 선택
+        </ThemedText>
         <ThemedText
-          type="note"
-          themeColor={room === 0 ? 'danger' : 'textSecondary'}
+          type="data"
+          themeColor={room === 0 ? 'cherryInk' : undefined}
           numberOfLines={1}
           style={styles.room}
         >
@@ -118,78 +131,78 @@ export function SnapSelectionBar({
 
       <View style={styles.actions}>
         {onDelete ? (
-          <Pressable
-            accessibilityRole="button"
+          <TextAction
+            label="삭제"
             accessibilityLabel={`${selectedCount}개 스냅 삭제`}
-            accessibilityState={{ disabled: !canChange }}
             disabled={!canChange}
-            hitSlop={8}
+            danger
             onPress={onDelete}
-            style={styles.textAction}
-          >
-            <ThemedText
-              selectable={false}
-              type="smallBold"
-              style={{ color: canChange ? theme.danger : theme.textSecondary }}
-            >
-              삭제
-            </ThemedText>
-          </Pressable>
+          />
         ) : null}
         {onSaveToAlbum ? (
-          <Pressable
-            accessibilityRole="button"
+          <TextAction
+            label="저장"
             accessibilityLabel={`${selectedCount}개 스냅 앨범에 저장`}
-            accessibilityState={{ disabled: !canChange }}
             disabled={!canChange}
-            hitSlop={8}
             onPress={onSaveToAlbum}
-            style={styles.textAction}
-          >
-            <ThemedText
-              selectable={false}
-              type="smallBold"
-              themeColor={canChange ? 'text' : 'textSecondary'}
-            >
-              저장
-            </ThemedText>
-          </Pressable>
+          />
         ) : null}
-        <Pressable
-          accessibilityRole="button"
+        <TextAction
+          label="해제"
           accessibilityLabel="선택 해제"
-          accessibilityState={{ disabled: !canChange }}
           disabled={!canChange}
-          hitSlop={8}
           onPress={onClear}
-          style={styles.textAction}
-        >
-          <ThemedText selectable={false} type="smallBold" themeColor="textSecondary">
-            해제
-          </ThemedText>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
+        />
+        <SnaplyButton
+          title={confirmLabel}
           accessibilityLabel={confirmLabel}
-          accessibilityState={{ disabled: !canConfirm, busy }}
-          disabled={!canConfirm}
+          variant={tone}
+          busy={busy}
+          disabled={!canConfirm && !busy}
           onPress={onConfirm}
-          style={({ pressed }) => [
-            styles.primaryAction,
-            {
-              backgroundColor: theme.primary,
-              // A request in flight is not a refusal: the button keeps its weight.
-              opacity: canConfirm || busy ? (pressed ? 0.78 : 1) : 0.45,
-            },
-          ]}
-        >
-          {busy ? <Reel color={theme.onPrimary} size={18} /> : null}
-          <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
-            {confirmLabel}
-          </ThemedText>
-        </Pressable>
+          leading={
+            busy ? (
+              <Reel color={tone === 'ai' ? theme.stickerInk : theme.onPrimary} size={16} />
+            ) : undefined
+          }
+          style={styles.confirm}
+        />
       </View>
     </View>
+  );
+}
+
+/** A quiet word-only action of the bar: 삭제 in cherry ink, the rest in ink. */
+function TextAction({
+  label,
+  accessibilityLabel,
+  disabled,
+  danger = false,
+  onPress,
+}: {
+  label: string;
+  accessibilityLabel: string;
+  disabled: boolean;
+  danger?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.textAction, { opacity: pressed ? 0.7 : 1 }]}
+    >
+      <ThemedText
+        selectable={false}
+        type="smallBold"
+        themeColor={disabled ? 'textSecondary' : danger ? 'cherryInk' : 'text'}
+      >
+        {label}
+      </ThemedText>
+    </Pressable>
   );
 }
 
@@ -202,28 +215,27 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: Spacing.three,
-    paddingHorizontal: Spacing.five,
-    gap: Spacing.three,
+    paddingTop: Spacing.five - Spacing.half,
+    paddingHorizontal: Spacing.four,
+    gap: Spacing.two + Spacing.half,
   },
+  notice: { flexDirection: 'row', gap: Spacing.one + Spacing.half, alignItems: 'flex-start' },
+  noticeText: { flex: 1 },
   counts: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'baseline',
     justifyContent: 'space-between',
     gap: Spacing.three,
   },
-  room: { flexShrink: 1 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.four },
-  textAction: { minHeight: 44, justifyContent: 'center' },
-  primaryAction: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: Spacing.two,
-    minHeight: 48,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
+  count: { fontWeight: 700 },
+  room: { flexShrink: 1, textAlign: 'right' },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
+  textAction: {
+    minHeight: Sizes.touchMin,
+    minWidth: Sizes.touchMin,
+    paddingHorizontal: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  confirm: { flex: 1, marginLeft: Spacing.two },
 });

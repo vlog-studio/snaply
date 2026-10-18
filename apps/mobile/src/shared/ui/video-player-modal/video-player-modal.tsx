@@ -1,7 +1,10 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Radius, Spacing, ThemeScope } from '@/shared/ui/theme';
+import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { StickerButton } from '@/shared/ui/sticker-button';
+import { TapeChip, type TapeChipColor } from '@/shared/ui/tape-chip';
+import { Spacing, ThemeScope } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoPreview } from '@/shared/ui/video-preview';
 
@@ -43,6 +46,8 @@ export type VideoPlayerModalProps = {
     accessibilityLabel?: string;
     onPress?: () => void;
     disabled?: boolean;
+    /** The tape it is on, which says where the action stands. Butter by default. */
+    tape?: TapeChipColor;
   };
 };
 
@@ -91,53 +96,34 @@ export function VideoPlayerModal({
             <View style={styles.placeholder}>
               <ThemedText style={styles.placeholderText}>{placeholder.text}</ThemedText>
               {placeholder.actionLabel && placeholder.onAction ? (
-                <Pressable
-                  accessibilityRole="button"
+                <SnaplyButton
+                  title={placeholder.actionLabel}
                   accessibilityLabel={placeholder.actionLabel}
-                  hitSlop={Spacing.two}
                   onPress={placeholder.onAction}
-                  style={({ pressed }) => [
-                    styles.placeholderAction,
-                    { opacity: pressed ? 0.7 : 1 },
-                  ]}
-                >
-                  <ThemedText selectable={false} type="smallBold" style={styles.placeholderText}>
-                    {placeholder.actionLabel}
-                  </ThemedText>
-                </Pressable>
+                />
               ) : null}
             </View>
           ) : null}
-          <Pressable
+          <StickerButton
+            icon="close"
             accessibilityLabel={closeLabel}
-            accessibilityRole="button"
             onPress={onClose}
             style={[styles.close, { top: insets.top + Spacing.three }]}
-          >
-            <ThemedText selectable={false} style={styles.closeText}>
-              ×
-            </ThemedText>
-          </Pressable>
+          />
           {action ? (
-            <Pressable
-              accessibilityRole="button"
+            <TapeChip
+              label={action.label}
+              color={action.tape}
               accessibilityLabel={action.accessibilityLabel ?? action.label}
               accessibilityState={{ disabled: actionDisabled }}
               disabled={actionDisabled}
               onPress={action.onPress}
-              style={({ pressed }) => [
-                styles.action,
-                { top: insets.top + Spacing.three, opacity: pressed && !actionDisabled ? 0.7 : 1 },
-              ]}
-            >
-              <ThemedText selectable={false} type="smallBold" style={styles.actionText}>
-                {action.label}
-              </ThemedText>
-            </Pressable>
+              style={[styles.action, { top: insets.top + Spacing.three }]}
+            />
           ) : null}
           {uri && (edgeLabel !== undefined || caption !== undefined) ? (
             <View style={[styles.meta, { bottom: insets.bottom + Spacing.four }]}>
-              {edgeLabel !== undefined ? <ThemedText type="note">{edgeLabel}</ThemedText> : null}
+              {edgeLabel !== undefined ? <ThemedText type="data">{edgeLabel}</ThemedText> : null}
               {caption !== undefined ? (
                 <ThemedText type="small" style={styles.caption}>
                   {caption}
@@ -154,29 +140,8 @@ export function VideoPlayerModal({
 const styles = StyleSheet.create({
   // Pure black, not the app ground: this is a letterbox around a frame.
   screen: { flex: 1, backgroundColor: '#000000' },
-  close: {
-    position: 'absolute',
-    left: Spacing.four,
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(0,0,0,0.56)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeText: { color: '#FFFFFF', fontSize: 30, lineHeight: 32 },
-  // Same height and wash as the close control, so the two read as one top edge.
-  action: {
-    position: 'absolute',
-    right: Spacing.four,
-    minHeight: 46,
-    borderRadius: Radius.pill,
-    backgroundColor: 'rgba(0,0,0,0.56)',
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionText: { color: '#FFFFFF' },
+  close: { position: 'absolute', left: Spacing.four },
+  action: { position: 'absolute', right: Spacing.four },
   meta: {
     position: 'absolute',
     left: Spacing.five,
@@ -190,16 +155,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.three,
+    gap: Spacing.three + Spacing.half,
     paddingHorizontal: Spacing.five,
   },
   // Over the black letterbox, like the rest of this screen's text.
   placeholderText: { color: '#FFFFFF', textAlign: 'center' },
-  placeholderAction: {
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.62)',
-    borderRadius: Radius.pill,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-  },
 });

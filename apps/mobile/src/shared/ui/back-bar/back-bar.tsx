@@ -1,28 +1,20 @@
-import { Ionicons } from '@expo/vector-icons';
-import type { ComponentProps } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MaxContentWidth, Sizes, Spacing, useTheme } from '@/shared/ui/theme';
+import type { DoodleIconName } from '@/shared/ui/doodle-icon';
+import { StickerButton } from '@/shared/ui/sticker-button';
+import { MaxContentWidth, Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
-/** The tap target keeps the 48dp minimum (`Sizes.touchMin`); the glyph inside it is 24. */
-const TargetSize = Sizes.touchMin;
-const IconSize = 24;
-
 /**
- * Pull the target left by its own padding, so the *glyph* lands on the content
- * column's edge rather than the tap area's — an arrow indented 10dp past the
- * title under it reads as a mistake.
+ * The stickers sit on the content column's edge less a little, so the disc's
+ * shadow and the column line up by eye rather than by box.
  */
-const EdgeInset = Spacing.five - (TargetSize - IconSize) / 2;
-
-/** Platform back convention: a chevron on iOS, an arrow on Android. */
-const BackIcon = Platform.OS === 'ios' ? 'chevron-back' : 'arrow-back';
+const EdgeInset = Spacing.four;
 
 /** The one action a titled bar may carry, on the trailing edge. */
 type BackBarAction = {
-  icon: ComponentProps<typeof Ionicons>['name'];
+  icon: DoodleIconName;
   /** Names the action for screen readers — the glyph alone does not. */
   label: string;
   onPress: () => void;
@@ -68,19 +60,11 @@ export function BackBar({
   title,
   action,
 }: BackBarProps) {
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.bar, { paddingTop: insets.top }]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        onPress={onPress}
-        style={({ pressed }) => [styles.target, { opacity: pressed ? 0.6 : 1 }]}
-      >
-        <Ionicons color={theme.text} name={BackIcon} size={IconSize} />
-      </Pressable>
+    <View style={[styles.bar, { paddingTop: insets.top + Spacing.one }]}>
+      <StickerButton icon="back" accessibilityLabel={accessibilityLabel} onPress={onPress} />
 
       {title ? (
         <ThemedText
@@ -95,14 +79,11 @@ export function BackBar({
       ) : null}
 
       {action ? (
-        <Pressable
-          accessibilityRole="button"
+        <StickerButton
+          icon={action.icon}
           accessibilityLabel={action.label}
           onPress={action.onPress}
-          style={({ pressed }) => [styles.target, { opacity: pressed ? 0.6 : 1 }]}
-        >
-          <Ionicons color={theme.text} name={action.icon} size={IconSize} />
-        </Pressable>
+        />
       ) : null}
     </View>
   );
@@ -115,17 +96,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    // The trailing target is pulled by the same inset as the arrow, so both
-    // glyphs land on the content column's edges rather than their tap areas'.
+    gap: Spacing.three,
     paddingHorizontal: EdgeInset,
+    paddingBottom: Spacing.one,
   },
-  // Takes the room between the two targets; the arrow's own padding already
-  // holds it off the glyph.
-  title: { flex: 1, marginLeft: Spacing.one },
-  target: {
-    width: TargetSize,
-    height: TargetSize,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  // Takes the room between the two stickers.
+  title: { flex: 1 },
 });

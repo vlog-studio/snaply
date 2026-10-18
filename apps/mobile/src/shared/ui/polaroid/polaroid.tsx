@@ -16,6 +16,10 @@ export type PolaroidProps = {
   footer?: ReactNode;
   /** Degrees — from `tiltFor` for an item; a stage that holds video stays 0. */
   tilt?: number;
+  /** Drawn over the picture, clipped to it — a state tag in its corner. */
+  overlay?: ReactNode;
+  /** Drawn over the whole print, unclipped — tape on a corner, a pick number. */
+  children?: ReactNode;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -33,6 +37,8 @@ export function Polaroid({
   foot = 14,
   footer,
   tilt = 0,
+  overlay,
+  children,
   style,
 }: PolaroidProps) {
   const theme = useTheme();
@@ -61,8 +67,10 @@ export function Polaroid({
         ]}
       >
         {uri ? <VideoFrame uri={uri} /> : null}
+        {overlay}
       </View>
       <View style={[styles.foot, { height: foot }]}>{footer}</View>
+      {children}
     </View>
   );
 }

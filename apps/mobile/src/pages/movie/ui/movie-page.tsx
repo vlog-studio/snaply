@@ -374,7 +374,7 @@ export function MoviePage({ movieId }: MoviePageProps) {
         title={movie.title}
         action={
           viewing
-            ? { icon: 'ellipsis-horizontal', label: '더보기', onPress: () => setActionsOpen(true) }
+            ? { icon: 'more', label: '더보기', onPress: () => setActionsOpen(true) }
             : { icon: 'pencil', label: '무비 이름 바꾸기', onPress: () => setRenaming(true) }
         }
       />

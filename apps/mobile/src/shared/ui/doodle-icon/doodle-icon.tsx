@@ -23,6 +23,12 @@ const Paths = {
   me: 'M12 3.6c4.8 0 8.4 3.6 8.4 8.3s-3.7 8.6-8.5 8.6-8.3-3.9-8.3-8.6S7.2 3.6 12 3.6z M9.2 9.8v.8 M14.8 9.8v.8 M8.6 14.3c1.8 2.1 5 2.2 6.9 0',
   // A chevron pointing on.
   chevronRight: 'M9.6 6.1l6 5.9-6.1 6',
+  plus: 'M12 5.2v13.6 M5.2 12.1h13.6',
+  trash: 'M5 7h14 M9.5 7V4.8h5V7 M6.6 7.1l1 12.4h8.8l1-12.4 M10.3 10.5l.3 6 M13.8 10.5l-.3 6',
+  back: 'M19 12.3H5.6 M10.6 6.5L5 12.2l5.7 5.6',
+  close: 'M6.5 6.3l11 11.2 M17.6 6.4L6.4 17.6',
+  pencil: 'M4.5 19.5l1-4.6L15.6 4.8l3.6 3.6L9.1 18.5z M13.6 6.8l3.6 3.6',
+  more: 'M5.6 12h.8 M11.6 12h.8 M17.6 12h.8',
 } as const;
 
 export type DoodleIconName = keyof typeof Paths;

@@ -18,6 +18,7 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PunchedHoles } from '@/shared/ui/paper';
 import { Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
 
 export type BottomSheetProps = {
@@ -231,12 +232,7 @@ export function BottomSheet({
         >
           {variant === 'note' ? (
             <>
-              {/* Punched holes: the ground showing through the page. */}
-              <View pointerEvents="none" style={styles.holes}>
-                {Array.from({ length: SpiralRings }, (_, index) => (
-                  <View key={index} style={[styles.hole, { backgroundColor: theme.background }]} />
-                ))}
-              </View>
+              <PunchedHoles count={SpiralRings} />
               <View pointerEvents="none" style={styles.spiral}>
                 {Array.from({ length: SpiralRings }, (_, index) => (
                   <View key={index} style={[styles.ring, { borderColor: theme.textSecondary }]} />
@@ -271,15 +267,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.five,
     gap: Spacing.three,
   },
-  holes: {
-    position: 'absolute',
-    top: 8,
-    left: 18,
-    right: 18,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  hole: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 1 },
   spiral: {
     position: 'absolute',
     top: -10,

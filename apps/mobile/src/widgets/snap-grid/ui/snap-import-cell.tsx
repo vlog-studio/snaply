@@ -1,11 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 export type SnapImportCellProps = {
-  /** Cell width in points; the cell is square, so this is its height too. */
+  /** Cell width in points. */
   width: number;
   /** Dimmed and inert — while selecting, when a tap means picking. */
   disabled?: boolean;
@@ -20,7 +20,7 @@ export type SnapImportCellProps = {
  * because the header's right side is the mode switch's alone, so entering and
  * leaving selection no longer moves that control sideways.
  *
- * Shaped like a `SnapCell` (square, same corner radius) but dashed and empty:
+ * Shaped like a `SnapCell` (as tall as a print) but dashed and empty:
  * it is a slot for material that does not exist yet, the same language the tray
  * and the movie timeline already use for an empty place.
  *
@@ -41,27 +41,25 @@ export function SnapImportCell({ width, disabled = false, onPress }: SnapImportC
       onPress={onPress}
       style={({ pressed }) => [
         styles.cell,
-        {
-          width,
-          height: width,
-          borderColor: theme.primary,
-          opacity: disabled ? 0.35 : pressed ? 0.7 : 1,
-        },
+        { width, opacity: disabled ? 0.45 : pressed ? 0.7 : 1 },
       ]}
     >
-      <Ionicons name="add" size={24} color={theme.cherryInk} />
-      <ThemedText selectable={false} type="note" themeColor="cherryInk">
-        가져오기
-      </ThemedText>
+      <View style={[styles.slot, { borderColor: theme.textSecondary }]}>
+        <DoodleIcon name="plus" size={24} color={theme.text} />
+        <ThemedText selectable={false} type="smallBold">
+          가져오기
+        </ThemedText>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  cell: {
-    borderRadius: Radius.xsmall,
-    borderCurve: 'continuous',
-    borderWidth: 1,
+  cell: { padding: Spacing.one },
+  // As tall as a print beside it (a square picture over its foot), dashed and empty.
+  slot: {
+    aspectRatio: 1 / 1.2,
+    borderWidth: 2,
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
