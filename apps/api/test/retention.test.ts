@@ -445,6 +445,80 @@ describe('영상 삭제는 자기가 소유한 객체만 지운다', () => {
     expect(await getObjectSize(snap.s3Key)).not.toBeNull();
   });
 
+  /** 앱이 만든 무비에 생성 결과물을 건다 — `exportMovie` 가 하는 일. */
+  async function movieWith(
+    user: TestUser,
+    snap: { id: string },
+    resultId: string,
+    status: 'generating' | 'ready',
+  ): Promise<string> {
+    const movieId = (
+      await h.app.inject({
+        method: 'POST',
+        url: '/movies',
+        headers: user.auth,
+        payload: { clips: [{ videoId: snap.id }] },
+      })
+    ).json().data.id;
+    await h.prisma.movie.update({ where: { id: movieId }, data: { status, resultVideoId: resultId } });
+    return movieId;
+  }
+
+  it('끝내지 않은 무비를 지우면 결과물 파일도 사라지고 원본 스냅의 파일은 남는다(MOV-26)', async () => {
+    const user = await h.createUser();
+    const snap = await snapWithRendition(user);
+    const editedS3Key = await putObject(user, `edited/${crypto.randomUUID()}`);
+    const { resultId, jobId } = await resultOf(user, snap, editedS3Key);
+    await h.prisma.editJob.update({ where: { id: jobId }, data: { status: 'done' } });
+    await h.prisma.video.update({ where: { id: resultId }, data: { status: 'done' } });
+    const movieId = await movieWith(user, snap, resultId, 'ready');
+
+    const res = await h.app.inject({
+      method: 'DELETE',
+      url: `/movies/${movieId}`,
+      headers: user.auth,
+    });
+    expect(res.statusCode).toBe(200);
+    // 정리 배치를 기다리지 않는다 — 결과물을 지우는 다른 경로(`DELETE /videos/{id}`)와 같다.
+    expect(await getObjectSize(editedS3Key)).toBeNull();
+    expect(await getObjectSize(snap.s3Key)).not.toBeNull();
+
+    // 행은 남은 객체 정리가 마무리한다. 지운 무비는 30일 상한(MOV-16)의 대상이 아니므로, 결과물 행이 살아 있으면
+    // 어느 배치에도 걸리지 않고 파일이 영영 남는다.
+    const afterLimit = new Date(Date.now() + (MOVIE_RESULT_RETENTION_DAYS + 2) * 86_400_000);
+    await purgeExpiredMovieResults(afterLimit);
+    await purgeOrphanedObjects(afterLimit);
+
+    const row = await h.prisma.video.findUnique({ where: { id: resultId } });
+    expect(row).toMatchObject({ removalReason: 'user', editedS3Key: null });
+    expect(row?.purgedAt).not.toBeNull();
+    expect(await getObjectSize(snap.s3Key)).not.toBeNull();
+  });
+
+  it('생성 중에 지운 무비의 결과물은 작업이 끝난 뒤 정리 배치가 지운다', async () => {
+    const user = await h.createUser();
+    const snap = await snapWithRendition(user);
+    const { resultId, jobId } = await resultOf(user, snap);
+    const movieId = await movieWith(user, snap, resultId, 'generating');
+
+    const res = await h.app.inject({
+      method: 'DELETE',
+      url: `/movies/${movieId}`,
+      headers: user.auth,
+    });
+    expect(res.statusCode).toBe(200);
+    // 작업은 무비를 모른 채 끝까지 돌아 결과물 행에 파일을 쓴다(ai-worker `set_video_result`).
+    const editedS3Key = await putObject(user, `edited/${crypto.randomUUID()}`);
+    await h.prisma.video.update({ where: { id: resultId }, data: { editedS3Key, status: 'done' } });
+    await h.prisma.editJob.update({ where: { id: jobId }, data: { status: 'done' } });
+
+    expect((await findOrphanedObjects()).map((candidate) => candidate.id)).toContain(resultId);
+    await purgeOrphanedObjects();
+
+    expect(await getObjectSize(editedS3Key)).toBeNull();
+    expect(await getObjectSize(snap.s3Key)).not.toBeNull();
+  });
+
   it('사용자가 지운 스냅은 보관 기간이 끝날 때까지 파일이 남고, 끝나면 렌디션까지 사라진다(SNAP-20)', async () => {
     const user = await h.createUser();
     const snap = await snapWithRendition(user);

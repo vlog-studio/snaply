@@ -151,6 +151,8 @@ export async function movieRoutes(app: FastifyInstance): Promise<void> {
         description: [
           '무비를 지운다. **참조하던 스냅은 지우지 않는다** — 한 스냅을 여러 무비가 나눠 쓸 수',
           '있어서, 함께 지우면 다른 무비의 컷이 사라진다.',
+          '',
+          '**결과물 파일은 함께 지운다**(MOV-26) — 끝내지 않은 결과물이든 생성 중이던 것이든.',
         ].join('\n'),
       },
     },
