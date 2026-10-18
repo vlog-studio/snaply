@@ -18,7 +18,7 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Radius, Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
+import { Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
 
 export type BottomSheetProps = {
   visible: boolean;
@@ -26,7 +26,16 @@ export type BottomSheetProps = {
   children: ReactNode;
   // Announced on the sheet surface for screen readers (e.g. "스냅 삭제 확인").
   accessibilityLabel?: string;
+  /**
+   * `note` (default) is a notebook page: a spiral and a row of punched holes
+   * along the top edge. `plain` drops both — for the capture area, whose
+   * sheets stay dark and plain over the viewfinder (decision 8).
+   */
+  variant?: 'note' | 'plain';
 };
+
+/** Spiral rings along the top edge of a note sheet. */
+const SpiralRings = 12;
 
 // Motion values. The panel leads and the backdrop trails it, which is the whole
 // point of driving them separately: the Modal's own `animationType="slide"`
@@ -113,7 +122,13 @@ function driveClose(
 // since the gesture bar it reserves room for is behind the keyboard; without
 // that, a tall sheet lifts past the top of the screen instead of fitting above
 // it.
-export function BottomSheet({ visible, onClose, children, accessibilityLabel }: BottomSheetProps) {
+export function BottomSheet({
+  visible,
+  onClose,
+  children,
+  accessibilityLabel,
+  variant = 'note',
+}: BottomSheetProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
@@ -208,11 +223,27 @@ export function BottomSheet({ visible, onClose, children, accessibilityLabel }: 
             {
               backgroundColor: theme.backgroundElement,
               borderColor: theme.border,
+              boxShadow: `0 -2px 0 ${theme.shadowInk}`,
+              paddingTop: variant === 'note' ? 34 : Spacing.five,
               paddingBottom: keyboardVisible ? Spacing.four : insets.bottom + Spacing.six,
             },
           ]}
         >
-          <View style={[styles.grabber, { backgroundColor: theme.border }]} />
+          {variant === 'note' ? (
+            <>
+              {/* Punched holes: the ground showing through the page. */}
+              <View pointerEvents="none" style={styles.holes}>
+                {Array.from({ length: SpiralRings }, (_, index) => (
+                  <View key={index} style={[styles.hole, { backgroundColor: theme.background }]} />
+                ))}
+              </View>
+              <View pointerEvents="none" style={styles.spiral}>
+                {Array.from({ length: SpiralRings }, (_, index) => (
+                  <View key={index} style={[styles.ring, { borderColor: theme.textSecondary }]} />
+                ))}
+              </View>
+            </>
+          ) : null}
           {children}
         </Animated.View>
       </KeyboardAvoidingView>
@@ -228,25 +259,34 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    // Darkened paper, not black (the design system's `jj-scrim`).
+    backgroundColor: 'rgba(43, 35, 28, 0.5)',
   },
   backdropPress: { flex: 1 },
+  // A notebook page torn off the pad: square, a top edge, and the paper's own
+  // short shadow cast upward.
   sheet: {
-    borderTopLeftRadius: Radius.xlarge,
-    borderTopRightRadius: Radius.xlarge,
-    borderCurve: 'continuous',
     borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    paddingTop: Spacing.three,
+    paddingTop: 34,
     paddingHorizontal: Spacing.five,
     gap: Spacing.three,
   },
-  grabber: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    marginBottom: Spacing.two,
+  holes: {
+    position: 'absolute',
+    top: 8,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
+  hole: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 1 },
+  spiral: {
+    position: 'absolute',
+    top: -10,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  ring: { width: 10, height: 26, borderRadius: 6, borderWidth: 2.5 },
 });

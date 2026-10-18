@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { exchangeAuthCode } from '@/entities/session';
 import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Reel } from '@/shared/ui/reel';
 
 type Props = {
   /** 'signin' completes a sign-up confirmation / OAuth; 'recovery' a password reset. */
@@ -45,7 +46,7 @@ export function AuthCallbackPage({ mode }: Props) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ActivityIndicator color={theme.cherryInk} />
+      <Reel color={theme.cherryInk} />
       <ThemedText themeColor="textSecondary">인증을 완료하는 중…</ThemedText>
     </View>
   );

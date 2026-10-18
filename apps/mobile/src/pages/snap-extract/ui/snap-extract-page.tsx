@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -17,6 +17,7 @@ import { impactFeedback, selectionFeedback, successFeedback } from '@/shared/lib
 import { pickVideoFromLibrary } from '@/shared/lib/video-picker';
 import { Radius, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Reel } from '@/shared/ui/reel';
 
 import { formatPositionSec, initialWindow, windowAtTap } from '../model/extract-strip-layout';
 import { useSourceDuration } from '../model/use-source-duration';
@@ -267,7 +268,7 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
           />
         ) : (
           <View style={styles.stripPlaceholder}>
-            {isReading ? <ActivityIndicator color={theme.textSecondary} /> : null}
+            {isReading ? <Reel color={theme.textSecondary} /> : null}
           </View>
         )}
       </View>
@@ -296,7 +297,7 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
         >
           <View style={[styles.extractInner, { backgroundColor: theme.primary }]}>
             {isExtracting ? (
-              <ActivityIndicator color={theme.onPrimary} />
+              <Reel color={theme.onPrimary} />
             ) : (
               <Ionicons name="cut" size={26} color={theme.onPrimary} />
             )}

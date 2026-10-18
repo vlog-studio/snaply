@@ -1,7 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Radius, Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Reel } from '@/shared/ui/reel';
 
 import type { SocialProviderMeta } from '../model/social-provider';
 import { ProviderIcon } from './provider-icon';
@@ -36,7 +37,7 @@ export function SocialLoginButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={provider.textColor} />
+        <Reel color={provider.textColor} />
       ) : (
         <>
           <View style={styles.icon}>

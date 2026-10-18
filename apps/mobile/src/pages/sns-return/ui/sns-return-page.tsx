@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { snsConnectionQueries } from '@/entities/sns-connection';
 import { useTheme } from '@/shared/ui/theme';
+import { Reel } from '@/shared/ui/reel';
 
 /**
  * Where the router lands when the backend sends the browser back to
@@ -33,7 +34,7 @@ export function SnsReturnPage() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ActivityIndicator color={theme.cherryInk} />
+      <Reel color={theme.cherryInk} />
     </View>
   );
 }

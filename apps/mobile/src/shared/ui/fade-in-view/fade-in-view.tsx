@@ -10,6 +10,13 @@ import Animated, {
 
 import { useReducedMotion } from '@/shared/ui/theme';
 
+/**
+ * Paper settling onto the page (the design system's `settle`): a quick drop
+ * that overshoots a hair and comes to rest.
+ */
+const SettleMs = 550;
+const Settle = Easing.bezier(0.3, 0.9, 0.4, 1);
+
 export type FadeInViewProps = React.PropsWithChildren<{
   delay?: number;
   duration?: number;
@@ -27,7 +34,7 @@ export type FadeInViewProps = React.PropsWithChildren<{
 export function FadeInView({
   children,
   delay = 0,
-  duration = 420,
+  duration = SettleMs,
   fromScale = 1,
   offsetY = 14,
   style,
@@ -41,10 +48,7 @@ export function FadeInView({
       progress.value = 1;
       return;
     }
-    progress.value = withDelay(
-      delay,
-      withTiming(1, { duration, easing: Easing.out(Easing.cubic) }),
-    );
+    progress.value = withDelay(delay, withTiming(1, { duration, easing: Settle }));
   }, [delay, duration, progress, reducedMotion]);
 
   const animatedStyle = useAnimatedStyle(() => ({

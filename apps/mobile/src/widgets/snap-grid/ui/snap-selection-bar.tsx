@@ -1,8 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Reel } from '@/shared/ui/reel';
 
 export type SnapSelectionBarProps = {
   selectedCount: number;
@@ -182,7 +183,7 @@ export function SnapSelectionBar({
             },
           ]}
         >
-          {busy ? <ActivityIndicator color={theme.onPrimary} size="small" /> : null}
+          {busy ? <Reel color={theme.onPrimary} size={18} /> : null}
           <ThemedText selectable={false} type="button" style={{ color: theme.onPrimary }}>
             {confirmLabel}
           </ThemedText>

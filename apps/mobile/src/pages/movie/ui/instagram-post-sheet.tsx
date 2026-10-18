@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { needsReconnect, useSnsConnection } from '@/entities/sns-connection';
 import { useConnectSns } from '@/features/connect-sns';
@@ -8,6 +8,7 @@ import { InstagramHandoffMessages, type InstagramHandoff } from '@/features/shar
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
+import { Reel } from '@/shared/ui/reel';
 
 export type InstagramPostStepProps = {
   movieId: string;
@@ -81,7 +82,7 @@ export function InstagramPostStep({
   if (!instagram.isLoaded && !instagram.isError) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator />
+        <Reel />
       </View>
     );
   }
