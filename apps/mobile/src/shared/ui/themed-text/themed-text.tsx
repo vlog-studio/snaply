@@ -49,6 +49,8 @@ export function ThemedText({
         type === 'barTitle' && styles.barTitle,
         type === 'data' && styles.data,
         type === 'dataSm' && styles.dataSm,
+        // A receipt value is printed in receipt blue unless the caller says otherwise.
+        (type === 'data' || type === 'dataSm') && { color: theme.receiptBlue },
         type === 'subtitle' && styles.subtitle,
         type === 'eyebrow' && styles.eyebrow,
         type === 'edge' && styles.edge,

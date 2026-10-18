@@ -1,7 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import type { TemplateOffer } from '@/features/fill-template';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { PaperPiece, tiltFor } from '@/shared/ui/paper';
+import { Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
 
@@ -13,9 +14,9 @@ export type TemplatePanelProps = {
 /**
  * Narrow enough that a third card reaches into the page's gutter on a phone —
  * two cards and a sliver, so the row reads as a row rather than as the whole
- * shelf. The catalog holds four templates and the old 168 fitted exactly two.
+ * shelf.
  */
-const CardWidth = 148;
+const CardWidth = 214;
 
 /** The studio's own horizontal padding, which the row scrolls out through. */
 const PageGutter = Spacing.five;
@@ -46,9 +47,9 @@ export function TemplatePanel({ offers, onOpen }: TemplatePanelProps) {
 
   return (
     <View style={styles.section}>
-      <View style={styles.sectionHead}>
-        <ThemedText type="smallBold">템플릿으로 시작</ThemedText>
-      </View>
+      <ThemedText type="heading" style={styles.heading}>
+        템플릿으로 시작
+      </ThemedText>
 
       <ScrollView
         horizontal
@@ -64,51 +65,74 @@ export function TemplatePanel({ offers, onOpen }: TemplatePanelProps) {
               accessibilityRole="button"
               accessibilityLabel={`${template.name} · ${template.description} · ${slotCount}컷 중 ${filled}컷 있어요`}
               onPress={() => onOpen(template.id)}
-              style={({ pressed }) => [
-                styles.card,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.border,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
+              style={({ pressed }) => [styles.card, { opacity: pressed ? 0.85 : 1 }]}
             >
-              <View style={styles.strip}>
-                {template.slots.map((slot, index) => {
-                  const snap = slots[index];
-                  return snap ? (
-                    // `VideoFrame` absolute-fills its parent, so the cell owns
-                    // the size and the clipping.
-                    <View key={slot.id} style={[styles.slot, { borderColor: theme.border }]}>
-                      <VideoFrame uri={snap.uri} />
-                    </View>
-                  ) : (
-                    <View
-                      key={slot.id}
-                      style={[styles.slot, styles.emptySlot, { borderColor: theme.border }]}
-                    />
-                  );
-                })}
-              </View>
-              <ThemedText selectable={false} type="smallBold" numberOfLines={1}>
-                {template.name}
-              </ThemedText>
-              <ThemedText
-                selectable={false}
-                type="small"
-                themeColor="textSecondary"
-                numberOfLines={2}
-                style={styles.description}
-              >
-                {template.description}
-              </ThemedText>
-              <ThemedText
-                selectable={false}
-                type="note"
-                themeColor={isComplete ? 'lumen' : 'textSecondary'}
-              >
-                {isComplete ? '바로 만들 수 있어요' : `${slotCount}컷 중 ${filled}컷 있어요`}
-              </ThemedText>
+              {/* A Guest Check strip torn off the pad, at the template's own lean. */}
+              <PaperPiece edge="tornBottom" tilt={tiltFor(template.id, 1)} style={styles.check}>
+                <View style={styles.strip}>
+                  {template.slots.map((slot, index) => {
+                    const snap = slots[index];
+                    return snap ? (
+                      // `VideoFrame` absolute-fills its parent, so the cell owns
+                      // the size and the clipping.
+                      <View
+                        key={slot.id}
+                        style={[
+                          styles.slot,
+                          {
+                            borderColor: theme.backgroundElement,
+                            backgroundColor: theme.media,
+                            boxShadow: Shadows.paper(theme.shadowInk),
+                          },
+                        ]}
+                      >
+                        <VideoFrame uri={snap.uri} />
+                      </View>
+                    ) : (
+                      <View
+                        key={slot.id}
+                        style={[
+                          styles.slot,
+                          styles.emptySlot,
+                          { borderColor: theme.textSecondary },
+                        ]}
+                      />
+                    );
+                  })}
+                </View>
+                <ThemedText selectable={false} type="bodySm" style={styles.name} numberOfLines={1}>
+                  {template.name}
+                </ThemedText>
+                <ThemedText
+                  selectable={false}
+                  type="small"
+                  themeColor="textSecondary"
+                  numberOfLines={2}
+                  style={styles.description}
+                >
+                  {template.description}
+                </ThemedText>
+                {isComplete ? (
+                  <View
+                    style={[
+                      styles.ready,
+                      { backgroundColor: theme.mint, borderColor: theme.border },
+                    ]}
+                  >
+                    <ThemedText
+                      selectable={false}
+                      type="xsmall"
+                      style={{ color: theme.stickerInk }}
+                    >
+                      바로 만들 수 있어요
+                    </ThemedText>
+                  </View>
+                ) : (
+                  <ThemedText selectable={false} type="data" style={styles.count}>
+                    {slotCount}컷 중 {filled}컷 있어요
+                  </ThemedText>
+                )}
+              </PaperPiece>
             </Pressable>
           );
         })}
@@ -118,36 +142,30 @@ export function TemplatePanel({ offers, onOpen }: TemplatePanelProps) {
 }
 
 const styles = StyleSheet.create({
-  section: { gap: Spacing.two },
-  sectionHead: {
-    minHeight: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
+  section: { gap: Spacing.one },
+  heading: { marginLeft: Spacing.four },
   bleed: { marginHorizontal: -PageGutter },
-  row: { gap: Spacing.two, paddingHorizontal: PageGutter },
-  card: {
-    width: CardWidth,
-    minHeight: 118,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-    gap: Spacing.one,
-    justifyContent: 'space-between',
+  // Room above and below for the cards' lean and shadow.
+  row: { gap: Spacing.three, paddingHorizontal: PageGutter, paddingVertical: Spacing.three },
+  card: { width: CardWidth },
+  check: {
+    paddingTop: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.four,
   },
-  description: { flex: 1 },
-  // One cell per slot across the card's width, tall enough to read as a
-  // frame: a six-slot card still gives each cut about a finger's width.
-  strip: { flexDirection: 'row', gap: Spacing.half, height: 40, marginBottom: Spacing.one },
-  slot: {
-    flex: 1,
-    borderRadius: Radius.xsmall,
-    borderCurve: 'continuous',
+  // One cell per slot, up to six across the card, square: each cut is a small
+  // print pasted on the strip.
+  strip: { flexDirection: 'row', gap: Spacing.one, marginBottom: Spacing.three - Spacing.half },
+  slot: { width: 27, aspectRatio: 1, borderWidth: 2, overflow: 'hidden' },
+  emptySlot: { borderWidth: 1.5, borderStyle: 'dashed' },
+  name: { fontWeight: 700 },
+  description: { minHeight: 40 },
+  ready: {
+    alignSelf: 'flex-start',
+    marginTop: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
     borderWidth: 1,
-    overflow: 'hidden',
   },
-  emptySlot: { borderStyle: 'dashed' },
+  count: { marginTop: Spacing.two },
 });

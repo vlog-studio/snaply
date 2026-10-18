@@ -1,9 +1,10 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { formatSeconds } from '@/shared/lib/datetime';
-import { Radius, Spacing, useTheme } from '@/shared/ui/theme';
+import { tiltFor } from '@/shared/ui/paper';
+import { Polaroid } from '@/shared/ui/polaroid';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
-import { VideoFrame } from '@/shared/ui/video-frame';
 
 import type { MovieSummary } from '../model/use-movie-shelf';
 import { MovieFailureNotice } from './movie-failure-notice';
@@ -14,15 +15,21 @@ export type MovieRowProps = {
   onPress: (movieId: string) => void;
 };
 
-const ThumbWidth = 64;
+const ThumbWidth = 52;
+/** The progress strip's notches — one per tenth of the run. */
+const ProgressSegments = 10;
 
 /**
- * One movie on the studio board: its first cut's frame, its title, and where
- * it stands. A wide row rather than a grid tile, because the board is a
- * to-do list — what it has to convey is state, not cover art.
+ * One movie on the studio board, as a line of a receipt: its first cut as a
+ * small instant photo, its title, a status tag, a data line, and — while it
+ * is being made — a strip of lavender notches. A line rather than a grid
+ * tile, because the board is a to-do list — what it has to convey is state,
+ * not cover art.
  */
 export function MovieRow({ movie, onPress }: MovieRowProps) {
   const theme = useTheme();
+  const filledSegments =
+    movie.progress === undefined ? 0 : Math.round(movie.progress * ProgressSegments);
 
   return (
     <Pressable
@@ -38,54 +45,51 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
         .join(' · ')}
       onPress={() => onPress(movie.id)}
       style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: theme.backgroundElement,
-          borderColor: theme.border,
-          opacity: pressed ? 0.85 : 1,
-        },
+        styles.row,
+        { borderBottomColor: theme.ruleLine, backgroundColor: pressed ? theme.pink : undefined },
       ]}
     >
-      <View style={styles.stack}>
-        {movie.coverUris.length > 0 ? (
-          movie.coverUris.map((uri) => (
-            <View key={uri} style={[styles.thumb, { borderColor: theme.border }]}>
-              <VideoFrame uri={uri} />
-            </View>
-          ))
-        ) : (
-          <View style={[styles.thumb, styles.emptyThumb, { borderColor: theme.border }]} />
-        )}
-      </View>
+      <Polaroid
+        uri={movie.coverUris[0]}
+        tilt={tiltFor(movie.id, 2)}
+        foot={12}
+        style={styles.thumb}
+      />
 
       <View style={styles.info}>
-        <ThemedText type="smallBold" numberOfLines={1}>
-          {movie.title}
-        </ThemedText>
-        <View style={styles.tags}>
-          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-            컷 {movie.snapCount} · {formatSeconds(movie.totalSec)}
+        <View style={styles.titleLine}>
+          <ThemedText type="default" style={styles.title} numberOfLines={1}>
+            {movie.title}
           </ThemedText>
           <MovieStatusBadge status={movie.status} />
-          <ThemedText type="note" themeColor="textSecondary">
-            {movie.dateLabel}
-          </ThemedText>
-          {movie.expiryCountdown ? (
-            <ThemedText type="note" themeColor="danger">
-              {movie.expiryCountdown}
-            </ThemedText>
-          ) : null}
         </View>
+        <ThemedText type="data" numberOfLines={1}>
+          컷 {movie.snapCount} · {formatSeconds(movie.totalSec)} · {movie.dateLabel}
+        </ThemedText>
+        {movie.expiryCountdown ? (
+          <ThemedText type="dataSm" themeColor="cherryInk">
+            {movie.expiryCountdown}
+          </ThemedText>
+        ) : null}
         {movie.progress !== undefined ? (
-          // A job in flight is the one thing the board exists to show, so the row
-          // carries its own bar rather than only a status word.
-          <View style={[styles.track, { backgroundColor: theme.border }]}>
-            <View
-              style={[
-                styles.fill,
-                { backgroundColor: theme.ai, width: `${Math.round(movie.progress * 100)}%` },
-              ]}
-            />
+          // A job in flight is the one thing the board exists to show, so the
+          // line carries its own strip rather than only a status word.
+          <View style={styles.progress}>
+            {Array.from({ length: ProgressSegments }, (_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.segment,
+                  {
+                    borderColor: theme.ai,
+                    backgroundColor: index < filledSegments ? theme.ai : undefined,
+                  },
+                ]}
+              />
+            ))}
+            <ThemedText type="dataSm" style={styles.percent}>
+              {Math.round(movie.progress * 100)}%
+            </ThemedText>
           </View>
         ) : null}
         {movie.status === 'failed' ? (
@@ -97,32 +101,20 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-    borderWidth: 1,
-    borderRadius: Radius.medium,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
+    minHeight: 84,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.one,
+    borderBottomWidth: 1,
   },
-  stack: { flexDirection: 'row', gap: Spacing.half },
-  thumb: {
-    width: ThumbWidth,
-    height: ThumbWidth,
-    borderRadius: Radius.small,
-    borderCurve: 'continuous',
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  emptyThumb: { borderStyle: 'dashed' },
-  info: { flex: 1, gap: Spacing.half },
-  tags: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.half },
-  track: {
-    height: 3,
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginTop: Spacing.half,
-  },
-  fill: { height: '100%', borderRadius: 2 },
+  thumb: { width: ThumbWidth },
+  info: { flex: 1, minWidth: 0, gap: Spacing.one },
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  title: { flexShrink: 1, fontWeight: 700 },
+  progress: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  segment: { width: 14, height: 9, borderWidth: 1.5 },
+  percent: { marginLeft: Spacing.one },
 });

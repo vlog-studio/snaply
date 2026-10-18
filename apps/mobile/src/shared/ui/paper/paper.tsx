@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Defs, Line, Pattern, Polygon, Rect } from 'react-native-svg';
 
@@ -133,4 +134,117 @@ export function tiltFor(id: string, max: number): number {
   // −max … +max in steps of a tenth of a degree.
   const steps = Math.round(max * 10) * 2 + 1;
   return ((((hash % steps) + steps) % steps) - Math.round(max * 10)) / 10;
+}
+
+export type PaperEdge = 'cut' | 'tornBottom' | 'tornTop' | 'deckle';
+
+/**
+ * A piece of paper on the page (the design system's `jj-paper`, and the
+ * receipt and Guest Check strips' torn edges): sheet-coloured, a short hard
+ * shadow, a fixed lean. `cut` has a straight edge and a paper-edge outline;
+ * the torn and deckled edges are drawn as their own outline and cast the
+ * shadow along it. The children sit on the paper and do not lean with a
+ * rotated parent's touch box — only the drawn paper rotates; pass `tilt` from
+ * `tiltFor` for an item, or a small fixed value for a fixed block.
+ */
+export function PaperPiece({
+  children,
+  edge = 'cut',
+  tilt = 0,
+  fill,
+  style,
+}: {
+  children?: ReactNode;
+  edge?: PaperEdge;
+  tilt?: number;
+  /** The paper's colour; `backgroundElement` (sheet) by default. */
+  fill?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const theme = useTheme();
+  const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+  const face = fill ?? theme.backgroundElement;
+  return (
+    <View
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        if (!size || size.width !== width || size.height !== height) setSize({ width, height });
+      }}
+      style={[tilt ? { transform: [{ rotate: `${tilt}deg` }] } : null, style]}
+    >
+      {size ? (
+        <Svg
+          width={size.width + 1}
+          height={size.height + 2}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        >
+          <Polygon
+            points={edgePoints(edge, size.width, size.height, 1, 2)}
+            fill={theme.shadowInk}
+          />
+          <Polygon
+            points={edgePoints(edge, size.width, size.height, 0, 0)}
+            fill={face}
+            stroke={edge === 'cut' ? theme.border : undefined}
+            strokeWidth={edge === 'cut' ? 1 : 0}
+          />
+        </Svg>
+      ) : null}
+      {children}
+    </View>
+  );
+}
+
+/** The design system's edge clip-paths, as polygons over a `w`×`h` piece. */
+function edgePoints(edge: PaperEdge, w: number, h: number, dx: number, dy: number): string {
+  const px = (x: number) => x * w + dx;
+  const py = (y: number) => y + dy;
+  let points: [number, number][];
+  switch (edge) {
+    case 'tornBottom': {
+      const tear = [
+        1, 0.96, 0.91, 0.85, 0.79, 0.73, 0.66, 0.6, 0.53, 0.47, 0.4, 0.33, 0.27, 0.2, 0.14, 0.08,
+        0.03, 0,
+      ];
+      const lift = [6, 0, 5, 0, 4, 0, 6, 0, 4, 0, 6, 0, 4, 0, 6, 0, 4, 0];
+      points = [
+        [px(0), py(0)],
+        [px(1), py(0)],
+        ...tear.map((x, index): [number, number] => [px(x), py(h - (lift[index] ?? 0))]),
+      ];
+      break;
+    }
+    case 'tornTop': {
+      const tear = [
+        0, 0.04, 0.1, 0.17, 0.23, 0.3, 0.37, 0.44, 0.51, 0.58, 0.65, 0.72, 0.79, 0.86, 0.93, 1,
+      ];
+      const drop = [4, 0, 5, 1, 6, 0, 4, 1, 6, 0, 5, 1, 6, 0, 4, 1];
+      points = [
+        ...tear.map((x, index): [number, number] => [px(x), py(drop[index] ?? 0)]),
+        [px(1), py(h)],
+        [px(0), py(h)],
+      ];
+      break;
+    }
+    case 'deckle': {
+      const top = [0, 0.08, 0.2, 0.33, 0.47, 0.6, 0.74, 0.88, 1];
+      points = [
+        ...top.map((x, index): [number, number] => [px(x), py(index % 2 === 0 ? 2 : 0)]),
+        ...[1, 0.9, 0.76, 0.62, 0.48, 0.34, 0.2, 0.08, 0].map((x, index): [number, number] => [
+          px(x),
+          py(h - (index % 2 === 0 ? 2 : 0)),
+        ]),
+      ];
+      break;
+    }
+    default:
+      points = [
+        [px(0), py(0)],
+        [px(1), py(0)],
+        [px(1), py(h)],
+        [px(0), py(h)],
+      ];
+  }
+  return points.map(([x, y]) => `${x},${y}`).join(' ');
 }

@@ -1,1 +1,1 @@
-export { PaperGround, Tape, tiltFor, type PaperKind } from './paper';
+export { PaperGround, PaperPiece, Tape, tiltFor, type PaperEdge, type PaperKind } from './paper';
