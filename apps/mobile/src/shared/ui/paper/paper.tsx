@@ -290,24 +290,23 @@ export function DottedRule({
   thickness?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  // The rule takes the room its row leaves (flex), and the drawing fills that
+  // box — an SVG sized 100% on its own measures against the whole row.
   return (
-    <Svg
-      pointerEvents="none"
-      width="100%"
-      height={thickness}
-      style={[{ flex: 1, minWidth: 12 }, style]}
-    >
-      <Line
-        x1={thickness / 2}
-        x2="100%"
-        y1={thickness / 2}
-        y2={thickness / 2}
-        stroke={color}
-        strokeWidth={thickness}
-        strokeLinecap="round"
-        strokeDasharray={`0.01 ${thickness * 2}`}
-      />
-    </Svg>
+    <View pointerEvents="none" style={[{ flex: 1, minWidth: 12, height: thickness }, style]}>
+      <Svg width="100%" height={thickness}>
+        <Line
+          x1={thickness / 2}
+          x2="100%"
+          y1={thickness / 2}
+          y2={thickness / 2}
+          stroke={color}
+          strokeWidth={thickness}
+          strokeLinecap="round"
+          strokeDasharray={`0.01 ${thickness * 2}`}
+        />
+      </Svg>
+    </View>
   );
 }
 

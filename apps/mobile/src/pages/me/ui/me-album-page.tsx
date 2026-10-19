@@ -62,7 +62,9 @@ export function MeAlbumPage() {
 }
 
 const styles = StyleSheet.create({
+  // The page's paper runs to the bottom of the screen, however short the content.
   content: {
+    flexGrow: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
