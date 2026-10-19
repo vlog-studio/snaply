@@ -23,7 +23,7 @@ export function mapTrashedSnaps(dto: TrashListDto): TrashedSnap[] {
     return {
       videoId: item.id,
       capturedAt: Number.isNaN(capturedAt) ? deletedAt : capturedAt,
-      durationSec: (item.durationMs ?? 0) / 1000,
+      ...(item.durationMs !== null ? { durationSec: item.durationMs / 1000 } : null),
       ...(item.thumbnailUrl ? { thumbnailUrl: item.thumbnailUrl } : null),
       deletedAt,
       restorableUntil: Date.parse(item.restorableUntil),

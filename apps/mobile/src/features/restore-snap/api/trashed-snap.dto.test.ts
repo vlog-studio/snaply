@@ -1,7 +1,7 @@
 import { mapTrashedSnaps, trashListDtoSchema } from './trashed-snap.dto';
 
 describe('trashed snaps on the wire', () => {
-  it('reads what the trash draws, and falls back to the deletion time for an unknown capture time', () => {
+  it('reads what the trash draws, falls back to the deletion time for an unknown capture time and leaves an unmeasured length out', () => {
     const dto = trashListDtoSchema.parse({
       items: [
         {
@@ -41,7 +41,6 @@ describe('trashed snaps on the wire', () => {
       {
         videoId: 'v2',
         capturedAt: Date.parse('2026-10-06T01:00:00.000Z'),
-        durationSec: 0,
         deletedAt: Date.parse('2026-10-06T01:00:00.000Z'),
         restorableUntil: Date.parse('2026-10-10T05:00:00.000Z'),
       },
