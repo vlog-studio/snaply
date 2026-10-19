@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { BackBar } from '@/shared/ui/back-bar';
@@ -23,16 +23,19 @@ import { ThemedText } from '@/shared/ui/themed-text';
  * not at render — on the first render of a deep link the stack has not grown
  * yet.
  *
- * It never closes this screen and switches tabs in one navigation
- * (`replace('/')` or `dismissTo('/')` over the app): from the snaps or me tab
- * that threw in Android's view mounting (addViewAt: the specified child
- * already has a parent), and `navigate('/')` stacks a second tab navigator
- * over this screen.
+ * Going back runs through this screen's own navigator (`useNavigation`), as
+ * the hardware back does. `router.back()` from here, or closing this screen
+ * and switching tabs in one navigation (`replace('/')`, `dismissTo('/')`),
+ * threw in Android's view mounting over the movies, me or snaps tab
+ * (addViewAt: the specified child already has a parent); `navigate('/')`
+ * stacks a second tab navigator over this screen.
  */
 export function NotFoundPage() {
   const theme = useTheme();
   const router = useRouter();
-  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  // Back through this screen's own navigator, as the hardware back does.
+  const navigation = useNavigation();
+  const goBack = () => (navigation.canGoBack() ? navigation.goBack() : router.replace('/'));
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
