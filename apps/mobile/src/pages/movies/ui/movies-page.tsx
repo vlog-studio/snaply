@@ -67,6 +67,11 @@ export function MoviesPage() {
   // opens so its words hold still through the close animation, when the picks
   // it named are already gone.
   const [deleteTargets, setDeleteTargets] = useState<MovieSummary[]>([]);
+  // The selection bar stands over the grid's foot, so the grid leaves room for
+  // it — measured, because the bar's height moves with its share reason, the
+  // system navigation inset and the text size. A fixed guess left the last
+  // row's title under the bar with three-button navigation.
+  const [selectionBarHeight, setSelectionBarHeight] = useState(SelectionBarRoomEstimate);
 
   // The one movie the single-selection act (share) is about.
   const soleSelected = picked.length === 1 ? movies.find((m) => m.id === picked[0]) : undefined;
@@ -160,7 +165,7 @@ export function MoviesPage() {
           styles.content,
           {
             paddingTop: Spacing.six + topInset,
-            paddingBottom: Spacing.seven + (selecting ? SelectionBarRoom : tabBarHeight),
+            paddingBottom: Spacing.seven + (selecting ? selectionBarHeight : tabBarHeight),
           },
         ]}
       >
@@ -231,6 +236,7 @@ export function MoviesPage() {
           onShare={share}
           onDelete={openDelete}
           onClear={() => setPicked([])}
+          onHeight={setSelectionBarHeight}
         />
       ) : null}
 
@@ -249,9 +255,9 @@ export function MoviesPage() {
   );
 }
 
-// Room the selection bar takes at the bottom of the scroll: its two rows plus
-// the safe-area padding it adds itself.
-const SelectionBarRoom = 132;
+// What the selection bar takes before it reports its height: its count row and
+// its ticket with their padding, without a share reason or a navigation inset.
+const SelectionBarRoomEstimate = 144;
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },

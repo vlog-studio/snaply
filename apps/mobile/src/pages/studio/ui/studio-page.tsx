@@ -131,10 +131,11 @@ export function StudioPage() {
                 스냅 골라 새 무비
               </ThemedText>
               <DoodleIcon name="chevronRight" size={20} />
-              <View style={styles.spacer} />
               {hasMaterial ? (
                 // The Snap tab's own header read-out, so the two never disagree.
-                <ThemedText selectable={false} type="data">
+                // Pushed to the line's end; under large text it wraps to a line
+                // of its own rather than running off the paper.
+                <ThemedText selectable={false} type="data" style={styles.readout}>
                   {library.totalCount}개 · {formatDuration(library.totalDurationSec)}
                 </ThemedText>
               ) : null}
@@ -293,8 +294,13 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   newMovieTape: { top: -8, left: 12 },
-  newMovieHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half },
-  spacer: { flex: 1 },
+  newMovieHead: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: Spacing.one + Spacing.half,
+  },
+  readout: { marginLeft: 'auto' },
   recentRow: { flexDirection: 'row', gap: Spacing.two },
   // Square, as in the Snap tab's grid: a frame only has to be recognizable.
   recentCell: { flex: 1 },

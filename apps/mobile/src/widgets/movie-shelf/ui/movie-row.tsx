@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { formatSeconds } from '@/shared/lib/datetime';
@@ -30,6 +31,14 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
   const theme = useTheme();
   const filledSegments =
     movie.progress === undefined ? 0 : Math.round(movie.progress * ProgressSegments);
+  // A held line turns pink, and pink keeps its value at night, so every word on
+  // it takes sticker ink while it is held: the title's cream, the data's receipt
+  // blue, the countdown's cherry and the progress's lavender are night inks that
+  // read at about 1.2–1.5:1 on pink. The tag and the print carry their own
+  // paper, the failure memo its sheet.
+  const [held, setHeld] = useState(false);
+  const heldInk = held ? { color: theme.stickerInk } : undefined;
+  const segmentInk = held ? theme.stickerInk : theme.ai;
 
   return (
     <Pressable
@@ -44,9 +53,11 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
         .filter(Boolean)
         .join(' · ')}
       onPress={() => onPress(movie.id)}
-      style={({ pressed }) => [
+      onPressIn={() => setHeld(true)}
+      onPressOut={() => setHeld(false)}
+      style={[
         styles.row,
-        { borderBottomColor: theme.ruleLine, backgroundColor: pressed ? theme.pink : undefined },
+        { borderBottomColor: theme.ruleLine, backgroundColor: held ? theme.pink : undefined },
       ]}
     >
       <Polaroid
@@ -58,16 +69,16 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
 
       <View style={styles.info}>
         <View style={styles.titleLine}>
-          <ThemedText type="default" style={styles.title} numberOfLines={1}>
+          <ThemedText type="default" style={[styles.title, heldInk]} numberOfLines={1}>
             {movie.title}
           </ThemedText>
           <MovieStatusBadge status={movie.status} />
         </View>
-        <ThemedText type="data" numberOfLines={1}>
+        <ThemedText type="data" numberOfLines={1} style={heldInk}>
           컷 {movie.snapCount} · {formatSeconds(movie.totalSec)} · {movie.dateLabel}
         </ThemedText>
         {movie.expiryCountdown ? (
-          <ThemedText type="dataSm" themeColor="cherryInk">
+          <ThemedText type="dataSm" themeColor="cherryInk" style={heldInk}>
             {movie.expiryCountdown}
           </ThemedText>
         ) : null}
@@ -81,13 +92,13 @@ export function MovieRow({ movie, onPress }: MovieRowProps) {
                 style={[
                   styles.segment,
                   {
-                    borderColor: theme.ai,
-                    backgroundColor: index < filledSegments ? theme.ai : undefined,
+                    borderColor: segmentInk,
+                    backgroundColor: index < filledSegments ? segmentInk : undefined,
                   },
                 ]}
               />
             ))}
-            <ThemedText type="dataSm" style={styles.percent}>
+            <ThemedText type="dataSm" style={[styles.percent, heldInk]}>
               {Math.round(movie.progress * 100)}%
             </ThemedText>
           </View>

@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 
+import { Spacing } from '@/shared/ui/theme';
 import type { MovieSummary } from '@/widgets/movie-shelf';
 
 import { MoviesPage } from './movies-page';
@@ -29,11 +31,11 @@ jest.mock('@/entities/movie', () => ({
 
 jest.mock('@/features/share-movie', () => ({
   useShareMovie: () => ({ blocked: 'no-render', busy: false, failed: false, share: mockShare }),
-  // The bar words the block from this table, so the mock has to carry it.
-  ShareBlockMessages: {
-    'no-render':
-      '\uC544\uC9C1 \uC644\uC131\uB41C \uBB34\uBE44\uAC00 \uC5C6\uC5B4\uC11C \uACF5\uC720\uD560 \uC218 \uC5C6\uC5B4\uC694.',
-  },
+  // The bar words the block through the feature, so the mock has to carry it.
+  shareBlockMessage: (block: string | undefined) =>
+    block === 'no-render'
+      ? '\uC544\uC9C1 \uC644\uC131\uB41C \uBB34\uBE44\uAC00 \uC5C6\uC5B4\uC11C \uACF5\uC720\uD560 \uC218 \uC5C6\uC5B4\uC694.'
+      : undefined,
 }));
 
 jest.mock('@/features/compose-movie', () => ({
@@ -91,6 +93,21 @@ const secondTitle = '\uBB34\uBE44 \uB458\uC9F8'; // 무비 둘째
 const selectLabel = '\uBB34\uBE44 \uC120\uD0DD'; // 무비 선택
 const cancelLabel = '\uC120\uD0DD \uCDE8\uC18C'; // 선택 취소
 const emptyActionLabel = '\uC2A4\uB0C5 \uACE8\uB77C\uC11C \uC0C8 \uBB34\uBE44 \uB9CC\uB4E4\uAE30'; // 스냅 골라서 새 무비 만들기
+
+/** The nearest view around a text that carries a given prop. */
+function viewAround(text: string, prop: string) {
+  let node = screen.getByText(text).parent;
+  while (node && node.props[prop] === undefined) node = node.parent;
+  if (!node) throw new Error(`nothing around "${text}" carries ${prop}`);
+  return node;
+}
+
+/** The room the grid leaves under its last row. */
+function gridFootRoom() {
+  const scroll = viewAround('모두 2편', 'contentContainerStyle');
+  const style = StyleSheet.flatten(scroll.props.contentContainerStyle as StyleProp<ViewStyle>);
+  return style.paddingBottom;
+}
 
 describe('MoviesPage', () => {
   beforeEach(() => {
@@ -186,5 +203,19 @@ describe('MoviesPage', () => {
     expect(screen.queryByRole('button', { name: '\uC774\uB984 \uBC14\uAFB8\uAE30' })).toBeNull(); // 이름 바꾸기
     // Share stays on display and states its reason instead of disappearing.
     expect(screen.getByRole('button', { name: '\uACF5\uC720' })).toBeDisabled(); // 공유
+  });
+
+  // The bar stands over the grid's foot. A fixed 132dp guess was shorter than
+  // the redrawn bar plus a three-button navigation inset and its share reason,
+  // and the last row's title could not be scrolled out from under it.
+  it('leaves the selection bar’s measured height as room under the grid', async () => {
+    await render(<MoviesPage />);
+    await fireEvent(screen.getByRole('button', { name: firstTitle }), 'longPress');
+
+    await fireEvent(viewAround('1편 선택', 'onLayout'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 230 } },
+    });
+
+    expect(gridFootRoom()).toBe(Spacing.seven + 230);
   });
 });
