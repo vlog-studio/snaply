@@ -24,8 +24,9 @@ const DoodleFor: Partial<Record<RowIconName, DoodleIconName>> = {
 
 /**
  * One settings line on the receipt (the design system's `jj-row`): an icon in
- * ink, the title, and — on the 나 root's summary rows, which clamp their
- * read-out to one line — a dotted leader to the read-out in receipt figures.
+ * ink, the title, and — on the 나 root's summary rows — a dotted leader to the
+ * read-out in receipt figures. A read-out with no room beside its title (large
+ * system text on a narrow phone) moves whole to its own line under it.
  * Detail rows keep the read-out as a second line under the title, so a
  * blocked-permission explanation is never cut mid-sentence. With `onPress` it
  * is a navigation line (pink while pressed, everything on it in sticker ink,
@@ -52,10 +53,11 @@ export function SettingRow({
   sub?: string;
   subColor?: ThemeColor;
   /**
-   * Clamp for the read-out. The 나 root's summary rows pass 1 — a summary that
-   * wraps is a summary that failed — and draw it as a receipt figure at the
-   * end of the line; detail rows leave it unset so a blocked-permission
-   * explanation is never cut mid-sentence.
+   * The 나 root's summary rows pass 1: the read-out is one receipt figure at
+   * the end of the title's line, or alone on the next line when it does not
+   * fit there. Detail rows leave it unset — the read-out is a second line
+   * under the title, so a blocked-permission explanation is never cut
+   * mid-sentence.
    */
   subLines?: number;
   right?: React.ReactNode;
@@ -86,7 +88,7 @@ export function SettingRow({
         </View>
       ) : null}
       <View style={styles.rowCopy}>
-        <View style={styles.line}>
+        <View style={[styles.line, summary && styles.summaryLine]}>
           <ThemedText
             type={emphasized ? 'button' : 'default'}
             style={pressed ? { color: theme.stickerInk } : undefined}
@@ -97,9 +99,11 @@ export function SettingRow({
             <>
               <DottedRule color={theme.backgroundSelected} style={styles.leader} />
               {sub ? (
+                // Not clamped: clamped beside the title, Android cut a read-out
+                // mid-word with no ellipsis (`자동 저`, `연결된 계정 없` at 1.3×
+                // on a 360dp phone). Wrapping moves it down instead.
                 <ThemedText
                   type="data"
-                  numberOfLines={1}
                   style={[styles.value, pressed && { color: theme.stickerInk }]}
                 >
                   {sub}
@@ -235,7 +239,8 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1, minWidth: 0, gap: 1 },
   line: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   leader: { transform: [{ translateY: 6 }] },
-  value: { flexShrink: 1, maxWidth: '60%' },
+  summaryLine: { flexWrap: 'wrap' },
+  value: { flexShrink: 1, marginLeft: 'auto' },
   section: {
     paddingHorizontal: Spacing.three + Spacing.half,
     paddingTop: Spacing.two,

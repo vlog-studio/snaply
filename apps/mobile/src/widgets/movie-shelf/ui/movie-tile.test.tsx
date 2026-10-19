@@ -45,4 +45,11 @@ describe('MovieTile', () => {
       expect(screen.getByText('2026년 9월 19일 · 컷 8')).not.toContainElement(warning);
     },
   );
+
+  // The print's foot is a 22dp strip, which the length outgrew past 1.25x.
+  it("caps the length inside the print's foot", async () => {
+    await render(<MovieTile movie={summary()} width={165} onPress={jest.fn()} />);
+
+    expect(screen.getByText('14\uCD08')).toHaveProp('maxFontSizeMultiplier', 1.25); // 14초
+  });
 });

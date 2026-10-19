@@ -113,10 +113,12 @@ export function SnapSelectionBar({
         <ThemedText type="bodySm" style={styles.count}>
           {selectedCount}개 선택
         </ThemedText>
+        {/* Not clamped: with no room beside the count (large system text on a
+            narrow phone) it moves to its own line, whole — clamped, Android
+            cut its second line in half. */}
         <ThemedText
           type="data"
           themeColor={room === 0 ? 'cherryInk' : undefined}
-          numberOfLines={1}
           style={styles.room}
         >
           {/* A target holding nothing yet (a movie about to be created) has no
@@ -129,30 +131,36 @@ export function SnapSelectionBar({
         </ThemedText>
       </View>
 
+      {/* The word actions, then the ticket. With no room for the ticket's words
+          on one line beside them (a 360dp phone, or large system text) the
+          ticket takes its own full-width line instead of breaking its words a
+          syllable at a time (`이 스냅으로 새 무 / 비`). */}
       <View style={styles.actions}>
-        {onDelete ? (
+        <View style={styles.wordActions}>
+          {onDelete ? (
+            <TextAction
+              label="삭제"
+              accessibilityLabel={`${selectedCount}개 스냅 삭제`}
+              disabled={!canChange}
+              danger
+              onPress={onDelete}
+            />
+          ) : null}
+          {onSaveToAlbum ? (
+            <TextAction
+              label="저장"
+              accessibilityLabel={`${selectedCount}개 스냅 앨범에 저장`}
+              disabled={!canChange}
+              onPress={onSaveToAlbum}
+            />
+          ) : null}
           <TextAction
-            label="삭제"
-            accessibilityLabel={`${selectedCount}개 스냅 삭제`}
+            label="해제"
+            accessibilityLabel="선택 해제"
             disabled={!canChange}
-            danger
-            onPress={onDelete}
+            onPress={onClear}
           />
-        ) : null}
-        {onSaveToAlbum ? (
-          <TextAction
-            label="저장"
-            accessibilityLabel={`${selectedCount}개 스냅 앨범에 저장`}
-            disabled={!canChange}
-            onPress={onSaveToAlbum}
-          />
-        ) : null}
-        <TextAction
-          label="해제"
-          accessibilityLabel="선택 해제"
-          disabled={!canChange}
-          onPress={onClear}
-        />
+        </View>
         <SnaplyButton
           title={confirmLabel}
           accessibilityLabel={confirmLabel}
@@ -237,13 +245,21 @@ const styles = StyleSheet.create({
   noticeText: { flex: 1 },
   counts: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'baseline',
     justifyContent: 'space-between',
     gap: Spacing.three,
   },
   count: { fontWeight: 700 },
-  room: { flexShrink: 1, textAlign: 'right' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
+  room: { flexShrink: 1, marginLeft: 'auto', textAlign: 'right' },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: Spacing.two + Spacing.half,
+    rowGap: Spacing.two,
+  },
+  wordActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
   textAction: {
     minHeight: Sizes.touchMin,
     minWidth: Sizes.touchMin,
@@ -252,5 +268,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   highlighter: { paddingHorizontal: 2 },
-  confirm: { flex: 1, marginLeft: Spacing.two },
+  // Grow only: a ticket that may also shrink is laid out from a zero basis
+  // and never moves to its own line. `maxWidth` lets its words wrap once it
+  // fills a line of its own.
+  confirm: { flexGrow: 1, maxWidth: '100%' },
 });

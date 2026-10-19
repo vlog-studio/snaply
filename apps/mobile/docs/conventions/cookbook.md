@@ -821,6 +821,11 @@ export function XPage() {
   or price disc, the pick-order disc, the `!` square, the VOID stamp, the week ring's
   initial: cap it with `allowFontScaling={false}` or `maxFontSizeMultiplier`. Never cap text
   that can wrap or grow (body, buttons, rows, titles).
+- **A value beside a label wraps under it; it is not clamped to one line.** Clamped
+  (`numberOfLines={1}`) and shrunk beside its label, Android cut a Korean read-out mid-word
+  with no ellipsis (`자동 저`) at large system text on a 360dp phone. Let the line wrap
+  (`flexWrap: 'wrap'`, the value `marginLeft: 'auto'`) so the value moves whole to its own
+  line (`pages/me/ui/rows.tsx` `SettingRow`).
 - **A small grip on a `GestureDetector` needs its touch area twice.** On Android RNGH hit-tests
   with the gesture's `.hitSlop()` and ignores the View's `hitSlop` prop; iOS hit-tests the
   View. Give both the same outward-only slop (`pages/movie/ui/timeline-cut.tsx`

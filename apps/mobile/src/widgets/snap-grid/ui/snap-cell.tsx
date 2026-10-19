@@ -114,7 +114,14 @@ export const SnapCell = memo(function SnapCell({
         tilt={tiltFor(snap.id, 2)}
         style={isPicked ? { borderColor: theme.primary, borderWidth: 2 } : undefined}
         footer={
-          <ThemedText selectable={false} type="dataSm" style={{ color: theme.text }}>
+          <ThemedText
+            selectable={false}
+            type="dataSm"
+            // The print's foot is a fixed strip of the picture: past 1.25× the
+            // length's line is taller than it and was cut at the bottom.
+            maxFontSizeMultiplier={1.25}
+            style={{ color: theme.text }}
+          >
             {formatSeconds(snap.durationSec)}
           </ThemedText>
         }
