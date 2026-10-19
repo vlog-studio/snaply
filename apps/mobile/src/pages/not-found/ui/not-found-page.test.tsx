@@ -7,8 +7,11 @@ const mockReplace = jest.fn();
 const mockBack = jest.fn();
 let mockCanGoBack = false;
 
+// Back goes through the screen's own navigator (as the hardware back does);
+// only a cold link with nothing behind it replaces into the studio.
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ replace: mockReplace, back: mockBack, canGoBack: () => mockCanGoBack }),
+  useRouter: () => ({ replace: mockReplace }),
+  useNavigation: () => ({ goBack: mockBack, canGoBack: () => mockCanGoBack }),
 }));
 
 /** The back bar pads itself by the status bar, so it needs metrics to render at all. */
