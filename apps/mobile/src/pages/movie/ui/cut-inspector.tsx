@@ -3,10 +3,29 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { formatSeconds } from '@/shared/lib/datetime';
 import { DoodleIcon } from '@/shared/ui/doodle-icon';
 import { StickerButton } from '@/shared/ui/sticker-button';
-import { Spacing, useTheme } from '@/shared/ui/theme';
+import { TextButton } from '@/shared/ui/text-button';
+import { Sizes, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import type { Cut } from '../model/use-movie-cuts';
+
+/** The leading ✕ as drawn — narrower than a sticker, since it dismisses the row. */
+const ReleaseWidth = 32;
+const ReleaseHeight = 40;
+/** Grows the ✕ to the 48dp touch minimum (decision 4) without widening the row. */
+const ReleaseHitSlop = {
+  top: (Sizes.touchMin - ReleaseHeight) / 2,
+  bottom: (Sizes.touchMin - ReleaseHeight) / 2,
+  left: (Sizes.touchMin - ReleaseWidth) / 2,
+  right: (Sizes.touchMin - ReleaseWidth) / 2,
+};
+
+/**
+ * How far a dead cut's reason follows the system text size. Its column is
+ * about 116dp on a 360dp phone, and up to 1.25× the whole sentence — 빼 주세요
+ * included — still breaks onto the two lines the row has.
+ */
+const ReasonTextScaleMax = 1.25;
 
 export type CutInspectorProps = {
   cut: Cut;
@@ -23,6 +42,13 @@ export type CutInspectorProps = {
 
 /**
  * The selected cut's controls: where it sits, and the way out.
+ *
+ * A dead cut — its snap expired or deleted — reads its reason and what to do
+ * about it instead of its position and length, on the two lines the column
+ * has: this row is the one place that says why a run was refused, so 빼 주세요
+ * must not be cut off (on one line beside 컷 n/N, a 360dp phone showed 보관
+ * 기…). It needs no 전체 사용 slot, since a dead cut cannot be reset, and its
+ * number is on the clip it is held from and in every button's name.
  *
  * One inspector for whichever cut the strip has picked, instead of one row of
  * controls per cut. It renders in the footer's action slot, standing in for
@@ -79,7 +105,7 @@ export function CutInspector({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="컷 선택 해제"
-        hitSlop={6}
+        hitSlop={ReleaseHitSlop}
         onPress={onDeselect}
         style={({ pressed }) => [styles.release, { opacity: pressed ? 0.6 : 1 }]}
       >
@@ -87,40 +113,48 @@ export function CutInspector({
       </Pressable>
 
       <View style={styles.meta}>
-        <View style={styles.metaLine}>
-          <ThemedText type="smallBold">
-            컷 {number}/{count}
-          </ThemedText>
+        {missing ? (
           <ThemedText
             type="small"
-            numberOfLines={1}
-            themeColor={missing ? 'cherryInk' : 'textSecondary'}
-            style={styles.readout}
+            themeColor="cherryInk"
+            numberOfLines={2}
+            maxFontSizeMultiplier={ReasonTextScaleMax}
           >
-            {missing
-              ? cut.gone === 'expired'
-                ? '보관 기간이 끝났어요 · 빼 주세요'
-                : '스냅이 삭제됐어요 · 빼 주세요'
-              : `사용 ${formatSeconds(cut.usedSec)}`}
+            {cut.gone === 'expired'
+              ? '보관 기간이 끝났어요 · 빼 주세요'
+              : '스냅이 삭제됐어요 · 빼 주세요'}
           </ThemedText>
-        </View>
-        {/* The slot keeps its height when the action is absent, so the row —
-            and the stage above, sized by what this zone leaves over — does not
-            move as playback crosses trimmed and untrimmed cuts. */}
-        <View style={styles.resetSlot}>
-          {isTrimmed && cut.snap ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`컷 ${number} 전체 사용`}
-              hitSlop={6}
-              onPress={() => onResetTrim(index)}
-            >
-              <ThemedText selectable={false} type="note" themeColor="cherryInk">
-                전체 사용
+        ) : (
+          <>
+            <View style={styles.metaLine}>
+              <ThemedText type="smallBold">
+                컷 {number}/{count}
               </ThemedText>
-            </Pressable>
-          ) : null}
-        </View>
+              <ThemedText
+                type="small"
+                numberOfLines={1}
+                themeColor="textSecondary"
+                style={styles.readout}
+              >
+                사용 {formatSeconds(cut.usedSec)}
+              </ThemedText>
+            </View>
+            {/* The slot keeps its height when the action is absent, so the row
+                — and the stage above, sized by what this zone leaves over —
+                does not move as playback crosses trimmed and untrimmed cuts.
+                A text button (the canvas's `jj-textbtn`), not cherry ink:
+                cherry ink is how an error reads, and this is an action. */}
+            <View style={styles.resetSlot}>
+              {isTrimmed ? (
+                <TextButton
+                  label="전체 사용"
+                  accessibilityLabel={`컷 ${number} 전체 사용`}
+                  onPress={() => onResetTrim(index)}
+                />
+              ) : null}
+            </View>
+          </>
+        )}
       </View>
 
       <View style={styles.tools}>
@@ -147,11 +181,17 @@ const styles = StyleSheet.create({
   },
   // Narrower than a bordered tool and unbordered: it dismisses the row rather
   // than acting on the cut, and the row is one button tall for every occupant.
-  release: { width: 32, height: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  meta: { flex: 1, gap: Spacing.half },
+  release: {
+    width: ReleaseWidth,
+    height: ReleaseHeight,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  meta: { flex: 1, minWidth: 0, gap: Spacing.half },
   metaLine: { flexDirection: 'row', alignItems: 'baseline', gap: Spacing.two },
   readout: { flexShrink: 1 },
-  // Matches the `edge` line's height (`Typography.micro`), reserved always.
-  resetSlot: { height: 16, justifyContent: 'center' },
+  // One text button's line (`link` 14/20), reserved always. Its words keep
+  // their own width, so the highlighter does not run across the column.
+  resetSlot: { minHeight: 20, justifyContent: 'center', alignItems: 'flex-start' },
   tools: { flexDirection: 'row', gap: Spacing.one + Spacing.half },
 });

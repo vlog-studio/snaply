@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { OpenGeneratingMovieLabel, RefusalNotice } from './refusal-notice';
 
@@ -25,5 +26,16 @@ describe('RefusalNotice', () => {
     await render(<RefusalNotice message={busyLine} />);
 
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  // A band that mounts already holding its words is not read out by a live
+  // region on Android, so a refused press went unannounced (2026-10-19 review,
+  // MOVIE-8).
+  it('says the refusal to a screen reader as it arrives', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await render(<RefusalNotice message={busyLine} />);
+
+    expect(announce).toHaveBeenCalledWith(busyLine);
+    announce.mockRestore();
   });
 });

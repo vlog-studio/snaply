@@ -61,7 +61,9 @@ export function TransitionPickerSheet({
             <Pressable
               key={row.key}
               accessibilityRole="radio"
-              accessibilityState={{ selected: row.selected, disabled: !canEdit }}
+              // A radio reports `checked`; `selected` read the pick to
+              // TalkBack as an unchecked radio.
+              accessibilityState={{ checked: row.selected, disabled: !canEdit }}
               accessibilityLabel={row.note ? `${row.label} · ${row.note}` : row.label}
               disabled={!canEdit}
               onPress={() => onPick(row.kind)}
@@ -74,31 +76,46 @@ export function TransitionPickerSheet({
                 },
               ]}
             >
-              {/* The glyph on a small sheet disc, as on the timeline's seam. */}
-              <View
-                style={[
-                  styles.glyph,
-                  {
-                    backgroundColor: row.kind ? theme.backgroundElement : theme.aiFill,
-                    borderColor: theme.border,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name={row.kind ? TransitionGlyph[row.kind] : 'sparkles-outline'}
-                  size={16}
-                  color={row.kind ? theme.text : theme.stickerInk}
-                />
-              </View>
-              <View style={styles.rowText}>
-                <ThemedText selectable={false}>{row.label}</ThemedText>
-                {row.note ? (
-                  <ThemedText selectable={false} type="data">
-                    {row.note}
-                  </ThemedText>
-                ) : null}
-              </View>
-              <RadioMark selected={row.selected} />
+              {({ pressed }) => (
+                <>
+                  {/* The glyph on a small sheet disc, as on the timeline's seam. */}
+                  <View
+                    style={[
+                      styles.glyph,
+                      {
+                        backgroundColor: row.kind ? theme.backgroundElement : theme.aiFill,
+                        borderColor: theme.border,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={row.kind ? TransitionGlyph[row.kind] : 'sparkles-outline'}
+                      size={16}
+                      color={row.kind ? theme.text : theme.stickerInk}
+                    />
+                  </View>
+                  {/* Pink keeps its value at night, so a pressed row's words
+                      take the dark sticker ink, as on every sticker colour. */}
+                  <View style={styles.rowText}>
+                    <ThemedText
+                      selectable={false}
+                      style={pressed ? { color: theme.stickerInk } : undefined}
+                    >
+                      {row.label}
+                    </ThemedText>
+                    {row.note ? (
+                      <ThemedText
+                        selectable={false}
+                        type="data"
+                        style={pressed ? { color: theme.stickerInk } : undefined}
+                      >
+                        {row.note}
+                      </ThemedText>
+                    ) : null}
+                  </View>
+                  <RadioMark selected={row.selected} />
+                </>
+              )}
             </Pressable>
           ))}
         </View>

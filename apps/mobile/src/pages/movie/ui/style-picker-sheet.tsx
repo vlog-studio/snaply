@@ -57,7 +57,9 @@ export function StylePickerSheet({
               <Pressable
                 key={option.id}
                 accessibilityRole="radio"
-                accessibilityState={{ selected, disabled: !canEdit }}
+                // A radio reports `checked`; `selected` read the pick to
+                // TalkBack as an unchecked radio.
+                accessibilityState={{ checked: selected, disabled: !canEdit }}
                 accessibilityLabel={`${option.label} · ${option.description}`}
                 disabled={!canEdit}
                 onPress={() => onChange({ style: option.id })}
