@@ -2,7 +2,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { NavigationBar } from 'expo-navigation-bar';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import type { PropsWithChildren } from 'react';
+import * as SystemUI from 'expo-system-ui';
+import { useEffect, type PropsWithChildren } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -44,6 +45,17 @@ function buildNavigationTheme(scheme: 'light' | 'dark') {
 
 export function AppProviders({ children }: PropsWithChildren) {
   const scheme = useResolvedColorScheme();
+  const paper = Colors[scheme].background;
+
+  // The native window is what shows wherever nothing is drawn yet — between
+  // the splash and the first frame, behind the keyboard as it animates. Left
+  // alone it is the OS's own day/night grey, so it is painted the paper of the
+  // scheme the app is drawn in, and repainted when that scheme changes. The
+  // native default before this runs is paper too
+  // (plugins/with-paper-window-background.js).
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(paper);
+  }, [paper]);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -100,8 +112,12 @@ export function AppProviders({ children }: PropsWithChildren) {
             trip to the backend continues wherever the user navigates next. */}
         <SnapUploadGate />
         {/* Gesture-handler gestures need this ancestor; expo-router's native
-            stack does not provide one. */}
-        <GestureHandlerRootView style={styles.root}>{children}</GestureHandlerRootView>
+            stack does not provide one. It is the app's outermost view, so it
+            is paper too: nothing under the screens shows through in another
+            colour. */}
+        <GestureHandlerRootView style={[styles.root, { backgroundColor: paper }]}>
+          {children}
+        </GestureHandlerRootView>
       </ThemeProvider>
     </QueryClientProvider>
   );

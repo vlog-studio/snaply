@@ -1,8 +1,8 @@
-# App branding and native config (icon, name, splash, font)
+# App branding and native config (icon, name, splash, font, Android settings)
 
-How to change app-level branding — the launcher **icon**, the display **name**, the **splash screen**, and the app **font** — and how to make those changes actually appear on a device.
+How to change app-level branding — the launcher **icon**, the display **name**, the **splash screen**, and the app **font** — and the [Android platform settings](#android-platform-settings) baked in beside them (minimum Android version, window background, large-screen orientation, the route sitemap), and how to make those changes actually appear on a device.
 
-Read this whenever a task touches the app icon, app display name, splash screen, adaptive-icon colors, the embedded font family, or any other value that is baked into the native project rather than rendered by React at runtime.
+Read this whenever a task touches the app icon, app display name, splash screen, adaptive-icon colors, the embedded font family, the local config plugins in `plugins/`, or any other value that is baked into the native project rather than rendered by React at runtime.
 
 ## Mental model: this is a CNG (managed) project
 
@@ -10,7 +10,8 @@ Read this whenever a task touches the app icon, app display name, splash screen,
 
 The **source of truth** is:
 
-- `app.json` — `expo.name`, `expo.icon`, `expo.ios`, `expo.android`, and the `expo-splash-screen` plugin config.
+- `app.json` — `expo.name`, `expo.icon`, `expo.ios`, `expo.android`, and the plugin configs (`expo-splash-screen`, `expo-font`, `expo-build-properties`, …).
+- `plugins/` — the local config plugins `app.json` registers, for native settings no package plugin offers. Each is a CommonJS file using `expo/config-plugins`; a plugin with logic worth guarding has a co-located Jest test (`runAndroidMod` in `plugins/run-android-mod.ts` runs its mods over in-memory files).
 - `assets/` — the image/`.icon` files those fields point to.
 
 Consequences you must internalize:
@@ -30,6 +31,10 @@ Consequences you must internalize:
 | Legacy/base icon | `expo.icon` → `./assets/images/icon.png` | included in generated icon sets |
 | Splash screen | `expo-splash-screen` plugin config (`backgroundColor`, `image`, `imageWidth`) | Android `res/drawable-*/splashscreen_logo.png`, `colors.xml`; iOS `SplashScreen.storyboard`, `Images.xcassets` |
 | App font | `expo-font` plugin config + the `.ttf` files in `assets/fonts/` | Android `res/font/xml_pretendard_gov.xml` + `res/font/*.ttf` + an `addCustomFont` call in `MainApplication.kt`; iOS `Info.plist` → `UIAppFonts` + a Resources build-phase entry per file |
+| Minimum Android version | `expo-build-properties` plugin config → `android.minSdkVersion` | `android/gradle.properties` → `android.minSdkVersion` (read into `rootProject.ext.minSdkVersion`) |
+| Android window background | `plugins/with-paper-window-background.js` | `res/values/colors.xml` and `res/values-night/colors.xml` → `activityBackground`; `res/values/styles.xml` → `AppTheme` `android:windowBackground` |
+| Android 16 large-screen opt-out | `plugins/with-large-screen-portrait-lock.js` | `AndroidManifest.xml` → `<application>` `<property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY">` |
+| Route sitemap | `expo-router` plugin config → `sitemap` | not native: `extra.router` in the app config, which the build embeds (`expo-constants`) and Metro serves in development |
 
 ## App font
 
@@ -63,6 +68,29 @@ Styles say `fontFamily: Fonts.sans` / `Fonts.mono` / `Fonts.hand` and let `fontW
 `ThemedText` applies the family per role (`sans` in its base style; the data roles and the title roles name `mono` and `hand`). Text outside `ThemedText` must name the family itself — currently `shared/ui/text-field` (a `TextInput`) and the `headerTitleStyle` in `root-layout.tsx`. Add a new one to that list, not a new font token. D2Coding carries Hangul, so a data line may mix Korean and digits in the mono face; the older rule that kept Hangul out of the mono roles went with the system monospace — see [cookbook §14 Consuming the design system](../conventions/cookbook.md#14-consuming-the-design-system).
 
 The fonts cannot reach text the OS draws: permission dialogs, `Alert`, notifications, and the share sheet stay on the system font. Nor do they reach web, and that is settled rather than pending — the app ships to iOS and Android only, so no webfont is served and `npm run web` renders down the fallback stacks in `_app/styles/global.css`.
+
+## Android platform settings
+
+Four settings shape the Android app outside React. They were set together for the first release (2026-10-19); the reasons and the alternatives turned down are in the decision record [`android-release-config.md`](../../../../docs/decisions/android-release-config.md). All four take effect only in a **new build** — none is a JavaScript change. Three of them (all but the sitemap) live in generated `android/` files, so a local build from an existing `android/` leaves them out until a prebuild regenerates it ([pitfall](#known-pitfalls-all-observed-on-this-project)).
+
+| Setting | Where | What it does | To see it |
+| --- | --- | --- | --- |
+| Minimum Android version **9 (API 28)** | `expo-build-properties` → `android.minSdkVersion: 28` (beside the iOS `useFrameworks` option) | Android 7.0–8.1 can no longer install the app. React Native draws an outset `boxShadow` only from API 28 (`MIN_OUTSET_BOX_SHADOW_SDK_VERSION`), and every paper scrap's hard shadow is one (`boxShadow: Shadows.paper(theme.shadowInk)`, [cookbook §14](../conventions/cookbook.md#14-consuming-the-design-system)), so below 28 those scraps lost it silently | prebuild + rebuild |
+| Paper window background | `plugins/with-paper-window-background.js` | Paints the native window the theme's paper (`background`) — `#FBF4E6` in `values/`, `#3D3028` in `values-night/` — so what shows before React's first frame and on an Activity recreation is paper, not the OS's day/night grey. Night follows the **OS** scheme; `AppProviders` repaints the window from JavaScript for the in-app scheme | prebuild + rebuild |
+| Large screens on Android 16 | `plugins/with-large-screen-portrait-lock.js` | Declares `android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY` = `true` on `<application>`, so the portrait lock still holds on screens 600dp or wider (Fold inner screen, tablets), letterboxed as on Android 15 | prebuild + rebuild |
+| No route sitemap | `["expo-router", { "sitemap": false }]` | Expo Router stops generating `/_sitemap`, so `snaplyapp://_sitemap` lands on the app's not-found page instead of a list of every route. Development builds lose the sitemap too | release: rebuild; development build: restart Metro |
+
+### Paper window background: why the plugin sets `android.backgroundColor`
+
+`expo-system-ui` is installed, so prebuild applies its config plugin even though `app.json` does not list it. That plugin writes the same `activityBackground` color and `AppTheme` item from `android.backgroundColor` — and **deletes both** when that key is unset, which is why the generated `styles.xml` had no window background before. Which of two plugins' mods runs last depends on registration order, so instead of relying on it, `with-paper-window-background` sets `android.backgroundColor` to the day paper: both plugins then write the same values in either order (the plugin's test runs both orders). Do not set `android.backgroundColor` in `app.json`; the plugin throws if it differs. The night value has no `expo-system-ui` counterpart and comes only from the plugin. If the theme's `background` changes, change the plugin (its test compares it with `Colors`) and the `expo-splash-screen` `backgroundColor`s with it (`animated-splash-overlay.test.tsx` compares those). iOS is untouched (`ios.backgroundColor` stays unset).
+
+### Large screens: the opt-out is temporary
+
+Android 16 (API 36) ignores `screenOrientation`, `resizeableActivity`, `minAspectRatio` and `maxAspectRatio` on displays whose smallest width is at least 600dp for apps that target API 36 — this app does, through React Native's version catalog (`targetSdk = "36"`). The property is Android's documented opt-out ([behavior changes: Android 16](https://developer.android.com/about/versions/16/behavior-changes-16#ignore-orientation)). It is on the application rather than `MainActivity` so library activities keep their Android 15 behavior too. **It stops working once the app targets API 37**: a layout for wide screens has to exist before `targetSdkVersion` is raised to 37. Multi-window is unaffected — it was allowed before and still is.
+
+### Verify without touching `android/`
+
+The resulting native files can be read without a prebuild: `npx expo config --type introspect --json` (from `apps/mobile`) runs every plugin's mods in introspection mode and writes nothing. The results are under `_internal.modResults.android` — `gradleProperties` (`android.minSdkVersion`), `colors` / `colorsNight` (`activityBackground`), `styles` (`AppTheme` → `android:windowBackground`) and `manifest` (`manifest.application[0].property`) — and the router options under `extra.router`. Introspection starts from the existing `android/` files when they are there, so it shows what a prebuild would make of them. On a device: `adb shell dumpsys package com.anonymous.snaplyapp | grep minSdk` shows `minSdk=28` once the new build is installed.
 
 ## Standard procedure
 
@@ -111,6 +139,7 @@ iOS: the development Mac has no local native iOS build ([`local-development-and-
   adb -s emulator-5554 shell dumpsys package com.anonymous.snaplyapp | grep versionName
   cat android/app/src/main/res/values/strings.xml            # app_name should match expo.name
   ```
+- **Android platform settings** — read the would-be native files with `npx expo config --type introspect --json` before building ([Verify without touching `android/`](#verify-without-touching-android)).
 - **iOS** — without a local native build, the app icon **cannot be seen locally**: Expo Go renders *its own* icon regardless of this config. Verify by inspection instead:
   ```bash
   /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" ios/<Name>/Info.plist   # expect the new name
@@ -127,13 +156,14 @@ iOS: the development Mac has no local native iOS build ([`local-development-and-
 
 ## Known pitfalls (all observed on this project)
 
+- **A Gradle build does not regenerate `android/`.** `./gradlew app:assembleRelease` (the tester APK in the root [`docs/deployment-aws.md`](../../../../docs/deployment-aws.md) §8) and `npm run android:device:release` (`install-android-device.sh --build`, which prebuilds only when `android/` is missing) compile whatever `android/` already holds. After a change to `app.json` or `plugins/`, run `npx expo prebuild --clean --platform android` first (then the `local.properties` step below), or the APK ships the old native settings — the splash, the minimum Android version, the window background and the large-screen opt-out (observed on the other redesign branch, 2026-10-19: its `android/` still had no `android.minSdkVersion` in `gradle.properties` and no `windowBackground` in `styles.xml`). Only what is embedded through `expo-constants` (`extra`, e.g. the sitemap option) reaches such a build. EAS builds prebuild in the cloud and are not affected.
 - **`prebuild --clean` deletes `android/local.properties`.** The next Gradle build then fails with `SDK location not found`. Recreate it (or export `ANDROID_HOME`) before building:
   ```bash
   printf 'sdk.dir=%s/Library/Android/sdk\n' "$HOME" > android/local.properties
   ```
 - **Splash config must include an `image`.** The generated `styles.xml` always references `@drawable/splashscreen_logo`. If the `expo-splash-screen` plugin has only a `backgroundColor` and no `image`, a clean prebuild produces no such drawable and the Android build fails resource linking:
-  `error: resource drawable/splashscreen_logo ... not found`. This project uses `./assets/images/brand-glyph-ember.png` at `imageWidth` 150. (A stale native folder can hide this — an old splash drawable lingers until the first clean prebuild.)
-- **Android 12+ masks the splash icon to a circle, so a splash image whose art extends past its inscribed circle gets clipped.** The `expo-splash-screen` plugin maps to the system `windowSplashScreenAnimatedIcon`, which Android renders inside a circular mask (Google's safe zone is a 192dp-diameter circle within the 288dp icon canvas; some OEMs — e.g. Samsung One UI — mask even tighter). Compute the mark's bounding-circle factor (farthest content point from the canvas center ÷ half the canvas width) and keep `imageWidth × factor ≤ 192`. The 2026-07 moment-ring mark in `brand-glyph-ember.png` has factor ≈ 0.92 (the dot's outer edge is the extreme, 234px from center in the 512px canvas) → `imageWidth ≤ ~208`; this project uses **150**, well within the mask. (The previous play-triangle mark had factor ≈ 1.22, which is what originally clipped at `imageWidth` 200.) Adjusting `imageWidth` — not editing the shared glyph asset, which is also the in-app brand mark — is the correct lever: the area outside the circle is the same `backgroundColor`, so the mask itself is invisible. This is a system splash, not the legacy full-screen splash — you cannot avoid the circular mask; the logo must fit inside it.
+  `error: resource drawable/splashscreen_logo ... not found`. This project uses `./assets/images/brand-glyph-cherry.png` (and `brand-glyph-cherry-dark.png` for the `dark` variant) at `imageWidth` 150. (A stale native folder can hide this — an old splash drawable lingers until the first clean prebuild.)
+- **Android 12+ masks the splash icon to a circle, so a splash image whose art extends past its inscribed circle gets clipped.** The `expo-splash-screen` plugin maps to the system `windowSplashScreenAnimatedIcon`, which Android renders inside a circular mask (Google's safe zone is a 192dp-diameter circle within the 288dp icon canvas; some OEMs — e.g. Samsung One UI — mask even tighter). Compute the mark's bounding-circle factor (farthest content point from the canvas center ÷ half the canvas width) and keep `imageWidth × factor ≤ 192`. The junk journal moment-ring mark (`brand-glyph-cherry*.png`, from the canvas `Splash` board — the cherry ring with its sheet-colored sticker outline and hard shadow, turned −4°) has factor ≈ 1.0 (the outline round the dot reaches the canvas edge) → `imageWidth ≤ ~192`; this project uses **150**, within the mask. (The 2026-07 ember mark it replaced had factor ≈ 0.92; the earlier play-triangle mark had factor ≈ 1.22, which is what originally clipped at `imageWidth` 200.) Adjusting `imageWidth` — not editing the glyph asset — is the correct lever: the area outside the circle is the same `backgroundColor`, so the mask itself is invisible. This is a system splash, not the legacy full-screen splash — you cannot avoid the circular mask; the logo must fit inside it.
 - **`expo run:android --device <name>` wants the AVD name, not the adb serial.** Passing `emulator-5554` errors with "Could not find device with name"; `adb -s emulator-5554 emu avd name` prints the name to pass.
 
 ## Related

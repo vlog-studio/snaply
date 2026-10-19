@@ -40,9 +40,15 @@ export function RootLayout() {
     [],
   );
 
+  // The app has nothing to draw until the persisted session is read back
+  // (RootStack below renders null until then), so the splash overlay holds
+  // until it is. On a cold start with an expired access token that read waits
+  // on a token refresh over the network — well past the overlay's own fade.
+  const hasHydrated = useSessionHydrated();
+
   return (
     <AppProviders>
-      <AnimatedSplashOverlay />
+      <AnimatedSplashOverlay ready={hasHydrated} />
       <RootStack />
     </AppProviders>
   );
@@ -55,8 +61,9 @@ function RootStack() {
   const isRecovering = useIsRecovering();
   const isPendingDeletion = useIsPendingDeletion();
 
-  // Keep the splash overlay in place until the persisted session is read back,
-  // so an authenticated user never sees a flash of the sign-in screen.
+  // Nothing until the persisted session is read back, so an authenticated user
+  // never sees a flash of the sign-in screen; the splash overlay covers the
+  // wait (see RootLayout).
   if (!hasHydrated) return null;
 
   return (
@@ -181,6 +188,12 @@ function RootStack() {
           AuthCallbackPage). */}
       <Stack.Screen name="auth/callback" options={{ headerShown: false }} />
       <Stack.Screen name="auth/reset" options={{ headerShown: false }} />
+
+      {/* Where a link that names no route lands (NotFoundPage). Outside every
+          guard, since a stray link can arrive in any state, and last of all
+          for the same reason as the auth landings. Headerless: the page draws
+          its own BackBar, like the other pushed screens that have no title. */}
+      <Stack.Screen name="+not-found" options={{ headerShown: false }} />
     </Stack>
   );
 }

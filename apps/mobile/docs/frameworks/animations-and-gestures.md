@@ -43,6 +43,12 @@ not an optimization. The surfaces that apply it are recorded in their feature
 documents (for example the tab switch in
 [`../features/app-shell-and-navigation.md`](../features/app-shell-and-navigation.md)).
 
+`useReducedMotion()` starts `false` and resolves after mount, so the switch happens on
+a view that is already animated. Never answer it by *detaching* a native-driven
+animated style (`useNativeDriver`, or a navigator option that removes its scene
+interpolator): the native view keeps the last driven value — the tab switch left
+scenes at opacity 0 that way. Keep the style and run it in zero time instead.
+
 ### Prefer runtime shared-value animations over `entering`/`exiting` presets
 
 Reanimated entering presets (`FadeInDown`, `ZoomIn`, …) never start on iOS in Expo

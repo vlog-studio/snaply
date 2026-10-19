@@ -29,7 +29,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
+      ["expo-router", { "sitemap": false }],
       [
         "expo-camera",
         {
@@ -42,12 +42,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FAF4EC",
-          "image": "./assets/images/brand-glyph-ember.png",
+          "backgroundColor": "#FBF4E6",
+          "image": "./assets/images/brand-glyph-cherry.png",
           "imageWidth": 150,
           "dark": {
-            "backgroundColor": "#16110D",
-            "image": "./assets/images/brand-glyph-ember.png"
+            "backgroundColor": "#3D3028",
+            "image": "./assets/images/brand-glyph-cherry-dark.png"
           }
         }
       ],
@@ -128,12 +128,17 @@
       [
         "expo-build-properties",
         {
+          "android": {
+            "minSdkVersion": 28
+          },
           "ios": {
             "useFrameworks": "static"
           }
         }
       ],
-      "./plugins/with-gradle-jvmargs.js"
+      "./plugins/with-gradle-jvmargs.js",
+      "./plugins/with-paper-window-background.js",
+      "./plugins/with-large-screen-portrait-lock.js"
     ],
     "experiments": {
       "typedRoutes": true,
