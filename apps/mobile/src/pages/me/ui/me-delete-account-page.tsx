@@ -1,10 +1,10 @@
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { useDeleteAccount } from '@/features/delete-account';
+import { AlertCard } from '@/shared/ui/notice';
 import { PaperGround } from '@/shared/ui/paper';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
-import { ThemedText } from '@/shared/ui/themed-text';
 
 import { RowDivider, SettingRow, SettingsSection } from './rows';
 
@@ -44,11 +44,7 @@ export function MeDeleteAccountPage() {
         <SettingRow icon="time-outline" title="30일 안에 다시 로그인하면 되돌릴 수 있어요" />
       </SettingsSection>
 
-      {error ? (
-        <ThemedText type="small" themeColor="cherryInk">
-          {error}
-        </ThemedText>
-      ) : null}
+      {error ? <AlertCard message={error} /> : null}
 
       {/* A delete is kraft with the VOID stamp, not red: red is the main action. */}
       <SnaplyButton

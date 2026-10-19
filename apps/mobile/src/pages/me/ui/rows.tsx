@@ -28,8 +28,11 @@ const DoodleFor: Partial<Record<RowIconName, DoodleIconName>> = {
  * read-out to one line — a dotted leader to the read-out in receipt figures.
  * Detail rows keep the read-out as a second line under the title, so a
  * blocked-permission explanation is never cut mid-sentence. With `onPress` it
- * is a navigation line (pink while pressed); without, a static line whose
- * `right` node (a switch, a button) carries the interaction.
+ * is a navigation line (pink while pressed, everything on it in sticker ink,
+ * since pink keeps its value at night) that a screen reader hears with its
+ * read-out — "크레딧, 400 크레딧", the state the line exists to show; without,
+ * a static line whose `right` node (a switch, a button) carries the
+ * interaction.
  */
 export function SettingRow({
   icon,
@@ -38,7 +41,10 @@ export function SettingRow({
   subColor = 'textSecondary',
   subLines,
   right,
+  chevron,
+  emphasized,
   onPress,
+  accessibilityRole = 'button',
   accessibilityLabel,
 }: {
   icon?: RowIconName;
@@ -53,7 +59,13 @@ export function SettingRow({
    */
   subLines?: number;
   right?: React.ReactNode;
+  /** The chevron at the end of a line that opens somewhere, after `right`. */
+  chevron?: boolean;
+  /** The title in bold ink — an act on the account, which is not red. */
+  emphasized?: boolean;
   onPress?: () => void;
+  /** `link` for a line that opens a page outside the app. */
+  accessibilityRole?: Extract<AccessibilityRole, 'button' | 'link'>;
   accessibilityLabel?: string;
 }) {
   const theme = useTheme();
@@ -75,7 +87,12 @@ export function SettingRow({
       ) : null}
       <View style={styles.rowCopy}>
         <View style={styles.line}>
-          <ThemedText style={pressed ? { color: theme.stickerInk } : undefined}>{title}</ThemedText>
+          <ThemedText
+            type={emphasized ? 'button' : 'default'}
+            style={pressed ? { color: theme.stickerInk } : undefined}
+          >
+            {title}
+          </ThemedText>
           {summary ? (
             <>
               <DottedRule color={theme.backgroundSelected} style={styles.leader} />
@@ -92,20 +109,31 @@ export function SettingRow({
           ) : null}
         </View>
         {sub && !summary ? (
-          <ThemedText type="small" themeColor={subColor === 'danger' ? 'cherryInk' : subColor}>
+          <ThemedText
+            type="small"
+            themeColor={subColor === 'danger' ? 'cherryInk' : subColor}
+            style={pressed && { color: theme.stickerInk }}
+          >
             {sub}
           </ThemedText>
         ) : null}
       </View>
       {right}
+      {chevron ? (
+        <DoodleIcon
+          name="chevronRight"
+          size={20}
+          color={pressed ? theme.stickerInk : theme.textSecondary}
+        />
+      ) : null}
     </>
   );
 
   if (onPress) {
     return (
       <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? title}
+        accessibilityRole={accessibilityRole}
+        accessibilityLabel={accessibilityLabel ?? (sub ? `${title}, ${sub}` : title)}
         onPress={onPress}
         style={({ pressed }) => [styles.settingRow, pressed && { backgroundColor: theme.pink }]}
       >
@@ -114,12 +142,6 @@ export function SettingRow({
     );
   }
   return <View style={styles.settingRow}>{content(false)}</View>;
-}
-
-/** The chevron at the end of a line that opens somewhere. */
-export function RowChevron() {
-  const theme = useTheme();
-  return <DoodleIcon name="chevronRight" size={20} color={theme.textSecondary} />;
 }
 
 /** The rule between two lines of one receipt. */

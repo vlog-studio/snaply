@@ -156,7 +156,6 @@ export function MeCreditsPage() {
               )
             }
             onPress={running || availability.remainingToday <= 0 ? undefined : () => void runAd()}
-            accessibilityLabel={`광고 보고 크레딧 ${availability.rewardCredits} 받기`}
           />
           {outcomeLine ? (
             <>
@@ -182,10 +181,12 @@ export function MeCreditsPage() {
               <SettingRow
                 title={reasonLabels[entry.reason] ?? '기타'}
                 sub={formatTimestamp(entry.createdAt.getTime())}
+                // A gain in cherry ink — the cherry fill as text drops to
+                // about 2.2:1 on the night sheet.
                 right={
                   <ThemedText
                     type="smallBold"
-                    themeColor={entry.delta >= 0 ? 'primary' : 'textSecondary'}
+                    themeColor={entry.delta >= 0 ? 'cherryInk' : 'textSecondary'}
                   >
                     {entry.delta >= 0 ? `+${entry.delta}` : `${entry.delta}`}
                   </ThemedText>

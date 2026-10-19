@@ -6,6 +6,7 @@ import {
   useToggleInterest,
 } from '@/features/choose-interests';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
+import { AlertCard } from '@/shared/ui/notice';
 import { PaperGround } from '@/shared/ui/paper';
 import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -61,11 +62,7 @@ export function MeInterestsPage() {
           </View>
         </SettingsSection>
       ) : null}
-      {saveFailed ? (
-        <ThemedText type="small" themeColor="cherryInk">
-          관심사를 저장하지 못했어요. 다시 시도해 주세요.
-        </ThemedText>
-      ) : null}
+      {saveFailed ? <AlertCard message="관심사를 저장하지 못했어요. 다시 시도해 주세요." /> : null}
     </ScrollView>
   );
 }

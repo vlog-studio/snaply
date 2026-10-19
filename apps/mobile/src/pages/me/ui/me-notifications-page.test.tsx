@@ -127,7 +127,7 @@ describe('MeNotificationsPage location alerts', () => {
   it('asks in-app first: flipping the switch on opens the sheet without touching the OS', async () => {
     await renderLoaded();
 
-    await fireEvent(screen.getByLabelText(locationSwitchLabel), 'valueChange', true);
+    await fireEvent.press(screen.getByRole('switch', { name: locationSwitchLabel }));
 
     expect(screen.getByText(sheetHeading)).toBeTruthy();
     expect(mockForegroundPermission).not.toHaveBeenCalled();
@@ -137,7 +137,7 @@ describe('MeNotificationsPage location alerts', () => {
   it('runs the OS permission requests only after the sheet is accepted, then saves to the account', async () => {
     await renderLoaded();
 
-    await fireEvent(screen.getByLabelText(locationSwitchLabel), 'valueChange', true);
+    await fireEvent.press(screen.getByRole('switch', { name: locationSwitchLabel }));
     await fireEvent.press(screen.getByRole('button', { name: acceptLabel }));
 
     await waitFor(() => expect(mockForegroundPermission).toHaveBeenCalledTimes(1));
@@ -149,7 +149,7 @@ describe('MeNotificationsPage location alerts', () => {
   it('declining the sheet leaves the switch off and asks the OS nothing', async () => {
     await renderLoaded();
 
-    await fireEvent(screen.getByLabelText(locationSwitchLabel), 'valueChange', true);
+    await fireEvent.press(screen.getByRole('switch', { name: locationSwitchLabel }));
     await fireEvent.press(screen.getByRole('button', { name: declineLabel }));
 
     expect(mockForegroundPermission).not.toHaveBeenCalled();
@@ -173,7 +173,7 @@ describe('MeNotificationsPage movie-ready alerts', () => {
     mockLocalNotificationPermission.mockResolvedValue(false);
     await renderLoaded();
 
-    await fireEvent(screen.getByLabelText(movieSwitchLabel), 'valueChange', true);
+    await fireEvent.press(screen.getByRole('switch', { name: movieSwitchLabel }));
 
     await waitFor(() => expect(screen.getByLabelText(settingsRowLabel)).toBeTruthy());
     expect(screen.getByLabelText(movieSwitchLabel)).not.toBeChecked();
