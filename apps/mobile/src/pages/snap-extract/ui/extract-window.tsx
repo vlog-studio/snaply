@@ -18,12 +18,30 @@ import {
   xToSec,
   type TrimTrack,
 } from '@/shared/lib/trim-geometry';
-import { useReducedMotion, useTheme } from '@/shared/ui/theme';
+import { Sizes, useReducedMotion, useTheme } from '@/shared/ui/theme';
 
 import { formatPositionSec } from '../model/extract-strip-layout';
 
-const HandleWidth = 18;
+/** The grip as drawn: the timeline's 18dp trim handle. */
+const GripWidth = 18;
+/**
+ * A handle's touch area: the 48dp minimum (decision 4), grown away from the
+ * window — the grip is drawn against the outline and the rest of the handle
+ * reaches outward, so even a half-second window keeps its whole body to drag.
+ */
+const HandleWidth = Sizes.touchMin;
 const FrameBorderWidth = 2.5;
+/**
+ * How far the window reaches past each edge of its cut: a handle plus the
+ * outline. The strip pads both ends by this much, so where every source opens
+ * — the window at 0:00 — the start handle's whole touch area is the screen's
+ * first 48dp and its grip is drawn about 30–48dp in, past Android's default
+ * back-gesture band; at 18dp the grip sat 3–21dp in, inside it. The handle's
+ * outer part still lies in that band, and a higher back sensitivity widens the
+ * band over the grip — unmeasured on a device (snap-extract.md, Known
+ * limitations). The end handle sits the same way at the video's end.
+ */
+export const WindowOverhang = HandleWidth + FrameBorderWidth;
 const ProgressLineWidth = 2;
 
 /**
@@ -231,9 +249,11 @@ export function ExtractWindow({
   };
 
   // The frame is a flow row — [handle][body][handle] — so the three pieces
-  // join flush, like the movie editor's focused clip.
+  // join flush, like the movie editor's focused clip. Each handle is wider than
+  // the grip it draws: the grip sits against the outline, and the rest of the
+  // handle is touch area reaching away from the window.
   const frameStyle = useAnimatedStyle(() => ({
-    left: startX.value - HandleWidth - FrameBorderWidth,
+    left: startX.value - WindowOverhang,
   }));
   const bodyStyle = useAnimatedStyle(() => ({
     width: Math.max(endX.value - startX.value, 0) + FrameBorderWidth * 2,
@@ -293,12 +313,9 @@ export function ExtractWindow({
             accessibilityRole="adjustable"
             accessibilityLabel="구간 시작 지점"
             accessibilityValue={{ text: formatPositionSec(shown.startSec) }}
-            style={[
-              styles.handle,
-              { backgroundColor: theme.butter, borderColor: theme.stickerInk },
-            ]}
+            style={[styles.handle, styles.handleStart]}
           >
-            <View style={[styles.grip, { backgroundColor: theme.stickerInk }]} />
+            <Grip />
           </View>
         </GestureDetector>
 
@@ -326,15 +343,25 @@ export function ExtractWindow({
             accessibilityRole="adjustable"
             accessibilityLabel="구간 끝 지점"
             accessibilityValue={{ text: formatPositionSec(shown.endSec) }}
-            style={[
-              styles.handle,
-              { backgroundColor: theme.butter, borderColor: theme.stickerInk },
-            ]}
+            style={[styles.handle, styles.handleEnd]}
           >
-            <View style={[styles.grip, { backgroundColor: theme.stickerInk }]} />
+            <Grip />
           </View>
         </GestureDetector>
       </Animated.View>
+    </View>
+  );
+}
+
+/** A butter grip outlined in sticker ink — the timeline's trim handle. */
+function Grip() {
+  const theme = useTheme();
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.gripFace, { backgroundColor: theme.butter, borderColor: theme.stickerInk }]}
+    >
+      <View style={[styles.gripLine, { backgroundColor: theme.stickerInk }]} />
     </View>
   );
 }
@@ -374,12 +401,16 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
-  // A butter grip outlined in sticker ink — the timeline's trim handle.
-  handle: {
-    width: HandleWidth,
+  // The touch area; the drawn grip hugs the window's side of it.
+  handle: { width: HandleWidth },
+  handleStart: { alignItems: 'flex-end' },
+  handleEnd: { alignItems: 'flex-start' },
+  gripFace: {
+    flex: 1,
+    width: GripWidth,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  grip: { width: 2.5, height: 14, borderRadius: 1.25 },
+  gripLine: { width: 2.5, height: 14, borderRadius: 1.25 },
 });
