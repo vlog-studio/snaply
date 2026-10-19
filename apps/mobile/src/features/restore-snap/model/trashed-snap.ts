@@ -9,7 +9,8 @@ export type TrashedSnap = {
   videoId: string;
   /** Epoch ms. The deletion time when the server never learnt when it was shot. */
   capturedAt: number;
-  durationSec: number;
+  /** Absent while the server has not measured the file — the row then leaves the length out rather than say 0초. */
+  durationSec?: number;
   thumbnailUrl?: string;
   /** Epoch ms. */
   deletedAt: number;

@@ -217,8 +217,10 @@ function TrashedSnapRow({
         <ThemedText type="bodySm" style={styles.time}>
           {formatDateTime(snap.capturedAt)}
         </ThemedText>
+        {/* The length is the server's measurement; until the file is measured
+            it is left out rather than shown as 0초. */}
         <ThemedText type="data">
-          {formatSeconds(snap.durationSec)} · {left}
+          {snap.durationSec !== undefined ? `${formatSeconds(snap.durationSec)} · ${left}` : left}
         </ThemedText>
       </View>
       <SnaplyButton

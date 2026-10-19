@@ -91,6 +91,17 @@ describe('RecentlyDeletedPage', () => {
     expect(await screen.findByText('3\uCD08 \u00B7 5\uC77C \uB0A8\uC74C')).toBeTruthy(); // 3초 · 5일 남음
   });
 
+  // The server measures the length after the upload; a snap deleted before
+  // that read 0초.
+  it('leaves out a length the server has not measured yet', async () => {
+    const { durationSec: _unmeasured, ...unmeasured } = trashed('v1');
+    mockList.mockResolvedValue([unmeasured]);
+    await renderPage();
+
+    expect(await screen.findByText('5\uC77C \uB0A8\uC74C')).toBeTruthy(); // 5일 남음
+    expect(screen.queryByText(/0\uCD08/)).toBeNull(); // 0초
+  });
+
   // The server lists up to 200, each with a remote cover and a ticket. The list
   // was virtualized before the paper redraw, which drew every row at once.
   it('draws a long list a screenful at a time', async () => {
