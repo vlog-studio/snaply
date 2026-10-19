@@ -63,7 +63,7 @@ surface 규칙은 유지한다.
 | Surface | 규칙 |
 |---|---|
 | `package.json`, `package-lock.json`, `turbo.json`, `.github/workflows/**` | workspace 전체에 영향을 주므로 의존성·CI 변경 이유를 분리해 검토한다 |
-| `apps/mobile/app.json`, `apps/mobile/src/_app/**`, `apps/mobile/src/shared/api/**` | 네이티브 설정·provider 순서·전역 transport 변경은 양 트랙 기능에 영향을 준다 |
+| `apps/mobile/app.json`, `apps/mobile/plugins/**`, `apps/mobile/src/_app/**`, `apps/mobile/src/pages/not-found/**`, `apps/mobile/src/shared/api/**` | 네이티브 설정(설정 플러그인 포함)·provider 순서·오류 화면 · 없는 주소 화면·전역 transport 변경은 양 트랙 기능에 영향을 준다 |
 | `apps/api/src/config.ts` | 각자 자기 섹션만 추가하고 초기화 순서를 바꾸지 않는다 |
 | `apps/api/src/app.ts` | 플러그인·라우트 등록만 추가한다. **에러/404 핸들러는 라우트 등록보다 앞**이라는 순서를 유지한다 |
 | `apps/api/prisma/schema.prisma` | 마이그레이션 규칙(§3)을 따른다 |

@@ -277,6 +277,10 @@ Re-run 한다. 같은 이름(`dweax-snaply`)으로 등록하므로 예전 등록
 이 서버를 보는 Android 앱이다. 주소가 `https` 라 release 빌드가 그대로 닿는다(release 는 `http://` 를 막는다).
 `EXPO_PUBLIC_API_BASE_URL` 은 번들에 박히고, 셸에서 준 값이 `apps/mobile/.env` 보다 앞선다.
 
+`apps/mobile/app.json` 이나 `apps/mobile/plugins/` 가 바뀐 뒤에는 먼저 `cd apps/mobile && npx expo prebuild --clean --platform android` 로
+`android/` 를 다시 만들고 `android/local.properties` 를 되살린다([함정](../apps/mobile/docs/workflows/app-branding-and-native-config.md#known-pitfalls-all-observed-on-this-project)).
+아래 Gradle 명령은 있는 `android/` 를 그대로 빌드하므로, 건너뛰면 APK 에 체리 스플래시 · 최소 Android 9 · 종이 창 배경 · Android 16 대화면 세로 고정이 빠진다.
+
 ```bash
 cd apps/mobile/android && EXPO_PUBLIC_API_BASE_URL=https://snaply-api.dweaxai.com ./gradlew app:assembleRelease -x lint -x test
 ```

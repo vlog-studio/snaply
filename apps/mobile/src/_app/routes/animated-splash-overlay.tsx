@@ -9,13 +9,25 @@ import { Colors } from '@/shared/ui/theme';
 
 const DURATION = 600;
 
-export function AnimatedSplashOverlay() {
-  const [animate, setAnimate] = useState(false);
+type AnimatedSplashOverlayProps = {
+  /**
+   * Whether the app under the overlay has something to show. Until it does,
+   * the overlay stays as the static copy of the native splash: fading it
+   * earlier uncovers an empty window, not the app.
+   */
+  ready: boolean;
+};
+
+export function AnimatedSplashOverlay({ ready }: AnimatedSplashOverlayProps) {
+  // The native splash is handed over to this overlay as soon as it is laid
+  // out — the two frames are identical — but the fade waits for `ready` too.
+  const [nativeHidden, setNativeHidden] = useState(false);
   const [visible, setVisible] = useState(true);
   // The native splash follows the OS appearance (expo-splash-screen `dark`
   // variant), not the in-app theme mode, so the mirror must read the OS too.
   const systemScheme = useColorScheme();
-  const background = systemScheme === 'light' ? Colors.light.background : Colors.dark.background;
+  const isLight = systemScheme === 'light';
+  const background = isLight ? Colors.light.background : Colors.dark.background;
 
   if (!visible) return null;
 
@@ -33,12 +45,16 @@ export function AnimatedSplashOverlay() {
   const mark = (
     <Image
       contentFit="contain"
-      source={require('@/assets/images/brand-glyph-ember.png')}
+      source={
+        isLight
+          ? require('@/assets/images/brand-glyph-cherry.png')
+          : require('@/assets/images/brand-glyph-cherry-dark.png')
+      }
       style={styles.glyph}
     />
   );
 
-  return animate ? (
+  return ready && nativeHidden ? (
     <Animated.View
       entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
         'worklet';
@@ -51,7 +67,8 @@ export function AnimatedSplashOverlay() {
   ) : (
     <View
       onLayout={() => {
-        void SplashScreen.hideAsync().finally(() => setAnimate(true));
+        if (nativeHidden) return;
+        void SplashScreen.hideAsync().finally(() => setNativeHidden(true));
       }}
       style={[styles.splashOverlay, { backgroundColor: background }]}
     >
@@ -62,7 +79,9 @@ export function AnimatedSplashOverlay() {
 
 const styles = StyleSheet.create({
   // Must mirror the native splash exactly (expo-splash-screen in app.json):
-  // the OS-scheme background + brand-glyph-ember at imageWidth 150, centered.
+  // the OS-scheme paper (`background`) + the cherry moment-ring mark (its
+  // sticker outline in that scheme's sheet) at imageWidth 150, centered —
+  // canvas `Splash`.
   glyph: { width: 150, height: 150 },
   splashOverlay: {
     ...StyleSheet.absoluteFill,

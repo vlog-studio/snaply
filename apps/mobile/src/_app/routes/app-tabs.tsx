@@ -42,7 +42,15 @@ export function AppTabs() {
         // Tab switches cross-fade with a slight lateral shift on both
         // platforms — the JS tab navigator animates nothing by default,
         // which reads as a hard cut on Android especially.
-        animation: reducedMotion ? 'none' : 'shift',
+        animation: 'shift',
+        // Under reduced motion the same transition runs in zero time rather
+        // than switching to `animation: 'none'`. The setting resolves after
+        // the first render, and dropping the native-driven scene style then
+        // leaves the scenes that were hidden at launch stuck at opacity 0 —
+        // every tab but the first opened blank.
+        transitionSpec: reducedMotion
+          ? { animation: 'timing', config: { duration: 0 } }
+          : undefined,
         // All four scenes mount at launch: a lazily-mounted scene's first
         // frame is its empty background, and the cross-fade stretches that
         // blank frame into a visible blink on the first visit to a tab.
