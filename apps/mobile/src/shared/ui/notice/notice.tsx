@@ -1,7 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, type ReactNode } from 'react';
+import {
+  AccessibilityInfo,
+  Pressable,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
+import { DoodleIcon } from '@/shared/ui/doodle-icon';
 import { Shadows, Sizes, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { TextButton } from '@/shared/ui/text-button';
@@ -13,8 +20,30 @@ export type NoticeProps = {
   action?: NoticeAction;
   /** A ✕ that dismisses the notice. */
   onDismiss?: () => void;
+  /**
+   * Speak a string message to a screen reader when the notice appears and
+   * when its message changes. On by default for an `AlertCard` — every error
+   * is news — and off for a `NoticeBand`, which is read where it stands; turn
+   * it on for a band that answers a press (a refusal).
+   */
+  announce?: boolean;
   style?: StyleProp<ViewStyle>;
 };
+
+/**
+ * Says a notice's message itself, and reports whether it did. A notice mounts
+ * already holding its words, and an Android live region speaks a change to a
+ * node that is there, not a node that arrives — so TalkBack could stay silent.
+ * A notice that announces drops its live region, which could otherwise say it
+ * a second time; one whose message is not a string keeps the live region.
+ */
+function useAnnouncement(message: ReactNode, announce: boolean): boolean {
+  const spoken = announce && typeof message === 'string' && message !== '' ? message : undefined;
+  useEffect(() => {
+    if (spoken) AccessibilityInfo.announceForAccessibility(spoken);
+  }, [spoken]);
+  return spoken !== undefined;
+}
 
 /**
  * A standing notice under a screen's head (the design system's `mv-notice`): a
@@ -25,11 +54,12 @@ export type NoticeProps = {
  * Butter keeps its value at night, so the contents are pinned to the day
  * scheme and every text inside resolves the dark ink.
  */
-export function NoticeBand({ message, action, onDismiss, style }: NoticeProps) {
+export function NoticeBand({ message, action, onDismiss, announce = false, style }: NoticeProps) {
   const theme = useTheme();
+  const announced = useAnnouncement(message, announce);
   return (
     <View
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={announced ? undefined : 'polite'}
       style={[
         styles.band,
         { backgroundColor: theme.butter, boxShadow: Shadows.paper(theme.shadowInk) },
@@ -37,8 +67,15 @@ export function NoticeBand({ message, action, onDismiss, style }: NoticeProps) {
       ]}
     >
       <ThemeScope scheme="light">
+        {/* A stamp in a fixed square: it keeps its printed size at any system
+            text size, which would otherwise push the mark out of its box. */}
         <View style={[styles.bang, { borderColor: theme.stickerInk }]}>
-          <ThemedText selectable={false} type="edge" style={{ color: theme.stickerInk }}>
+          <ThemedText
+            selectable={false}
+            allowFontScaling={false}
+            type="edge"
+            style={{ color: theme.stickerInk }}
+          >
             !
           </ThemedText>
         </View>
@@ -51,13 +88,15 @@ export function NoticeBand({ message, action, onDismiss, style }: NoticeProps) {
 /**
  * A failure line (the design system's `jj-alert`): a white card with the
  * message in cherry ink and, when there is one, the way out as a text button.
- * One shape for every error band — an upload, an import, a load.
+ * One shape for every error band — an upload, an import, a load. A screen
+ * reader hears it as it appears (`announce`).
  */
-export function AlertCard({ message, action, onDismiss, style }: NoticeProps) {
+export function AlertCard({ message, action, onDismiss, announce = true, style }: NoticeProps) {
   const theme = useTheme();
+  const announced = useAnnouncement(message, announce);
   return (
     <View
-      accessibilityLiveRegion="polite"
+      accessibilityLiveRegion={announced ? undefined : 'polite'}
       style={[
         styles.alert,
         {
@@ -78,7 +117,7 @@ function NoticeBody({
   action,
   onDismiss,
   tone,
-}: Omit<NoticeProps, 'style'> & { tone?: 'error' }) {
+}: Omit<NoticeProps, 'style' | 'announce'> & { tone?: 'error' }) {
   const theme = useTheme();
   return (
     <>
@@ -105,7 +144,7 @@ function NoticeBody({
           onPress={onDismiss}
           style={({ pressed }) => [styles.dismiss, { opacity: pressed ? 0.6 : 1 }]}
         >
-          <Ionicons name="close" size={18} color={theme.text} />
+          <DoodleIcon name="close" size={18} color={theme.text} />
         </Pressable>
       ) : null}
     </>

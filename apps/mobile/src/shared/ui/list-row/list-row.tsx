@@ -52,7 +52,14 @@ export function ListRow({
         {sub}
       </View>
       {trailing}
-      {onPress ? <DoodleIcon name="chevronRight" size={20} color={theme.textSecondary} /> : null}
+      {/* Held, the row is a sticker colour in both schemes: its ink is sticker ink. */}
+      {onPress ? (
+        <DoodleIcon
+          name="chevronRight"
+          size={20}
+          color={pressed ? theme.stickerInk : theme.textSecondary}
+        />
+      ) : null}
     </>
   );
   const rowStyle = [

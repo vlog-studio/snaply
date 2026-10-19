@@ -97,7 +97,7 @@ bypass.
 export { StudioPage as default } from '@/pages/studio';
 
 // src/app/_layout.tsx — same shape for the root layout: implementation lives in _app
-export { RootLayout as default } from '@/_app/routes';
+export { RootLayout as default, RootErrorBoundary as ErrorBoundary } from '@/_app/routes';
 ```
 
 ```tsx
@@ -787,7 +787,10 @@ export function XPage() {
 - **Sticker colours keep their value at night** (`pink`, `mint`, `butter`, `lavender`,
   `sky`, `kraft`, `warmSurface`), so text on them is `stickerInk`, never `text`. A
   standing notice is a `NoticeBand` (butter), an error an `AlertCard` — both resolve
-  their own ink, so a screen does not wrap them.
+  their own ink, so a screen does not wrap them. A row that turns pink while pressed
+  switches its title, sub-line and chevron to `stickerInk`. Only what the canvas drew as a
+  cream wash over video — the unpicked duration chip and the REC countdown — is `TapeSmoke`
+  (60% `media`) with cream ink; a sticker-colour tape on video keeps `stickerInk`.
 - Paper is cut, not rounded: `Radius` steps are 0; `Radius.pill` is only for round
   objects (a button sticker, the capture disc, a price sticker, a reel). Elevation is
   `boxShadow: Shadows.paper(theme.shadowInk)` — a hard offset, no blur.
@@ -797,7 +800,9 @@ export function XPage() {
   taped label), `PunchedHoles` and `DottedRule` (`paper`); `Polaroid` (a snap or movie as
   a print, with `overlay` on the picture and `children` on the print); `SnaplyButton` (the
   ticket — `primary` cherry, `secondary` sheet, `ai` lavender, `danger` kraft with VOID;
-  `busy` keeps the face while it waits); `TextButton`; `StickerButton` / `StickerFace`
+  `busy` keeps the face while it waits; `compact` in a confirm pair keeps a danger ticket's
+  stamp close so its label stays on one line); `TextButton` (pink band; `tone="delete"` is
+  the kraft band for a delete that is only a word — never red); `StickerButton` / `StickerFace`
   (an icon-only round sticker — back, close, sound, move); `KeyButton` (a transport key —
   play, undo); `TapeChip` / `TapeLabel` (an action or a status on tape); `ModeTab` (선택 /
   취소 beside a title); `Tag` (a state on sticker paper); `CheckStrip` (a guest check:
@@ -806,6 +811,37 @@ export function XPage() {
   waiting; `DoodleIcon` for glyphs — add a path in the canvas's hand rather than an
   Ionicons glyph. A one-sided `dotted`/`dashed` border draws solid on Android: use
   `DottedRule` or an SVG line.
+- **No `Svg` grows with the content.** Android's react-native-svg draws each `Svg` through
+  one bitmap the size of its view and refuses one past ~100MB (≈8,000–9,000dp tall at
+  1080px across), which crashes the app. Paper lines and piece bodies are `View`s (that is
+  why `PaperGround` stays safe as the first child of the scroll content); SVG is for
+  fixed-size shapes such as a torn edge; a receipt of hundreds of rows lives in a
+  `FlatList`.
+- **Text inside a fixed-size picture does not grow past it** — a ransom piece, a weekday
+  or price disc, the pick-order disc, the `!` square, the VOID stamp, the week ring's
+  initial: cap it with `allowFontScaling={false}` or `maxFontSizeMultiplier`. Never cap text
+  that can wrap or grow (body, buttons, rows, titles).
+- **A small grip on a `GestureDetector` needs its touch area twice.** On Android RNGH hit-tests
+  with the gesture's `.hitSlop()` and ignores the View's `hitSlop` prop; iOS hit-tests the
+  View. Give both the same outward-only slop (`pages/movie/ui/timeline-cut.tsx`
+  `TrimHandleHitSlop`), and keep a grip's touch area out of Android's back-gesture edge.
+- **An inline failure line under a control announces itself.** It mounts holding its words,
+  which an Android live region does not read; a failure that answers a press calls
+  `AccessibilityInfo.announceForAccessibility` as it appears (`pages/movie/ui/error-line.tsx`,
+  `NoticeBand announce`).
+- **Messages speak for themselves; do not wrap them in another live region.** An Android
+  live region speaks a change to a node that is already there, not a node that mounts
+  holding its words — and every caller mounts a message with its words. So an `AlertCard`
+  announces its (string) message when it appears and when it changes, and drops its live
+  region; pass `announce={false}` only for a card that is a standing state read where it
+  sits. A `NoticeBand` stays a quiet polite live region by default; pass `announce` when the
+  band answers a press (a refusal). A `Toast` announces each message once, with its
+  action's label.
+- **A `BottomSheet` never runs off the top.** It stops under the status bar and scrolls its
+  content when that is taller than the room it has (a large system font, a field with the
+  keyboard up). Pass the sheet's answers as `actions` to keep them in reach under the
+  scrolling content; answers left in `children` scroll with it. `variant="plain"` is the
+  capture area's near-black `cl-sheet`, the same in both schemes.
 - A screen whose ground is a video surface (the viewfinder) pins its subtree with
   `<ThemeScope scheme="dark">` (see `capture-record-page.tsx`), so chrome stays legible
   over near-black in both theme modes. White glyphs and `rgba` scrims drawn **over
