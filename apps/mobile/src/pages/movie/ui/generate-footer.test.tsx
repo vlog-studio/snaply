@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import type { Movie } from '@/entities/movie';
 import type { MovieSharing } from '@/features/share-movie';
@@ -84,5 +85,27 @@ describe('GenerateFooter', () => {
     expect(screen.getByText('스냅 파일을 찾지 못했어요.')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: '다시 시도' }));
     expect(onStart).toHaveBeenCalledTimes(1);
+  });
+
+  // The reason is the movie's standing state, met on every visit; it is read
+  // where it sits rather than spoken each time the screen opens.
+  it('does not announce a failed run’s reason as the screen opens', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await render(
+      <GenerateFooter
+        movie={{
+          ...movie,
+          status: 'failed',
+          render: undefined,
+          error: '스냅 파일을 찾지 못했어요.',
+        }}
+        cutCount={2}
+        sharing={sharing({ blocked: 'no-render' })}
+        onStart={jest.fn()}
+      />,
+    );
+
+    expect(announce).not.toHaveBeenCalled();
+    announce.mockRestore();
   });
 });

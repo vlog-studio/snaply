@@ -69,8 +69,9 @@ export function GenerateFooter({
         // is only answered by putting cuts back first. The server's own
         // diagnostic (`movie.errorDetail`) stays in the store for debugging but
         // is never drawn: it is what a bug report needs, not what the failure
-        // means, and raw server text is not user copy.
-        <AlertCard message={movie.error ?? '무비를 만들지 못했어요.'} />
+        // means, and raw server text is not user copy. A standing state of the
+        // movie, read where it sits rather than on every visit.
+        <AlertCard message={movie.error ?? '무비를 만들지 못했어요.'} announce={false} />
       ) : null}
 
       <View style={styles.actionSlot}>
