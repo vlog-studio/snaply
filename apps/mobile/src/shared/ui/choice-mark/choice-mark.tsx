@@ -7,8 +7,10 @@ import { Shadows, useTheme } from '@/shared/ui/theme';
  * The marks of a choice (the design system's `jj-check` · `jj-radio`) — drawn
  * only; the row around them is the control and carries the role and state. A
  * check is a square sticker with a red-ink tick; a radio is a round button
- * with a dashed seam and a sewn cross when chosen. Where the order of picks
- * means something, a numbered price sticker marks the pick instead.
+ * with a dashed seam and a red-ink tick when chosen (the canvas's
+ * `M2.5 7.4l3 3 6-6.4` — a cross on a radio reads as "not this"). Where the
+ * order of picks means something, a numbered price sticker marks the pick
+ * instead.
  */
 export function CheckMark({ checked }: { checked: boolean }) {
   const theme = useTheme();
@@ -56,10 +58,12 @@ export function RadioMark({ selected }: { selected: boolean }) {
       {selected ? (
         <Svg width={14} height={14} viewBox="0 0 14 14">
           <Path
-            d="M2 2l10 10M12 2L2 12"
+            d="M2.5 7.4l3 3 6-6.4"
             stroke={theme.cherryInk}
             strokeWidth={2.5}
             strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
           />
         </Svg>
       ) : null}

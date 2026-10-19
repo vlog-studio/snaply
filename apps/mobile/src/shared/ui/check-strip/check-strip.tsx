@@ -35,7 +35,7 @@ export function CheckStrip({
             type="eyebrow"
             accessibilityElementsHidden
             importantForAccessibility="no"
-            style={{ color: theme.receiptBlue }}
+            style={[styles.brand, { color: theme.receiptBlue }]}
           >
             GUEST CHECK
           </ThemedText>
@@ -58,6 +58,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three + Spacing.half,
     paddingBottom: Spacing.three,
   },
+  // Android measures letter-spaced text short of what it draws at some
+  // densities, so a brand sized to its measure can break onto a second line on
+  // a 360dp phone (GUEST / CHECK). Taking the head's spare width leaves it room
+  // whatever the measure; the figure still ends the line.
+  brand: { flexGrow: 1, flexShrink: 1 },
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',

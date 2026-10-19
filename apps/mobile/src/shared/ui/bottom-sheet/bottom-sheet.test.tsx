@@ -16,6 +16,15 @@ function withSafeArea(node: ReactNode) {
   return <SafeAreaProvider initialMetrics={metrics}>{node}</SafeAreaProvider>;
 }
 
+type HostNode = ReturnType<typeof screen.getByText>;
+
+function insideScrollView(node: HostNode) {
+  for (let parent = node.parent; parent; parent = parent.parent) {
+    if (parent.type === 'RCTScrollView') return true;
+  }
+  return false;
+}
+
 describe('BottomSheet', () => {
   it('calls onClose when the backdrop is pressed', async () => {
     const onClose = jest.fn();
@@ -30,6 +39,22 @@ describe('BottomSheet', () => {
     fireEvent.press(screen.getByRole('button', { name: '닫기' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  // A sheet taller than the room it has (legal facts at a large font, the
+  // Instagram caption with the keyboard up) ran its top off the screen. Its
+  // content now scrolls, and the answers it holds apart stay where they are.
+  it('scrolls its content and keeps its actions out of the scroll', async () => {
+    await render(
+      withSafeArea(
+        <BottomSheet visible onClose={jest.fn()} actions={<Text>답</Text>}>
+          <Text>내용</Text>
+        </BottomSheet>,
+      ),
+    );
+
+    expect(insideScrollView(screen.getByText('내용'))).toBe(true);
+    expect(insideScrollView(screen.getByText('답'))).toBe(false);
   });
 
   // The deferred unmount (the Modal staying up until the close animation
