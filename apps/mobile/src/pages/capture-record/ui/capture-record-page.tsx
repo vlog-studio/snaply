@@ -1,4 +1,5 @@
 import { CameraView } from 'expo-camera';
+import { NavigationBar } from 'expo-navigation-bar';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -16,7 +17,7 @@ import { useSnaps } from '@/entities/snap';
 import { AlertCard } from '@/shared/ui/notice';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { StickerButton, StickerFace } from '@/shared/ui/sticker-button';
-import { TapeChip, TapeLabel } from '@/shared/ui/tape-chip';
+import { TapeChip, TapeLabel, TapeSmoke } from '@/shared/ui/tape-chip';
 import { TextButton } from '@/shared/ui/text-button';
 import { Shadows, Spacing, ThemeScope, useReducedMotion, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -37,13 +38,19 @@ const DURATION_OPTIONS: readonly CaptureDuration[] = [3, 5];
 
 /**
  * The viewfinder's ground is the camera feed and near-black scrims, so its
- * chrome is pinned to the dark palette (and a light status bar) no matter
- * which theme the rest of the app resolves to.
+ * chrome is pinned to the dark palette (and light status-bar and
+ * navigation-bar glyphs) no matter which theme the rest of the app resolves
+ * to.
  */
 export function CaptureRecordPage() {
   return (
     <ThemeScope scheme="dark">
       <StatusBar style="light" />
+      {/* The app-wide bar follows the scheme, so under the light theme the
+          3-button glyphs would be dark over the ground under the shutter.
+          `style` names the glyph colour, as in AppProviders; the bar mounted
+          last wins while this screen is up. */}
+      <NavigationBar style="light" />
       <CaptureRecordScreen />
     </ThemeScope>
   );
@@ -193,10 +200,9 @@ function CaptureRecordScreen() {
             onPress={openLibrary}
             style={styles.permissionAction}
           />
+          {/* A failure is the error card here too, as on the viewfinder. */}
           {library.errorMessage ? (
-            <ThemedText type="small" themeColor="cherryInk" style={styles.centerText}>
-              {library.errorMessage}
-            </ThemedText>
+            <AlertCard message={library.errorMessage} style={styles.permissionAction} />
           ) : null}
         </View>
         <RecordingLibrary
@@ -272,8 +278,12 @@ function CaptureRecordScreen() {
               {`담김 · 스냅 ${displayedCount}개`}
             </TapeLabel>
           ) : null}
+          {/* Straight on the live feed, so the strip is the dark smoke wash
+              rather than the canvas's cream one: cream ink on a cream wash
+              vanished over a bright scene. Not a live region — announcing
+              every tick would put the screen reader's voice into the take. */}
           {stage === 'recording' ? (
-            <TapeLabel fill="rgba(243,231,207,0.14)" tilt={0.5}>
+            <TapeLabel fill={TapeSmoke} tilt={0.5}>
               <View style={[styles.recordingDot, { backgroundColor: theme.primary }]} />
               <ThemedText type="edge" style={{ color: theme.text }}>
                 REC
@@ -310,16 +320,20 @@ function CaptureRecordScreen() {
             <View style={styles.durationToggle}>
               {DURATION_OPTIONS.map((seconds) => {
                 const isSelected = session.duration === seconds;
+                // An unchosen length is a strip of smoke rather than colour —
+                // dark smoke with light ink, so it reads over the black
+                // viewfinder before the camera is ready and over a dark scene.
                 return (
                   <TapeChip
                     key={seconds}
                     label={`${seconds}초`}
+                    color={isSelected ? 'tapeButter' : 'smoke'}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: isSelected }}
                     accessibilityLabel={`${seconds}초`}
                     tilt={seconds === DURATION_OPTIONS[0] ? -1.5 : 1}
                     onPress={() => session.selectDuration(seconds)}
-                    style={[styles.durationChip, !isSelected && styles.durationOff]}
+                    style={styles.durationChip}
                   />
                 );
               })}
@@ -469,8 +483,6 @@ const styles = StyleSheet.create({
   bottomControls: { paddingHorizontal: Spacing.five, gap: Spacing.three, alignItems: 'stretch' },
   durationToggle: { flexDirection: 'row', gap: Spacing.two, alignSelf: 'center' },
   durationChip: { minWidth: 64 },
-  // An unchosen length is a strip of smoke rather than colour.
-  durationOff: { backgroundColor: 'rgba(243,231,207,0.14)' },
   captureControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   shutterArea: {
     width: HOLD_RING_SIZE,

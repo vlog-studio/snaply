@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { Radius } from '@/shared/ui/theme';
+import { Radius, Shadows, useTheme } from '@/shared/ui/theme';
 
 // Long enough to read as the clip being pulled into the roll, short enough that
 // continuous capture stays snappy.
@@ -29,6 +29,7 @@ type CaptureFlightProps = {
  * so it visibly tucks into the pill.
  */
 export function CaptureFlight({ uri, onArrive }: CaptureFlightProps) {
+  const theme = useTheme();
   const { height } = useWindowDimensions();
   const progress = useSharedValue(0);
   const onArriveRef = useRef(onArrive);
@@ -68,7 +69,10 @@ export function CaptureFlight({ uri, onArrive }: CaptureFlightProps) {
 
   return (
     <View pointerEvents="none" style={styles.wrap}>
-      <Animated.View style={[styles.frame, flightStyle]}>
+      {/* A print with paper's hard shadow — not the retired ember glow. */}
+      <Animated.View
+        style={[styles.frame, { boxShadow: Shadows.paper(theme.shadowInk) }, flightStyle]}
+      >
         <VideoView
           allowsPictureInPicture={false}
           contentFit="cover"
@@ -95,10 +99,8 @@ const styles = StyleSheet.create({
     width: 128,
     aspectRatio: 0.66,
     borderRadius: Radius.medium,
-    borderCurve: 'continuous',
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.9)',
-    boxShadow: '0 0 26px rgba(234,94,56,0.5)',
   },
 });
