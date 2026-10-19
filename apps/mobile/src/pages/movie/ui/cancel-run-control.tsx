@@ -7,6 +7,8 @@ import { PaperPiece } from '@/shared/ui/paper';
 import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
+import { ErrorLine } from './error-line';
+
 export type CancelRunControlProps = {
   /** Asks the backend to stop the run; the movie leaves `generating` on its word. */
   cancel: () => Promise<CancellationOutcome>;
@@ -60,11 +62,7 @@ export function CancelRunControl({ cancel }: CancelRunControlProps) {
     // The confirm, on a slip torn off the top of the footer.
     <PaperPiece edge="tornTop" style={styles.confirm}>
       <ThemedText type="bodySm">지금까지의 진행은 사라지고, 컷 구성은 그대로 남아요.</ThemedText>
-      {unreachable ? (
-        <ThemedText type="small" themeColor="cherryInk">
-          {generationRefusalMessage('unreachable')}
-        </ThemedText>
-      ) : null}
+      <ErrorLine message={unreachable ? generationRefusalMessage('unreachable') : undefined} />
       <View style={styles.actions}>
         <SnaplyButton
           variant="secondary"

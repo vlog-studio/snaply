@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { movieStyleLabel, type Movie } from '@/entities/movie';
 import { useSnapFiles, type Snap } from '@/entities/snap';
 import type { RenderSource } from '@/features/compose-movie';
-import { ShareBlockMessages, type MovieSharing } from '@/features/share-movie';
+import { shareBlockMessage, type MovieSharing } from '@/features/share-movie';
 import { formatDateTime, formatSeconds } from '@/shared/lib/datetime';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { DoodleIcon } from '@/shared/ui/doodle-icon';
@@ -123,6 +123,7 @@ export function MovieWatch({
   // is a deadline in days, and a screen left open across midnight is rare.
   const [now] = useState(Date.now);
   const expiry = movie.render ? resultExpiry(movie.render.renderedAt, now) : undefined;
+  const blockReason = shareBlockMessage(sharing.blocked);
   const printStyle = {
     backgroundColor: theme.backgroundElement,
     borderColor: theme.border,
@@ -224,10 +225,14 @@ export function MovieWatch({
         {onPostToInstagram ? (
           <SnaplyButton title="Instagram에 게시" variant="secondary" onPress={onPostToInstagram} />
         ) : null}
+        {/* Off with its reason under it — and off without a word while the
+            file's address is still on its way, when there is no reason yet. */}
         {sharing.blocked !== undefined ? (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
-            {ShareBlockMessages[sharing.blocked]}
-          </ThemedText>
+          blockReason !== undefined ? (
+            <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+              {blockReason}
+            </ThemedText>
+          ) : null
         ) : sharing.failed ? (
           <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
             완성된 무비를 내려받지 못했어요. 연결을 확인하고 다시 시도해 주세요.

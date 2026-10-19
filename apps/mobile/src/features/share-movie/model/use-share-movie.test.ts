@@ -5,6 +5,7 @@ import type { Movie } from '@/entities/movie';
 import {
   InstagramHandoffMessages,
   ShareBlockMessages,
+  shareBlockMessage,
   useShareMovie,
   type ShareSource,
 } from './use-share-movie';
@@ -54,6 +55,9 @@ const resolved = (uri: string | undefined): ShareSource => ({
 
 /** The ask for the address failed and left nothing to play. */
 const unresolved: ShareSource = { uri: undefined, resolving: false, unresolved: true };
+
+/** The fresh address is still on its way (`useRenderSource` on a cold cache). */
+const resolving: ShareSource = { uri: undefined, resolving: true, unresolved: false };
 
 beforeEach(() => {
   jest.restoreAllMocks();
@@ -133,6 +137,22 @@ describe('openInInstagram', () => {
     expect(outcome).toBe('unresolved');
     expect(InstagramHandoffMessages.unresolved).toBe(ShareBlockMessages.unresolved);
     expect(mockRequestAlbum).not.toHaveBeenCalled();
+  });
+
+  // The address takes up to an 8-second deadline and a retry; a tap meanwhile
+  // said a finished movie was never finished (2026-10-19 review, MOVIE-3).
+  it('hands nothing over and says nothing while the address is on its way', async () => {
+    const { result } = await renderHook(() => useShareMovie(makeMovie(), resolving));
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.openInInstagram();
+    });
+
+    expect(outcome).toBe('resolving');
+    expect(mockRequestAlbum).not.toHaveBeenCalled();
+    expect(mockDownload).not.toHaveBeenCalled();
+    expect(result.current.handingOff).toBe(false);
   });
 
   // A second tap could land before the first one's render and read "not running",
@@ -231,6 +251,20 @@ describe('useShareMovie', () => {
     expect(mockShareFile).not.toHaveBeenCalled();
   });
 
+  // The wait for the address read as `no-render`, so every finished movie opened
+  // with 아직 완성된 무비가 없어서 공유할 수 없어요 under 공유 until the address
+  // arrived (2026-10-19 review, MOVIE-3).
+  it('waits without a reason while the address is still on its way', async () => {
+    const { result } = await renderHook(() => useShareMovie(makeMovie(), resolving));
+
+    expect(result.current.blocked).toBe('resolving');
+    expect(shareBlockMessage(result.current.blocked)).toBeUndefined();
+    await act(async () => result.current.share());
+
+    expect(mockDownload).not.toHaveBeenCalled();
+    expect(mockShareFile).not.toHaveBeenCalled();
+  });
+
   it('is busy while the download runs, and done after', async () => {
     let releaseDownload = (_uri: string) => {};
     mockDownload.mockReturnValue(new Promise((resolve) => (releaseDownload = resolve)));
@@ -299,5 +333,16 @@ describe('useShareMovie', () => {
     const { result } = await renderHook(() => useShareMovie(undefined, resolved(undefined)));
 
     expect(result.current.blocked).toBe('no-render');
+  });
+});
+
+describe('shareBlockMessage', () => {
+  it.each([
+    ['nothing blocks', undefined, undefined],
+    ['the address is on its way', 'resolving', undefined],
+    ['no file was made', 'no-render', ShareBlockMessages['no-render']],
+    ['the address could not be fetched', 'unresolved', ShareBlockMessages.unresolved],
+  ] as const)('states a reason only for a known block: %s', (_, block, message) => {
+    expect(shareBlockMessage(block)).toBe(message);
   });
 });

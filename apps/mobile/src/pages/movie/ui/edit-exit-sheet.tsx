@@ -32,8 +32,9 @@ export type EditExitSheetProps = {
  * - 나중에 만들기 — the edits stay stored; watch mode keeps playing the
  *   render and carries a standing notice about the drift.
  * - 편집 취소 — the render's own composition is written back. Grouped apart
- *   in danger color because the visit's undo history dies with the screen:
- *   past this sheet there is no way to get the edits back.
+ *   (in ink like the other rows — red is the main action) because the
+ *   visit's undo history dies with the screen: past this sheet there is no
+ *   way to get the edits back.
  *
  * Drift already answered for — an earlier studio entry's, or an earlier
  * visit's — does not reopen this sheet: watch mode's notice keeps standing

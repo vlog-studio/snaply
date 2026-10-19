@@ -10,6 +10,11 @@ import { openInstagram } from '../lib/open-instagram';
 /**
  * Why a movie cannot be handed to the share sheet.
  *
+ * `resolving` — the file's fresh address is still being asked for (up to an
+ * 8-second deadline and one retry). Nothing is known yet, so nothing is said:
+ * the control waits disabled with no reason under it. Read as `no-render`, the
+ * wait told every finished movie, on every first visit, that it had never been
+ * finished (2026-10-19 review, MOVIE-3).
  * `no-render` — there is no rendered file to share: the movie never produced
  * one (mock mode, or a render from before the backend composited anything).
  * `unresolved` — there **is** a file and its address could not be fetched
@@ -18,13 +23,25 @@ import { openInstagram } from '../lib/open-instagram';
  * lies; separating them also makes the fix sayable — one waits on a run, the
  * other on a connection.
  */
-export type ShareBlock = 'no-render' | 'unresolved';
+export type ShareBlock = 'resolving' | 'no-render' | 'unresolved';
 
-/** What each block says, so three surfaces cannot word the same rule differently. */
-export const ShareBlockMessages: Record<ShareBlock, string> = {
+/**
+ * What each block says, so three surfaces cannot word the same rule
+ * differently. A wait has no reason to state, so `resolving` says nothing —
+ * read it through `shareBlockMessage`, which a surface can render as is.
+ */
+export const ShareBlockMessages: {
+  readonly [Block in ShareBlock]: Block extends 'resolving' ? undefined : string;
+} = {
+  resolving: undefined,
   'no-render': '아직 완성된 무비가 없어서 공유할 수 없어요.',
   unresolved: '완성된 무비를 불러오지 못했어요. 연결을 확인해 주세요.',
 };
+
+/** The reason a surface states for a block — none while the address is still on its way. */
+export function shareBlockMessage(block: ShareBlock | undefined): string | undefined {
+  return block === undefined ? undefined : ShareBlockMessages[block];
+}
 
 /**
  * The rendered file as the caller has resolved it — structurally the shape
@@ -82,14 +99,16 @@ export type MovieSharing = {
 /**
  * How a hand-off to the Instagram app ended. `saved` — the movie is in the
  * album but Instagram did not open. `busy` — one was already running; the tap
- * is ignored and says nothing.
+ * is ignored and says nothing. `resolving` — the file's fresh address is still
+ * on its way (`ShareBlock`'s `resolving`); the tap is ignored and says nothing
+ * too, where it used to say a finished movie was never finished.
  */
 export type InstagramHandoff =
-  'opened' | 'saved' | 'busy' | 'blocked' | 'failed' | 'unavailable' | 'unresolved';
+  'opened' | 'saved' | 'busy' | 'resolving' | 'blocked' | 'failed' | 'unavailable' | 'unresolved';
 
 /** What the sheet says when the hand-off could not happen. */
 export const InstagramHandoffMessages: Record<
-  Exclude<InstagramHandoff, 'opened' | 'busy'>,
+  Exclude<InstagramHandoff, 'opened' | 'busy' | 'resolving'>,
   string
 > = {
   saved: '무비를 앨범에 저장했어요. Instagram 앱을 직접 열어 올려 주세요.',
@@ -160,10 +179,14 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
   };
 
   const openInInstagram = async (): Promise<InstagramHandoff> => {
-    // The same two empty-`uri` cases as 공유 (`ShareBlock`): a finished movie whose
-    // link could not be fetched must not be told it was never finished.
+    // The same empty-`uri` cases as 공유 (`ShareBlock`): a finished movie whose
+    // link is still on its way or could not be fetched must not be told it was
+    // never finished.
     if (!movie?.render) return 'unavailable';
-    if (!uri) return source.unresolved ? 'unresolved' : 'unavailable';
+    if (!uri) {
+      if (source.resolving) return 'resolving';
+      return source.unresolved ? 'unresolved' : 'unavailable';
+    }
     if (handing.current) return 'busy';
     const key = `${movie.id}-${movie.render.renderedAt}`;
     handing.current = true;
@@ -196,9 +219,11 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
 
   const blocked: ShareBlock | undefined = uri
     ? undefined
-    : source.unresolved
-      ? 'unresolved'
-      : 'no-render';
+    : source.resolving
+      ? 'resolving'
+      : source.unresolved
+        ? 'unresolved'
+        : 'no-render';
 
   return {
     blocked,

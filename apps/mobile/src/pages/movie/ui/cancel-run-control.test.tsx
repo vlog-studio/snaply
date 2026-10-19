@@ -1,4 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import type { CancellationOutcome } from '@/features/compose-movie';
 
@@ -64,6 +65,27 @@ describe('CancelRunControl', () => {
     expect(
       screen.getByRole('button', { name: cancelLabel }).props.accessibilityState.disabled,
     ).toBe(false);
+  });
+
+  // The line mounts already holding its words, which an Android live region
+  // does not read out, so the failed stop went unannounced (2026-10-19 review,
+  // MOVIE-8).
+  it('says the unreachable line to a screen reader as it arrives', async () => {
+    // The React Native preset already mocks it, so the spy carries earlier tests' calls.
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    announce.mockClear();
+    const cancel = jest.fn().mockResolvedValue({ canceled: false, refused: 'unreachable' });
+    await renderControl(cancel);
+
+    await fireEvent.press(screen.getByRole('button', { name: cancelLabel }));
+    expect(announce).not.toHaveBeenCalled();
+    await act(async () => {
+      await fireEvent.press(screen.getByRole('button', { name: cancelLabel }));
+    });
+
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(expect.stringMatching(new RegExp(unreachableHead)));
+    announce.mockRestore();
   });
 
   // The run ended while the request was in flight — the runner is delivering

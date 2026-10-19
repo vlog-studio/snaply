@@ -20,7 +20,7 @@ import {
   xToSec,
   type TrimTrack,
 } from '@/shared/lib/trim-geometry';
-import { Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
+import { Sizes, Spacing, useReducedMotion, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
 
@@ -29,7 +29,29 @@ import type { Cut } from '../model/use-movie-cuts';
 /** The strip's clip height; the thumbnail tiles are squares of the same size. */
 export const TimelineCutHeight = 56;
 const TileWidth = TimelineCutHeight;
+/** The trim handle as drawn: a butter grip 18dp wide outside the clip's edge. */
 const HandleWidth = 18;
+/**
+ * How far a trim handle's touch area reaches past its drawn grip: 18 + 30 =
+ * 48dp, the touch minimum (decision 4). Outward only — away from the clip, over
+ * the neighbour — so the clip keeps every point of its own width: a short cut
+ * is narrower than two grips' worth of slop, and a tap on the focused clip
+ * itself still lets it go. The grip is the only way to set a cut's length,
+ * and at 18dp it was the one control on the screen under the minimum.
+ */
+const HandleSlop = Sizes.touchMin - HandleWidth;
+/**
+ * How far past the clip's edge a focused clip's handle takes touches — the
+ * drawn grip plus its slop. What sits beside the last clip (the add tile) keeps
+ * clear of it.
+ */
+export const TrimHandleReach = HandleWidth + HandleSlop;
+
+/** Each handle's slop, on its outer side only. */
+const TrimHandleHitSlop = {
+  start: { left: HandleSlop },
+  end: { right: HandleSlop },
+} as const;
 
 /**
  * Slack under which a window edge counts as touching the file's end — half a
@@ -114,8 +136,11 @@ function buildTrimGesture(
     scheduleOnRN(report, startSec, endSec, settled);
   };
 
+  // Android takes the touch area from the gesture; iOS from the view's own
+  // `hitSlop`, set to the same reach on the handle.
   return Gesture.Pan()
     .minDistance(0)
+    .hitSlop(TrimHandleHitSlop[edge])
     .onTouchesDown(() => {
       scheduleOnRN(setTrimming, true);
     })
@@ -178,7 +203,10 @@ export type TimelineCutProps = {
  * remains (drag to lengthen or shorten), a plain bar where the window already
  * touches the file's end (drag inward only). The frame's negative horizontal
  * margins give back exactly the handles' width, so the clip keeps the strip
- * position and width the shared layout metrics assign it. Dragging a handle
+ * position and width the shared layout metrics assign it. Each handle takes
+ * touches 30dp further out than its 18dp grip is drawn (`TrimHandleReach`, 48dp
+ * in all), over the neighbouring clip: a tap there takes the handle, and the
+ * neighbour is taken past it or once this clip is let go. Dragging a handle
  * resizes the clip itself on the timeline — the width and the reel's slide
  * follow the finger on the UI thread — instead of opening the whole snap up.
  *
@@ -306,6 +334,7 @@ export function TimelineCut({
             accessibilityRole="adjustable"
             accessibilityLabel="컷 시작 지점"
             accessibilityValue={{ text: formatSeconds(shown.startSec) }}
+            hitSlop={TrimHandleHitSlop.start}
             style={[
               styles.handle,
               { backgroundColor: theme.butter, borderColor: theme.stickerInk },
@@ -403,6 +432,7 @@ export function TimelineCut({
             accessibilityRole="adjustable"
             accessibilityLabel="컷 끝 지점"
             accessibilityValue={{ text: formatSeconds(shown.endSec) }}
+            hitSlop={TrimHandleHitSlop.end}
             style={[
               styles.handle,
               { backgroundColor: theme.butter, borderColor: theme.stickerInk },

@@ -7,7 +7,7 @@ import type { Movie } from '@/entities/movie';
 import { FinishMovieConfirm } from '@/features/finish-movie';
 import type { PostOutcome } from '@/features/post-to-instagram';
 import { RenameMovieForm } from '@/features/rename-movie';
-import { ShareBlockMessages, type InstagramHandoff, type ShareBlock } from '@/features/share-movie';
+import { shareBlockMessage, type InstagramHandoff, type ShareBlock } from '@/features/share-movie';
 import { formatSeconds } from '@/shared/lib/datetime';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { CheckStrip, CheckStripRow } from '@/shared/ui/check-strip';
@@ -193,7 +193,9 @@ export function MovieActionsSheet({
             <ActionRow
               icon="share-social"
               label="공유하기"
-              note={shareBlock === undefined ? undefined : ShareBlockMessages[shareBlock]}
+              // Off with its reason under it — and off without a word while
+              // the file's address is still on its way.
+              note={shareBlockMessage(shareBlock)}
               disabled={shareBlock !== undefined}
               divider
               onPress={act(onShare)}
@@ -258,7 +260,6 @@ export function ActionRow({
   // A destructive line is not red — red is the main action; it is set apart
   // by its own group and by the confirm step it opens instead.
   void danger;
-  const color = theme.text;
 
   return (
     <Pressable
@@ -273,17 +274,30 @@ export function ActionRow({
         { backgroundColor: pressed ? theme.pink : 'transparent', opacity: disabled ? 0.45 : 1 },
       ]}
     >
-      <Ionicons name={icon} size={19} color={color} />
-      <View style={styles.rowText}>
-        <ThemedText selectable={false} style={{ color }}>
-          {label}
-        </ThemedText>
-        {note ? (
-          <ThemedText selectable={false} type="data">
-            {note}
-          </ThemedText>
-        ) : null}
-      </View>
+      {({ pressed }) => {
+        // Pink keeps its value at night, so a pressed row's words take the
+        // dark sticker ink, as on every sticker colour.
+        const color = pressed ? theme.stickerInk : theme.text;
+        return (
+          <>
+            <Ionicons name={icon} size={19} color={color} />
+            <View style={styles.rowText}>
+              <ThemedText selectable={false} style={{ color }}>
+                {label}
+              </ThemedText>
+              {note ? (
+                <ThemedText
+                  selectable={false}
+                  type="data"
+                  style={pressed ? { color: theme.stickerInk } : undefined}
+                >
+                  {note}
+                </ThemedText>
+              ) : null}
+            </View>
+          </>
+        );
+      }}
     </Pressable>
   );
 }

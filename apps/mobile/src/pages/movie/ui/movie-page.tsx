@@ -28,6 +28,7 @@ import { movieHref } from '@/shared/routes';
 import { BackBar } from '@/shared/ui/back-bar';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { KeyButton } from '@/shared/ui/key-button';
+import { NoticeBand } from '@/shared/ui/notice';
 import { PaperPiece, Tape } from '@/shared/ui/paper';
 import { Tag } from '@/shared/ui/tag';
 import { TapeChip } from '@/shared/ui/tape-chip';
@@ -52,6 +53,7 @@ import { GenerationProgress } from './generation-progress';
 import { InstagramPostSheet } from './instagram-post-sheet';
 import { LeftOutNotice } from './left-out-notice';
 import { MovieActionsSheet } from './movie-actions-sheet';
+import { MovieNotices } from './movie-notices';
 import { MovieWatch } from './movie-watch';
 import {
   CutsRefusalMessages,
@@ -396,27 +398,45 @@ export function MoviePage({ movieId }: MoviePageProps) {
         />
       ) : (
         <>
-          {/* Above the stage, because it is about what the stage holds: the
-          snaps that are not in it. Gone once dismissed or once none is left
-          to offer; a job freezes the cut list, so it waits until the run ends. */}
-          {/* A refused run is answered right under the head, where the eye
-          lands coming back from the press — a band of its own above the stage
-          rather than a line over the button (the canvas's 생성 거절 board). */}
-          {refusalMessage && !isGenerating ? (
-            <View style={styles.leftOut}>
-              <RefusalNotice message={refusalMessage} action={refusalAction} />
-            </View>
-          ) : null}
-
-          {canEdit && leftOut.length > 0 ? (
-            <View style={styles.leftOut}>
+          {/* Every standing notice of the studio, under the head, in one
+          region that scrolls once it would take more than its share — so no
+          pile of bands can push the footer off the screen (MovieNotices). */}
+          <MovieNotices>
+            {/* A refused run is answered right under the head, where the eye
+                lands coming back from the press (the canvas's 생성 거절 board).
+                Keyed by what they say: a refusal replaced by another is a new
+                answer, which the region scrolls to. */}
+            {refusalMessage && !isGenerating ? (
+              <RefusalNotice key={refusalMessage} message={refusalMessage} action={refusalAction} />
+            ) : null}
+            {/* A refused cut edit, under a job as well — the footer there holds
+                only 만들기 취소, and the refusal still has to be answered. */}
+            {refusal ? (
+              <RefusalNotice key={refusal} message={CutsRefusalMessages[refusal]} />
+            ) : null}
+            {/* About what the stage holds: the snaps that are not in it. Gone
+                once dismissed or once none is left to offer; a job freezes the
+                cut list, so it waits until the run ends. */}
+            {canEdit && leftOut.length > 0 ? (
               <LeftOutNotice
                 count={leftOut.length}
                 onReAdd={reAddLeftOut}
                 onDismiss={() => clearLeftOut(movie.id)}
               />
-            </View>
-          ) : null}
+            ) : null}
+            {/* An edited finished movie says so: this stage previews the
+                changed composition, but the movie itself — watch mode, 공유 —
+                still plays the render as it was made, and only 다시 만들기
+                closes that gap. The restore is the one-tap way back when the
+                edit was a mis-tap — screen-local undo dies with the visit, this
+                does not. */}
+            {movie.status === 'ready' && editedSinceRender ? (
+              <NoticeBand
+                message="완성한 뒤에 컷 구성이 달라졌어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요."
+                action={{ label: '완성 당시 구성으로 되돌리기', onPress: list.restoreRenderCuts }}
+              />
+            ) : null}
+          </MovieNotices>
 
           {/* The stage: the player on an editable movie, the ring under a job. It
           takes whatever height the timeline below leaves over. */}
@@ -556,12 +576,6 @@ export function MoviePage({ movieId }: MoviePageProps) {
               },
             ]}
           >
-            {/* An edit refused while the footer's own notices are hidden (a job
-            owns the movie) still has to be answered somewhere. */}
-            {isGenerating && refusal ? (
-              <RefusalNotice message={CutsRefusalMessages[refusal]} />
-            ) : null}
-
             {/* The one act a run offers: stopping it. Keyed by the job so a new
             run always opens on the resting button, not a previous run's
             half-answered confirm. */}
@@ -573,9 +587,6 @@ export function MoviePage({ movieId }: MoviePageProps) {
               <GenerateFooter
                 movie={movie}
                 cutCount={cuts.length}
-                cutsRefusal={refusal}
-                editedSinceRender={list.editedSinceRender}
-                onRestoreCuts={list.restoreRenderCuts}
                 sharing={sharing}
                 onStart={runGeneration}
                 // The selected cut's controls take the generate button's slot
@@ -637,8 +648,8 @@ export function MoviePage({ movieId }: MoviePageProps) {
         visible={exitAsking}
         onRemake={() => {
           setExitAsking(false);
-          // A refused start keeps the studio open with the refusal in the
-          // footer — leaving would hide the answer to what was just asked.
+          // A refused start keeps the studio open with the refusal under the
+          // head — leaving would hide the answer to what was just asked.
           void runGeneration();
         }}
         onKeep={closeStudio}
@@ -730,13 +741,6 @@ export function MoviePage({ movieId }: MoviePageProps) {
 }
 
 const styles = StyleSheet.create({
-  leftOut: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.five,
-    paddingBottom: Spacing.two,
-  },
   screen: { flex: 1 },
   centered: {
     alignItems: 'center',
@@ -780,7 +784,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingBottom: Spacing.two,
   },
-  chips: { flexDirection: 'row', gap: Spacing.three, paddingTop: Spacing.two },
+  // Wraps rather than running the 세부 chip off the right edge at large text
+  // on a 360dp phone.
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, paddingTop: Spacing.two },
   footer: {
     width: '100%',
     maxWidth: MaxContentWidth,
