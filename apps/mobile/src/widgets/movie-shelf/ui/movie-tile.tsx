@@ -118,14 +118,21 @@ export function MovieTile({
       <ThemedText type="bodySm" numberOfLines={1} style={styles.title}>
         {movie.title}
       </ThemedText>
-      <ThemedText type="dataSm" numberOfLines={1}>
-        {movie.dateLabel} · 컷 {movie.snapCount}
+      <View style={styles.dataLine}>
+        <ThemedText type="dataSm" numberOfLines={1} style={styles.facts}>
+          {`${movie.dateLabel} · 컷 ${movie.snapCount}`}
+        </ThemedText>
         {movie.expiryCountdown ? (
-          <ThemedText type="dataSm" themeColor="cherryInk" style={styles.title}>
+          // Its own text beside the run that gives way, never the run's tail:
+          // a date older than yesterday carries its year, and in a two-column
+          // cell the ellipsis took the countdown first — for a user with
+          // notifications off the card's only warning (MOV-16 ②). One line
+          // still, so the tile keeps its neighbours' height.
+          <ThemedText type="dataSm" themeColor="cherryInk" style={styles.countdown}>
             {` · ${movie.expiryCountdown}`}
           </ThemedText>
         ) : null}
-      </ThemedText>
+      </View>
       {movie.status === 'failed' ? (
         <MovieFailureNotice
           movieId={movie.id}
@@ -142,6 +149,10 @@ const styles = StyleSheet.create({
   tile: { gap: Spacing.half },
   print: { marginBottom: Spacing.one + Spacing.half },
   title: { fontWeight: 700 },
+  // Both texts take the data step's one leading, so they share a baseline.
+  dataLine: { flexDirection: 'row' },
+  facts: { flexShrink: 1 },
+  countdown: { fontWeight: 700 },
   badge: {
     position: 'absolute',
     top: Spacing.one + Spacing.half,

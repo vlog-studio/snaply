@@ -61,6 +61,19 @@ describe('MovieSelectionBar', () => {
     ).toBeTruthy();
   });
 
+  // While the render's address is on its way nothing is known yet: share
+  // waits, disabled, and the bar prints no reason — neither the false "no
+  // finished movie" nor an empty line that grows the bar.
+  it('waits with no reason line while the movie’s address is on its way', async () => {
+    await render(makeBar({ selectedCount: 1, shareBlock: 'resolving' }).ui);
+
+    expect(screen.getByRole('button', { name: shareLabel })).toBeDisabled();
+    expect(
+      screen.container.queryAll((node) => node.type === 'Text' && node.children.length === 0),
+    ).toHaveLength(0);
+    expect(screen.queryByText(/아직 완성된 무비가 없어서/)).toBeNull();
+  });
+
   it('deletes and clears the selection through its own buttons', async () => {
     const { handlers, ui } = makeBar({ selectedCount: 3 });
     await render(ui);

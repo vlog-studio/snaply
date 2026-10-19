@@ -1,11 +1,11 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import type { ConfidenceKind, FilledSlot } from '@/features/fill-template';
 import { formatSeconds, formatTimestamp } from '@/shared/lib/datetime';
 import { DoodleIcon } from '@/shared/ui/doodle-icon';
 import { tiltFor } from '@/shared/ui/paper';
 import { TextButton } from '@/shared/ui/text-button';
-import { Shadows, Spacing, useTheme } from '@/shared/ui/theme';
+import { MaxContentWidth, Shadows, Sizes, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { VideoFrame } from '@/shared/ui/video-frame';
 
@@ -29,10 +29,42 @@ export type SlotRowProps = {
  */
 const FrameSize = 64;
 
-/** Icon buttons sit below the 44dp minimum, so every one of them carries hitSlop. */
-const ControlSize = 28;
-const ControlHitSlop = 10;
+/**
+ * Each move and drop control is a whole 48dp target (decision 4), side by side
+ * as on the canvas (TemplateDetail `td-ctrl`), so no target reaches into its
+ * neighbour's. They were 28dp with a 10dp hitSlop, the arrows stacked 2dp apart:
+ * the slops overlapped, the later sibling took the overlap, and 위로 was left
+ * about 32×30dp. A slop also stops at its parent's edge on Android, so the size
+ * is the view's own rather than a slop's.
+ */
+const ControlSize = Sizes.touchMin;
+const ControlCount = 3;
 const IconSize = 18;
+
+/**
+ * What the template screen leaves a row across: its gutters and the receipt's
+ * own padding (`movie-template-page.tsx` `content` and `slots`).
+ */
+const RowInset = 2 * Spacing.five + 2 * Spacing.two;
+
+/**
+ * The least the slot's words need beside the controls at the normal text size:
+ * the name and its percentage on one line (`돌아오는 길` · `52%`). The capture
+ * time under them may wrap to a second line, which still fits beside the frame.
+ */
+const MinTextWidth = 120;
+
+/**
+ * Whether a filled row's controls take a line of their own under its words
+ * rather than sitting beside them. Three 48dp targets take 144dp of the row; on
+ * a narrow phone, or as the text grows, that would squeeze the slot's name to a
+ * glyph or two, so there they move under the words instead of shrinking.
+ */
+export function controlsBelowText({ width, fontScale }: { width: number; fontScale: number }) {
+  const rowWidth = Math.min(width, MaxContentWidth) - RowInset;
+  const textWidth = rowWidth - FrameSize - 2 * Spacing.two - ControlSize * ControlCount;
+  return textWidth < MinTextWidth * fontScale;
+}
 
 /**
  * One scene of the template: what to shoot, what the match put there, and the
@@ -61,7 +93,37 @@ export function SlotRow({
   onMove,
 }: SlotRowProps) {
   const theme = useTheme();
+  const below = controlsBelowText(useWindowDimensions());
   const { slot, snap, confidence, canMoveUp, canMoveDown } = filled;
+
+  // Order first, then removal — the two things done to a row that already has
+  // a snap. An empty row has nothing to move or clear, so it gets neither.
+  const controls = snap ? (
+    <View style={[styles.controls, below && styles.controlsBelow]}>
+      <MoveButton
+        label={`${slot.label} 위로`}
+        icon="chevronUp"
+        enabled={canMoveUp}
+        onPress={() => onMove(index, -1)}
+      />
+      <MoveButton
+        label={`${slot.label} 아래로`}
+        icon="chevronDown"
+        enabled={canMoveDown}
+        onPress={() => onMove(index, 1)}
+      />
+      {confidence !== undefined ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${slot.label} 컷 빼기`}
+          onPress={() => onDrop(slot.id)}
+          style={styles.control}
+        >
+          <DoodleIcon color={theme.textSecondary} name="close" size={IconSize} />
+        </Pressable>
+      ) : null}
+    </View>
+  ) : null;
 
   return (
     <View style={[styles.row, { borderBottomColor: theme.ruleLine }]}>
@@ -106,15 +168,18 @@ export function SlotRow({
           ) : null}
         </View>
 
-        <ThemedText
-          type={snap ? 'dataSm' : 'small'}
-          themeColor={snap ? undefined : 'textSecondary'}
-          numberOfLines={1}
-        >
-          {snap
-            ? `${formatTimestamp(snap.capturedAt)} · ${formatSeconds(snap.durationSec)}`
-            : slot.hint}
-        </ThemedText>
+        {snap ? (
+          // Free to wrap: beside the controls the capture time can outrun the
+          // line, and a cut-off length is a lost fact. Two lines still fit
+          // beside the frame.
+          <ThemedText type="dataSm">
+            {`${formatTimestamp(snap.capturedAt)} · ${formatSeconds(snap.durationSec)}`}
+          </ThemedText>
+        ) : (
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {slot.hint}
+          </ThemedText>
+        )}
 
         {snap === undefined || confidence === undefined ? (
           <View style={styles.actions}>
@@ -145,40 +210,11 @@ export function SlotRow({
             )}
           </View>
         ) : null}
+
+        {below ? controls : null}
       </View>
 
-      {/* Order first, then removal — the two things done to a row that already has
-          a snap. An empty row has nothing to move or clear, so it gets neither. */}
-      {snap ? (
-        <View style={styles.controls}>
-          <View style={styles.arrows}>
-            <MoveButton
-              label={`${slot.label} 위로`}
-              icon="chevronUp"
-              enabled={canMoveUp}
-              onPress={() => onMove(index, -1)}
-            />
-            <MoveButton
-              label={`${slot.label} 아래로`}
-              icon="chevronDown"
-              enabled={canMoveDown}
-              onPress={() => onMove(index, 1)}
-            />
-          </View>
-
-          {confidence !== undefined ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${slot.label} 컷 빼기`}
-              hitSlop={ControlHitSlop}
-              onPress={() => onDrop(slot.id)}
-              style={styles.control}
-            >
-              <DoodleIcon color={theme.textSecondary} name="close" size={IconSize} />
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
+      {below ? null : controls}
     </View>
   );
 }
@@ -200,7 +236,7 @@ type MoveButtonProps = {
   onPress: () => void;
 };
 
-/** Kept drawn but dimmed when it cannot fire, so the control column never reflows. */
+/** Kept drawn but dimmed when it cannot fire, so the controls never reflow. */
 function MoveButton({ label, icon, enabled, onPress }: MoveButtonProps) {
   const theme = useTheme();
 
@@ -210,7 +246,6 @@ function MoveButton({ label, icon, enabled, onPress }: MoveButtonProps) {
       accessibilityLabel={label}
       accessibilityState={{ disabled: !enabled }}
       disabled={!enabled}
-      hitSlop={ControlHitSlop}
       onPress={onPress}
       style={[styles.control, { opacity: enabled ? 1 : 0.3 }]}
     >
@@ -256,8 +291,10 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   actions: { flexDirection: 'row', gap: Spacing.one, marginLeft: -Spacing.two },
-  controls: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  arrows: { gap: Spacing.half },
+  // Abutting, as on the canvas: the 48dp targets are the spacing.
+  controls: { flexDirection: 'row', alignItems: 'center' },
+  // Under the words they keep the row's end, where they sit beside them.
+  controlsBelow: { alignSelf: 'flex-end' },
   control: {
     width: ControlSize,
     height: ControlSize,

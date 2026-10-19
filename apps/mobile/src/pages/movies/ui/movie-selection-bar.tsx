@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ShareBlockMessages, type ShareBlock } from '@/features/share-movie';
+import { shareBlockMessage, type ShareBlock } from '@/features/share-movie';
 import { PunchedHoles } from '@/shared/ui/paper';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { MaxContentWidth, Sizes, Spacing, useTheme } from '@/shared/ui/theme';
@@ -21,6 +21,12 @@ export type MovieSelectionBarProps = {
   onShare: () => void;
   onDelete: () => void;
   onClear: () => void;
+  /**
+   * Reports the bar's laid-out height. It stands over the grid, so the grid
+   * leaves that much room at its foot — and the height moves with the share
+   * reason, the system navigation inset and the text size.
+   */
+  onHeight?: (height: number) => void;
 };
 
 /**
@@ -47,13 +53,18 @@ export function MovieSelectionBar({
   onShare,
   onDelete,
   onClear,
+  onHeight,
 }: MovieSelectionBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const single = selectedCount === 1;
+  // A block with nothing to say — the address still on its way — prints no
+  // line at all: 공유 just waits, disabled.
+  const shareReason = single ? shareBlockMessage(shareBlock) : undefined;
 
   return (
     <View
+      onLayout={(event) => onHeight?.(event.nativeEvent.layout.height)}
       style={[
         styles.bar,
         {
@@ -83,9 +94,9 @@ export function MovieSelectionBar({
         </Pressable>
       </View>
 
-      {single && shareBlock !== undefined ? (
+      {shareReason ? (
         <ThemedText type="small" themeColor="textSecondary">
-          {ShareBlockMessages[shareBlock]}
+          {shareReason}
         </ThemedText>
       ) : null}
 
