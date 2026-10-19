@@ -96,7 +96,9 @@ export function SnapDayGrid({
                 {day.label}
               </ThemedText>
             </View>
-            <ThemedText type="data">
+            {/* With no room beside the day (large system text on a narrow
+                phone) the count moves under it rather than off the screen. */}
+            <ThemedText type="data" style={styles.dayFacts}>
               {day.snaps.length}개 · {formatDuration(totalSecOf(day.snaps))}
             </ThemedText>
           </View>
@@ -133,10 +135,12 @@ const styles = StyleSheet.create({
   dayHead: {
     minHeight: 28,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.two,
   },
+  dayFacts: { marginLeft: 'auto' },
   dayLabel: {
     paddingHorizontal: Spacing.three,
     paddingVertical: 2,

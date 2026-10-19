@@ -84,7 +84,14 @@ export function MovieTile({
         tilt={tiltFor(movie.id, 2)}
         style={[styles.print, selected && { borderColor: theme.primary, borderWidth: 2 }]}
         footer={
-          <ThemedText selectable={false} type="dataSm" style={{ color: theme.text }}>
+          <ThemedText
+            selectable={false}
+            type="dataSm"
+            // The print's foot is a fixed strip of the picture: past 1.25× the
+            // length's line is taller than it and was cut at the bottom.
+            maxFontSizeMultiplier={1.25}
+            style={{ color: theme.text }}
+          >
             {formatSeconds(movie.totalSec)}
           </ThemedText>
         }

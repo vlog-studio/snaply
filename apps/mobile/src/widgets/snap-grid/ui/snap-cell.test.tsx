@@ -126,4 +126,20 @@ describe('SnapCell', () => {
 
     expect(screen.getByText('2').props.maxFontSizeMultiplier).toBe(1.3);
   });
+
+  // The print's foot is a 20dp strip: past 1.25x the length was cut at its bottom.
+  it("caps the length inside the print's foot", async () => {
+    await render(
+      <SnapCell
+        snap={snap}
+        width={120}
+        selecting={false}
+        isHeld={false}
+        onPress={jest.fn()}
+        onLongPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/\uCD08$/)).toHaveProp('maxFontSizeMultiplier', 1.25); // …초
+  });
 });

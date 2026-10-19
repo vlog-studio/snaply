@@ -313,4 +313,15 @@ describe('MePage', () => {
       expect(count).toHaveProp('maxFontSizeMultiplier', 1.3);
     }
   });
+
+  // Clamped to one line beside its title, a read-out was cut mid-word with no
+  // ellipsis at large system text on a narrow phone (자동 저). It wraps to its
+  // own line instead, so no line of it is ever dropped.
+  it('never clamps a read-out to one line', async () => {
+    await renderPage();
+
+    expect(screen.getByText('\uC790\uB3D9 \uC800\uC7A5 \uAEBC\uC9D0')).not.toHaveProp(
+      'numberOfLines',
+    ); // 자동 저장 꺼짐
+  });
 });
