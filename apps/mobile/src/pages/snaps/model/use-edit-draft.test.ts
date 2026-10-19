@@ -2,7 +2,12 @@ import { act, renderHook } from '@testing-library/react-native';
 
 import type { Movie } from '@/entities/movie';
 
-import { draftConfirmation, useEditDraft, type EditDraftState } from './use-edit-draft';
+import {
+  draftConfirmation,
+  draftConfirmTone,
+  useEditDraft,
+  type EditDraftState,
+} from './use-edit-draft';
 
 const mockStartMovieFromDraft = jest.fn();
 
@@ -136,6 +141,27 @@ describe('draftConfirmation when the server has none of the picks', () => {
   it('lets the new picks be tried once they change', () => {
     const state: EditDraftState = { kind: 'failed', refused: 'unavailable', picks };
     expect(draftConfirmation(state, ['s3'], Limit)).toMatchObject({ disabled: false });
+  });
+});
+
+describe('draftConfirmTone', () => {
+  const picks = ['s1', 's2'];
+
+  it('draws the agent\u2019s lavender ticket while confirming asks for the draft', () => {
+    expect(draftConfirmTone(draftConfirmation({ kind: 'idle' }, picks, Limit))).toBe('ai');
+  });
+
+  // The fallback is the hand-made movie, which spends no credits; drawn on the
+  // AI ticket it looked like the edit it no longer is.
+  it.each<[string, EditDraftState]>([
+    ['today\u2019s drafts are used up', { kind: 'failed', refused: 'limit', picks }],
+    ['the balance cannot pay', { kind: 'failed', refused: 'credits', picks }],
+  ])('draws the cherry ticket once %s', (_label, state) => {
+    expect(draftConfirmTone(draftConfirmation(state, picks, Limit))).toBe('primary');
+  });
+
+  it('draws the cherry ticket for any other picking', () => {
+    expect(draftConfirmTone(undefined)).toBe('primary');
   });
 });
 

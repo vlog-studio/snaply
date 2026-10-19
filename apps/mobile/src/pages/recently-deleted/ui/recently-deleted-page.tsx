@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { requestSnapReconcile } from '@/features/reconcile-snaps';
@@ -27,6 +27,16 @@ import { daysLeftLabel } from '../lib/days-left';
  *
  * Reached from the end of the Snap tab. It says nothing about how the trash
  * works: each row's countdown is the state, and the empty screen is one line.
+ *
+ * The list is virtualized, as it was before the paper redraw: a bulk clean-up
+ * can leave up to 200 snaps here (the server's cap), each with a remote cover
+ * and a ticket, and mounting them all at once is what the list is there to
+ * avoid. A virtualized list has no single view as tall as its content for one
+ * paper to wrap, so the receipt is drawn a line at a time (`ReceiptLine`), its
+ * torn foot the list's footer. (The redraw's first receipt was one paper round
+ * every row, drawn as an Svg — on Android a bitmap as tall as the list.) For
+ * the same reason the ruled page sits behind the list at the screen's own size,
+ * as on the movie picker.
  */
 export function RecentlyDeletedPage() {
   const theme = useTheme();
@@ -36,6 +46,7 @@ export function RecentlyDeletedPage() {
   const [notice, setNotice] = useState<string>();
   // Read once per visit: the countdown is in days, and a render-time clock is impure.
   const [now] = useState(Date.now);
+  const rows = snaps ?? [];
 
   const restore = async (videoId: string) => {
     const outcome = await restoreSnaps([videoId]);
@@ -69,33 +80,33 @@ export function RecentlyDeletedPage() {
 
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
-      <ScrollView
+      <PaperGround kind="ruled" />
+      <FlatList
+        data={rows}
+        keyExtractor={(snap) => snap.videoId}
+        extraData={restoringIds}
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[styles.content, { paddingBottom: Spacing.eight + insets.bottom }]}
-      >
-        <PaperGround kind="ruled" />
-        {snaps && snaps.length > 0 ? (
-          // The trash as one receipt, a line per snap, taped to the page.
-          <View>
-            <Tape color="tapeSky" tilt={-8} style={styles.receiptTape} />
-            <PaperPiece edge="tornBottom" tilt={-0.4} style={styles.receipt}>
-              {snaps.map((snap, index) => (
-                <TrashedSnapRow
-                  key={snap.videoId}
-                  snap={snap}
-                  now={now}
-                  last={index === snaps.length - 1}
-                  restoring={restoringIds.has(snap.videoId)}
-                  disabled={restoringIds.size > 0}
-                  onRestore={() => void restore(snap.videoId)}
-                />
-              ))}
-            </PaperPiece>
-          </View>
-        ) : (
-          empty
+        ListEmptyComponent={empty}
+        // The receipt's torn foot, under its last line.
+        ListFooterComponent={
+          rows.length > 0 ? (
+            <PaperPiece edge="tornBottom" tilt={ReceiptTilt} style={styles.receiptFoot} />
+          ) : null
+        }
+        renderItem={({ item, index }) => (
+          <ReceiptLine first={index === 0}>
+            <TrashedSnapRow
+              snap={item}
+              now={now}
+              last={index === rows.length - 1}
+              restoring={restoringIds.has(item.videoId)}
+              disabled={restoringIds.size > 0}
+              onRestore={() => void restore(item.videoId)}
+            />
+          </ReceiptLine>
         )}
-      </ScrollView>
+      />
       <Toast
         message={notice ?? errorMessage}
         onDismiss={() => {
@@ -104,6 +115,39 @@ export function RecentlyDeletedPage() {
         }}
         bottomOffset={insets.bottom + Spacing.three}
       />
+    </View>
+  );
+}
+
+/** The receipt's lean; every piece of it takes the same one. */
+const ReceiptTilt = -0.4;
+
+/**
+ * One line's piece of the receipt, taped to the page at the first. Each piece
+ * leans on its own centre: the lines lean as the receipt does, and its long
+ * edges stay where they are down the list instead of drifting a little further
+ * across with every line (under a dp of step where two pieces meet). A piece's
+ * shadow under its foot lies beneath the next piece, so the pieces read as one
+ * paper with one shadow down its right edge.
+ */
+function ReceiptLine({ first, children }: { first: boolean; children: ReactNode }) {
+  const theme = useTheme();
+  return (
+    <View>
+      <View
+        style={[
+          styles.receiptLine,
+          first && styles.receiptHead,
+          {
+            backgroundColor: theme.backgroundElement,
+            boxShadow: Shadows.paper(theme.shadowInk),
+            transform: [{ rotate: `${ReceiptTilt}deg` }],
+          },
+        ]}
+      >
+        {children}
+      </View>
+      {first ? <Tape color="tapeSky" tilt={-8} style={styles.receiptTape} /> : null}
     </View>
   );
 }
@@ -167,7 +211,10 @@ function TrashedSnapRow({
         ) : null}
       </View>
       <View style={styles.meta}>
-        <ThemedText type="bodySm" numberOfLines={1} style={styles.time}>
+        {/* The capture time is what tells one line from the next (every
+            ticket reads the same), so on a narrow phone it wraps rather than
+            losing its minutes to an ellipsis. */}
+        <ThemedText type="bodySm" style={styles.time}>
           {formatDateTime(snap.capturedAt)}
         </ThemedText>
         <ThemedText type="data">
@@ -190,7 +237,6 @@ function TrashedSnapRow({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: {
-    flexGrow: 1,
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
@@ -198,11 +244,10 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
   },
   receiptTape: { position: 'absolute', top: -6, left: Spacing.two, zIndex: 2 },
-  receipt: {
-    paddingHorizontal: Spacing.three + Spacing.half,
-    paddingTop: Spacing.one,
-    paddingBottom: Spacing.five,
-  },
+  receiptLine: { paddingHorizontal: Spacing.three + Spacing.half },
+  receiptHead: { paddingTop: Spacing.one },
+  // The room under the last line, the tear included.
+  receiptFoot: { height: Spacing.five },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

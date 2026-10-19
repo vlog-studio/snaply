@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { TrashedSnap } from '@/features/restore-snap';
 import { requestSnapReconcile } from '@/features/reconcile-snaps';
+import { formatDateTime } from '@/shared/lib/datetime';
 
 import { RecentlyDeletedPage } from './recently-deleted-page';
 
@@ -40,6 +41,8 @@ jest.mock('@/features/restore-snap/api/restore-server-snap', () => ({
 }));
 
 const DayMs = 24 * 60 * 60 * 1000;
+
+const restoreName = / \uC2A4\uB0C5 \uB418\uC0B4\uB9AC\uAE30$/; // … 스냅 되살리기
 
 function trashed(videoId: string): TrashedSnap {
   const now = Date.now();
@@ -88,14 +91,35 @@ describe('RecentlyDeletedPage', () => {
     expect(await screen.findByText('3\uCD08 \u00B7 5\uC77C \uB0A8\uC74C')).toBeTruthy(); // 3초 · 5일 남음
   });
 
+  // The server lists up to 200, each with a remote cover and a ticket. The list
+  // was virtualized before the paper redraw, which drew every row at once.
+  it('draws a long list a screenful at a time', async () => {
+    mockList.mockResolvedValue(Array.from({ length: 200 }, (_, index) => trashed(`v${index}`)));
+    await renderPage();
+
+    const tickets = await screen.findAllByRole('button', { name: restoreName });
+    expect(tickets.length).toBeGreaterThan(0);
+    expect(tickets.length).toBeLessThan(200);
+  });
+
+  // The capture time is what tells the lines apart; held to one line it lost
+  // its minutes (`10월 16일 오…`) beside the ticket on a 360–390dp phone.
+  it('lets the capture time wrap rather than cutting it short', async () => {
+    const snap = trashed('v1');
+    mockList.mockResolvedValue([snap]);
+    await renderPage();
+
+    expect(await screen.findByText(formatDateTime(snap.capturedAt))).not.toHaveProp(
+      'numberOfLines',
+    );
+  });
+
   it('brings a snap back, asks the library to pick it up, and says so', async () => {
     mockList.mockResolvedValueOnce([trashed('v1')]).mockResolvedValue([]);
     mockRestore.mockResolvedValue();
     await renderPage();
 
-    fireEvent.press(
-      await screen.findByRole('button', { name: / \uC2A4\uB0C5 \uB418\uC0B4\uB9AC\uAE30$/ }),
-    );
+    fireEvent.press(await screen.findByRole('button', { name: restoreName }));
 
     await waitFor(() => expect(mockRestore).toHaveBeenCalledWith('v1'));
     await waitFor(() => expect(requestSnapReconcile).toHaveBeenCalledTimes(1));
