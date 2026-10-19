@@ -535,8 +535,12 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
             would shift the grid they are picking from. */}
         {notice && !selecting ? <NoticeBand message={notice} /> : null}
 
+        {/* A standing state of the library: not announced as it mounts — the
+            tab mounts at launch behind the studio — but a new count is still
+            read (the card's live region). */}
         {failedUploadCount > 0 ? (
           <AlertCard
+            announce={false}
             message={`스냅 ${failedUploadCount}개를 올리지 못했어요.`}
             action={{ label: '다시 올리기', onPress: retryFailedUploads }}
           />
