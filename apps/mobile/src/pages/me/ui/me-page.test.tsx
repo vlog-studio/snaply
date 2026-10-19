@@ -323,5 +323,9 @@ describe('MePage', () => {
     expect(screen.getByText('\uC790\uB3D9 \uC800\uC7A5 \uAEBC\uC9D0')).not.toHaveProp(
       'numberOfLines',
     ); // 자동 저장 꺼짐
+    // Wrapped past its own line, it stays at the right edge (Android spans the box).
+    expect(screen.getByText('\uC790\uB3D9 \uC800\uC7A5 \uAEBC\uC9D0')).toHaveStyle({
+      textAlign: 'right',
+    });
   });
 });
