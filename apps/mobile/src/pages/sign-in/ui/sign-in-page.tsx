@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmailSignInForm, SocialLoginList } from '@/features/sign-in';
+import { legalDocumentUrls, openLegalDocument } from '@/shared/config/legal';
 import { DottedRule, PaperGround, PaperPiece, Tape } from '@/shared/ui/paper';
 import { MaxContentWidth, Shadows, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -94,12 +95,54 @@ export function SignInPage() {
             </View>
           </View>
 
-          <ThemedText type="small" themeColor="textSecondary" style={styles.disclaimer}>
-            계속하면 서비스 이용약관과 개인정보 처리방침에 동의하게 돼요.
-          </ThemedText>
+          <FinePrint />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+/**
+ * The disclaimer, whose two documents are links that open them (spec ACC-12):
+ * agreeing by continuing holds only if the text agreed to is one tap away.
+ *
+ * The links stay words in the sentence, underlined in dots like the quiet link
+ * above (Android draws the dots solid). They are smaller than the 48dp target
+ * because a button would break the sentence — the inline exception of WCAG
+ * 2.5.8 — and the 나 tab offers both documents as full rows. The sentence is
+ * not selectable: a selectable text on Android can swallow a press on a span.
+ */
+function FinePrint() {
+  const legal = legalDocumentUrls();
+
+  return (
+    <ThemedText
+      selectable={false}
+      type="small"
+      themeColor="textSecondary"
+      style={styles.disclaimer}
+    >
+      계속하면 <DocumentLink label="서비스 이용약관" url={legal?.terms} />과{' '}
+      <DocumentLink label="개인정보 처리방침" url={legal?.privacy} />에 동의하게 돼요.
+    </ThemedText>
+  );
+}
+
+/** A document's name in the fine print: a link whenever there is a page to open. */
+function DocumentLink({ label, url }: { label: string; url: string | undefined }) {
+  if (!url) return label;
+
+  return (
+    <ThemedText
+      selectable={false}
+      type="small"
+      themeColor="textSecondary"
+      accessibilityRole="link"
+      onPress={() => openLegalDocument(url)}
+      style={styles.dotted}
+    >
+      {label}
+    </ThemedText>
   );
 }
 

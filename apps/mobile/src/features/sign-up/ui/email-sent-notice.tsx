@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AlertCard } from '@/shared/ui/notice';
+import { TextButton } from '@/shared/ui/text-button';
 import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -23,19 +25,15 @@ export function EmailSentNotice({ email, onResend, isPending, error }: Props) {
       <ThemedText themeColor="textSecondary">
         {`${email} 주소로 인증 링크를 보냈어요. 이 기기에서 메일의 링크를 누르면 인증이 끝나고 바로 로그인돼요.`}
       </ThemedText>
-      {error ? (
-        <ThemedText type="small" themeColor="danger">
-          {error}
-        </ThemedText>
-      ) : null}
-      <Pressable
-        accessibilityRole="button"
+      {error ? <AlertCard message={error} /> : null}
+      {/* The one thing to do here, as the app's text button: the
+          highlighter says it acts, and its slop reaches the 48dp target. */}
+      <TextButton
+        label="인증 메일 다시 보내기"
         disabled={isPending}
         onPress={onResend}
         style={styles.resend}
-      >
-        <ThemedText type="linkPrimary">인증 메일 다시 보내기</ThemedText>
-      </Pressable>
+      />
     </View>
   );
 }

@@ -22,7 +22,7 @@ describe('MeAlbumPage', () => {
   it('turns the automatic copy on from its switch', async () => {
     await render(<MeAlbumPage />);
 
-    fireEvent(screen.getByLabelText(switchLabel), 'valueChange', true);
+    await fireEvent.press(screen.getByRole('switch', { name: switchLabel }));
 
     expect(mockSetEnabled).toHaveBeenCalledWith(true);
     expect(screen.queryByRole('button', { name: openSettings })).toBeNull();

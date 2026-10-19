@@ -1,5 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { AlertCard } from '@/shared/ui/notice';
+import { TextButton } from '@/shared/ui/text-button';
 import { Spacing } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 
@@ -19,19 +21,15 @@ export function ResetEmailSentNotice({ email, onResend, isPending, error }: Prop
       <ThemedText themeColor="textSecondary">
         {`${email} 주소로 비밀번호 재설정 링크를 보냈어요. 이 기기에서 메일의 링크를 누르면 새 비밀번호를 설정할 수 있어요.`}
       </ThemedText>
-      {error ? (
-        <ThemedText type="small" themeColor="danger">
-          {error}
-        </ThemedText>
-      ) : null}
-      <Pressable
-        accessibilityRole="button"
+      {error ? <AlertCard message={error} /> : null}
+      {/* The one thing to do here, as the app's text button: the
+          highlighter says it acts, and its slop reaches the 48dp target. */}
+      <TextButton
+        label="재설정 메일 다시 보내기"
         disabled={isPending}
         onPress={onResend}
         style={styles.resend}
-      >
-        <ThemedText type="linkPrimary">재설정 메일 다시 보내기</ThemedText>
-      </Pressable>
+      />
     </View>
   );
 }

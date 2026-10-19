@@ -18,6 +18,7 @@ import {
 import { EditNicknameSheet, useNickname } from '@/features/edit-nickname';
 import { useNotificationPreferences } from '@/features/notification-settings';
 import { useAlbumAutoSaveEnabled } from '@/features/save-snap-to-album';
+import { legalDocumentUrls, openLegalDocument } from '@/shared/config/legal';
 import {
   MaxContentWidth,
   Sizes,
@@ -34,7 +35,7 @@ import { RansomTitle } from '@/shared/ui/ransom-title';
 import { ThemedText } from '@/shared/ui/themed-text';
 
 import { recordedDayCount, weekRecord } from '../model/week-record';
-import { RowChevron, RowDivider, SettingRow, SettingsSection } from './rows';
+import { RowDivider, SettingRow, SettingsSection } from './rows';
 import { WeekRing } from './week-ring';
 
 const appVersion = Constants.expoConfig?.version;
@@ -83,6 +84,7 @@ export function MePage() {
   // Blank until both the choice and the topic names have arrived (spec ACC-5).
   const interests = interestReadOut(useChosenInterests(), useInterestTopics().topics);
   const albumAutoSave = useAlbumAutoSaveEnabled();
+  const legal = legalDocumentUrls();
   const themeMode = useThemeMode();
   const creditBalance = useQuery(creditQueries.balance());
   const analysisConsent = useAnalysisConsent();
@@ -127,7 +129,8 @@ export function MePage() {
       <RansomTitle word="나" />
 
       <View style={styles.hero}>
-        <WeekRing days={days} initial={(name ?? '?').charAt(0)} size={148} />
+        {/* By code point, not UTF-16 unit, so an emoji opening a name stays whole. */}
+        <WeekRing days={days} initial={Array.from(name ?? '?')[0] ?? '?'} size={148} />
         <View style={styles.heroCopy}>
           {/* The name is the way to change it (ACC-5): a tap opens the sheet. */}
           <Pressable
@@ -165,7 +168,7 @@ export function MePage() {
               : undefined
           }
           subLines={1}
-          right={<RowChevron />}
+          chevron
           onPress={() => router.push('/settings/credits')}
         />
         <RowDivider />
@@ -174,7 +177,7 @@ export function MePage() {
           title="알림"
           sub={alertSummary}
           subLines={1}
-          right={<RowChevron />}
+          chevron
           onPress={() => router.push('/settings/notifications')}
         />
         <RowDivider />
@@ -183,7 +186,7 @@ export function MePage() {
           title="화면 테마"
           sub={themeModeLabels[themeMode]}
           subLines={1}
-          right={<RowChevron />}
+          chevron
           onPress={() => router.push('/settings/theme')}
         />
         <RowDivider />
@@ -192,7 +195,7 @@ export function MePage() {
           title="스냅 분석"
           sub={analysisReadOut}
           subLines={1}
-          right={analysisReachable ? <RowChevron /> : undefined}
+          chevron={analysisReachable}
           onPress={analysisReachable ? () => router.push('/settings/analysis') : undefined}
         />
         <RowDivider />
@@ -203,7 +206,7 @@ export function MePage() {
           title="앨범 저장"
           sub={albumAutoSave ? '자동 저장 켜짐' : '자동 저장 꺼짐'}
           subLines={1}
-          right={<RowChevron />}
+          chevron
           onPress={() => router.push('/settings/album')}
         />
         <RowDivider />
@@ -214,7 +217,7 @@ export function MePage() {
           title="관심사"
           sub={interests}
           subLines={1}
-          right={<RowChevron />}
+          chevron
           onPress={() => router.push('/settings/interests')}
         />
         <RowDivider />
@@ -226,10 +229,31 @@ export function MePage() {
           title="소셜 연결"
           sub={socialReadOut}
           subLines={1}
-          right={<RowChevron />}
+          chevron
           onPress={() => router.push('/settings/social')}
         />
       </SettingsSection>
+
+      {/* The terms and the privacy policy the sign-in sentence agreed to,
+          one tap away after signing in too (spec ACC-12) — offered only when
+          there is an API origin to serve them. */}
+      {legal ? (
+        <PaperPiece tilt={-0.3} style={styles.account}>
+          <SettingRow
+            title="이용약관"
+            chevron
+            accessibilityRole="link"
+            onPress={() => openLegalDocument(legal.terms)}
+          />
+          <RowDivider />
+          <SettingRow
+            title="개인정보 처리방침"
+            chevron
+            accessibilityRole="link"
+            onPress={() => openLegalDocument(legal.privacy)}
+          />
+        </PaperPiece>
+      ) : null}
 
       {/* The account's own acts on a plain slip of their own — 계정 삭제 in
           bold ink, not red: red is the main action. */}
@@ -238,7 +262,8 @@ export function MePage() {
         <RowDivider />
         <SettingRow
           title="계정 삭제"
-          right={<RowChevron />}
+          emphasized
+          chevron
           onPress={() => router.push('/settings/delete-account')}
         />
       </PaperPiece>
@@ -267,7 +292,13 @@ function Stat({ label, value, tilt }: { label: string; value: number; tilt: numb
           { backgroundColor: theme.primary, transform: [{ rotate: `${tilt}deg` }] },
         ]}
       >
-        <ThemedText type="dataSm" style={[styles.priceText, { color: theme.onPrimary }]}>
+        {/* The disc is a fixed 26dp; past 1.3× the digits would spill over its
+            edge. The word beside it grows with the system text size. */}
+        <ThemedText
+          type="dataSm"
+          maxFontSizeMultiplier={1.3}
+          style={[styles.priceText, { color: theme.onPrimary }]}
+        >
           {value}
         </ThemedText>
       </View>
@@ -298,7 +329,15 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   name: { flexShrink: 1, fontSize: 24, lineHeight: 32, fontWeight: 700 },
-  stats: { flexDirection: 'row', gap: Spacing.three + Spacing.half, paddingTop: Spacing.one },
+  // 무비 drops under 스냅 when the two do not fit beside the ring (large text
+  // on a 360dp phone, or a count of three digits).
+  stats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: Spacing.three + Spacing.half,
+    rowGap: Spacing.one,
+    paddingTop: Spacing.one,
+  },
   stat: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half },
   price: {
     minWidth: 26,

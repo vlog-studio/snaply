@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import * as WebBrowser from 'expo-web-browser';
 
 import { MePage } from './me-page';
 
@@ -14,6 +15,19 @@ jest.mock('expo-router', () => ({
 // no provider for.
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+// The legal documents are pages on the API origin (spec ACC-12); a dev build
+// without one offers no link.
+let mockApiBaseUrl = 'https://api.example.test';
+// A getter, so a test can change it after the module has been read.
+jest.mock('@/shared/config/api', () => ({
+  get API_BASE_URL() {
+    return mockApiBaseUrl;
+  },
+}));
+jest.mock('expo-web-browser', () => ({
+  openBrowserAsync: jest.fn(() => Promise.resolve({ type: 'opened' })),
 }));
 
 // The theme-mode store persists through SecureStore.
@@ -116,6 +130,7 @@ describe('MePage', () => {
     // Reset here rather than at the end of a test, so a failed assertion
     // cannot leave a nickname for the tests after it.
     mockNickname = null;
+    mockApiBaseUrl = 'https://api.example.test';
     mockInstagram = { isLoaded: true, isError: false };
     mockAnalysisConsent.mockReturnValue({
       available: true,
@@ -147,7 +162,7 @@ describe('MePage', () => {
     await renderPage();
 
     expect(screen.getByText('카페 · 여행')).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('button', { name: interestsTitle }));
+    await fireEvent.press(screen.getByRole('button', { name: `${interestsTitle}, 카페 · 여행` }));
 
     expect(mockPush).toHaveBeenCalledWith('/settings/interests');
   });
@@ -162,7 +177,9 @@ describe('MePage', () => {
     await renderPage();
 
     expect(screen.getByText('Instagram @snaply')).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: socialTitle }));
+    await fireEvent.press(
+      screen.getByRole('button', { name: `${socialTitle}, Instagram @snaply` }),
+    );
     expect(mockPush).toHaveBeenCalledWith('/settings/social');
   });
 
@@ -185,10 +202,13 @@ describe('MePage', () => {
     expect(screen.getByText('연결된 계정 없음')).toBeTruthy();
   });
 
-  it('keeps the rows that have a screen behind them as buttons', async () => {
+  // The read-out is the state the root exists to show, so a screen reader
+  // hears it with the row's name, not the name alone.
+  it('reads each row with its read-out and keeps it a button', async () => {
     await renderPage();
 
-    expect(screen.getByRole('button', { name: notificationsTitle })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '크레딧, 400 크레딧' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: `${notificationsTitle}, 무비 완성` })).toBeTruthy();
     expect(mockPush).not.toHaveBeenCalled();
   });
 
@@ -199,7 +219,7 @@ describe('MePage', () => {
     await renderPage();
 
     expect(screen.getByText('\uC790\uB3D9 \uC800\uC7A5 \uCF1C\uC9D0')).toBeTruthy(); // 자동 저장 켜짐
-    await fireEvent.press(screen.getByRole('button', { name: '\uC568\uBC94 \uC800\uC7A5' })); // 앨범 저장
+    await fireEvent.press(screen.getByRole('button', { name: '앨범 저장, 자동 저장 켜짐' }));
     expect(mockPush).toHaveBeenCalledWith('/settings/album');
     mockAlbumAutoSave = false;
   });
@@ -210,7 +230,7 @@ describe('MePage', () => {
     await renderPage();
 
     expect(screen.getByText(analysisOff)).toBeTruthy();
-    await fireEvent.press(screen.getByRole('button', { name: analysisTitle }));
+    await fireEvent.press(screen.getByRole('button', { name: `${analysisTitle}, ${analysisOff}` }));
     expect(mockPush).toHaveBeenCalledWith('/settings/analysis');
   });
 
@@ -226,7 +246,7 @@ describe('MePage', () => {
     await renderPage();
 
     expect(screen.getByText(analysisOn)).toBeTruthy();
-    expect(screen.getByRole('button', { name: analysisTitle })).toBeTruthy();
+    expect(screen.getByRole('button', { name: `${analysisTitle}, ${analysisOn}` })).toBeTruthy();
   });
 
   it('reads \uC2A4\uB0C5 \uBD84\uC11D as \uC900\uBE44 \uC911, opening nothing, when there is nothing to turn on', async () => {
@@ -239,6 +259,58 @@ describe('MePage', () => {
     await renderPage();
 
     expect(screen.getByText(comingSoon)).toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: analysisTitle })).toBeNull();
+    expect(screen.queryByRole('button', { name: new RegExp(`^${analysisTitle}`) })).toBeNull();
+  });
+
+  // Spec ACC-12: both documents stay one tap away after signing in.
+  it.each([
+    ['이용약관', 'https://api.example.test/legal/terms'],
+    ['개인정보 처리방침', 'https://api.example.test/legal/privacy'],
+  ])('opens %s from the API origin in the in-app browser', async (label, url) => {
+    await renderPage();
+
+    await fireEvent.press(screen.getByRole('link', { name: label }));
+
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(url);
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  // How the address is built (a trailing slash, no origin) is the shared
+  // helper's own test (`shared/config/legal.test.ts`); here, that the rows go.
+  it('offers no document rows without an API origin to open them from', async () => {
+    mockApiBaseUrl = '';
+    await renderPage();
+
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.queryByText('이용약관')).toBeNull();
+  });
+
+  // 계정 삭제 is an act on the account in bold ink — not red, which is the
+  // main action; 로그아웃 beside it stays a plain line.
+  it('sets 계정 삭제 in bold and 로그아웃 plain', async () => {
+    await renderPage();
+
+    expect(screen.getByText('계정 삭제')).toHaveStyle({ fontWeight: 700 });
+    expect(screen.getByText('로그아웃')).toHaveStyle({ fontWeight: 400 });
+  });
+
+  // UTF-16 slicing would put half a surrogate pair in the ring.
+  it('puts a whole emoji in the ring when a name opens with one', async () => {
+    mockNickname = '😀다연';
+    await renderPage();
+
+    expect(screen.getByText('😀')).toBeOnTheScreen();
+  });
+
+  // The ring's discs and the count discs are fixed sizes; their text stops
+  // growing at 1.3× so it stays inside them at the largest system text sizes.
+  it('caps the text inside the fixed discs at 1.3×', async () => {
+    await renderPage();
+
+    expect(screen.getByText('월')).toHaveProp('maxFontSizeMultiplier', 1.3);
+    expect(screen.getByText('t')).toHaveProp('maxFontSizeMultiplier', 1.3);
+    for (const count of screen.getAllByText('0')) {
+      expect(count).toHaveProp('maxFontSizeMultiplier', 1.3);
+    }
   });
 });
