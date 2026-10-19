@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -80,6 +81,8 @@ export function SnapSelectionBar({
   tone = 'primary',
 }: SnapSelectionBarProps) {
   const theme = useTheme();
+  // Whether the ticket sat on a line of its own when it was last idle.
+  const [ticketOwnLine, setTicketOwnLine] = useState(false);
   const insets = useSafeAreaInsets();
   const room = Math.max(capacity - heldCount, 0);
   const canConfirm = selectedCount > 0 && room > 0 && !busy && !confirmDisabled;
@@ -161,20 +164,31 @@ export function SnapSelectionBar({
             onPress={onClear}
           />
         </View>
-        <SnaplyButton
-          title={confirmLabel}
-          accessibilityLabel={confirmLabel}
-          variant={tone}
-          busy={busy}
-          disabled={!canConfirm && !busy}
-          onPress={onConfirm}
-          leading={
-            busy ? (
-              <Reel color={tone === 'ai' ? theme.stickerInk : theme.onPrimary} size={16} />
-            ) : undefined
-          }
-          style={styles.confirm}
-        />
+        {/* While the ticket works its words change (`편집하는 중…`,
+            `저장하는 중…`) and a reel joins them; laid out from those, it
+            could jump to or from its own line under the finger that just
+            pressed. Busy, it keeps the line it had when it was last idle. */}
+        <View
+          onLayout={busy ? undefined : (event) => setTicketOwnLine(event.nativeEvent.layout.x < 1)}
+          style={[
+            styles.confirm,
+            busy && (ticketOwnLine ? styles.confirmOwnLine : styles.confirmBeside),
+          ]}
+        >
+          <SnaplyButton
+            title={confirmLabel}
+            accessibilityLabel={confirmLabel}
+            variant={tone}
+            busy={busy}
+            disabled={!canConfirm && !busy}
+            onPress={onConfirm}
+            leading={
+              busy ? (
+                <Reel color={tone === 'ai' ? theme.stickerInk : theme.onPrimary} size={16} />
+              ) : undefined
+            }
+          />
+        </View>
       </View>
     </View>
   );
@@ -272,4 +286,8 @@ const styles = StyleSheet.create({
   // and never moves to its own line. `maxWidth` lets its words wrap once it
   // fills a line of its own.
   confirm: { flexGrow: 1, maxWidth: '100%' },
+  // Busy, the line the ticket had when idle: all of its own, or what is left
+  // beside the word actions (its words wrap there rather than move it down).
+  confirmOwnLine: { flexBasis: '100%' },
+  confirmBeside: { flexBasis: 0, flexShrink: 1 },
 });

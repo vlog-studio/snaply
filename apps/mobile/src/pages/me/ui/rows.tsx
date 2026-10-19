@@ -240,7 +240,10 @@ const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   leader: { transform: [{ translateY: 6 }] },
   summaryLine: { flexWrap: 'wrap' },
-  value: { flexShrink: 1, marginLeft: 'auto' },
+  // `textAlign` too: a read-out longer than a line of its own wraps there,
+  // and on Android its box then spans the line, leaving `marginLeft: 'auto'`
+  // no room to push it right.
+  value: { flexShrink: 1, marginLeft: 'auto', textAlign: 'right' },
   section: {
     paddingHorizontal: Spacing.three + Spacing.half,
     paddingTop: Spacing.two,
