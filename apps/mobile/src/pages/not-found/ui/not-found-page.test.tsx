@@ -6,12 +6,19 @@ import { NotFoundPage } from './not-found-page';
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 let mockCanGoBack = false;
+let mockSession = { authenticated: true, recovering: false, pendingDeletion: false };
 
 // Back goes through the screen's own navigator (as the hardware back does);
 // only a cold link with nothing behind it replaces into the studio.
 jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace }),
   useNavigation: () => ({ goBack: mockBack, canGoBack: () => mockCanGoBack }),
+}));
+
+jest.mock('@/entities/session', () => ({
+  useIsAuthenticated: () => mockSession.authenticated,
+  useIsRecovering: () => mockSession.recovering,
+  useIsPendingDeletion: () => mockSession.pendingDeletion,
 }));
 
 /** The back bar pads itself by the status bar, so it needs metrics to render at all. */
@@ -31,6 +38,7 @@ describe('NotFoundPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCanGoBack = false;
+    mockSession = { authenticated: true, recovering: false, pendingDeletion: false };
   });
 
   it('says the page is missing and opens the studio when the link opened the app', async () => {
@@ -55,6 +63,21 @@ describe('NotFoundPage', () => {
 
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  // The root layout's guards drop a replace into a route they keep closed, so
+  // `replace('/')` while signed out did nothing; it opens the one screen open.
+  it.each([
+    [{ authenticated: false, recovering: false, pendingDeletion: false }, '/sign-in'],
+    [{ authenticated: true, recovering: true, pendingDeletion: false }, '/update-password'],
+    [{ authenticated: true, recovering: false, pendingDeletion: true }, '/account-restore'],
+  ])('opens the screen the session leads to from a cold link (%o)', async (session, home) => {
+    mockSession = session;
+    await renderScreen();
+
+    fireEvent.press(screen.getByRole('button', { name: '돌아가기' }));
+
+    expect(mockReplace).toHaveBeenCalledWith(home);
   });
 
   it('goes back on the back bar too', async () => {
