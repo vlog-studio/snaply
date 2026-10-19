@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { NavigationBar } from 'expo-navigation-bar';
+import { StatusBar } from 'expo-status-bar';
 import { type ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -14,6 +16,14 @@ jest.mock('@/shared/ui/video-preview', () => ({
 }));
 
 const videoPreviewMock = jest.mocked(VideoPreview);
+
+// The system bars are native; what this component owns is asking for light
+// glyphs while it is up, so the bar components stand in as plain functions.
+jest.mock('expo-status-bar', () => ({ StatusBar: jest.fn(() => null) }));
+jest.mock('expo-navigation-bar', () => ({ NavigationBar: jest.fn(() => null) }));
+
+const statusBarMock = jest.mocked(StatusBar);
+const navigationBarMock = jest.mocked(NavigationBar);
 
 // useSafeAreaInsets needs a provider; seed fixed metrics so insets resolve
 // synchronously in tests.
@@ -80,6 +90,71 @@ describe('VideoPlayerModal', () => {
 
     expect(videoPreviewMock).not.toHaveBeenCalled();
     expect(screen.queryByText(edgeLabel)).toBeNull();
+  });
+
+  // On Android the modal's window copies the app's bar glyphs, which are dark
+  // under the light theme — dark on the black letterbox.
+  it.each([
+    ['playing', { uri }],
+    ['waiting for the video', { uri: undefined, placeholder: { text: 'loading', busy: true } }],
+  ])('asks for light system bars while %s', async (_label, props) => {
+    await render(
+      withSafeArea(<VideoPlayerModal onClose={jest.fn()} closeLabel={closeLabel} {...props} />),
+    );
+
+    expect(statusBarMock).toHaveBeenCalledWith(
+      expect.objectContaining({ style: 'light' }),
+      undefined,
+    );
+    expect(navigationBarMock).toHaveBeenCalledWith(
+      expect.objectContaining({ style: 'light' }),
+      undefined,
+    );
+  });
+
+  it('leaves the system bars to the app while closed', async () => {
+    await render(
+      withSafeArea(
+        <VideoPlayerModal uri={undefined} onClose={jest.fn()} closeLabel={closeLabel} />,
+      ),
+    );
+
+    expect(statusBarMock).not.toHaveBeenCalled();
+    expect(navigationBarMock).not.toHaveBeenCalled();
+  });
+
+  // The design's player turns a reel while the snap is on its way; the words
+  // stay the one thing a screen reader reads.
+  it('turns a reel over its words while the video is on its way', async () => {
+    await render(
+      withSafeArea(
+        <VideoPlayerModal
+          uri={undefined}
+          placeholder={{ text: 'loading', busy: true }}
+          onClose={jest.fn()}
+          closeLabel={closeLabel}
+        />,
+      ),
+    );
+
+    expect(screen.getByText('loading')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { includeHiddenElements: true })).not.toBeVisible();
+  });
+
+  it('draws no reel once the video could not be brought', async () => {
+    await render(
+      withSafeArea(
+        <VideoPlayerModal
+          uri={undefined}
+          placeholder={{ text: 'failed', actionLabel: 'retry', onAction: jest.fn() }}
+          onClose={jest.fn()}
+          closeLabel={closeLabel}
+        />,
+      ),
+    );
+
+    expect(screen.getByText('failed')).toBeTruthy();
+    expect(screen.queryByRole('progressbar', { includeHiddenElements: true })).toBeNull();
   });
 
   it('offers the caller action across from the close control', async () => {

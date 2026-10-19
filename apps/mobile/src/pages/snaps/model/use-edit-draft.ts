@@ -127,6 +127,16 @@ export function draftConfirmation(
 }
 
 /**
+ * The confirm's ticket: lavender only while confirming asks the agent for the
+ * draft. Once today's drafts are used up (or the balance cannot pay for one)
+ * the same bar offers the hand-made movie, which spends nothing — a cherry
+ * ticket, like that movie's everywhere else. `undefined` is any other picking.
+ */
+export function draftConfirmTone(confirmation: DraftConfirmation | undefined): 'ai' | 'primary' {
+  return confirmation?.action === 'draft' ? 'ai' : 'primary';
+}
+
+/**
  * Asks for the edit draft and resolves to the movie it made, if any. One
  * request at a time: a second tap while one is out resolves to nothing, so a
  * slow answer cannot make two movies.

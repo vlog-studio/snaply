@@ -172,7 +172,14 @@ export function SnapSelectionBar({
   );
 }
 
-/** A quiet word-only action of the bar: 삭제 in cherry ink, the rest in ink. */
+/**
+ * A quiet word-only action of the bar, in ink. 삭제 is not red — cherry is the
+ * main action — but ink over a kraft highlighter (the design system's
+ * `sg-act--danger`, root docs/decisions/junk-journal-design-system.md): the
+ * stroke is the text's own ground, as `TextButton` draws its pink one, and the
+ * ink on it is `stickerInk` because kraft stays light at night. A disabled
+ * action drops the stroke.
+ */
 function TextAction({
   label,
   accessibilityLabel,
@@ -186,6 +193,8 @@ function TextAction({
   danger?: boolean;
   onPress: () => void;
 }) {
+  const theme = useTheme();
+  const highlighted = danger && !disabled;
   return (
     <Pressable
       accessibilityRole="button"
@@ -198,7 +207,12 @@ function TextAction({
       <ThemedText
         selectable={false}
         type="smallBold"
-        themeColor={disabled ? 'textSecondary' : danger ? 'cherryInk' : 'text'}
+        themeColor={disabled ? 'textSecondary' : 'text'}
+        style={
+          highlighted
+            ? [styles.highlighter, { color: theme.stickerInk, backgroundColor: theme.kraft }]
+            : undefined
+        }
       >
         {label}
       </ThemedText>
@@ -237,5 +251,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  highlighter: { paddingHorizontal: 2 },
   confirm: { flex: 1, marginLeft: Spacing.two },
 });

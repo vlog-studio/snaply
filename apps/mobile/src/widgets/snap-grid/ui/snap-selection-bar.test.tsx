@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { Colors } from '@/shared/ui/theme';
+
 import { SnapSelectionBar } from './snap-selection-bar';
 
 const ConfirmLabel = '자동으로 편집하기'; // 자동으로 편집하기
@@ -11,8 +13,13 @@ const metrics = {
 };
 
 const DeleteLabel = '2개 스냅 삭제'; // 2개 스냅 삭제
+const DeleteWord = '\uC0AD\uC81C'; // 삭제
 
-async function renderBar(props: { busy?: boolean; confirmDisabled?: boolean }) {
+async function renderBar(props: {
+  busy?: boolean;
+  confirmDisabled?: boolean;
+  selectedCount?: number;
+}) {
   const handlers = { onConfirm: jest.fn(), onClear: jest.fn(), onDelete: jest.fn() };
   await render(
     <SafeAreaProvider initialMetrics={metrics}>
@@ -53,5 +60,24 @@ describe('SnapSelectionBar', () => {
 
     expect(handlers.onConfirm).not.toHaveBeenCalled();
     expect(handlers.onClear).toHaveBeenCalled();
+  });
+
+  // Red is the main action; a delete is ink over a kraft highlighter (the
+  // design system's sg-act--danger), and a disabled one drops the stroke.
+  it('marks 삭제 with a kraft highlighter, not red ink', async () => {
+    await renderBar({});
+
+    const word = screen.getByText(DeleteWord);
+    expect(word).toHaveStyle({
+      color: Colors.light.stickerInk,
+      backgroundColor: Colors.light.kraft,
+    });
+    expect(word).not.toHaveStyle({ color: Colors.light.cherryInk });
+  });
+
+  it('drops the highlighter while 삭제 cannot be pressed', async () => {
+    await renderBar({ selectedCount: 0 });
+
+    expect(screen.getByText(DeleteWord)).not.toHaveStyle({ backgroundColor: Colors.light.kraft });
   });
 });
