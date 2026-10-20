@@ -10,7 +10,7 @@ import { defineRoute } from './define-route.js';
 import { stylePresetSchema } from './vocab.js';
 
 /** 편집 초안 1회에 넘길 수 있는 스냅 수(docs/decisions/auto-edit-draft.md §5, 잠정값). */
-export const MAX_DRAFT_SNAPS = 30;
+export const MAX_DRAFT_SNAPS = 40;
 
 /** 업로드가 끝난 스냅. 촬영 시각·신호는 서버가 안다. */
 const uploadedDraftSnapSchema = z.object({

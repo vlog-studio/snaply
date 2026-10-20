@@ -87,7 +87,7 @@ Tap the center capture button in the tab bar
 by hand:    Snap tab → 선택 → pick snaps → 이 스냅으로 새 무비
             → a draft movie, opened right away; refillable later via 스냅 더 넣기
 
-for me:     Studio → 스냅 골라 자동 편집 → pick up to 30 → 자동으로 편집하기
+for me:     Studio → 스냅 골라 자동 편집 → pick up to 40 → 자동으로 편집하기
             → the server picks, orders, and cuts them into a draft movie, opened right away
 
 by template: Studio → 템플릿으로 시작 → the app matches one outing into the slots

@@ -2343,3 +2343,27 @@ A-15 "기기 확인"을 실제로 본 범위에 맞춰 고쳤고, 새로 연 것
 
 **검증** — `QueryClient` 를 만드는 테스트 23개를 하나씩 돌려 끝나지 않는 것이 그 파일뿐임을 확인했다. 고친 뒤 그 파일 단독, 전체 jest(요약 뒤 1초 안에
 종료), `npm run verify:mobile`(26초에 스스로 종료, 236개 스위트 1733건)이 모두 바로 끝난다.
+
+## 2026-10-20 (이어서) — 무비 컷 상한 20 · AI 편집 초안 입력 40(MOV-5 · MOV-21, backlog A-18)
+
+여행처럼 스냅이 많이 쌓인 무비를 10컷에 담으면 하루에 한두 컷만 남아, 오너가 컷 상한을 20(최대 100초)으로, AI 편집 초안에 한 번에 넘기는 스냅을
+40개로 올렸다. 크레딧은 길이와 상관없이 1편 100 이다. 배경과 기각한 대안(12 · 15컷, 긴 무비를 유료 혜택으로, 길이로 상한)은
+[product-concept.md](./decisions/product-concept.md) §8.
+
+- **상한이 네 곳에 따로 있었다** — 공유 계약 `MOVIE_CLIP_MAX` 말고도 `apps/api/src/services/edit-job.service.ts` 의 `MAX_CLIPS`, 편집 워커
+  `apps/ai-worker/src/pipeline/edit_spec.py` 의 `MAX_CLIPS`, 앱 `apps/mobile/src/entities/movie/model/movie.ts` 의 `MovieSnapLimit` 이 10 이었다. 서버
+  쪽 사본은 공유 상수로 바꿨고, 워커(Python)와 앱(번들에 계약 패키지를 넣지 않는다)의 값은 API 테스트가 파일에서 읽어 계약과 맞춰 본다
+  (`movies.test.ts` · `movie-drafts.test.ts`). 워커만 10 으로 남았다면 서버가 받은 11컷 이상 무비가 렌더에서 실패했다.
+- **초안 재사용 키** — 컷 상한이 고르는 결과와 에이전트 툴 정의(`maxCuts` 1~20)를 바꾸므로 `EDIT_DIRECTOR_VERSION` · `EDIT_AGENT_PROMPT_VERSION`
+  을 3 → 4 로 올렸다. 올리지 않으면 24시간 재사용 창이 예전 10컷 초안을 돌려준다.
+- **컷을 잇는 단계의 메모리** — 워커 이미지(`snaply-ai-worker:local`, ffmpeg 7.1)를 `--cpus 2` 로 묶고 합성 스냅(1080x1920 · 5초 · 소리 있음, 전환은
+  다섯 종류를 돌아가며)으로 렌더를 재자, 렌더 시간은 길이에 비례했지만(25초 무비 37초 · 100초 157초) 세그먼트를 한 ffmpeg 의 입력 N개로 잇는
+  `_join_segments` 의 최대 RSS 가 컷 수에 비례했다 — 5컷 1.6GB · 10컷 2.6GB · 20컷 4.5GB. 공모전 서버는 7.6GiB 에 워커 메모리 한도가 없어
+  20컷이면 다른 워커와 겹칠 때 여유가 없다. 입력마다 디코더를 한 스레드로 두자(`-threads 1`) 5컷 1.0GB · 10컷 1.3GB · 20컷 2.0GB 가 됐고, 그
+  단계 시간도 20컷 42초 → 30초로 줄었다(전체 렌더 138.5초). 나머지 단계(구간 정규화 약 0.2GB · 마지막 음량 손질 약 0.8GB)는 컷 수와 상관없다.
+- **문서** — 스펙 MOV-5 · MOV-21 · SNAP-4, 결정 §8 과 edit-director · auto-edit-draft 의 후속 결정 배너, 결정 인덱스, `api-spec.md`, 앱 기능 문서
+  (snaps · studio · movie · README), [deployment-aws.md](./deployment-aws.md#용량-2026-10-11-실측) 의 최대 길이 무비 추정, backlog A-18.
+
+**검증** — `npm test -w apps/api`(49개 파일 841건, 버전을 올린 뒤 관련 5개 파일 128건 다시), `npm run verify:mobile`(236개 스위트 1733건),
+`npm run lint` · `npm run typecheck`, 워커 이미지 안의 `REQUIRE_FFMPEG=1 python -m unittest discover -s tests`(273건). 20컷 렌더의 결과물은 1080x1920
+H.264 + AAC · 100.3초였다. 공모전 서버의 휴대폰 스냅 렌더와 에뮬레이터에서의 20컷 무비 · 40개 초안은 아직이다(A-18).
