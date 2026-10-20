@@ -614,7 +614,7 @@
                   },
                   "clips": {
                     "minItems": 1,
-                    "maxItems": 10,
+                    "maxItems": 20,
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -670,7 +670,7 @@
                     "properties": {
                       "cuts": {
                         "minItems": 1,
-                        "maxItems": 10,
+                        "maxItems": 20,
                         "type": "array",
                         "items": {
                           "type": "object",
@@ -1352,7 +1352,7 @@
                 }
               ]
             },
-            "description": "쓸 스냅. **배열 순서가 곧 재생 순서**(촬영순)다. 최대 10개."
+            "description": "쓸 스냅. **배열 순서가 곧 재생 순서**(촬영순)다. 최대 20개."
           },
           "excluded": {
             "type": "array",
@@ -1384,7 +1384,7 @@
                 }
               ]
             },
-            "description": "넣지 않은 스냅, 촬영순. 이유는 주지 않는다 — 앱은 개수를 알리고 다시 넣을 수 있게 한다. 업로드되지 않은 스냅(`localId`)은 그런 스냅만 10개를 넘을 때만 빠진다."
+            "description": "넣지 않은 스냅, 촬영순. 이유는 주지 않는다 — 앱은 개수를 알리고 다시 넣을 수 있게 한다. 업로드되지 않은 스냅(`localId`)은 그런 스냅만 20개를 넘을 때만 빠진다."
           },
           "unavailable": {
             "type": "array",
@@ -2172,7 +2172,7 @@
                   },
                   "clips": {
                     "minItems": 1,
-                    "maxItems": 10,
+                    "maxItems": 20,
                     "type": "array",
                     "items": {
                       "type": "object",
@@ -2230,7 +2230,7 @@
                     "properties": {
                       "cuts": {
                         "minItems": 1,
-                        "maxItems": 10,
+                        "maxItems": 20,
                         "type": "array",
                         "items": {
                           "type": "object",
@@ -2931,7 +2931,7 @@
                 }
               ]
             },
-            "description": "쓸 스냅. **배열 순서가 곧 재생 순서**(촬영순)다. 최대 10개."
+            "description": "쓸 스냅. **배열 순서가 곧 재생 순서**(촬영순)다. 최대 20개."
           },
           "excluded": {
             "type": "array",
@@ -2965,7 +2965,7 @@
                 }
               ]
             },
-            "description": "넣지 않은 스냅, 촬영순. 이유는 주지 않는다 — 앱은 개수를 알리고 다시 넣을 수 있게 한다. 업로드되지 않은 스냅(`localId`)은 그런 스냅만 10개를 넘을 때만 빠진다."
+            "description": "넣지 않은 스냅, 촬영순. 이유는 주지 않는다 — 앱은 개수를 알리고 다시 넣을 수 있게 한다. 업로드되지 않은 스냅(`localId`)은 그런 스냅만 20개를 넘을 때만 빠진다."
           },
           "unavailable": {
             "type": "array",
