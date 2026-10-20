@@ -2407,3 +2407,24 @@ PR #87 이 main 에 들어간 `a1de19a` 를 에뮬레이터(`snaply_api35`, dev 
 **검증** — `npm test -w apps/api`(50개 파일 843건 — 새 2건 포함, 이어서 `tsc` · `node --test`), `npm run lint` · `npm run typecheck`,
 `npm run openapi:write -w apps/api`(`maxItems` 10 → 20 넷과 설명 둘). 에뮬레이터의 표는 스크린샷 · `uiautomator` 트리 · 3001 API 요청 기록 · 개발 DB 로 봤다.
 멈춰 있던 20컷 무비는 새로 만들지 않고, 고친 계약으로 다시 띄운 3001 API 에서 확인했다. 크레딧은 생성 한 번(100)만 썼고 초안은 무료 횟수 안이다.
+
+## 2026-10-20 (이어서) — 스냅 넣기 확인 뒤의 Android 크래시(backlog E-62)
+
+무비의 `스냅 더 넣기` 에서 `이 무비에 넣기` 를 누르면 무비로 돌아가는 순간 dev 빌드가 `addViewAt … The specified child already has a parent` 로
+멈췄다(위 항목). 같은 예외였던 E-60 은 `router.back()` 이 원인이었지만, 이번에는 에뮬레이터에서 경우를 나눠 보니 달랐다.
+
+| 경우 | 결과 |
+|---|---|
+| 고르지 않고 `무비로 돌아가기`(`router.back()`) · 하드웨어 뒤로 가기 · 고른 뒤 `무비로 돌아가기` | 멈추지 않는다 |
+| `이 무비에 넣기`(원래 코드) | 3번 모두 멈춘다(위 항목) |
+| `이 무비에 넣기` 를 E-60 처럼 `useNavigation().goBack()` 으로 | 멈춘다 |
+| 컷을 넣고 **한 프레임 뒤에** 돌아감(`requestAnimationFrame`) — `goBack()` 이든 `router.back()` 이든 | 16번 모두 멈추지 않는다 |
+| 한 프레임을 다시 빼고 앱을 새로 띄움(대조) | 바로 멈춘다 |
+
+`confirmPicks` 가 `appendSnaps` 로 무비 저장소를 바꾸고 같은 틱에 화면을 닫았다. 그 쓰기가 고르기 화면(고른 칸이 `담김`)과 그 아래 무비 화면(새 컷)을
+다시 그리는데, 화면을 떼어 내는 것과 한 커밋에 들어가면 Android 의 뷰 마운트가 실패한다. 뒤로 가는 API 는 상관이 없었다. `pages/add-snaps` 의
+`confirmPicks` 가 컷을 넣은 다음 프레임에 돌아가게 했고(`requestAnimationFrame(goBack)`), 이유를 주석과 기능 문서 movie.md 의 Add snaps 행에 적었다.
+네이티브 마운트 순서라 Jest 로는 재현되지 않아 JS 테스트는 더하지 않았다.
+
+**검증** — 에뮬레이터(dev 빌드, 로컬 API): 고친 코드로 새로 띄운 번들에서 컷 넣기 8번(18 → 19 → 20컷 포함, 매번 그 무비로 돌아와 컷 수가 늘었다)과
+넣지 않고 돌아가기(`무비로 돌아가기` · 하드웨어 뒤로 가기)가 멈추지 않았다. 핫 리로드 번들까지 합하면 한 프레임을 둔 넣기 16번이 모두 그랬다. `npm run verify:mobile` 통과.
