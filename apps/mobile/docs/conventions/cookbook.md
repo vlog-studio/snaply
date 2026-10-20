@@ -987,7 +987,10 @@ await waitFor(() => expect(result.current.isLoading).toBe(false));
   (silent), failure (error surfaced).
 - With a real `QueryClient` and provider
   ([mocking policy](../workflows/writing-unit-tests.md#mocking-policy)), set `gcTime: Infinity`,
-  disable retries, and seed cache data when the test must not perform HTTP.
+  disable retries, and seed cache data when the test must not perform HTTP. When the code
+  under test calls `useMutation`, set `mutations: { gcTime: Infinity }` too: a mutation left
+  behind by the unmount starts TanStack's default 5-minute GC timer, and jest waits for it
+  after the run (`Jest did not exit one second after the test run has completed`).
 
 ### 15d. Zustand store
 
