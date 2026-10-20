@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MOVIE_CLIP_MAX } from '@vlog-studio/shared-types';
 import {
   CUT_LENGTHS,
   DRAFT_THRESHOLDS,
@@ -37,7 +38,7 @@ function signals(overrides: Partial<DraftSignals> = {}): DraftSignals {
   };
 }
 
-/** 장면마다 다른 해시 — sha256 에서 뽑아 서로 다른 장면끼리는 중복 문턱값과 멀다(22개 사이 최소 거리 21). */
+/** 장면마다 다른 해시 — sha256 에서 뽑아 서로 다른 장면끼리는 중복 문턱값과 멀다(44개 사이 최소 거리 18). */
 function sceneHash(i: number): string[] {
   const value = createHash('sha256').update(`scene-${i}`).digest('hex').slice(0, 16);
   return [value, value, value];
@@ -88,16 +89,18 @@ describe('§4·§5 컷 수와 순서', () => {
     expect(result.cuts).toEqual([expect.objectContaining({ key: 'a', role: 'hook' })]);
   });
 
-  it('10을 넘으면 촬영 흐름을 10묶음으로 나눠 묶음마다 점수가 높은 것을 고른다', () => {
-    // 20개 → 묶음 10개, 두 개씩. 둘째(홀수 분) 스냅이 더 선명하다.
-    const snaps = Array.from({ length: 20 }, (_, i) => snap(`s${i}`, i, { sharpness: i % 2 === 1 ? 900 : 100 }));
+  it(`컷 상한(${MOVIE_CLIP_MAX})을 넘으면 촬영 흐름을 그만큼의 묶음으로 나눠 묶음마다 점수가 높은 것을 고른다`, () => {
+    // 상한의 두 배 → 묶음마다 두 개씩. 둘째(홀수 분) 스냅이 더 선명하다.
+    const snaps = Array.from({ length: MOVIE_CLIP_MAX * 2 }, (_, i) =>
+      snap(`s${i}`, i, { sharpness: i % 2 === 1 ? 900 : 100 }),
+    );
     const result = draft(snaps);
-    expect(keysOf(result)).toEqual(Array.from({ length: 10 }, (_, i) => `s${i * 2 + 1}`));
-    expect(result.excluded).toHaveLength(10);
+    expect(keysOf(result)).toEqual(Array.from({ length: MOVIE_CLIP_MAX }, (_, i) => `s${i * 2 + 1}`));
+    expect(result.excluded).toHaveLength(MOVIE_CLIP_MAX);
   });
 
   it('같은 입력은 같은 초안이다 — 점수가 같으면 시드로 가른다', () => {
-    const snaps = Array.from({ length: 14 }, (_, i) => snap(`s${i}`, i));
+    const snaps = Array.from({ length: MOVIE_CLIP_MAX + 4 }, (_, i) => snap(`s${i}`, i));
     expect(draft(snaps)).toEqual(draft([...snaps].reverse()));
   });
 });
@@ -203,19 +206,19 @@ describe('§1·§4 검사 없이 들어가는 스냅', () => {
   });
 
   it('자리를 먼저 차지하고, 남은 자리를 검사한 스냅 중에서 고른다', () => {
-    const snaps = Array.from({ length: 12 }, (_, i) => snap(`s${i}`, i));
+    const snaps = Array.from({ length: MOVIE_CLIP_MAX + 2 }, (_, i) => snap(`s${i}`, i));
     const result = draft([...snaps, pending('p1', 3.5), pending('p2', 7.5), pending('p3', 11.5)]);
-    expect(result.cuts).toHaveLength(10);
+    expect(result.cuts).toHaveLength(MOVIE_CLIP_MAX);
     expect(keysOf(result)).toEqual(expect.arrayContaining(['p1', 'p2', 'p3']));
     expect(result.excluded).toHaveLength(5);
     expect(result.excluded.every((key) => key.startsWith('s'))).toBe(true);
   });
 
-  it('검사 없는 스냅만으로 10을 넘으면 그것들끼리 나눠 고르고 먼저 찍은 것이 이긴다', () => {
-    const locals = Array.from({ length: 12 }, (_, i) => pending(`p${i}`, i));
+  it('검사 없는 스냅만으로 컷 상한을 넘으면 그것들끼리 나눠 고르고 먼저 찍은 것이 이긴다', () => {
+    const locals = Array.from({ length: MOVIE_CLIP_MAX + 2 }, (_, i) => pending(`p${i}`, i));
     const result = draft([...locals, snap('uploaded', 5.5)]);
-    // 12개 → 묶음 10개(앞의 둘이 두 개씩).
-    expect(keysOf(result)).toEqual(['p0', 'p2', 'p4', 'p5', 'p6', 'p7', 'p8', 'p9', 'p10', 'p11']);
+    // 상한보다 둘 많다 → 앞의 두 묶음이 두 개씩이고 나머지는 하나씩.
+    expect(keysOf(result)).toEqual(['p0', 'p2', ...Array.from({ length: MOVIE_CLIP_MAX - 2 }, (_, i) => `p${i + 4}`)]);
     expect(result.excluded).toEqual(['p1', 'p3', 'uploaded']);
   });
 });

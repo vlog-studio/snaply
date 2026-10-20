@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import {
+  MOVIE_CLIP_MAX,
   createRenderSpec,
   type ClipSpec,
   type EditJob,
@@ -25,7 +26,6 @@ import {
 } from './credit.service.js';
 import { createDownloadUrl } from './storage.service.js';
 
-const MAX_CLIPS = 10;
 const MIN_CLIP_DURATION_MS = 100;
 
 interface EditJobRow {
@@ -76,7 +76,7 @@ function parseEditSpec(value: unknown): EditSpec {
     Array.isArray(value.clips)
   ) {
     const clips = value.clips.map(parseClipSpec);
-    if (clips.length >= 1 && clips.length <= MAX_CLIPS && clips.every((clip) => clip !== null)) {
+    if (clips.length >= 1 && clips.length <= MOVIE_CLIP_MAX && clips.every((clip) => clip !== null)) {
       return {
         version: 2,
         stylePreset: value.stylePreset as StylePreset,
@@ -110,7 +110,7 @@ function parseTimelineSpec(value: unknown): EditSpec | null {
   const transitions = value.timeline.transitions;
   const cutsValid =
     cuts.length >= 1 &&
-    cuts.length <= MAX_CLIPS &&
+    cuts.length <= MOVIE_CLIP_MAX &&
     cuts.every(
       (cut) =>
         isRecord(cut) &&
@@ -184,8 +184,8 @@ function parseClipSpec(value: unknown): ClipSpec | null {
 }
 
 function validateClips(clips: ClipSpec[]): void {
-  if (clips.length < 1 || clips.length > MAX_CLIPS) {
-    throw AppError.badRequest(`클립은 1개 이상 ${MAX_CLIPS}개 이하로 요청해야 합니다.`);
+  if (clips.length < 1 || clips.length > MOVIE_CLIP_MAX) {
+    throw AppError.badRequest(`클립은 1개 이상 ${MOVIE_CLIP_MAX}개 이하로 요청해야 합니다.`);
   }
   for (const clip of clips) {
     if (!clip.videoId) {

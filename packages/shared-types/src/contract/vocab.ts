@@ -59,9 +59,12 @@ export type MovieArranger = z.infer<typeof movieArrangerSchema>;
  */
 export const transitionKindSchema = z.enum(TRANSITION_KINDS);
 
-/** 무비 하나가 담을 수 있는 컷 수 (specs/movie.md MOV-5). */
+/**
+ * 무비 하나가 담을 수 있는 컷 수 (specs/movie.md MOV-5). 편집 워커의 `MAX_CLIPS`(`apps/ai-worker/src/pipeline/edit_spec.py`)와
+ * 앱의 `MovieSnapLimit` 이 같은 값을 따로 둔다 — 둘 다 `apps/api/test/movies.test.ts` 가 맞춰 본다.
+ */
 export const MOVIE_CLIP_MIN = 1;
-export const MOVIE_CLIP_MAX = 10;
+export const MOVIE_CLIP_MAX = 20;
 
 export const OUTPUT_PROFILES = [
   'short_vertical',

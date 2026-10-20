@@ -60,9 +60,9 @@ export type SnapSelectionBarProps = {
  * The selection mode's bottom bar: how many snaps are picked against the
  * target's remaining room, and what can be done with them.
  *
- * It reports the room rather than a bare count because the ten-snap cap is the
+ * It reports the room rather than a bare count because the movie's snap cap is the
  * product's one hard constraint (MOV-5) and the moment it bites is here —
- * the user has to see why an eleventh pick is refused.
+ * the user has to see why the pick past it is refused.
  */
 export function SnapSelectionBar({
   selectedCount,

@@ -6,7 +6,7 @@
 /**
  * 프롬프트 · 툴 정의의 버전. 바꾸면 올린다 — 초안 재사용 키에 들어가, 바뀐 에이전트가 하루 동안 예전 초안에 가려지지 않는다.
  */
-export const EDIT_AGENT_PROMPT_VERSION = 3;
+export const EDIT_AGENT_PROMPT_VERSION = 4;
 
 /** 에이전트 모델의 기본값. `EDIT_AGENT_MODEL` 로 바꾼다. 이미지를 보지 않으므로 저가 모델부터 잰다(decisions/ai-edit-agent.md §3.1). */
 export const DEFAULT_EDIT_AGENT_MODEL = 'gpt-5.6-luna';
