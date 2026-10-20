@@ -2332,3 +2332,14 @@ A-15 "기기 확인"을 실제로 본 범위에 맞춰 고쳤고, 새로 연 것
   라벨을 이번 에뮬레이터 확인까지 맞췄다. 결정 10~19(main 의 선택)와 20~23(출시 점검 규칙)을 이 기록에서도 나눠 적었다.
 - **dev 에서만** — dev 클라이언트에서 화면 밀도 · 글자 크기를 바꿔 액티비티가 다시 만들어지면 처음 연 링크가 다시 적용된다(없는 주소 링크로 연
   앱이면 그 화면이 다시 뜬다). 앱이 꺼진 채 연 링크는 dev 클라이언트에서는 개발 런처가 먼저 받는다.
+
+## 2026-10-20 (이어서) — 모바일 테스트 뒤 jest 가 5분 동안 끝나지 않던 것
+
+`npm run verify:mobile` 이 테스트를 모두 통과한 뒤 `Jest did not exit one second after the test run has completed` 를 내고 최대 5분 동안 끝나지 않았다
+(로컬 · CI 모두 — main 의 CI `Verify (Mobile)` 도 요약 뒤 약 4분 반을 기다렸다. 2026-10 에 한 번 본 간헐 경고와 같은 것). 테스트 파일을 반씩 나눠
+돌려 `features/choose-interests/model/use-interests.test.ts` 하나로 좁혔다. 그 테스트의 `QueryClient` 는 쿼리만 `gcTime: Infinity` 이고, 앱에서
+`useMutation` 을 쓰는 두 곳 중 관심사 쪽 테스트만 뮤테이션 `gcTime` 을 두지 않아, 언마운트 뒤 남은 뮤테이션이 TanStack 의 기본 5분 GC 타이머를
+걸었다(닉네임 쪽 테스트는 이미 두고 있었다). `mutations: { gcTime: Infinity }` 를 더하고 cookbook 의 쿼리 테스트 규칙에 적었다.
+
+**검증** — `QueryClient` 를 만드는 테스트 23개를 하나씩 돌려 끝나지 않는 것이 그 파일뿐임을 확인했다. 고친 뒤 그 파일 단독, 전체 jest(요약 뒤 1초 안에
+종료), `npm run verify:mobile`(26초에 스스로 종료, 236개 스위트 1733건)이 모두 바로 끝난다.

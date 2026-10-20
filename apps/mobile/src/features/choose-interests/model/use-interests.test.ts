@@ -30,8 +30,13 @@ function deferred<T>() {
 }
 
 async function render() {
+  // Mutations too: a toggle's mutation, left by the unmount, would start the
+  // default 5-minute GC timer and keep jest from exiting after the run.
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { gcTime: Infinity },
+    },
   });
   const wrapper = ({ children }: { children: ReactNode }) =>
     createElement(QueryClientProvider, { client }, children);
