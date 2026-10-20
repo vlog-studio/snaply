@@ -8,6 +8,7 @@ sys.modules.setdefault("loguru", MagicMock())
 
 from pipeline import editor  # noqa: E402
 from pipeline.render_spec import DEFAULT_RENDER_SPEC  # noqa: E402
+from pipeline.transition import Transition  # noqa: E402
 
 
 @patch("pipeline.editor.measure_loudness", new=lambda *_args, **_kw: None)
@@ -141,6 +142,21 @@ class MovieLevelTest(unittest.TestCase):
         self.assertEqual(measure.call_count, 1)
         command = run.call_args.args[0]
         self.assertTrue(command[command.index("-af") + 1].startswith("volume=0.00dB,"))
+
+
+class TimelineJoinTest(unittest.TestCase):
+    @patch("pipeline.editor._run")
+    def test_every_input_decodes_on_one_thread(self, run) -> None:
+        """입력마다 자동 스레드로 디코딩하면 조인의 메모리가 컷 수에 비례한다(1080x1920 20컷 4.5GB, 2026-10-20)."""
+        segments = [editor._Segment(f"seg_{i}.mp4", 3.0) for i in range(20)]
+
+        editor._join_segments(segments, [Transition("hardcut")] * 19, DEFAULT_RENDER_SPEC, "out.mp4")
+
+        command = run.call_args.args[0]
+        inputs = [i for i, arg in enumerate(command) if arg == "-i"]
+        self.assertEqual([command[i + 1] for i in inputs], [segment.path for segment in segments])
+        for i in inputs:
+            self.assertEqual(command[i - 2 : i], ["-threads", "1"])
 
 
 if __name__ == "__main__":

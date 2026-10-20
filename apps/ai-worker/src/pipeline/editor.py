@@ -554,9 +554,12 @@ def _join_segments(
     render_spec: RenderSpec,
     out: str,
 ) -> None:
+    # 입력마다 디코더를 한 스레드로 둔다. 기본(자동)은 입력마다 프레임 스레드 버퍼를 따로 잡아 메모리가 컷 수에 비례해
+    # 커졌다 — 1080x1920 20컷 조인이 4.5GB 였고 한 스레드로 2.0GB, 시간은 42초 → 31초(2 vCPU, 2026-10-20 실측).
+    # 디코딩 결과는 스레드 수와 상관없이 같다.
     inputs: list[str] = []
     for segment in segments:
-        inputs += ["-i", segment.path]
+        inputs += ["-threads", "1", "-i", segment.path]
 
     parts = [
         _segment_video_filter(
