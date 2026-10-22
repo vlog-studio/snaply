@@ -2645,3 +2645,7 @@ BGM 컷편집 무비의 글은 받아쓰기가 아니라 컷의 내용에 맞는
   ontology-personalization.md §3.3). 원천은 각 JSON 사전이고 개념 사전 판(v2)은 그대로 — 추천 재사용 키 영향 없음. `npm run ontology:test` 8건 통과
   (편집 관계 · 없는 개념을 가리키면 거부 포함), 내보낸 Turtle 을 rdflib 로 읽어 트리플 1,682개(효과음 15 · 이음 효과음 12 · 의성어 27 · 움직임 5 · 연결 규칙 7 ·
   레시피 12 · 색감 3 · 컷 효과 4 · evokedBy 52)를 확인했다.
+- **ffmpeg 6.1 에서 구간이 한 프레임 짧던 것(같은 날)** — main 병합 뒤 CI(Ubuntu 24.04, ffmpeg 6.1)에서 `test_many_prepared_segments_join_by_copy_without_the_sound_drifting`
+  가 실패했다(12구간 6초가 5.76초). 6.1 의 fps 필터가 원본 끝에서 마지막 프레임을 버려 0.5초 구간이 14프레임이 됐다(7.1 · 9 는 15). 이어 붙일 구간(`-t` 를 거는
+  경우)만 영상 끝에 한 프레임을 늘려 두고 `-t` 가 자른다(`editor.normalize_clip`) — 보통 경로의 명령은 그대로. Ubuntu 24.04 컨테이너에서 실패를 재현하고 고친 뒤
+  15프레임 · 6.0초를 확인했고, Debian ffmpeg 7.1 에서 워커 전체 565건 통과.

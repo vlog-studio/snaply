@@ -303,7 +303,11 @@ def normalize_clip(
         "-map_metadata", "-1",
     ]
     if preset != "veryfast" or speed != 1.0 or extra_video or ramp or hold:
-        # 이어 붙이기(concat copy)할 구간 — 타임스케일을 같게, 소리 · 영상을 같은 길이에서 끊는다
+        # 이어 붙이기(concat copy)할 구간 — 타임스케일을 같게, 소리 · 영상을 같은 길이에서 끊는다. 영상 끝에 한 프레임을 늘려 두고
+        # -t 가 자른다: ffmpeg 6.1(Ubuntu 24.04 · CI)의 fps 필터는 원본 끝에서 마지막 프레임을 버려 0.5초 구간이 14프레임이 됐고,
+        # 이어 붙이면 구간마다 한 프레임씩 영상이 짧아졌다(12구간 6초 → 5.6초). 7.1 · 9 는 15프레임이다
+        cmd[cmd.index("-filter_complex") + 1] = filter_graph.replace(
+            f"{video_graph};", f"{video_graph[:-len('[v]')]},tpad=stop_mode=clone:stop_duration={1 / render_spec.fps:.4f}[v];", 1)
         cmd += ["-video_track_timescale", str(TIMESCALE), "-t", f"{out_duration:.3f}"]
     cmd.append(dst)
     _run(cmd)
