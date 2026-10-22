@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
 import {
+  DEFAULT_MOVIE_RECIPE,
+  type MovieRecipe,
   contentConcept,
   DEFAULT_FIT_MODE,
   DEFAULT_OUTPUT_PROFILE,
@@ -85,6 +87,7 @@ interface MovieRow {
   title: string;
   status: string;
   stylePreset: string;
+  recipe: string;
   captions: boolean;
   ratio: string;
   arranger: string;
@@ -111,6 +114,7 @@ const SELECT = {
   title: true,
   status: true,
   stylePreset: true,
+  recipe: true,
   captions: true,
   ratio: true,
   arranger: true,
@@ -170,6 +174,7 @@ function toDto(row: MovieRowWithJob): Movie {
     title: row.title,
     status: row.status as MovieStatus,
     stylePreset: row.stylePreset as StylePreset,
+    recipe: row.recipe as MovieRecipe,
     captions: row.captions,
     ratio: row.ratio,
     arranger: row.arranger as MovieArranger,
@@ -479,6 +484,7 @@ export async function createMovie(params: {
   title?: string;
   clips?: ClipInput[];
   stylePreset?: StylePreset;
+  recipe?: MovieRecipe;
   captions?: boolean;
   arranger?: MovieArranger;
 }): Promise<Movie> {
@@ -517,6 +523,7 @@ export async function createMovie(params: {
       userId: params.userId,
       title: params.title ?? DEFAULT_TITLE,
       stylePreset,
+      recipe: params.recipe ?? DEFAULT_MOVIE_RECIPE,
       captions: params.captions ?? false,
       arranger,
       mood,
@@ -571,6 +578,7 @@ export async function updateMovie(params: {
   title?: string;
   clips?: ClipInput[];
   stylePreset?: StylePreset;
+  recipe?: MovieRecipe;
   captions?: boolean;
   arranger?: MovieArranger;
 }): Promise<Movie> {
@@ -606,6 +614,7 @@ export async function updateMovie(params: {
     data: {
       ...(params.title !== undefined ? { title: params.title } : {}),
       ...(params.stylePreset !== undefined ? { stylePreset: params.stylePreset } : {}),
+      ...(params.recipe !== undefined ? { recipe: params.recipe } : {}),
       ...(params.captions !== undefined ? { captions: params.captions } : {}),
       ...(params.arranger !== undefined ? { arranger: params.arranger } : {}),
       // 컷은 통째로 교체한다. 부분 갱신은 순서를 다시 계산해야 해서 두 표현이 어긋나기 쉽다.
@@ -702,6 +711,14 @@ export async function exportMovie(params: {
       ...(clip.endMs !== null ? { endMs: clip.endMs } : {}),
     })),
     stylePreset: movie.stylePreset as StylePreset,
+    // 레시피(MOV-28)는 classic 이 아닐 때만 싣는다 — 지금까지의 무비는 스펙이 그대로다. 컷 구간 · 순서를 전부 AI 가 정했을 때만
+    // 레시피가 컷을 다시 고른다(autoCuts) — 사용자가 고친 구간 · 순서는 지킨다.
+    ...(movie.recipe !== DEFAULT_MOVIE_RECIPE
+      ? {
+          recipe: movie.recipe as MovieRecipe,
+          autoCuts: movie.arranger === 'ai' && movie.clips.every((clip) => clip.trimOwner === 'ai'),
+        }
+      : {}),
     outputProfile: DEFAULT_OUTPUT_PROFILE,
     fitMode: DEFAULT_FIT_MODE,
     subtitles: movie.captions,

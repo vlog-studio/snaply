@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import {
+  type MovieRecipe,
   createRenderSpec,
   type ClipSpec,
   type EditJob,
@@ -136,13 +137,22 @@ function parseTimelineSpec(value: unknown): EditSpec | null {
  * 무비 생성이 보내는 v3 스펙 — 컷마다 `c0, c1, …` 를 붙이고 경계 전환이 그 둘을 가리킨다.
  * 전환은 고른 값 그대로다. 컷·여분 프레임에 맞추는 해석은 원본 길이를 아는 워커가 한다.
  */
-function timelineSpec(stylePreset: StylePreset, clips: ClipSpec[], transitions: Transition[]): EditSpec {
+function timelineSpec(
+  stylePreset: StylePreset,
+  clips: ClipSpec[],
+  transitions: Transition[],
+  recipe?: MovieRecipe,
+  autoCuts?: boolean,
+): EditSpec {
   if (transitions.length !== clips.length - 1) {
     throw new Error('전환은 컷 사이마다 하나씩이어야 합니다.');
   }
   return {
     version: 3,
     stylePreset,
+    // 레시피(MOV-28) — 없으면 워커가 기본값(classic)으로 렌더한다. autoCuts 면 레시피가 컷 구간 · 순서까지 다시 고른다.
+    ...(recipe !== undefined ? { recipe } : {}),
+    ...(autoCuts !== undefined ? { autoCuts } : {}),
     timeline: {
       cuts: clips.map((clip, index) => ({
         cutId: `c${index}`,
@@ -257,6 +267,10 @@ export async function createEditJob(params: {
   transitions?: Transition[];
   /** 작업을 만든 무비 — 워커가 BGM 을 무비 단위로 고르는 키(`EditJobData.movieId`). */
   movieId?: string;
+  /** 무비의 편집 스타일 레시피(MOV-28). v3 스펙에만 실린다. */
+  recipe?: MovieRecipe;
+  /** 컷 구간 · 순서를 전부 AI 가 정한 무비 — 레시피가 컷을 다시 골라도 된다. */
+  autoCuts?: boolean;
 }): Promise<{ jobId: string; videoId: string }> {
   const prisma = getPrisma();
   validateClips(params.clips);
@@ -268,7 +282,7 @@ export async function createEditJob(params: {
   const editSpec: EditSpec =
     params.transitions === undefined
       ? { version: 2, stylePreset: params.stylePreset, clips }
-      : timelineSpec(params.stylePreset, clips, params.transitions);
+      : timelineSpec(params.stylePreset, clips, params.transitions, params.recipe, params.autoCuts);
   const renderSpec = createRenderSpec(params.outputProfile, params.fitMode);
   const uniqueVideoIds = [...new Set(clips.map((clip) => clip.videoId))];
 

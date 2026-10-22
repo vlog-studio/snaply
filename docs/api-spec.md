@@ -204,6 +204,14 @@ FE 가 알아야 할 동작:
     없어 `crossfade` 가 대개 `dip` 이 된다).
   - 생성(`export`)은 이 값을 경계마다 그대로 렌더한다(editSpec v3, [AI 편집](#ai-편집-contractedit-jobsts)). 워커가 원본 길이를 재서
     컷·여분 프레임에 맞추고, 겹쳐 녹이는 전환도 여분 프레임을 써서 결과물 길이는 컷 길이의 합이다.
+- **`recipe`** 는 편집 스타일 레시피다(2026-10-22, [specs/movie.md](./specs/movie.md) MOV-28) — `classic`(기본, 지금까지의 무비) ·
+  `trend-routine` · `trend-montage` · `cinematic` · `fast-cut` · `beat-sync` · `speed-ramp` · `day-stamp` · `before-after` · `asmr` ·
+  `freeze-text` · `daylog`. 원천은 [`recipe-vocabulary.json`](../packages/shared-types/src/recipe-vocabulary.json)이고
+  다른 이름은 400. `POST`·`PATCH` 로 보내고 응답에 늘 있다. `stylePreset`(색 · 음악 성향)과 따로다.
+  - 생성(`export`)은 `classic` 이 아니면 editSpec v3 에 `recipe` 와 `autoCuts` 를 싣는다. **`autoCuts` 는 컷 구간 · 순서를 전부 AI 가 정한
+    무비(모든 컷 `trimOwner: ai` + `arranger: ai`)일 때만 `true`** 이고, 그때만 워커가 레시피대로 스냅에서 컷을 다시 고르고 순서를 정한다
+    (매치컷 · 점수 위주 순서 — 결과물의 컷 구성이 무비의 `clips` 와 다를 수 있다). 사용자가 구간이나 순서를 고친 무비는 그대로 두고
+    소리 구성 · 타이틀 · 글 · 효과음만 레시피를 따른다. `classic` 무비의 editSpec 은 지금까지와 같다.
 - **컷의 `unavailable: true`** 는 참조하던 스냅이 만료·삭제됐다는 뜻이다. 그런 컷이 있어도
   무비는 열리고 목록에서 사라지지 않는다 — 사용자가 무엇을 잃었는지 알아야 하기 때문이다.
   다만 그 상태로 `export` 하면 400 이다(빼고 다시 시도). 어느 쪽인지는 `unavailableReason` 이 알린다 —

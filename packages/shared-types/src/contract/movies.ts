@@ -13,6 +13,7 @@ import {
   MOVIE_CLIP_MAX,
   MOVIE_CLIP_MIN,
   movieArrangerSchema,
+  movieRecipeSchema,
   movieStatusSchema,
   stylePresetSchema,
   transitionKindSchema,
@@ -102,6 +103,7 @@ export const movieSchema = z
     title: z.string(),
     status: movieStatusSchema,
     stylePreset: stylePresetSchema,
+    recipe: movieRecipeSchema.describe('편집 스타일 레시피 — 소리 구성 · 타이틀 · 글 · 효과음 · 컷 고르기(매치컷) · 화면 틀. 원천은 `recipe-vocabulary.json`. `classic` 이 지금까지의 무비다.'),
     captions: z.boolean().describe('생성 시 소프트 자막을 만들지 여부.'),
     ratio: z.string().describe('출력 비율. 현재는 `9:16` 뿐이다.'),
     arranger: movieArrangerSchema,
@@ -173,6 +175,11 @@ export const createMovieBodySchema = z.object({
   title: z.string().min(1).max(100).optional().describe('무비 이름. 생략하면 서버가 정한다.'),
   clips: clipsInputSchema.optional().describe('처음부터 컷을 담아 만들 때. 생략하면 빈 초안이 된다.'),
   stylePreset: stylePresetSchema.optional().describe('편집 스타일. 생략하면 `일상`.'),
+  recipe: movieRecipeSchema
+    .optional()
+    .describe(
+      '편집 스타일 레시피. 생략하면 `classic`. 컷을 전부 AI 가 정한 무비(`trimOwner: ai` · `arranger: ai`)는 생성 때 레시피가 컷 구간 · 순서까지 다시 고른다 — 사용자가 고친 무비는 구간 · 순서를 지키고 소리 · 타이틀 · 글 · 효과음만 레시피를 따른다.',
+    ),
   captions: z.boolean().optional().describe('소프트 자막 생성 여부. 생략하면 `false`(쇼츠용).'),
   arranger: movieArrangerSchema
     .optional()
@@ -193,6 +200,7 @@ export const updateMovieBodySchema = z
         '보내면 컷 목록을 통째로 교체한다(부분 수정이 아니다). 빈 배열이면 컷 없는 초안으로 돌아간다 — 마지막 스냅을 지운 무비도 남아야 하기 때문이다. 컷이 없으면 생성(export)은 400.',
       ),
     stylePreset: stylePresetSchema.optional(),
+    recipe: movieRecipeSchema.optional(),
     captions: z.boolean().optional(),
     arranger: movieArrangerSchema.optional(),
   })

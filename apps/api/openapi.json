@@ -665,6 +665,28 @@
                       "일상"
                     ]
                   },
+                  "recipe": {
+                    "description": "편집 스타일 레시피(MOV-28). 생략하면 `classic` — 워커의 기본값(`MOVIE_RECIPE`)을 따른다.",
+                    "type": "string",
+                    "enum": [
+                      "classic",
+                      "trend-routine",
+                      "trend-montage",
+                      "cinematic",
+                      "fast-cut",
+                      "beat-sync",
+                      "speed-ramp",
+                      "day-stamp",
+                      "before-after",
+                      "asmr",
+                      "freeze-text",
+                      "daylog"
+                    ]
+                  },
+                  "autoCuts": {
+                    "description": "`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).",
+                    "type": "boolean"
+                  },
                   "timeline": {
                     "type": "object",
                     "properties": {
@@ -1116,6 +1138,24 @@
               "일상"
             ]
           },
+          "recipe": {
+            "type": "string",
+            "enum": [
+              "classic",
+              "trend-routine",
+              "trend-montage",
+              "cinematic",
+              "fast-cut",
+              "beat-sync",
+              "speed-ramp",
+              "day-stamp",
+              "before-after",
+              "asmr",
+              "freeze-text",
+              "daylog"
+            ],
+            "description": "편집 스타일 레시피 — 소리 구성 · 타이틀 · 글 · 효과음 · 컷 고르기(매치컷) · 화면 틀. 원천은 `recipe-vocabulary.json`. `classic` 이 지금까지의 무비다."
+          },
           "captions": {
             "type": "boolean",
             "description": "생성 시 소프트 자막을 만들지 여부."
@@ -1176,6 +1216,7 @@
           "title",
           "status",
           "stylePreset",
+          "recipe",
           "captions",
           "ratio",
           "arranger",
@@ -2225,6 +2266,28 @@
                       "일상"
                     ]
                   },
+                  "recipe": {
+                    "description": "편집 스타일 레시피(MOV-28). 생략하면 `classic` — 워커의 기본값(`MOVIE_RECIPE`)을 따른다.",
+                    "type": "string",
+                    "enum": [
+                      "classic",
+                      "trend-routine",
+                      "trend-montage",
+                      "cinematic",
+                      "fast-cut",
+                      "beat-sync",
+                      "speed-ramp",
+                      "day-stamp",
+                      "before-after",
+                      "asmr",
+                      "freeze-text",
+                      "daylog"
+                    ]
+                  },
+                  "autoCuts": {
+                    "description": "`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).",
+                    "type": "boolean"
+                  },
                   "timeline": {
                     "type": "object",
                     "properties": {
@@ -2687,6 +2750,24 @@
               "일상"
             ]
           },
+          "recipe": {
+            "type": "string",
+            "enum": [
+              "classic",
+              "trend-routine",
+              "trend-montage",
+              "cinematic",
+              "fast-cut",
+              "beat-sync",
+              "speed-ramp",
+              "day-stamp",
+              "before-after",
+              "asmr",
+              "freeze-text",
+              "daylog"
+            ],
+            "description": "편집 스타일 레시피 — 소리 구성 · 타이틀 · 글 · 효과음 · 컷 고르기(매치컷) · 화면 틀. 원천은 `recipe-vocabulary.json`. `classic` 이 지금까지의 무비다."
+          },
           "captions": {
             "type": "boolean",
             "description": "생성 시 소프트 자막을 만들지 여부."
@@ -2747,6 +2828,7 @@
           "title",
           "status",
           "stylePreset",
+          "recipe",
           "captions",
           "ratio",
           "arranger",
@@ -6411,6 +6493,24 @@
                       "일상"
                     ]
                   },
+                  "recipe": {
+                    "description": "편집 스타일 레시피. 생략하면 `classic`. 컷을 전부 AI 가 정한 무비(`trimOwner: ai` · `arranger: ai`)는 생성 때 레시피가 컷 구간 · 순서까지 다시 고른다 — 사용자가 고친 무비는 구간 · 순서를 지키고 소리 · 타이틀 · 글 · 효과음만 레시피를 따른다.",
+                    "type": "string",
+                    "enum": [
+                      "classic",
+                      "trend-routine",
+                      "trend-montage",
+                      "cinematic",
+                      "fast-cut",
+                      "beat-sync",
+                      "speed-ramp",
+                      "day-stamp",
+                      "before-after",
+                      "asmr",
+                      "freeze-text",
+                      "daylog"
+                    ]
+                  },
                   "captions": {
                     "description": "소프트 자막 생성 여부. 생략하면 `false`(쇼츠용).",
                     "type": "boolean"
@@ -6944,6 +7044,23 @@
                       "감성",
                       "여행",
                       "일상"
+                    ]
+                  },
+                  "recipe": {
+                    "type": "string",
+                    "enum": [
+                      "classic",
+                      "trend-routine",
+                      "trend-montage",
+                      "cinematic",
+                      "fast-cut",
+                      "beat-sync",
+                      "speed-ramp",
+                      "day-stamp",
+                      "before-after",
+                      "asmr",
+                      "freeze-text",
+                      "daylog"
                     ]
                   },
                   "captions": {

@@ -3,5 +3,6 @@ export * from './anchor.js';
 export * from './content-vocabulary.js';
 export * from './cut-role.js';
 export * from './invalidation.js';
+export * from './recipe.js';
 export * from './seed.js';
 export * from './transition.js';

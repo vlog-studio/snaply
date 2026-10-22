@@ -597,6 +597,8 @@ model Movie {
   title       String        @db.VarChar(100)
   status      MovieStatus   @default(draft)
   stylePreset String        @default("일상") @map("style_preset") @db.VarChar(20)
+  /// 편집 스타일 레시피(specs MOV-28) — `recipe-vocabulary.json` 의 이름. 기본 classic(지금까지의 무비). 값 검사는 계약(Zod)이 한다.
+  recipe      String        @default("classic") @db.VarChar(30)
   /// 소프트 자막 생성 여부. 기본 꺼짐(쇼츠용).
   captions    Boolean       @default(false)
   /// 현재는 9:16 뿐이지만, 다른 비율이 생겨도 기존 무비가 자기 비율을 지키도록 저장한다.

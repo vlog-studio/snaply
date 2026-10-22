@@ -9,6 +9,7 @@ import {
   editJobErrorCodeSchema,
   editJobStatusSchema,
   fitModeSchema,
+  movieRecipeSchema,
   outputProfileSchema,
   stylePresetSchema,
   transitionKindSchema,
@@ -64,6 +65,15 @@ export type TimelineTransition = z.infer<typeof timelineTransitionSchema>;
 export const editSpecV3Schema = z.object({
   version: z.literal(3),
   stylePreset: stylePresetSchema,
+  recipe: movieRecipeSchema
+    .optional()
+    .describe('편집 스타일 레시피(MOV-28). 생략하면 `classic` — 워커의 기본값(`MOVIE_RECIPE`)을 따른다.'),
+  autoCuts: z
+    .boolean()
+    .optional()
+    .describe(
+      '`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).',
+    ),
   timeline: z.object({
     cuts: z.array(timelineCutSchema).min(1).max(MAX_EDIT_CLIPS),
     transitions: z

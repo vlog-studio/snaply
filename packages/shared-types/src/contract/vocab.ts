@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { MOVIE_RECIPES } from '../recipe.js';
 import { TRANSITION_KINDS } from '../transition.js';
 
 /**
@@ -39,6 +40,12 @@ export type EditJobErrorCode = z.infer<typeof editJobErrorCodeSchema>;
 export const STYLE_PRESETS = ['감성', '여행', '일상'] as const;
 export const stylePresetSchema = z.enum(STYLE_PRESETS);
 export type StylePreset = z.infer<typeof stylePresetSchema>;
+
+/**
+ * 무비의 편집 스타일 레시피(specs/movie.md MOV-28). 원천은 `recipe-vocabulary.json` 이고 이 enum 은 그 이름 목록
+ * (`MOVIE_RECIPES`)을 그대로 쓴다. `classic` 이 지금까지의 무비다.
+ */
+export const movieRecipeSchema = z.enum(MOVIE_RECIPES);
 
 /** 무비의 생애. `generating` 은 진행 중인 편집 작업이 있는 상태다. */
 export const MOVIE_STATUSES = ['draft', 'generating', 'ready', 'failed'] as const;
