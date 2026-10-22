@@ -265,8 +265,9 @@ def _local_time(at):
 
 
 def _recipe_of(edit_spec: dict) -> str:
-    """무비의 레시피 — 스펙에 없으면 워커 기본값(MOVIE_RECIPE). 모르는 이름이면 classic 으로(작업을 실패시키지 않는다)."""
-    name = edit_spec.get("recipe") or config.MOVIE_RECIPE
+    """무비의 레시피 — 스펙에 없으면 classic(API 는 classic 무비에 recipe 를 싣지 않는다). 모르는 이름이면 classic 으로(작업을 실패시키지 않는다).
+    워커 전체의 기본 레시피는 두지 않는다 — 사용자가 고른 '기본'을 덮게 된다(backlog E-67)."""
+    name = edit_spec.get("recipe") or recipe.CLASSIC
     try:
         return recipe.get(name).name
     except recipe.RecipeError:
@@ -382,8 +383,6 @@ async def main() -> None:
     # 소비 모듈을 임포트했는지와 무관하게 도는 것이 요점이다. 임포트에만 기대면 사전을 늘릴
     # 때마다 이 파일도 같이 고쳐야 하고, 실제로 두 번 빠뜨렸다. 넷째가 생겨도 이 줄은 그대로다.
     loaded = vocabulary.verify_all()
-    # 레시피 이름이 틀리면 작업 중간이 아니라 여기서 멈춘다(RecipeError)
-    recipe.get(config.MOVIE_RECIPE)
 
     _init_sentry()
     await db.init_pool()

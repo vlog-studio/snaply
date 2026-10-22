@@ -63,7 +63,8 @@
 
 ## 4. 어디서 하나 — 렌더 vs AI 초안
 
-- **렌더(편집 워커)** — 소리 구성 · 고정 타이틀 · 글 밀도 · 효과음. `MOVIE_RECIPE`(기본 `classic`)로 켠다. 컷 구간을 바꾸지 않으므로 사용자가 자른 컷에도 쓸 수 있다.
+- **렌더(편집 워커)** — 소리 구성 · 고정 타이틀 · 글 밀도 · 효과음. `MOVIE_RECIPE`(기본 `classic`)로 켠다(2026-10-22 덧붙임: 무비마다
+  고르게 되면서 `MOVIE_RECIPE` 는 없앴다 — 무비가 고른 레시피만 쓰고, 스펙에 없으면 classic. 워커 전체의 값이 사용자가 고른 '기본'을 덮었다, backlog E-67). 컷 구간을 바꾸지 않으므로 사용자가 자른 컷에도 쓸 수 있다.
 - **AI 초안 단계** — 이음 지점 · 배속 · 컷 길이. **컷 구간을 정하는 일**이라 사용자가 직접 자른 컷(trimOwner)을 렌더가 덮으면 안 된다
   ([auto-edit-draft.md](auto-edit-draft.md) §2.4). 엔진(`continuity.plan_cuts` · `editor.retime_clip`)은 있고, 초안 단계(API 의 edit-director)에 잇는 일은 backlog A-20.
   지금은 `trend_edit.render` 가 한 번에 돌리는 자리(데모 · 이후 초안 연결)다.

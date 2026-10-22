@@ -571,7 +571,7 @@ MOV-5 · MOV-21). 서버 · 워커 · 앱의 상한과 테스트는 바뀌었고
       스냅 11개 이상으로 AI 초안을 받으면 서버가 11컷 이상을 돌려줘 `unreachable` 로 실패한다. 반대로 수정이 배포되기 전에 새 앱으로 11컷 이상 무비를
       만들면 95% 에서 멈춘다. 절차는 [deployment-aws.md](./deployment-aws.md#8-테스터-앱) §8(Gradle release 또는 EAS `tester` 프로필).
       E-61 수정은 2026-10-20 배포(Deploy `1864534`)로 나갔다. 다만 지금 main 의 앱은 무비 화면에 레시피 칩(`편집 · …`, MOV-28)을 조건 없이 보여 준다 —
-      이 빌드를 내면 테스터가 레시피를 쓴다. 그 전에 E-65 ~ E-67 · H-19 와 A-20 의 곡 업로드 · 제한 시간을 정하거나, 칩을 숨긴 빌드를 낸다
+      이 빌드를 내면 테스터가 레시피를 쓴다. 그 전에 E-65 · E-66 과 A-20 의 곡 업로드 · 제한 시간을 정하거나, 칩을 숨긴 빌드를 낸다
 
 **완료 조건**: 서버 실측이 progress 에 기록되고(이때 MOV-5 라벨의 괄호를 지운다) 테스터에게 새 APK 가 배포된다.
 
@@ -582,7 +582,7 @@ MOV-5 · MOV-21). 서버 · 워커 · 앱의 상한과 테스트는 바뀌었고
 BGM 컷편집 무비에 컷의 내용에 맞는 의성어 · 감탄 · 키워드와 이모지 스티커를 박자에 맞춰 붙인다(MOV-27 `부분`). 결정 ·
 세 층(사전 · 에이전트 · 생성)의 관계는 [decisions/text-accent-stickers.md](./decisions/text-accent-stickers.md)(결정(잠정) — **미디어/편집 트랙 담당 검토 전**).
 2026-10-20 에 사전과 워커 엔진, 2026-10-21 에 BGM 비트 그리드와 결과물 연결이 들어갔다(progress 2026-10-21 "BGM 비트 그리드 · 액센트를 결과물에 굽는다").
-**`TEXT_ACCENTS_ENABLED=true` 일 때만 v3 무비에 굽고, 기본은 꺼짐이다.**
+**classic v3 무비는 `TEXT_ACCENTS_ENABLED=true` 일 때만 굽고, 기본은 꺼짐이다.** 레시피 무비(A-20)는 이 값과 상관없이 레시피를 따른다.
 
 - [ ] **피사체 상자** — 스냅 분석(vision)의 결과에 대표 피사체 bbox(정규화 x0 y0 x1 y1 + confidence)를 더한다. 프롬프트 · 스키마
       (`pipeline/video_analysis/schema.py`) · 계약 [`contract/video-analyses.ts`](../packages/shared-types/src/contract/video-analyses.ts) · `openapi.json` ·
@@ -966,17 +966,6 @@ MOV-14 는 생성에 쓰인 구성을 다시 실행하면 같은 결과가 나�
 **완료 조건**: 워커가 고른 컷 구성(EDL)을 작업 결과로 돌려주고 앱이 그것을 `render` 에 얼리거나, 레시피가 컷을 고르는 일을 초안 단계로 옮겨(A-20)
 파일과 `render` 가 같은 구성을 가리킨다.
 
-### E-67. 사용자가 '기본(classic)'을 골라도 워커의 `MOVIE_RECIPE` 가 이긴다
-
-API 는 classic 무비의 editSpec 에 `recipe` 를 싣지 않는다([movie.service.ts](../apps/api/src/services/movie.service.ts) `exportMovie` — classic 스펙을
-예전과 같게 두려고). 워커는 스펙에 `recipe` 가 없으면 `MOVIE_RECIPE` 를 쓴다(`worker._recipe_of`). 그래서 운영에서 `MOVIE_RECIPE` 를 classic 이 아닌
-값으로 두면, 사용자가 '기본'을 고른 무비까지 그 레시피로 만들어진다 — env-spec 설명("무비마다 사용자가 고른 레시피는 editSpec 의 recipe 가 이긴다")과
-다르다. 이 값을 넣지 않으면(기본 classic) 드러나지 않는다. 또 [env-spec.ts](../apps/api/src/env-spec.ts) `MOVIE_RECIPE` 설명에는 레시피 이름이 다섯
-개뿐이다(사전에는 열둘). 2026-10-22 main 검토에서 찾았다.
-
-**완료 조건**: 무비가 고른 레시피는 classic 이어도 워커까지 가거나(스펙에 늘 싣기 — 예전 작업의 스펙 모양과 함께 본다), `MOVIE_RECIPE` 를 없애 기본이
-늘 classic 이 된다. env-spec 설명이 사전과 맞고, 테스트로 고정된다.
-
 ### E-68. 배포가 CI 를 기다리지 않는다 — CI 가 실패한 커밋도 운영에 나간다
 
 `deploy.yml` 은 main push(경로 필터)마다 돌고 CI(`ci.yml`)의 결과를 보지 않는다 — `deploy-aws` 는 같은 워크플로의 `build-and-push` 만 기다린다.
@@ -1082,17 +1071,6 @@ API 는 classic 무비의 editSpec 에 `recipe` 를 싣지 않는다([movie.serv
 
 문서 감사 · 리뷰에서 나온, **규칙이나 문서를 어느 쪽으로 맞출지만 정하면 되는** 작은 판단이다 — 고르는 쪽에 따라 문서만 고치거나 작은
 코드 변경이 따른다. 각 항목에 배경 · 선택지 · 권장(있으면) · 완료 조건을 적었다. 정하면 해당 문서(와 필요한 경우 코드 · 테스트)를 고치고 닫는다.
-
-### H-19. `TEXT_ACCENTS_ENABLED` 가 classic 무비만 막는다 — 플래그의 뜻을 정한다
-
-MOV-27 은 텍스트 액센트 · 스티커가 "운영에서는 꺼져 있다 — `TEXT_ACCENTS_ENABLED`"라고 적는다. 그런데 워커는 레시피가 classic 이 아니면 플래그와
-상관없이 액센트를 굽는다(`worker.py` — `config.TEXT_ACCENTS_ENABLED or recipe_name != recipe.CLASSIC`). 레시피의 글 · 스티커 · 고정 타이틀이 액센트
-단계에 있어서다. 지금 운영 앱에는 레시피를 고르는 화면이 없어 드러나지 않지만, 운영 API 는 이미 `recipe` 를 받는다. 2026-10-22 main 검토에서 찾았다.
-
-선택지: (a) 플래그는 classic 무비의 액센트만 켜고 끄는 것으로 두고 MOV-27 · env-spec · `.env.example` 설명을 그렇게 고친다 (b) 플래그가 레시피 무비의
-글 · 스티커까지 막게 바꾼다(꺼져 있으면 레시피 무비가 타이틀 · 의성어 없이 나간다). 권장: (a) — 레시피는 사용자가 고른 것이라 따로 끌 이유가 약하다.
-
-**완료 조건**: 고른 쪽으로 MOV-27 문구 · env-spec · `.env.example` 설명이 맞고, (b)면 워커 조건과 테스트도 바뀐다.
 
 ---
 
@@ -1263,3 +1241,5 @@ MOV-27 은 텍스트 액센트 · 스티커가 "운영에서는 꺼져 있다 �
 - **A-18** `앱` 에뮬레이터 확인(20컷 타임라인 · 21번째 안내 · 40개 초안 · 20컷 생성) — 2026-10-20 → progress 2026-10-20 "20컷 무비 · 40개 초안의 에뮬레이터 확인"
 - **E-61** 11컷 이상 무비의 생성이 앱에서 끝나지 않았다(`GET /edit-jobs/{id}` 응답의 컷 상한이 10) — 2026-10-20, 계약의 상한을 `MOVIE_CLIP_MAX` 로 → progress 2026-10-20 "20컷 무비 · 40개 초안의 에뮬레이터 확인"
 - **E-62** 무비의 `스냅 더 넣기` 에서 `이 무비에 넣기` 를 누르면 Android 앱이 멈췄다 — 2026-10-20, 컷을 넣고 한 프레임 뒤에 무비로 돌아간다(에뮬레이터 16회) → progress 2026-10-20 "스냅 넣기 확인 뒤의 Android 크래시"
+- **E-67** 사용자가 '기본(classic)'을 골라도 워커의 `MOVIE_RECIPE` 가 이겼다 — 2026-10-22, `MOVIE_RECIPE` 를 없앰(스펙에 없으면 classic) → progress 2026-10-22 "워커 기본 레시피를 없애고 액센트 플래그를 classic 무비에"
+- **H-19** `TEXT_ACCENTS_ENABLED` 가 classic 무비만 막는다 — 2026-10-22, (a) 플래그는 classic 무비만 켜고 끈다로 MOV-27 · env-spec · `.env.example` 문구를 맞춤 → progress 2026-10-22 "워커 기본 레시피를 없애고 액센트 플래그를 classic 무비에"

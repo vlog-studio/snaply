@@ -66,7 +66,7 @@ export const editSpecV3Schema = z.object({
   stylePreset: stylePresetSchema,
   recipe: movieRecipeSchema
     .optional()
-    .describe('편집 스타일 레시피(MOV-28). 생략하면 `classic` — 워커의 기본값(`MOVIE_RECIPE`)을 따른다.'),
+    .describe('편집 스타일 레시피(MOV-28). 생략하면 `classic` — classic 무비는 싣지 않는다.'),
   autoCuts: z
     .boolean()
     .optional()

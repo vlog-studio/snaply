@@ -560,14 +560,7 @@ export const ENV_VARS = [
     required: false,
     origin: 'shared',
     description:
-      '편집 워커가 무비 결과물에 텍스트 액센트 · 이모지 스티커를 굽는다(MOV-27, decisions/text-accent-stickers.md). true 일 때만, 기본 false. 분석에 동의한 스냅의 분석 결과와 고른 BGM 의 비트를 쓴다',
-  },
-  {
-    key: 'MOVIE_RECIPE',
-    required: false,
-    origin: 'shared',
-    description:
-      '편집 워커의 기본 레시피 — 무비가 레시피를 갖지 않은 작업(예전 작업 · classic 무비)에만 쓴다. 무비마다 사용자가 고른 레시피는 editSpec 의 recipe 가 이긴다(specs MOV-28). 이름은 packages/shared-types/src/recipe-vocabulary.json(classic · trend-routine · trend-montage · cinematic · daylog), 기본 classic(지금까지의 무비). 없는 이름이면 워커가 기동하지 않는다(decisions/trend-recipes.md)',
+      '편집 워커가 classic 무비의 결과물에 텍스트 액센트 · 이모지 스티커를 굽는다(MOV-27, decisions/text-accent-stickers.md). true 일 때만, 기본 false. 분석에 동의한 스냅의 분석 결과와 고른 BGM 의 비트를 쓴다. 레시피 무비(MOV-28)는 이 값과 상관없이 레시피의 글 · 스티커를 쓴다',
   },
   {
     key: 'BGM_DIR',
