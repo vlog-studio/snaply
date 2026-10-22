@@ -111,7 +111,8 @@
 ## 7. 결과물에 붙이기(2026-10-21)
 
 편집 워커가 BGM 을 입힌 뒤 굽는다([`accent_stage.py`](../../apps/ai-worker/src/pipeline/accent_stage.py), `worker.py` 3-1 단계). **`TEXT_ACCENTS_ENABLED=true` 일 때만,
-컷이 timeline 에 있는 v3 무비만** — 기본 꺼짐이라 운영 결과물은 켜기 전까지 그대로다.
+컷이 timeline 에 있는 v3 무비만** — 기본 꺼짐이라 운영 결과물은 켜기 전까지 그대로다. (2026-10-22 덧붙임: 이 플래그는 classic 무비만 켜고 끈다.
+레시피 무비(MOV-28)는 레시피의 글 · 스티커 · 고정 타이틀이 이 단계에 있어 플래그와 상관없이 굽는다 — backlog H-19 (a))
 
 - 입력: 컷의 원본 구간(결과물 경계는 컷 길이의 누적 — 겹침 전환은 경계 양쪽에 반씩 걸친다), 스냅의 최신 완료 분석(동의한 스냅만 있다 — 워커가
   [`content.py`](../../apps/ai-worker/src/pipeline/content.py)로 개념 id 로 바꾼다, TS 와 공유 사례 `fixtures/content-normalization.json` 으로 묶음), `video_signals.motion`,

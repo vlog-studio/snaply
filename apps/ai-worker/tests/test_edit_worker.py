@@ -162,7 +162,8 @@ V3_SPEC = {
 
 
 class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
-    """텍스트 액센트 단계는 켰을 때 · v3 무비만 돈다(MOV-27). 끄면 결과물이 지금과 같다."""
+    """텍스트 액센트 단계는 v3 무비만 돈다 — classic 무비는 켰을 때만(MOV-27), 레시피 무비는 늘(MOV-28, backlog H-19).
+    끄면 classic 무비의 결과물이 지금과 같다."""
 
     def setUp(self) -> None:
         db = mock.patch.object(worker, "db").start()
@@ -183,9 +184,8 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         self.accents = mock.patch.object(worker, "_apply_accents", new=mock.AsyncMock(return_value="with_accents.mp4")).start()
         self.addCleanup(mock.patch.stopall)
 
-    async def run_pipeline(self, spec: dict, enabled: bool, recipe_name: str = "classic") -> None:
-        with mock.patch.object(worker.config, "TEXT_ACCENTS_ENABLED", enabled), \
-                mock.patch.object(worker.config, "MOVIE_RECIPE", recipe_name):
+    async def run_pipeline(self, spec: dict, enabled: bool) -> None:
+        with mock.patch.object(worker.config, "TEXT_ACCENTS_ENABLED", enabled):
             await worker._run_pipeline(JOB_ID, {"userId": USER_ID, "movieId": "m1", "editSpec": spec}, "/tmp/w")
 
     async def test_enabled_v3_movie_gets_accents_after_the_music(self) -> None:
@@ -200,15 +200,23 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         worker.storage.upload.assert_any_call("with_bgm.mp4", mock.ANY, "video/mp4")
         self.assertEqual(self.bgm.call_args.args[-2:], (1.0, 0.25))
 
-    async def test_a_trend_recipe_drops_the_source_sound_and_runs_the_stage(self) -> None:
-        await self.run_pipeline(V3_SPEC, enabled=False, recipe_name="trend-routine")
+    async def test_a_trend_recipe_drops_the_source_sound_and_runs_the_stage_while_switched_off(self) -> None:
+        await self.run_pipeline({**V3_SPEC, "recipe": "trend-routine"}, enabled=False)
         self.assertEqual(self.bgm.call_args.args[-2:], (0.0, 1.0))
         self.accents.assert_awaited_once()
 
-    async def test_the_movie_recipe_in_the_spec_wins_over_the_worker_default(self) -> None:
-        await self.run_pipeline({**V3_SPEC, "recipe": "cinematic"}, enabled=False, recipe_name="classic")
+    async def test_the_movie_recipe_comes_from_the_spec(self) -> None:
+        await self.run_pipeline({**V3_SPEC, "recipe": "cinematic"}, enabled=False)
         self.assertEqual(self.bgm.call_args.args[-2:], (0.0, 1.0))
         self.assertEqual(self.accents.await_args.args[-1], "cinematic")
+
+    async def test_a_spec_without_a_recipe_is_classic_whatever_the_environment(self) -> None:
+        # API 는 classic 무비에 recipe 를 싣지 않는다 — 사용자가 고른 '기본'을 워커 전체의 값이 덮으면 안 된다(backlog E-67)
+        with mock.patch.dict("os.environ", {"MOVIE_RECIPE": "cinematic"}):
+            await self.run_pipeline(V3_SPEC, enabled=False)
+        self.assertEqual(self.bgm.call_args.args[-2:], (1.0, 0.25))
+        self.accents.assert_not_awaited()
+        self.assertFalse(hasattr(worker.config, "MOVIE_RECIPE"))
 
     async def test_an_unknown_recipe_falls_back_to_classic_instead_of_failing(self) -> None:
         await self.run_pipeline({**V3_SPEC, "recipe": "tiktok-max"}, enabled=False)

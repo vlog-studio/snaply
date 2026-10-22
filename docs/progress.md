@@ -2681,3 +2681,20 @@ BGM 컷편집 무비의 글은 받아쓰기가 아니라 컷의 내용에 맞는
   5개는 근거가 없어 그대로(설계대로). 판정과 상관없이 다시 감싸는 단계(`-display_rotation:v:0 0 -c copy`)는 ffmpeg 7.1 에서 회전 0 · 바로 선 화면을 냈다.
   비용은 회전 정보가 있는 원본마다 약 0.83초(12개 7.5초, 첫 호출의 모델 적재 0.6초 별도) — 원본마다 차례로 돌아 회전 정보 있는 원본 20개면 보통 경로 렌더도
   약 17초 늘어난다. 표본은 dev 스냅뿐이고 실제 메신저 파일 · 옆모습 · 가린 얼굴은 없었다. 내려받은 스냅과 렌더 결과물은 측정 뒤 지웠다.
+
+## 2026-10-22 (이어서) — 워커 기본 레시피를 없애고 액센트 플래그를 classic 무비에(backlog E-67 · H-19)
+
+트랙 담당 검토에서 올린 두 항목을 같은 날 닫았다.
+
+- **`MOVIE_RECIPE` 를 없앴다(E-67)** — API 는 classic 무비의 editSpec 에 `recipe` 를 싣지 않는데, 워커는 그때 `MOVIE_RECIPE` 를 써서 이 값을
+  classic 이 아니게 두면 사용자가 '기본'을 고른 무비까지 그 레시피로 만들었다. 무비마다 레시피를 고르게 된 뒤로는 워커 전체의 기본값이 필요 없어,
+  워커 `config.MOVIE_RECIPE` · 기동 때의 이름 검사 · env-spec · `.env.example` 에서 뺐다. `worker._recipe_of` 는 스펙에 없으면 classic, 모르는 이름도
+  classic(그대로). 계약 `editSpecV3Schema.recipe` 의 설명을 고치고 `openapi.json` 을 다시 만들었다. decisions/trend-recipes.md §4 에 덧붙임. 운영 시크릿에
+  `MOVIE_RECIPE` 를 넣어 두었다면 이제 아무 효과가 없다.
+- **액센트 플래그의 뜻(H-19 (a))** — `TEXT_ACCENTS_ENABLED` 는 classic 무비의 텍스트 액센트 · 스티커만 켜고 끈다. 레시피 무비는 레시피의 글 · 스티커 ·
+  고정 타이틀이 같은 단계에 있어 플래그와 상관없이 굽는다 — 동작은 그대로이고 MOV-27 · env-spec · `.env.example` · 워커 주석 · A-19 ·
+  decisions/text-accent-stickers.md §7 의 문구를 맞췄다.
+- **검증** — `test_edit_worker` 에 '스펙에 레시피가 없으면 환경에 `MOVIE_RECIPE` 가 있어도 classic' · '플래그가 꺼져도 레시피 무비는 액센트 단계를 돈다'를
+  두고, 워커 설정을 바꿔 끼우던 테스트를 스펙의 `recipe` 로 바꿨다. 워커 이미지(Debian ffmpeg 7.1)에서 `REQUIRE_FFMPEG=1 python -m unittest discover -s tests`
+  **566건 통과**. `npm run typecheck` · `npm run lint`(`apps/api` · `packages/shared-types`) 통과. `npm test -w apps/api` 는 세 번 돌려 세 번 모두 851건
+  통과 — 첫 번째에만 vitest 가 처리되지 않은 오류 1건을 보고해 실패로 끝났고(내용은 남기지 못했다), 두 번째 · 세 번째는 오류 없이 통과했다.
