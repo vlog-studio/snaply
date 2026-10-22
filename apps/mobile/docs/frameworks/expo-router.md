@@ -42,6 +42,7 @@ src/_app/
 ```
 
 - Put theme, QueryClient, error boundaries, and splash initialization in `_app/providers` or `_app/routes`.
+- The root `ErrorBoundary` that `_layout.tsx` exports comes from `_app/routes` (`RootErrorBoundary`), because it replaces the whole app, providers included. `src/app/+not-found.tsx` does not: the unmatched-route screen is a screen on the root stack like any other, so it is a thin adapter over a page slice (`pages/not-found`).
 - If provider order matters, compose it in one `app-providers.tsx`.
 - Features and pages must not register global providers.
 - Keep nested `_layout.tsx` files focused on route structure. Move reusable navigation UI to widgets or shared.

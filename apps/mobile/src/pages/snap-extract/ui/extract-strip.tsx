@@ -11,7 +11,7 @@ import { ThemedText } from '@/shared/ui/themed-text';
 
 import { ExtractPxPerSec, stripRulerTicks, stripTiles } from '../model/extract-strip-layout';
 import { useStripThumbnails } from '../model/use-strip-thumbnails';
-import { ExtractWindow } from './extract-window';
+import { ExtractWindow, WindowOverhang } from './extract-window';
 
 /** The strip's clip height — the movie timeline's, so the two read as kin. */
 const StripTileHeight = 56;
@@ -147,8 +147,10 @@ export function ExtractStrip({
 
 const styles = StyleSheet.create({
   content: {
-    // Room for the window's handles to overhang the first and last tile.
-    paddingHorizontal: Spacing.five,
+    // Room for the window's whole handle past the first and last tile: a
+    // window at 0:00 keeps its 48dp touch area on screen and its grip out of
+    // the default back-gesture band (see `WindowOverhang`).
+    paddingHorizontal: WindowOverhang,
     paddingVertical: Spacing.one,
   },
   ruler: {

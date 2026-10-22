@@ -60,7 +60,7 @@ import {
   pickingCapacity,
   type SelectionPurpose,
 } from '../model/selection-limits';
-import { draftConfirmation, useEditDraft } from '../model/use-edit-draft';
+import { draftConfirmation, draftConfirmTone, useEditDraft } from '../model/use-edit-draft';
 import { playerAlbumAction } from '../model/player-album-action';
 import { snapExpiryCaption } from '../model/snap-expiry-caption';
 import { useMovieDeleteImpact } from '../model/use-movie-delete-impact';
@@ -205,7 +205,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
             onAction: playingFile.retry,
           }
         : playingFile.fetching
-          ? { text: '불러오는 중…' }
+          ? { text: '불러오는 중…', busy: true }
           : undefined;
   // The user's own copy (SNAP-17): offered for every snap that still has a file
   // somewhere — here, or the server's to fetch.
@@ -477,6 +477,11 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
     clearError();
   };
 
+  // A post-it sits over whichever bar is at the bottom: the tab bar, or — when
+  // a delete left some picks behind — the selection bar, whose count line it
+  // would otherwise cover for as long as it stays.
+  const toastOffset = (selecting ? selectionBarHeight : tabBarHeight) + Spacing.three;
+
   return (
     <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <ScrollView
@@ -530,8 +535,12 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
             would shift the grid they are picking from. */}
         {notice && !selecting ? <NoticeBand message={notice} /> : null}
 
+        {/* A standing state of the library: not announced as it mounts — the
+            tab mounts at launch behind the studio — but a new count is still
+            read (the card's live region). */}
         {failedUploadCount > 0 ? (
           <AlertCard
+            announce={false}
             message={`스냅 ${failedUploadCount}개를 올리지 못했어요.`}
             action={{ label: '다시 올리기', onPress: retryFailedUploads }}
           />
@@ -603,7 +612,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
             setDeleteOpen(true);
           }}
           onHeight={setSelectionBarHeight}
-          tone={purpose === 'draft' ? 'ai' : 'primary'}
+          tone={draftConfirmTone(confirmation)}
         />
       ) : null}
 
@@ -622,7 +631,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
       <Toast
         message={savedMessage}
         onDismiss={() => setSavedMessage(undefined)}
-        bottomOffset={tabBarHeight + Spacing.three}
+        bottomOffset={toastOffset}
       />
 
       <Toast
@@ -638,7 +647,7 @@ export function SnapsPage({ startSelecting, selectionRequest }: SnapsPageProps) 
             : undefined
         }
         onDismiss={() => setDeleted(undefined)}
-        bottomOffset={tabBarHeight + Spacing.three}
+        bottomOffset={toastOffset}
       />
 
       <SnapDeleteDialog

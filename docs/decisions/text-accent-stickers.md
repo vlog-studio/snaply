@@ -11,7 +11,7 @@
 [`ass.py`](../../apps/ai-worker/src/pipeline/ass.py)
 **관련 문서**: [specs/movie.md](../specs/movie.md) MOV-27 · MOV-9 · MOV-14 · [plans/trend-editing-pipeline.md](../plans/trend-editing-pipeline.md) §5 ·
 [plans/edit-spec-v3.md](../plans/edit-spec-v3.md) §10 · [edit-spec-v3.md](edit-spec-v3.md) §5 · [subtitle-rendering.md](subtitle-rendering.md) ·
-[sticker-asset-sourcing.md](sticker-asset-sourcing.md) · [ontology-personalization.md](ontology-personalization.md) · 미결은 [backlog.md](../backlog.md) A-17
+[sticker-asset-sourcing.md](sticker-asset-sourcing.md) · [ontology-personalization.md](ontology-personalization.md) · 미결은 [backlog.md](../backlog.md) A-19
 
 ---
 
@@ -51,7 +51,7 @@
 입력은 스냅 분석의 summary · 개념 이름 · 컷 에너지 · 사전이 고른 후보, 모델은 AI 편집 에이전트와 같은 `EDIT_AGENT_MODEL`. 응답은 믿지 않는다:
 글은 문턱, 종류는 `generated.categories`, 이모지는 `stickers.generatedPool`(102개)을 지나야 하고, 못 지난 것은 `rejected` 에 남기고 그 컷은 사전으로
 돌아간다. 사전 글보다 긴 생성 글이 자리에 들어가지 않으면 글을 80% · 65% 로 줄여 본다(그래도 안 되면 drop). 실제 호출로 품질 · 비용을 잰 적은 아직
-없다(로컬에 키가 없었다 — `scripts/try-accent-writer.py`). 에이전트 툴(b)과 렌더 경로 연결은 backlog A-17.
+없다(로컬에 키가 없었다 — `scripts/try-accent-writer.py`). 에이전트 툴(b)과 렌더 경로 연결은 backlog A-19.
 
 ## 3. 모양 — 종류 · 색 · 자리 · 박자 · 모션
 
@@ -123,6 +123,6 @@
 
 ## 8. 아직 아닌 것
 
-미결과 완료 조건은 [backlog.md](../backlog.md) A-17 에만 둔다 — 고른 결과를 구성에 핀으로(editSpec v3 `overlays`), 운영에서 켜기, 스냅 분석의 피사체 상자,
+미결과 완료 조건은 [backlog.md](../backlog.md) A-19 에만 둔다 — 고른 결과를 구성에 핀으로(editSpec v3 `overlays`), 운영에서 켜기, 스냅 분석의 피사체 상자,
 에이전트 툴(b) · 생성 호출(c), 내용 개념 사전에 없는 장면(점프 · 강아지 · 달리기 등), 실제 BGM 의 비트(A-7), 에셋 라이선스 확인,
 앱 미리보기.

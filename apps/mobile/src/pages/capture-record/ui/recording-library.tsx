@@ -46,15 +46,21 @@ export function RecordingLibrary({
   // other recordings never reached the server, so their delete is final.
   // The question is a plain dark sheet drawn inside this modal (the capture
   // screens stay undecorated) — a bottom sheet of its own would be a second
-  // modal opening over this one.
-  const [confirming, setConfirming] = useState<LocalRecording>();
+  // modal opening over this one. Which question it asks is judged once, when
+  // it opens: an upload finishing while it is up must not swap the answers
+  // under the user's finger.
+  const [confirming, setConfirming] = useState<{ recording: LocalRecording; kept: boolean }>();
+  const askDelete = (recording: LocalRecording) =>
+    setConfirming({ recording, kept: canDeleteFromDevice(recording) });
   const closeConfirm = () => setConfirming(undefined);
   const answer = (run: (recording: LocalRecording) => Promise<void>) => {
-    const target = confirming;
+    const target = confirming?.recording;
     setConfirming(undefined);
     if (target) void run(target);
   };
-  const kept = confirming ? canDeleteFromDevice(confirming) : false;
+  // A question left open when the library closes is dropped, so it does not
+  // come back over the list the next time the library opens.
+  if (!visible && confirming) setConfirming(undefined);
 
   return (
     <Modal
@@ -73,76 +79,94 @@ export function RecordingLibrary({
           },
         ]}
       >
-        <View style={styles.header}>
-          <View style={styles.titleBlock}>
-            <ThemedText type="subtitle" accessibilityRole="header">
-              찍은 스냅
-            </ThemedText>
-            <ThemedText type="data">앱에 저장된 스냅 {recordings.length}개</ThemedText>
-          </View>
-          <StickerButton icon="close" accessibilityLabel="스냅 목록 닫기" onPress={onClose} />
-        </View>
-
-        <FlatList
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            styles.listContent,
-            recordings.length === 0 && styles.emptyListContent,
-          ]}
-          data={recordings}
-          keyExtractor={(item) => item.id}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={[styles.emptyIcon, { borderColor: theme.textSecondary }]}>
-                <DoodleIcon name="play" size={26} />
-              </View>
-              <ThemedText type="heading">
-                {isLoading ? '스냅을 불러오는 중' : '아직 찍은 스냅이 없어요'}
+        {/* While the question is up the list behind it is out of the
+            screen-reader order: the sheet is drawn in this same modal, and
+            `accessibilityViewIsModal` is iOS-only and hides only the sheet's
+            own siblings — TalkBack could otherwise reach another row's 삭제
+            (swapping the question's target) or select a row under the sheet. */}
+        <View
+          style={styles.content}
+          importantForAccessibility={confirming ? 'no-hide-descendants' : 'auto'}
+          accessibilityElementsHidden={!!confirming}
+        >
+          <View style={styles.header}>
+            <View style={styles.titleBlock}>
+              <ThemedText type="subtitle" accessibilityRole="header">
+                찍은 스냅
               </ThemedText>
+              <ThemedText type="data">앱에 저장된 스냅 {recordings.length}개</ThemedText>
             </View>
-          }
-          renderItem={({ item }) => {
-            const isDeleting = deletingId === item.id;
+            <StickerButton icon="close" accessibilityLabel="스냅 목록 닫기" onPress={onClose} />
+          </View>
 
-            return (
-              <View style={[styles.recordingRow, { borderBottomColor: theme.ruleLine }]}>
-                <Pressable
-                  accessibilityHint="스냅을 재생하고 쓸 수 있어요"
-                  accessibilityLabel={`${formatDateTime(item.createdAt)} 찍은 스냅`}
-                  accessibilityRole="button"
-                  disabled={isDeleting}
-                  onPress={() => onSelect(item)}
-                  style={styles.recordingMain}
-                >
-                  <View
-                    style={[
-                      styles.playIcon,
-                      { backgroundColor: theme.ribbon, borderColor: theme.border },
-                    ]}
-                  >
-                    <DoodleIcon name="play" size={20} />
-                  </View>
-                  <View style={styles.recordingCopy}>
-                    <ThemedText type="bodySm" style={styles.date}>
-                      {formatDateTime(item.createdAt)}
-                    </ThemedText>
-                    <ThemedText type="data">{formatFileSize(item.size)} · 앱에 저장됨</ThemedText>
-                  </View>
-                </Pressable>
-                <Pressable
-                  accessibilityLabel={`${formatDateTime(item.createdAt)} 스냅 삭제`}
-                  accessibilityRole="button"
-                  disabled={isDeleting}
-                  onPress={() => setConfirming(item)}
-                  style={styles.deleteButton}
-                >
-                  {/* A delete is ink, not red: red is the main action. */}
-                  <ThemedText type="smallBold">{isDeleting ? '삭제하는 중…' : '삭제'}</ThemedText>
-                </Pressable>
+          <FlatList
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={[
+              styles.listContent,
+              recordings.length === 0 && styles.emptyListContent,
+            ]}
+            data={recordings}
+            keyExtractor={(item) => item.id}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <View style={[styles.emptyIcon, { borderColor: theme.textSecondary }]}>
+                  <DoodleIcon name="play" size={26} />
+                </View>
+                <ThemedText type="heading">
+                  {isLoading ? '스냅을 불러오는 중' : '아직 찍은 스냅이 없어요'}
+                </ThemedText>
               </View>
-            );
-          }}
-        />
+            }
+            renderItem={({ item, index }) => {
+              const isDeleting = deletingId === item.id;
+
+              return (
+                // Ruled like the board: a line under every row and over the first.
+                <View
+                  style={[
+                    styles.recordingRow,
+                    { borderBottomColor: theme.ruleLine },
+                    index === 0 && [styles.firstRow, { borderTopColor: theme.ruleLine }],
+                  ]}
+                >
+                  <Pressable
+                    accessibilityHint="스냅을 재생하고 쓸 수 있어요"
+                    accessibilityLabel={`${formatDateTime(item.createdAt)} 찍은 스냅`}
+                    accessibilityRole="button"
+                    disabled={isDeleting}
+                    onPress={() => onSelect(item)}
+                    style={styles.recordingMain}
+                  >
+                    <View
+                      style={[
+                        styles.playIcon,
+                        { backgroundColor: theme.ribbon, borderColor: theme.border },
+                      ]}
+                    >
+                      <DoodleIcon name="play" size={20} />
+                    </View>
+                    <View style={styles.recordingCopy}>
+                      <ThemedText type="bodySm" style={styles.date}>
+                        {formatDateTime(item.createdAt)}
+                      </ThemedText>
+                      <ThemedText type="data">{formatFileSize(item.size)} · 앱에 저장됨</ThemedText>
+                    </View>
+                  </Pressable>
+                  {/* A delete that is only a word: ink on a kraft marker, not
+                      red — red is the main action. */}
+                  <TextButton
+                    tone="delete"
+                    label={isDeleting ? '삭제하는 중…' : '삭제'}
+                    accessibilityLabel={`${formatDateTime(item.createdAt)} 스냅 삭제`}
+                    disabled={isDeleting}
+                    onPress={() => askDelete(item)}
+                    style={styles.deleteButton}
+                  />
+                </View>
+              );
+            }}
+          />
+        </View>
         {confirming ? (
           <View style={StyleSheet.absoluteFill}>
             <Pressable
@@ -161,11 +185,11 @@ export function RecordingLibrary({
               </ThemedText>
               <View style={styles.target}>
                 <ThemedText type="bodySm" style={styles.date}>
-                  {formatDateTime(confirming.createdAt)}
+                  {formatDateTime(confirming.recording.createdAt)}
                 </ThemedText>
-                <ThemedText type="data">{formatFileSize(confirming.size)}</ThemedText>
+                <ThemedText type="data">{formatFileSize(confirming.recording.size)}</ThemedText>
               </View>
-              {kept ? (
+              {confirming.kept ? (
                 <>
                   <ThemedText type="bodySm">
                     이 기기에서만 삭제하면 보관 기간 동안 스냅 탭에 남아요. 모든 기기에서 삭제해도
@@ -194,16 +218,21 @@ export function RecordingLibrary({
                 <>
                   <ThemedText type="bodySm">삭제한 스냅은 되돌릴 수 없어요.</ThemedText>
                   <View style={styles.row}>
+                    {/* Side by side, so the pair takes the compact faces: the
+                        delete's VOID keeps close to its end and 삭제 keeps one
+                        line at 360dp and large text. */}
                     <SnaplyButton
                       variant="secondary"
                       title="취소"
                       accessibilityLabel="삭제 취소"
+                      compact
                       onPress={closeConfirm}
                       style={styles.rowAction}
                     />
                     <SnaplyButton
                       variant="danger"
                       title="삭제"
+                      compact
                       onPress={() => answer(onDelete)}
                       style={styles.rowAction}
                     />
@@ -220,6 +249,7 @@ export function RecordingLibrary({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  content: { flex: 1 },
   scrim: { backgroundColor: 'rgba(43,35,28,0.5)' },
   // Plain and dark like the screen under it: no holes, spiral or paper strip.
   sheet: {
@@ -274,6 +304,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
   },
+  firstRow: { borderTopWidth: 1 },
   recordingMain: {
     flex: 1,
     minHeight: 84,

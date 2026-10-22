@@ -24,12 +24,16 @@ const DoodleFor: Partial<Record<RowIconName, DoodleIconName>> = {
 
 /**
  * One settings line on the receipt (the design system's `jj-row`): an icon in
- * ink, the title, and — on the 나 root's summary rows, which clamp their
- * read-out to one line — a dotted leader to the read-out in receipt figures.
+ * ink, the title, and — on the 나 root's summary rows — a dotted leader to the
+ * read-out in receipt figures. A read-out with no room beside its title (large
+ * system text on a narrow phone) moves whole to its own line under it.
  * Detail rows keep the read-out as a second line under the title, so a
  * blocked-permission explanation is never cut mid-sentence. With `onPress` it
- * is a navigation line (pink while pressed); without, a static line whose
- * `right` node (a switch, a button) carries the interaction.
+ * is a navigation line (pink while pressed, everything on it in sticker ink,
+ * since pink keeps its value at night) that a screen reader hears with its
+ * read-out — "크레딧, 400 크레딧", the state the line exists to show; without,
+ * a static line whose `right` node (a switch, a button) carries the
+ * interaction.
  */
 export function SettingRow({
   icon,
@@ -38,7 +42,10 @@ export function SettingRow({
   subColor = 'textSecondary',
   subLines,
   right,
+  chevron,
+  emphasized,
   onPress,
+  accessibilityRole = 'button',
   accessibilityLabel,
 }: {
   icon?: RowIconName;
@@ -46,14 +53,21 @@ export function SettingRow({
   sub?: string;
   subColor?: ThemeColor;
   /**
-   * Clamp for the read-out. The 나 root's summary rows pass 1 — a summary that
-   * wraps is a summary that failed — and draw it as a receipt figure at the
-   * end of the line; detail rows leave it unset so a blocked-permission
-   * explanation is never cut mid-sentence.
+   * The 나 root's summary rows pass 1: the read-out is one receipt figure at
+   * the end of the title's line, or alone on the next line when it does not
+   * fit there. Detail rows leave it unset — the read-out is a second line
+   * under the title, so a blocked-permission explanation is never cut
+   * mid-sentence.
    */
   subLines?: number;
   right?: React.ReactNode;
+  /** The chevron at the end of a line that opens somewhere, after `right`. */
+  chevron?: boolean;
+  /** The title in bold ink — an act on the account, which is not red. */
+  emphasized?: boolean;
   onPress?: () => void;
+  /** `link` for a line that opens a page outside the app. */
+  accessibilityRole?: Extract<AccessibilityRole, 'button' | 'link'>;
   accessibilityLabel?: string;
 }) {
   const theme = useTheme();
@@ -74,15 +88,22 @@ export function SettingRow({
         </View>
       ) : null}
       <View style={styles.rowCopy}>
-        <View style={styles.line}>
-          <ThemedText style={pressed ? { color: theme.stickerInk } : undefined}>{title}</ThemedText>
+        <View style={[styles.line, summary && styles.summaryLine]}>
+          <ThemedText
+            type={emphasized ? 'button' : 'default'}
+            style={pressed ? { color: theme.stickerInk } : undefined}
+          >
+            {title}
+          </ThemedText>
           {summary ? (
             <>
               <DottedRule color={theme.backgroundSelected} style={styles.leader} />
               {sub ? (
+                // Not clamped: clamped beside the title, Android cut a read-out
+                // mid-word with no ellipsis (`자동 저`, `연결된 계정 없` at 1.3×
+                // on a 360dp phone). Wrapping moves it down instead.
                 <ThemedText
                   type="data"
-                  numberOfLines={1}
                   style={[styles.value, pressed && { color: theme.stickerInk }]}
                 >
                   {sub}
@@ -92,20 +113,31 @@ export function SettingRow({
           ) : null}
         </View>
         {sub && !summary ? (
-          <ThemedText type="small" themeColor={subColor === 'danger' ? 'cherryInk' : subColor}>
+          <ThemedText
+            type="small"
+            themeColor={subColor === 'danger' ? 'cherryInk' : subColor}
+            style={pressed && { color: theme.stickerInk }}
+          >
             {sub}
           </ThemedText>
         ) : null}
       </View>
       {right}
+      {chevron ? (
+        <DoodleIcon
+          name="chevronRight"
+          size={20}
+          color={pressed ? theme.stickerInk : theme.textSecondary}
+        />
+      ) : null}
     </>
   );
 
   if (onPress) {
     return (
       <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? title}
+        accessibilityRole={accessibilityRole}
+        accessibilityLabel={accessibilityLabel ?? (sub ? `${title}, ${sub}` : title)}
         onPress={onPress}
         style={({ pressed }) => [styles.settingRow, pressed && { backgroundColor: theme.pink }]}
       >
@@ -114,12 +146,6 @@ export function SettingRow({
     );
   }
   return <View style={styles.settingRow}>{content(false)}</View>;
-}
-
-/** The chevron at the end of a line that opens somewhere. */
-export function RowChevron() {
-  const theme = useTheme();
-  return <DoodleIcon name="chevronRight" size={20} color={theme.textSecondary} />;
 }
 
 /** The rule between two lines of one receipt. */
@@ -213,7 +239,11 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1, minWidth: 0, gap: 1 },
   line: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   leader: { transform: [{ translateY: 6 }] },
-  value: { flexShrink: 1, maxWidth: '60%' },
+  summaryLine: { flexWrap: 'wrap' },
+  // `textAlign` too: a read-out longer than a line of its own wraps there,
+  // and on Android its box then spans the line, leaving `marginLeft: 'auto'`
+  // no room to push it right.
+  value: { flexShrink: 1, marginLeft: 'auto', textAlign: 'right' },
   section: {
     paddingHorizontal: Spacing.three + Spacing.half,
     paddingTop: Spacing.two,

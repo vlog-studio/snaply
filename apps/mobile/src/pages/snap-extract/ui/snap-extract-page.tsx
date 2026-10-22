@@ -1,3 +1,4 @@
+import { NavigationBar } from 'expo-navigation-bar';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { VideoView } from 'expo-video';
@@ -43,13 +44,18 @@ export type SnapExtractPageProps = {
 
 /**
  * The ground here is video and near-black scrims, exactly like the
- * viewfinder, so the chrome is pinned to the dark palette whatever theme the
- * rest of the app resolves to.
+ * viewfinder, so the chrome is pinned to the dark palette (and light
+ * status-bar and navigation-bar glyphs) whatever theme the rest of the app
+ * resolves to.
  */
 export function SnapExtractPage(props: SnapExtractPageProps) {
   return (
     <ThemeScope scheme="dark">
       <StatusBar style="light" />
+      {/* The app-wide bar follows the scheme, so under the light theme the
+          3-button glyphs would be dark over the ground under the controls.
+          `style` names the glyph colour, as in AppProviders. */}
+      <NavigationBar style="light" />
       <SnapExtractScreen {...props} />
     </ThemeScope>
   );
@@ -195,17 +201,25 @@ function SnapExtractScreen({ sourceUri, knownDurationSec }: SnapExtractPageProps
           ) : null}
         </Pressable>
 
-        {showSaved ? (
-          <View style={styles.stageBadge} pointerEvents="none">
-            <TapeLabel fill={theme.tapeMint} tilt={-0.5}>
-              {`담김 · 스냅 ${collectedCount}개`}
-            </TapeLabel>
-          </View>
-        ) : null}
-
-        {bannerMessage ? (
-          <View style={styles.stageBadge}>
-            <AlertCard message={bannerMessage} onDismiss={dismissBanner} style={styles.errorCard} />
+        {/* One column, so a failure raised while 담김 still shows stacks under
+            the tape instead of covering it. */}
+        {showSaved || bannerMessage ? (
+          <View style={styles.stageBadges} pointerEvents="box-none">
+            {/* The tape only reports: a tap on it still reaches the stage. */}
+            {showSaved ? (
+              <View pointerEvents="none">
+                <TapeLabel fill={theme.tapeMint} tilt={-0.5}>
+                  {`담김 · 스냅 ${collectedCount}개`}
+                </TapeLabel>
+              </View>
+            ) : null}
+            {bannerMessage ? (
+              <AlertCard
+                message={bannerMessage}
+                onDismiss={dismissBanner}
+                style={styles.errorCard}
+              />
+            ) : null}
           </View>
         ) : null}
 
@@ -333,12 +347,13 @@ const styles = StyleSheet.create({
   },
   playButton: { transform: [{ scale: 1.25 }] },
   errorCard: { alignSelf: 'stretch' },
-  stageBadge: {
+  stageBadges: {
     position: 'absolute',
     top: Spacing.four,
     left: Spacing.four,
     right: Spacing.four,
     alignItems: 'center',
+    gap: Spacing.two,
   },
   readout: {
     position: 'absolute',

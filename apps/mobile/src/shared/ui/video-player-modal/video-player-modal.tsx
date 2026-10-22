@@ -1,6 +1,9 @@
+import { NavigationBar } from 'expo-navigation-bar';
+import { StatusBar } from 'expo-status-bar';
 import { Modal, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Reel } from '@/shared/ui/reel';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { StickerButton } from '@/shared/ui/sticker-button';
 import { TapeChip, type TapeChipColor } from '@/shared/ui/tape-chip';
@@ -31,9 +34,10 @@ export type VideoPlayerModalProps = {
    * What to show while there is nothing to play *yet* — the video is still on
    * its way, or could not be brought. Keeps the modal open without a `uri`, so
    * a tap on something that must first be fetched opens at once instead of
-   * doing nothing for a while. The optional action is offered under the text.
+   * doing nothing for a while. `busy` turns the reel above the text while the
+   * video is on its way; the optional action is offered under the text.
    */
-  placeholder?: { text: string; actionLabel?: string; onAction?: () => void };
+  placeholder?: { text: string; busy?: boolean; actionLabel?: string; onAction?: () => void };
   /**
    * One control along the top edge, across from the close button — the
    * caller's own action on the video on screen (the snap tab's 앨범에 저장).
@@ -65,7 +69,12 @@ export type VideoPlayerModalProps = {
  * so the muted line is a white wash instead of `textSecondary` — the palette's
  * warm brown disappears over a bright frame. The ground is black in either app
  * theme, so the screen pins the dark scheme: under the light theme the edge
- * print took the light palette's near-black ink and all but vanished.
+ * print took the light palette's near-black ink and all but vanished. The
+ * system bars over it are light whatever the theme, for the same reason: on
+ * Android the modal is a window of its own that copies the app's bar glyphs —
+ * dark under the light theme, dark on black. Both bar components reach the
+ * modal's window too, and their entries come off with the modal, which gives
+ * the app's own style back.
  */
 export function VideoPlayerModal({
   uri,
@@ -87,6 +96,8 @@ export function VideoPlayerModal({
       visible={uri !== undefined || placeholder !== undefined}
     >
       <ThemeScope scheme="dark">
+        <StatusBar style="light" />
+        <NavigationBar style="light" />
         <View style={styles.screen}>
           {uri ? (
             // Keyed on the URI so switching videos remounts the player instead of
@@ -94,6 +105,12 @@ export function VideoPlayerModal({
             <VideoPreview key={uri} contentFit="contain" muted={false} nativeControls uri={uri} />
           ) : placeholder ? (
             <View style={styles.placeholder}>
+              {placeholder.busy ? (
+                // The text below already says it; the reel is only its picture.
+                <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                  <Reel color={PlaceholderInk} size={28} />
+                </View>
+              ) : null}
               <ThemedText style={styles.placeholderText}>{placeholder.text}</ThemedText>
               {placeholder.actionLabel && placeholder.onAction ? (
                 <SnaplyButton
@@ -137,6 +154,9 @@ export function VideoPlayerModal({
   );
 }
 
+/** The placeholder's ink over the black letterbox. */
+const PlaceholderInk = '#FFFFFF';
+
 const styles = StyleSheet.create({
   // Pure black, not the app ground: this is a letterbox around a frame.
   screen: { flex: 1, backgroundColor: '#000000' },
@@ -159,5 +179,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.five,
   },
   // Over the black letterbox, like the rest of this screen's text.
-  placeholderText: { color: '#FFFFFF', textAlign: 'center' },
+  placeholderText: { color: PlaceholderInk, textAlign: 'center' },
 });

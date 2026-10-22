@@ -29,7 +29,7 @@ export const SIGNALS_VERSION = 1;
  * 고르는 규칙의 버전. 규칙(문턱값·길이·격자)을 바꾸면 올린다 — 같은 요청을 24시간 재사용하는 창이 이 값을 키에 넣으므로,
  * 올리지 않으면 바뀐 규칙이 하루 동안 예전 제안에 가려진다.
  */
-export const EDIT_DIRECTOR_VERSION = 3;
+export const EDIT_DIRECTOR_VERSION = 4;
 
 /**
  * 대표 프레임 수 — 워커의 `HASH_POSITIONS`(25·50·75%). 셋을 다 가진 스냅끼리만 중복을 잰다(§2.2). 두 값이 어긋나면
@@ -114,7 +114,7 @@ export interface DraftCut {
 
 export interface DraftResult {
   cuts: DraftCut[];
-  /** 넣지 않은 스냅의 key, 촬영순. 업로드되지 않은 스냅은 검사 없는 스냅이 10개를 넘을 때만 빠진다. */
+  /** 넣지 않은 스냅의 key, 촬영순. 업로드되지 않은 스냅은 검사 없는 스냅이 컷 상한(`MOVIE_CLIP_MAX`)을 넘을 때만 빠진다. */
   excluded: string[];
 }
 

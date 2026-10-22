@@ -1,6 +1,7 @@
 export {
   InstagramHandoffMessages,
   ShareBlockMessages,
+  shareBlockMessage,
   useShareMovie,
   type InstagramHandoff,
   type MovieSharing,

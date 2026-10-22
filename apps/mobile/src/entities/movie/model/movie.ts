@@ -5,14 +5,14 @@ import type { MovieRecipe as ContractMovieRecipe } from '@vlog-studio/shared-typ
  * (MOV-5): a movie is a short-form vlog, not an album. Every picking
  * surface measures its picks against this same number.
  */
-export const MovieSnapLimit = 10;
+export const MovieSnapLimit = 20;
 
 /**
  * How many snaps one edit draft may be handed (root docs/specs/movie.md MOV-21).
  * More than {@link MovieSnapLimit}, so the draft has something to choose from;
  * the server enforces it and answers `max` when it moves.
  */
-export const MovieDraftSnapLimit = 30;
+export const MovieDraftSnapLimit = 40;
 
 /**
  * The look a movie is generated with — the three presets the backend's editing

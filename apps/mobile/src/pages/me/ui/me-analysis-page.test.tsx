@@ -63,7 +63,7 @@ describe('MeAnalysisPage', () => {
     mockConsent.mockReturnValue(off);
     await renderPage();
 
-    await fireEvent(screen.getByLabelText(switchLabel), 'valueChange', true);
+    await fireEvent.press(screen.getByRole('switch', { name: switchLabel }));
 
     expect(
       screen.getByText(new RegExp('\uC815\uC9C0 \uC774\uBBF8\uC9C0\uB97C 4\uC7A5\uAE4C\uC9C0')),
@@ -78,7 +78,7 @@ describe('MeAnalysisPage', () => {
     mockConsent.mockReturnValue(off);
     await renderPage();
 
-    await fireEvent(screen.getByLabelText(switchLabel), 'valueChange', true);
+    await fireEvent.press(screen.getByRole('switch', { name: switchLabel }));
     await fireEvent.press(screen.getByRole('button', { name: declineLabel }));
 
     expect(mockGive).not.toHaveBeenCalled();
@@ -88,7 +88,7 @@ describe('MeAnalysisPage', () => {
     mockConsent.mockReturnValue(on);
     await renderPage();
 
-    await fireEvent(screen.getByLabelText(switchLabel), 'valueChange', false);
+    await fireEvent.press(screen.getByRole('switch', { name: switchLabel }));
 
     expect(mockWithdraw).toHaveBeenCalledTimes(1);
   });

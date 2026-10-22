@@ -525,7 +525,7 @@ def render(snaps: list[Snap], recipe_name: str, track: str | None, movie_id: str
 
 def edl(recipe_name: str, seed: int, planned, order: list[int], fx: cut_fx.Plan, parts: list[dict], events, look, spec: dict) -> dict:
     """편집 결정 목록 — 결과물을 다시 만들 수 있을 만큼(스냅 · 구간 · 리프레이밍 · 움직임 · 경계 점수 · 효과음). 시드가 같으면 같은 EDL 이다.
-    지금은 결과에 실어 로그 · 데모가 쓴다. 저장해 두고 '다시 만들기'를 2단계부터 돌리는 것은 backlog A-18."""
+    지금은 결과에 실어 로그 · 데모가 쓴다. 저장해 두고 '다시 만들기'를 2단계부터 돌리는 것은 backlog A-20."""
     w, h, fps = DEFAULT_RENDER_SPEC.width, DEFAULT_RENDER_SPEC.height, DEFAULT_RENDER_SPEC.fps
     clips, t = [], 0
     for k, cut in enumerate(planned):

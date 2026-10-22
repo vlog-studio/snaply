@@ -54,7 +54,7 @@ export type SnapPicking = {
  * ordered list rather than a set, because the number drawn on a cell is its
  * position and that position becomes the target's order. A pick past the room
  * left is refused with a notice rather than silently dropped, because the
- * ten-snap cap is the product's one hard constraint and this is the moment it
+ * movie's snap cap is the product's one hard constraint and this is the moment it
  * bites (MOV-5). And snaps the target already holds are free: picking one
  * adds nothing, so it can never be the pick that hits the cap.
  */

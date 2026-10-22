@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
+import { MOVIE_CLIP_MAX } from '@vlog-studio/shared-types';
 import type { AgentModel } from '../src/services/edit-agent/agent-model.js';
 import { scripted } from './helpers/scripted-agent.js';
 import { EditAgentError, replayDraftPlan, runEditAgent, type AgentInput } from '../src/services/edit-agent/edit-agent.js';
@@ -213,9 +214,9 @@ describe('runEditAgent', () => {
   });
 
   it('uses the plain rules when the agent submits without choosing', async () => {
-    const { input } = setup();
+    const { input, candidates } = setup();
     const { result, plan } = await runEditAgent(input(scripted([() => [submit]])));
-    expect(result.cuts).toHaveLength(10);
+    expect(result.cuts).toHaveLength(Math.min(candidates.length, MOVIE_CLIP_MAX));
     expect(plan.direction).toEqual({ focus: [], focusKeys: [], maxCuts: null });
   });
 

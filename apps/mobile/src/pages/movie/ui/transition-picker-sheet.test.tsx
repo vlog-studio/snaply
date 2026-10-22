@@ -40,14 +40,28 @@ describe('TransitionPickerSheet', () => {
     const onPick = await renderSheet();
 
     // fireEvent.press(screen.getByLabelText('번쩍 넘기기'));
-    fireEvent.press(screen.getByLabelText('\uBC88\uCA4D \uB118\uAE30\uAE30'));
+    await fireEvent.press(screen.getByLabelText('\uBC88\uCA4D \uB118\uAE30\uAE30'));
     // fireEvent.press(screen.getByLabelText('자동으로 고르기 · 지금 겹쳐 녹이기'));
-    fireEvent.press(
+    await fireEvent.press(
       screen.getByLabelText(
         '\uC790\uB3D9\uC73C\uB85C \uACE0\uB974\uAE30 \u00B7 \uC9C0\uAE08 \uACB9\uCCD0 \uB179\uC774\uAE30',
       ),
     );
 
     expect(onPick.mock.calls).toEqual([['flash'], [undefined]]);
+  });
+
+  // A radio reports `checked`; `selected` read the pick to TalkBack as an
+  // unchecked radio (2026-10-19 review, MOVIE-10).
+  it('reports what applies at the boundary as the checked radio', async () => {
+    await renderSheet({
+      current: { kind: 'flash', durationMs: 300, owner: 'user', toSnapId: 's2' },
+      playedKind: 'flash',
+    });
+
+    // 번쩍 넘기기
+    expect(screen.getByLabelText('\uBC88\uCA4D \uB118\uAE30\uAE30')).toBeChecked();
+    // 자동으로 고르기
+    expect(screen.getByLabelText('\uC790\uB3D9\uC73C\uB85C \uACE0\uB974\uAE30')).not.toBeChecked();
   });
 });

@@ -3,7 +3,7 @@
     cd apps/ai-worker && .venv/bin/python scripts/try-accent-writer.py [모델]
 
 입력은 아래의 지어낸 장면 설명이다 — 사용자 스냅을 보내지 않는다. `OPENAI_API_KEY` 는 `apps/api/.env` 에서 읽는다
-(config.py). 호출 한 번(컷 8개)이 든다. 결과는 backlog A-17 의 "층 c — 생성" 판단(문구 품질 · 문턱에서 버려지는 비율 · 비용)에 쓴다.
+(config.py). 호출 한 번(컷 8개)이 든다. 결과는 backlog A-19 의 "층 c — 생성" 판단(문구 품질 · 문턱에서 버려지는 비율 · 비용)에 쓴다.
 """
 
 import json

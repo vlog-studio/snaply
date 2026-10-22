@@ -16,9 +16,25 @@ export type TapeChipColor = Extract<
   'tapeButter' | 'tapeMint' | 'tapePink' | 'tapeSky' | 'tapeLavender'
 >;
 
+/**
+ * The smoky strip a tape is stuck on over live video: the `media` near-black
+ * at 60%, kept literal like every scrim drawn over video (cookbook §14). Cream
+ * ink on it holds about 5:1 over a white wall. The canvas draws this strip as
+ * a 14% cream wash (`.cp-tape--smoke`, `.cp-dur-off`), which reads only over
+ * its own dark mock viewfinder: over a bright scene its cream ink fell to about
+ * 1.1:1, and dark ink on it to about 1:1 over a dark one.
+ */
+export const TapeSmoke = 'rgba(14, 11, 8, 0.6)';
+
 export type TapeChipProps = Omit<PressableProps, 'children'> & {
   label: string;
-  color?: TapeChipColor;
+  /**
+   * A tape colour, or `smoke` — an unpicked chip over video: a dark smoky
+   * strip (`TapeSmoke`) in the scheme's `text`. It belongs on a screen pinned
+   * to the dark palette over video (`ThemeScope scheme="dark"`), where `text`
+   * is cream.
+   */
+  color?: TapeChipColor | 'smoke';
   /** Degrees off level; a chip is stuck on by hand. */
   tilt?: number;
 };
@@ -38,13 +54,17 @@ export function TapeChip({
   ...props
 }: TapeChipProps) {
   const theme = useTheme();
+  // Sticker colours keep their value at night, so their ink is always
+  // `stickerInk`; only the smoke over video takes the light ink.
+  const fill = color === 'smoke' ? TapeSmoke : theme[color];
+  const ink = color === 'smoke' ? theme.text : theme.stickerInk;
   return (
     <Pressable
       accessibilityRole="button"
       style={(state) => [
         styles.chip,
         {
-          backgroundColor: theme[color],
+          backgroundColor: fill,
           opacity: state.pressed ? 0.8 : 1,
           transform: [{ rotate: `${tilt}deg` }],
         },
@@ -52,7 +72,7 @@ export function TapeChip({
       ]}
       {...props}
     >
-      <ThemedText selectable={false} type="smallBold" style={{ color: theme.stickerInk }}>
+      <ThemedText selectable={false} type="smallBold" style={{ color: ink }}>
         {label}
       </ThemedText>
     </Pressable>
@@ -78,8 +98,12 @@ const styles = StyleSheet.create({
 
 /**
  * A status written on tape — not a press target: a counter, a stage read-out.
- * `fill` is any ground (a tape colour, kraft, a smoke wash over video);
+ * `fill` is any ground (a tape colour, kraft, `TapeSmoke` over video);
  * the ink stays dark unless `ink` says otherwise.
+ *
+ * It is not a live region: a label that reruns every second (the REC
+ * countdown) must not be read out on each tick, and a screen that wants a
+ * change announced wraps the label in one.
  */
 export function TapeLabel({
   children,

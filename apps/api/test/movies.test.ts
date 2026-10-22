@@ -12,8 +12,14 @@
  * 생성(export)은 크레딧·큐가 걸려 있어 여기서 다루지 않는다 — 거부 경로만 확인한다.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { MOVIE_CLIP_MAX } from '@vlog-studio/shared-types';
 import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
 import { MOVIE_EXPORT_COST } from '../src/services/billing/credit-policy.js';
+
+const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 
 let h: Harness;
 
@@ -126,15 +132,34 @@ describe('POST /movies', () => {
     expect(res.statusCode).toBe(403);
   });
 
-  it('컷은 10개를 넘을 수 없다', async () => {
+  it(`컷은 ${MOVIE_CLIP_MAX}개까지 담는다`, async () => {
     const user = await h.createUser();
     const snapId = await createSnap(user);
 
     const res = await createMovie(user, {
-      clips: Array.from({ length: 11 }, () => ({ videoId: snapId })),
+      clips: Array.from({ length: MOVIE_CLIP_MAX }, () => ({ videoId: snapId })),
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().data.clips).toHaveLength(MOVIE_CLIP_MAX);
+  });
+
+  it(`컷은 ${MOVIE_CLIP_MAX}개를 넘을 수 없다`, async () => {
+    const user = await h.createUser();
+    const snapId = await createSnap(user);
+
+    const res = await createMovie(user, {
+      clips: Array.from({ length: MOVIE_CLIP_MAX + 1 }, () => ({ videoId: snapId })),
     });
 
     expect(res.statusCode).toBe(400);
+  });
+
+  it('편집 워커와 앱의 컷 상한이 서버와 같다 — 워커가 낮으면 서버가 받은 무비의 렌더가 실패한다', () => {
+    const worker = readFileSync(join(REPO, 'apps/ai-worker/src/pipeline/edit_spec.py'), 'utf-8');
+    const app = readFileSync(join(REPO, 'apps/mobile/src/entities/movie/model/movie.ts'), 'utf-8');
+    expect(Number(/^MAX_CLIPS = (\d+)$/m.exec(worker)?.[1])).toBe(MOVIE_CLIP_MAX);
+    expect(Number(/^export const MovieSnapLimit = (\d+);$/m.exec(app)?.[1])).toBe(MOVIE_CLIP_MAX);
   });
 });
 

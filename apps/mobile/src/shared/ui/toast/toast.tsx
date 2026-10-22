@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 
 import { FadeInView } from '@/shared/ui/fade-in-view';
+import { Tape } from '@/shared/ui/paper';
 import { Shadows, Spacing, ThemeScope, useTheme } from '@/shared/ui/theme';
 import { TextButton } from '@/shared/ui/text-button';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -21,16 +22,25 @@ export type ToastProps = {
 /** Long enough to reach the action, short enough not to sit over the screen. */
 const DefaultDurationMs = 6000;
 
+/** The canvas's tape across the post-it's top edge (`jj-tape--top`). */
+const TapeWidth = 64;
+
 /**
  * A one-line notice over the bottom of the screen that goes away by itself — the
  * shape for "act immediately, offer 되돌리기" (docs/ux/interaction-patterns.md
- * §4). Drawn as a post-it (the design system's `jj-note`): butter, a degree off
- * straight, a short hard shadow. Only a notice that leaves by itself is a
- * post-it; a standing one is a `NoticeBand`. Business-agnostic: the caller owns
- * the words, the action, and what dismissing means.
+ * §4). Drawn as a post-it (the design system's `jj-note` in `st-toast`):
+ * butter, a degree off straight, a short hard shadow, held to the page by a
+ * strip of pink tape. Only a notice that leaves by itself is a post-it; a
+ * standing one is a `NoticeBand`. Business-agnostic: the caller owns the
+ * words, the action, and what dismissing means.
  *
- * It never takes focus or blocks the screen; screen readers hear it through the
- * live region.
+ * It never takes focus or blocks the screen. A screen reader hears each
+ * message once as it appears — its words, then the action on offer — as an
+ * announcement queued behind whatever the reader is saying (`queue` is
+ * iOS-only; TalkBack speaks it at once). The post-it mounts already holding its
+ * words, and an Android live region speaks a change to a node that is there,
+ * not a node that arrives, so it carries no live region that could say it a
+ * second time.
  */
 export function Toast({
   message,
@@ -40,6 +50,14 @@ export function Toast({
   bottomOffset,
 }: ToastProps) {
   const theme = useTheme();
+  const spoken =
+    message === undefined ? undefined : action ? `${message}, ${action.label}` : message;
+
+  useEffect(() => {
+    if (spoken !== undefined) {
+      AccessibilityInfo.announceForAccessibilityWithOptions(spoken, { queue: true });
+    }
+  }, [spoken]);
 
   useEffect(() => {
     if (message === undefined) return;
@@ -55,12 +73,12 @@ export function Toast({
     <View pointerEvents="box-none" style={[styles.anchor, { bottom: bottomOffset }]}>
       <FadeInView key={message} duration={200} offsetY={8}>
         <View
-          accessibilityLiveRegion="polite"
           style={[
             styles.toast,
             { backgroundColor: theme.butter, boxShadow: Shadows.paper(theme.shadowInk) },
           ]}
         >
+          <Tape color="tapePink" width={TapeWidth} style={styles.tape} />
           {/* Butter keeps its value at night, so the ink inside stays the day ink. */}
           <ThemeScope scheme="light">
             <ThemedText type="bodySm" style={styles.message}>
@@ -82,15 +100,19 @@ export function Toast({
 }
 
 const styles = StyleSheet.create({
-  anchor: { position: 'absolute', left: Spacing.five, right: Spacing.five },
+  // The canvas's `st-toast`: 16dp in from each side.
+  anchor: { position: 'absolute', left: Spacing.four, right: Spacing.four },
   toast: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+    minHeight: 56,
     paddingLeft: Spacing.four,
     paddingRight: Spacing.two,
     paddingVertical: Spacing.three,
     transform: [{ rotate: '-1deg' }],
   },
+  // Centred on the top edge, half above it.
+  tape: { top: -9, left: '50%', marginLeft: -TapeWidth / 2 },
   message: { flex: 1 },
 });

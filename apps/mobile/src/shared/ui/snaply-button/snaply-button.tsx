@@ -29,6 +29,13 @@ export type SnaplyButtonProps = Omit<PressableProps, 'children'> & {
    * request in flight is not a refusal. Announced as busy and disabled.
    */
   busy?: boolean;
+  /**
+   * For a ticket sharing a row — a confirm pair. A `danger` ticket then keeps
+   * its stamp close to the end (the canvas's `padding: 0 40px 0 14px`, VOID at
+   * 12), so its label keeps room to stay on one line; the other faces are
+   * already as narrow as the canvas draws them.
+   */
+  compact?: boolean;
 };
 
 /** The admission ticket's notch at each short end, and where its perforation runs. */
@@ -47,6 +54,12 @@ const PerforationInset = 14;
  * ticket at half opacity reads as a different, pink button. Pressing sinks the
  * face 1dp onto a shorter shadow. The press target is the unrotated box and at
  * least 48dp (`Sizes.touchMin`).
+ *
+ * The ticket is drawn to its measured size, so until the first layout pass the
+ * face is a plain rectangle of its colour — never a label on bare paper, which
+ * for a primary ticket is white on cream. The screen reader hears the title
+ * (unless the caller names it otherwise); the VOID stamp is a drawing, not a
+ * word of it, and keeps its printed size at any system text size.
  */
 export function SnaplyButton({
   disabled,
@@ -57,6 +70,7 @@ export function SnaplyButton({
   colors,
   leading,
   busy = false,
+  compact = false,
   accessibilityState,
   ...props
 }: SnaplyButtonProps) {
@@ -67,6 +81,7 @@ export function SnaplyButton({
     return (
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={title}
         accessibilityState={accessibilityState}
         disabled={disabled}
         style={(state) => [
@@ -108,6 +123,7 @@ export function SnaplyButton({
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={title}
       accessibilityState={busy ? { ...accessibilityState, busy: true } : accessibilityState}
       disabled={disabled || busy}
       onLayout={onLayout}
@@ -142,12 +158,17 @@ export function SnaplyButton({
                 />
               ))}
             </Svg>
-          ) : null}
+          ) : (
+            <View
+              pointerEvents="none"
+              style={[StyleSheet.absoluteFill, { backgroundColor: face }]}
+            />
+          )}
           <View
             style={[
               styles.labelRow,
               pressed && styles.sunk,
-              variant === 'danger' && styles.dangerLabel,
+              variant === 'danger' && (compact ? styles.dangerLabelCompact : styles.dangerLabel),
             ]}
           >
             {leading ??
@@ -163,9 +184,21 @@ export function SnaplyButton({
           {variant === 'danger' ? (
             <View
               pointerEvents="none"
-              style={[styles.void, { borderColor: theme.stickerInk }, pressed && styles.sunk]}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={[
+                styles.void,
+                compact && styles.voidCompact,
+                { borderColor: theme.stickerInk },
+                pressed && styles.sunk,
+              ]}
             >
-              <ThemedText selectable={false} type="edge" style={{ color: theme.stickerInk }}>
+              <ThemedText
+                selectable={false}
+                allowFontScaling={false}
+                type="edge"
+                style={{ color: theme.stickerInk }}
+              >
                 VOID
               </ThemedText>
             </View>
@@ -209,6 +242,7 @@ const styles = StyleSheet.create({
   },
   // Room for the stamp at the right end, so the label stays centred in what is left.
   dangerLabel: { paddingRight: 72 },
+  dangerLabelCompact: { paddingLeft: 14, paddingRight: 40 },
   sunk: { transform: [{ translateY: 1 }] },
   void: {
     position: 'absolute',
@@ -220,6 +254,7 @@ const styles = StyleSheet.create({
     opacity: 0.35,
     transform: [{ rotate: '-12deg' }],
   },
+  voidCompact: { right: 12 },
   icon: { fontSize: 17, lineHeight: 22 },
   textButton: {
     minHeight: Sizes.touchMin,

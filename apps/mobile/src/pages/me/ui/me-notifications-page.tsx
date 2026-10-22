@@ -7,6 +7,7 @@ import {
   useQuietHours,
 } from '@/features/notification-settings';
 import { StickerButton } from '@/shared/ui/sticker-button';
+import { AlertCard } from '@/shared/ui/notice';
 import { PaperGround } from '@/shared/ui/paper';
 import { MaxContentWidth, Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
@@ -143,11 +144,7 @@ export function MeNotificationsPage() {
         </View>
       </SettingsSection>
 
-      {saveError ? (
-        <ThemedText type="small" themeColor="cherryInk" style={styles.saveError}>
-          {saveError}
-        </ThemedText>
-      ) : null}
+      {saveError ? <AlertCard message={saveError} /> : null}
 
       <LocationAlertsSheet
         visible={locationSheetVisible}
@@ -223,5 +220,4 @@ const styles = StyleSheet.create({
   stepper: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   stepperValue: { minWidth: 52, textAlign: 'center', fontWeight: 700 },
   quietHint: { paddingHorizontal: Spacing.one, paddingVertical: Spacing.three },
-  saveError: { paddingHorizontal: Spacing.one },
 });

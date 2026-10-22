@@ -1,5 +1,5 @@
 {
-  "_note": "컷 사이 움직임 연결 규칙 — 앞 컷 끝의 카메라 움직임에서 다음 컷 시작의 움직임으로 넘어갈 때의 점수 보정(pipeline/match_cut.py 의 연결 점수). 허용/금지 규칙이 아니라 소프트 점수다: 잘 어울리는 조합은 더하고, 정의되지 않은 조합은 0, 명백히 어색한 조합만 뺀다 — 좋은 것 중에서 고르는 자유는 열어 둔다(docs/decisions/trend-recipes.md §9). 레퍼런스 경계 쌍을 모아 묶어(backlog A-18) 발견한 패턴을 여기에 규칙으로 올린다. 값을 바꾸면 motionLinkVocabularyVersion 을 올린다.",
+  "_note": "컷 사이 움직임 연결 규칙 — 앞 컷 끝의 카메라 움직임에서 다음 컷 시작의 움직임으로 넘어갈 때의 점수 보정(pipeline/match_cut.py 의 연결 점수). 허용/금지 규칙이 아니라 소프트 점수다: 잘 어울리는 조합은 더하고, 정의되지 않은 조합은 0, 명백히 어색한 조합만 뺀다 — 좋은 것 중에서 고르는 자유는 열어 둔다(docs/decisions/trend-recipes.md §9). 레퍼런스 경계 쌍을 모아 묶어(backlog A-20) 발견한 패턴을 여기에 규칙으로 올린다. 값을 바꾸면 motionLinkVocabularyVersion 을 올린다.",
   "motionLinkVocabularyVersion": 1,
 
   "motions": ["zoom_in", "zoom_out", "pan_left", "pan_right", "static"],

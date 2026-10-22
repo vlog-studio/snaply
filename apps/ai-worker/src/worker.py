@@ -256,7 +256,7 @@ async def _upright_sources(local_sources: dict[str, str], work_dir: str) -> dict
 
 
 def _local_time(at):
-    """저장된 촬영 시각(UTC) → 화면에 쓸 시각. 사용자 시간대를 아직 모르므로 서비스 기준 시간대(KST)로(backlog A-18)."""
+    """저장된 촬영 시각(UTC) → 화면에 쓸 시각. 사용자 시간대를 아직 모르므로 서비스 기준 시간대(KST)로(backlog A-20)."""
     if at is None:
         return None
     from datetime import timedelta, timezone  # noqa: PLC0415

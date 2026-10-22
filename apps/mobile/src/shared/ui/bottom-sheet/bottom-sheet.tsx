@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   View,
   type LayoutChangeEvent,
@@ -25,18 +26,44 @@ export type BottomSheetProps = {
   visible: boolean;
   onClose: () => void;
   children: ReactNode;
+  /**
+   * The sheet's answers (a confirm pair, a stack of tickets), held under the
+   * content rather than in it: when the content is taller than the room the
+   * sheet has and scrolls, they stay in reach. A sheet whose answers are part
+   * of composed content leaves this out and they scroll with the rest.
+   */
+  actions?: ReactNode;
   // Announced on the sheet surface for screen readers (e.g. "스냅 삭제 확인").
   accessibilityLabel?: string;
   /**
    * `note` (default) is a notebook page: a spiral and a row of punched holes
    * along the top edge. `plain` drops both — for the capture area, whose
-   * sheets stay dark and plain over the viewfinder (decision 8).
+   * sheets stay dark and plain over the viewfinder (decision 8): the canvas's
+   * `cl-sheet`, a near-black slab edged by a faint cream rule, in both schemes.
    */
   variant?: 'note' | 'plain';
 };
 
 /** Spiral rings along the top edge of a note sheet. */
 const SpiralRings = 12;
+
+// The capture area's sheet (the canvas's `cl-sheet`): a shade above the `media`
+// ground, so it reads as a sheet over the list without turning into paper.
+// Literal, like the other tints over media — the same in both schemes.
+const PlainSheetGround = '#1C1712';
+const PlainSheetEdge = 'rgba(243, 231, 207, 0.16)';
+
+// The side margin inside each sheet: a note page's, and the canvas `cl-sheet`'s.
+const SideMargin = { note: Spacing.five, plain: Spacing.four } as const;
+
+// Kept clear above a sheet too tall for the screen, under the status bar's
+// inset: room for the spiral standing above a note sheet's edge, and a strip
+// of the screen behind so it still reads as a sheet.
+const TopClearance = Spacing.five;
+
+// How far the scroll view's box reaches above and below its content, so a
+// ticket's offset shadow or a leaning scrap at either end is not clipped by it.
+const ScrollBleed = Spacing.one;
 
 // Motion values. The panel leads and the backdrop trails it, which is the whole
 // point of driving them separately: the Modal's own `animationType="slide"`
@@ -120,13 +147,19 @@ function driveClose(
 // resized by Android's adjustResize, so the keyboard would otherwise sit on top
 // of whatever is at the bottom of the sheet — in practice its primary action.
 // While the keyboard is up the panel also drops its safe-area bottom padding,
-// since the gesture bar it reserves room for is behind the keyboard; without
-// that, a tall sheet lifts past the top of the screen instead of fitting above
-// it.
+// since the gesture bar it reserves room for is behind the keyboard.
+//
+// A sheet taller than the room it has — legal facts at a large system font, a
+// caption with the keyboard up — never lifts its top past the screen: the
+// panel stops `TopClearance` under the status bar and shrinks, and the content
+// scrolls inside it while the binding and any `actions` stay put. A sheet that
+// fits draws as it would without the scroll view, which only scrolls once there
+// is more than fits.
 export function BottomSheet({
   visible,
   onClose,
   children,
+  actions,
   accessibilityLabel,
   variant = 'note',
 }: BottomSheetProps) {
@@ -221,11 +254,18 @@ export function BottomSheet({
           style={[
             styles.sheet,
             panelStyle,
+            variant === 'note'
+              ? {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.border,
+                  boxShadow: `0 -2px 0 ${theme.shadowInk}`,
+                  paddingTop: 34,
+                }
+              : // No paper, so no paper shadow either.
+                { backgroundColor: PlainSheetGround, borderColor: PlainSheetEdge, paddingTop: 22 },
             {
-              backgroundColor: theme.backgroundElement,
-              borderColor: theme.border,
-              boxShadow: `0 -2px 0 ${theme.shadowInk}`,
-              paddingTop: variant === 'note' ? 34 : Spacing.five,
+              paddingHorizontal: SideMargin[variant],
+              marginTop: insets.top + TopClearance,
               paddingBottom: keyboardVisible ? Spacing.four : insets.bottom + Spacing.six,
             },
           ]}
@@ -240,7 +280,18 @@ export function BottomSheet({
               </View>
             </>
           ) : null}
-          {children}
+          <ScrollView
+            alwaysBounceVertical={false}
+            keyboardShouldPersistTaps="handled"
+            style={[styles.scroll, { marginHorizontal: -SideMargin[variant] }]}
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingHorizontal: SideMargin[variant] },
+            ]}
+          >
+            {children}
+          </ScrollView>
+          {actions ? <View style={styles.actions}>{actions}</View> : null}
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -260,13 +311,22 @@ const styles = StyleSheet.create({
   },
   backdropPress: { flex: 1 },
   // A notebook page torn off the pad: square, a top edge, and the paper's own
-  // short shadow cast upward.
+  // short shadow cast upward. It gives up height (under its `marginTop`, and
+  // above the keyboard's padding) rather than running off the top; the scroll
+  // view absorbs it.
   sheet: {
+    flexShrink: 1,
     borderTopWidth: 1,
-    paddingTop: 34,
-    paddingHorizontal: Spacing.five,
     gap: Spacing.three,
   },
+  // The box reaches out to the panel's side edges and `ScrollBleed` past the
+  // content's top and bottom, and the content is padded back in by as much, so
+  // it sits where it would without a scroll view while a shadow or a lean at
+  // its edge is not clipped. It takes its content's height and gives some back
+  // only when the panel has to shrink.
+  scroll: { flexGrow: 0, marginVertical: -ScrollBleed },
+  scrollContent: { paddingVertical: ScrollBleed, gap: Spacing.three },
+  actions: { gap: Spacing.three },
   spiral: {
     position: 'absolute',
     top: -10,

@@ -16,8 +16,8 @@ export type SelectionPurpose = 'movie' | 'draft' | 'album';
  *
  * Only the edit draft is capped while picking. A selection for a new movie is
  * also where snaps are deleted and saved to the album, any number of them, so
- * the movie's ten (MOV-5) holds only the movie's own button — capping the
- * picks refused the eleventh save too (2026-10-14 review, backlog E-55).
+ * the movie's cap (MOV-5) holds only the movie's own button — capping the
+ * picks refused the save past the cap too (2026-10-14 review, backlog E-55).
  */
 export function pickingCapacity(purpose: SelectionPurpose, draftLimit: number): number {
   return purpose === 'draft' ? draftLimit : Number.POSITIVE_INFINITY;

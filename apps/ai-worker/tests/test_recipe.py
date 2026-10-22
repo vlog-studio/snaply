@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
 
 class JoinGroupsTest(unittest.TestCase):
-    """많은 컷의 결합은 바로 넘김 경계에서 나눈다(backlog E-59) — 겹침 전환 · zoompunch 경계는 나누지 않는다."""
+    """많은 컷의 결합은 바로 넘김 경계에서 나눈다(backlog E-64) — 겹침 전환 · zoompunch 경계는 나누지 않는다."""
 
     H = editor.tr.Transition("hardcut")
     X = editor.tr.Transition("crossfade", 300)

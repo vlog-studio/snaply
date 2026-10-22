@@ -52,7 +52,7 @@ export function WeekRing({
           },
         ]}
       >
-        <ThemedText selectable={false} style={styles.initial}>
+        <ThemedText selectable={false} maxFontSizeMultiplier={1.3} style={styles.initial}>
           {initial}
         </ThemedText>
       </View>
@@ -74,8 +74,13 @@ export function WeekRing({
             ]}
           >
             {day.recorded ? <View style={styles.stitch} /> : null}
+            {/* The ring is a fixed-size picture whose words are its label and
+                the 이번 주 N일 기록 line beside it, which do grow with the system
+                text size. Past 1.3× the weekday would cover the sticker's
+                stitch, and the initial its paper disc. */}
             <ThemedText
               selectable={false}
+              maxFontSizeMultiplier={1.3}
               type="xsmall"
               style={[
                 styles.dayLabel,

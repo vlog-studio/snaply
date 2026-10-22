@@ -11,6 +11,9 @@ import { ThemedText } from '@/shared/ui/themed-text';
  * dotted leader to the value in receipt figures, and a chevron when the line
  * opens somewhere. Pressed, the line is highlighted pink. A row that carries a
  * control of its own (a toggle) passes it as `trailing` and no `onPress`.
+ *
+ * A value with no room beside its name (large system text on a narrow phone)
+ * moves whole to its own line, right-aligned, and the leader fills the first.
  */
 export function ListRow({
   icon,
@@ -41,10 +44,12 @@ export function ListRow({
       {icon ? <View style={styles.icon}>{icon}</View> : null}
       <View style={styles.copy}>
         <View style={styles.line}>
-          <ThemedText style={pressed ? { color: theme.stickerInk } : undefined}>{name}</ThemedText>
+          <ThemedText style={[styles.name, pressed && { color: theme.stickerInk }]}>
+            {name}
+          </ThemedText>
           <DottedRule color={theme.backgroundSelected} style={styles.leader} />
           {value ? (
-            <ThemedText type="data" style={pressed ? { color: theme.stickerInk } : undefined}>
+            <ThemedText type="data" style={[styles.value, pressed && { color: theme.stickerInk }]}>
               {value}
             </ThemedText>
           ) : null}
@@ -52,7 +57,14 @@ export function ListRow({
         {sub}
       </View>
       {trailing}
-      {onPress ? <DoodleIcon name="chevronRight" size={20} color={theme.textSecondary} /> : null}
+      {/* Held, the row is a sticker colour in both schemes: its ink is sticker ink. */}
+      {onPress ? (
+        <DoodleIcon
+          name="chevronRight"
+          size={20}
+          color={pressed ? theme.stickerInk : theme.textSecondary}
+        />
+      ) : null}
     </>
   );
   const rowStyle = [
@@ -85,6 +97,11 @@ const styles = StyleSheet.create({
   },
   icon: { width: 28, alignItems: 'center' },
   copy: { flex: 1, minWidth: 0, gap: 1 },
-  line: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  line: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
+  name: { flexShrink: 1 },
   leader: { transform: [{ translateY: 6 }] },
+  // `textAlign` too: a value longer than a line of its own wraps there, and
+  // on Android its box then spans the line, leaving `marginLeft: 'auto'` no
+  // room to push it right.
+  value: { flexShrink: 1, marginLeft: 'auto', textAlign: 'right' },
 });

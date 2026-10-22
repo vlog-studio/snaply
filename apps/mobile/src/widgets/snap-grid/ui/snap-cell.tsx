@@ -58,6 +58,11 @@ function expiryCountdownOf(expiresAt: number | undefined, now: number): string |
  * state while it is not settled on the backend yet, and — once it is — the days
  * left on the server's copy near the end, or that the copy has expired.
  *
+ * The pick number is drawn on a disc a screen reader skips (the cell's own
+ * name stands in for everything inside it), and that order becomes the
+ * movie's cut order, so the picked cell's name ends with it too
+ * (`, 2번째로 고름`).
+ *
  * The badge stays visible during selection because that is exactly when it
  * matters: picking a snap the target already has does nothing, and without the
  * badge the user only finds out afterwards. It sits in the opposite corner from
@@ -90,12 +95,13 @@ export const SnapCell = memo(function SnapCell({
   // left, 담김 at the top left. The pick number sits on the print's corner.
   const syncTone =
     syncStatus === 'failed' ? 'cherry' : syncStatus === 'expired' ? 'sheet' : 'butter';
+  const order = isPicked ? `, ${pickNumber}번째로 고름` : '';
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={selecting ? { selected: isPicked } : undefined}
-      accessibilityLabel={`${formatSeconds(snap.durationSec)} 스냅${isHeld ? ' · 이미 담김' : ''}${syncLabel ? ` · ${syncLabel}` : ''}${countdown ? ` · 보관 ${countdown}` : ''}`}
+      accessibilityLabel={`${formatSeconds(snap.durationSec)} 스냅${isHeld ? ' · 이미 담김' : ''}${syncLabel ? ` · ${syncLabel}` : ''}${countdown ? ` · 보관 ${countdown}` : ''}${order}`}
       accessibilityHint={selecting ? '탭하면 선택해요' : '탭하면 재생해요. 길게 누르면 선택해요'}
       onPress={() => onPress(snap)}
       onLongPress={() => onLongPress(snap)}
@@ -108,7 +114,14 @@ export const SnapCell = memo(function SnapCell({
         tilt={tiltFor(snap.id, 2)}
         style={isPicked ? { borderColor: theme.primary, borderWidth: 2 } : undefined}
         footer={
-          <ThemedText selectable={false} type="dataSm" style={{ color: theme.text }}>
+          <ThemedText
+            selectable={false}
+            type="dataSm"
+            // The print's foot is a fixed strip of the picture: past 1.25× the
+            // length's line is taller than it and was cut at the bottom.
+            maxFontSizeMultiplier={1.25}
+            style={{ color: theme.text }}
+          >
             {formatSeconds(snap.durationSec)}
           </ThemedText>
         }
@@ -127,7 +140,14 @@ export const SnapCell = memo(function SnapCell({
           <>
             <Tape color="tapePink" width={30} height={12} tilt={35} style={styles.pickTape} />
             <View style={[styles.pick, { backgroundColor: theme.primary }]}>
-              <ThemedText selectable={false} type="dataSm" style={{ color: theme.onPrimary }}>
+              {/* A fixed 22dp disc: its number stops at 1.3x so it stays inside;
+                  the order is also in the cell's accessible name. */}
+              <ThemedText
+                selectable={false}
+                type="dataSm"
+                maxFontSizeMultiplier={1.3}
+                style={{ color: theme.onPrimary }}
+              >
                 {pickNumber}
               </ThemedText>
             </View>

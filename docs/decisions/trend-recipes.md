@@ -13,7 +13,7 @@
 [`match_cut.py`](../../apps/ai-worker/src/pipeline/match_cut.py) · [`fast_cut.py`](../../apps/ai-worker/src/pipeline/fast_cut.py) ·
 [`orient.py`](../../apps/ai-worker/src/pipeline/orient.py) · `editor.retime_clip` · `editor.prepare_segments` · `editor.join_prepared` · `music.mix`
 **관련 문서**: [specs/movie.md](../specs/movie.md) MOV-28 · MOV-27 · [text-accent-stickers.md](text-accent-stickers.md) · [plans/trend-editing-pipeline.md](../plans/trend-editing-pipeline.md) ·
-[auto-edit-draft.md](auto-edit-draft.md) §2.4(컷 구간의 주인) · 미결은 [backlog.md](../backlog.md) A-18 · E-59
+[auto-edit-draft.md](auto-edit-draft.md) §2.4(컷 구간의 주인) · 미결은 [backlog.md](../backlog.md) A-20 · E-64
 
 ---
 
@@ -58,14 +58,14 @@
   밤 장면(스냅 밝기 중간값 0.2 미만)은 가림으로 보지 않는다.
 - **배속** — 레시피의 행동(걷기 · 이동)이 보이거나 화면이 고르게 움직이는 긴 스냅을 배수만큼. 배속 컷은 `editor.retime_clip` 이 그 구간만 미리 구워(영상 setpts ·
   소리 atempo) 이후 단계는 보통 클립처럼 다룬다 — 편집기의 컷 길이 · 전환 계산을 건드리지 않는다.
-- **많은 컷의 결합** — 결합은 구간 전부를 동시에 디코딩해 메모리가 컷 수에 비례한다(8GB 에서 9 · 32컷이 죽었다, backlog E-59). 8개를 넘으면 바로 넘김 경계에서
+- **많은 컷의 결합** — 결합은 구간 전부를 동시에 디코딩해 메모리가 컷 수에 비례한다(8GB 에서 9 · 32컷이 죽었다, backlog E-64). 8개를 넘으면 바로 넘김 경계에서
   묶음으로 나눠 잇고 묶음끼리 다시 인코딩 없이 이어 붙인다. 겹침 전환 · zoompunch 경계에서는 나누지 않는다.
 
 ## 4. 어디서 하나 — 렌더 vs AI 초안
 
 - **렌더(편집 워커)** — 소리 구성 · 고정 타이틀 · 글 밀도 · 효과음. `MOVIE_RECIPE`(기본 `classic`)로 켠다. 컷 구간을 바꾸지 않으므로 사용자가 자른 컷에도 쓸 수 있다.
 - **AI 초안 단계** — 이음 지점 · 배속 · 컷 길이. **컷 구간을 정하는 일**이라 사용자가 직접 자른 컷(trimOwner)을 렌더가 덮으면 안 된다
-  ([auto-edit-draft.md](auto-edit-draft.md) §2.4). 엔진(`continuity.plan_cuts` · `editor.retime_clip`)은 있고, 초안 단계(API 의 edit-director)에 잇는 일은 backlog A-18.
+  ([auto-edit-draft.md](auto-edit-draft.md) §2.4). 엔진(`continuity.plan_cuts` · `editor.retime_clip`)은 있고, 초안 단계(API 의 edit-director)에 잇는 일은 backlog A-20.
   지금은 `trend_edit.render` 가 한 번에 돌리는 자리(데모 · 이후 초안 연결)다.
 
 ## 5. 기각한 대안
@@ -79,7 +79,7 @@
 
 ## 6. 아직 아닌 것
 
-미결은 [backlog.md](../backlog.md) A-18 에만 둔다 — 이음 · 배속 · 편집 효과(§7)를 AI 초안 단계에 잇기, 촬영 가이드(끝에 렌즈 가리기 · 휙 돌리기 — 이음의 상당 부분은 찍을 때
+미결은 [backlog.md](../backlog.md) A-20 에만 둔다 — 이음 · 배속 · 편집 효과(§7)를 AI 초안 단계에 잇기, 촬영 가이드(끝에 렌즈 가리기 · 휙 돌리기 — 이음의 상당 부분은 찍을 때
 만들어진다), 고른 결과를 구성에 고정(MOV-14), 효과음 라이선스 법무 확인 · 팩 이관, 타이틀 문구(무비 이름 · 생성), 운영에서 켜기 전 실측.
 
 ## 7. 편집 효과 · 최소 길이 · 효과음 상한 없음 (2026-10-22 추가)
@@ -126,12 +126,12 @@
   줌 인, 다음 컷 시작 같은 길이 동안 그 피사체에서 줌 아웃(smoothstep, 배율은 피사체가 화면 너비 50% 를 차도록 1.15~1.8).
 - **패턴 발견의 바탕** — 패턴을 손으로 하나씩 정의하지 않고 범용 특징을 모아 묶는(군집화) 방향(사용자 제안). 그 첫 단계로 레퍼런스 분석기
   (`reference.boundaries`, `analyze-reference.py --boundaries`)가 사용자 클립과 **같은 특징**으로 컷 경계 쌍(앞 컷 끝 · 다음 컷 시작 · 연결 점수)을 남긴다 —
-  쌓이면 군집화 · VLM 라벨링 · 구성 시퀀스 마이닝 · 포맷 템플릿으로 간다(backlog A-18). 원본 영상은 남기지 않고 특징값만.
+  쌓이면 군집화 · VLM 라벨링 · 구성 시퀀스 마이닝 · 포맷 템플릿으로 간다(backlog A-20). 원본 영상은 남기지 않고 특징값만.
 - **찾은 결함** — Debian ffmpeg 7.1 에서 HDR 톤매핑 직후의 부동소수 RGB 에 색 맞춤(`colorchannelmixer`)이 걸리면 화면 폭이 1/4 로 깨졌다(아이폰 HDR 세로 영상이
   띠 왼쪽의 좁은 줄). `hdr.tonemap_filter` 끝에 `format=yuv420p` — 일반 무비 경로에도 해당하는 수정이다.
 
 기각: **점프컷으로 15초 채우기**(사용자가 되풀이로 봤다), **화면 가운데 기준 번갈아 줌만**(앞뒤 컷이 이어지지 않는다), **분석 API 에 피사체 상자를 바로 추가**
-(계약 · 프롬프트 버전이 바뀐다 — A-17 에 남기고 지금은 워커 안 계산), **촬영 순서 고정**(사용자가 점수 위주를 골랐다).
+(계약 · 프롬프트 버전이 바뀐다 — A-19 에 남기고 지금은 워커 안 계산), **촬영 순서 고정**(사용자가 점수 위주를 골랐다).
 
 ## 9. 온톨로지 · 자유도 (2026-10-22 추가)
 

@@ -221,6 +221,9 @@ curl -s localhost:3000/health
   ([decisions/aws-contest-server.md](./decisions/aws-contest-server.md) 2026-10-11).
 - **추가 요금선(24시간 평균 CPU 30%)** 은 하루 약 51,840 vCPU · 초다. 렌더 한 편이 약 140 vCPU · 초라 **하루 약 350편** 까지는 그 아래다
   (렌디션 · 분석은 따로 재지 않았다). 실제 사용량은 EC2 콘솔 → 인스턴스 → 모니터링의 CPUUtilization 24시간 평균으로 본다.
+- **무비 최대 길이** — 컷 상한이 20(최대 100초)이 된 뒤(2026-10-20), 최대 길이 무비의 렌더는 위 24초 무비의 약 4배(약 5분)로 보고 하루 약 90편이
+  추가 요금선 아래다. 워커 이미지를 2 CPU 로 묶은 합성 스냅 실측의 비율이고, 컷을 잇는 단계의 `ai-worker` 메모리는 20컷에 약 2.0GB 였다. 이 서버에서
+  재는 것은 [backlog.md](./backlog.md) A-18.
 - 디스크는 `/data` 50G 중 4.7G. 이미지가 17개 4.2GB 이고 그중 3.8GB 가 지난 배포의 것인데, 배포가 72시간 지난 이미지를 지워(§3) 46G 여유에
   비하면 지금 주기로 충분하다.
 
@@ -276,6 +279,10 @@ Re-run 한다. 같은 이름(`dweax-snaply`)으로 등록하므로 예전 등록
 
 이 서버를 보는 Android 앱이다. 주소가 `https` 라 release 빌드가 그대로 닿는다(release 는 `http://` 를 막는다).
 `EXPO_PUBLIC_API_BASE_URL` 은 번들에 박히고, 셸에서 준 값이 `apps/mobile/.env` 보다 앞선다.
+
+`apps/mobile/app.json` 이나 `apps/mobile/plugins/` 가 바뀐 뒤에는 먼저 `cd apps/mobile && npx expo prebuild --clean --platform android` 로
+`android/` 를 다시 만들고 `android/local.properties` 를 되살린다([함정](../apps/mobile/docs/workflows/app-branding-and-native-config.md#known-pitfalls-all-observed-on-this-project)).
+아래 Gradle 명령은 있는 `android/` 를 그대로 빌드하므로, 건너뛰면 APK 에 체리 스플래시 · 최소 Android 9 · 종이 창 배경 · Android 16 대화면 세로 고정이 빠진다.
 
 ```bash
 cd apps/mobile/android && EXPO_PUBLIC_API_BASE_URL=https://snaply-api.dweaxai.com ./gradlew app:assembleRelease -x lint -x test

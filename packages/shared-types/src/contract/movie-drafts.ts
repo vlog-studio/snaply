@@ -7,10 +7,10 @@ import {
   paymentRequiredErrorSchema,
 } from './common.js';
 import { defineRoute } from './define-route.js';
-import { stylePresetSchema } from './vocab.js';
+import { MOVIE_CLIP_MAX, stylePresetSchema } from './vocab.js';
 
 /** 편집 초안 1회에 넘길 수 있는 스냅 수(docs/decisions/auto-edit-draft.md §5, 잠정값). */
-export const MAX_DRAFT_SNAPS = 30;
+export const MAX_DRAFT_SNAPS = 40;
 
 /** 업로드가 끝난 스냅. 촬영 시각·신호는 서버가 안다. */
 const uploadedDraftSnapSchema = z.object({
@@ -55,11 +55,11 @@ export const movieDraftSchema = z
     stylePreset: stylePresetSchema,
     cuts: z
       .array(z.union([uploadedDraftCutSchema, pendingDraftCutSchema]))
-      .describe('쓸 스냅. **배열 순서가 곧 재생 순서**(촬영순)다. 최대 10개.'),
+      .describe(`쓸 스냅. **배열 순서가 곧 재생 순서**(촬영순)다. 최대 ${MOVIE_CLIP_MAX}개.`),
     excluded: z
       .array(z.union([z.object({ videoId: z.uuid() }), z.object({ localId: z.string() })]))
       .describe(
-        '넣지 않은 스냅, 촬영순. 이유는 주지 않는다 — 앱은 개수를 알리고 다시 넣을 수 있게 한다. 업로드되지 않은 스냅(`localId`)은 그런 스냅만 10개를 넘을 때만 빠진다.',
+        `넣지 않은 스냅, 촬영순. 이유는 주지 않는다 — 앱은 개수를 알리고 다시 넣을 수 있게 한다. 업로드되지 않은 스냅(\`localId\`)은 그런 스냅만 ${MOVIE_CLIP_MAX}개를 넘을 때만 빠진다.`,
       ),
     unavailable: z
       .array(z.object({ videoId: z.uuid() }))

@@ -328,7 +328,7 @@ FE 가 알아야 할 동작:
     예약하고(잔액이 모자라면 **`402 INSUFFICIENT_CREDITS`** + `required` · `balance`, 에이전트를 부르지 않는다), 에이전트가 끝까지
     만들면 확정, 규칙으로 돌아가면(`fallback`) 돌려준다. 재사용한 제안 · 에이전트가 없는 서버의 초안은 무료이고 무료 횟수에도 세지 않는다.
     응답의 **`chargedCredits`** 가 이번에 쓴 크레딧이다. 원장 사유는 `draft_charge` · `draft_refund`.
-  - 에러: 스냅 초과 **`400 TOO_MANY_SNAPS`**(`max` 동봉, 지금 30) · 잔액 부족 **`402 INSUFFICIENT_CREDITS`** · 24시간 한도
+  - 에러: 스냅 초과 **`400 TOO_MANY_SNAPS`**(`max` 동봉, 지금 40) · 잔액 부족 **`402 INSUFFICIENT_CREDITS`** · 24시간 한도
     **`429 DRAFT_LIMIT`**(유료 포함 10번).
 - `GET /movie-drafts/allowance` 🔒 — 다음 초안의 비용. `agent`(서버에 에이전트가 있는가 — 없으면 늘 무료) · `freeLimit` · `freeRemaining` ·
   `cost`(무료를 넘긴 초안 1번) · `nextCost`(다음 초안, 무료면 0) · `dailyRemaining`. 앱은 초안을 요청하기 전에 보인다.

@@ -5,6 +5,7 @@ import { defineRoute } from './define-route.js';
 import {
   DEFAULT_FIT_MODE,
   DEFAULT_OUTPUT_PROFILE,
+  MOVIE_CLIP_MAX,
   OUTPUT_PROFILE_CONFIGS,
   editJobErrorCodeSchema,
   editJobStatusSchema,
@@ -16,8 +17,6 @@ import {
   type FitMode,
   type OutputProfile,
 } from './vocab.js';
-
-export const MAX_EDIT_CLIPS = 10;
 
 export const clipSpecSchema = z.object({
   videoId: z.uuid(),
@@ -35,7 +34,7 @@ export type EditSpecV1 = z.infer<typeof editSpecV1Schema>;
 export const editSpecV2Schema = z.object({
   version: z.literal(2),
   stylePreset: stylePresetSchema,
-  clips: z.array(clipSpecSchema).min(1).max(MAX_EDIT_CLIPS),
+  clips: z.array(clipSpecSchema).min(1).max(MOVIE_CLIP_MAX),
 });
 export type EditSpecV2 = z.infer<typeof editSpecV2Schema>;
 
@@ -75,7 +74,7 @@ export const editSpecV3Schema = z.object({
       '`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).',
     ),
   timeline: z.object({
-    cuts: z.array(timelineCutSchema).min(1).max(MAX_EDIT_CLIPS),
+    cuts: z.array(timelineCutSchema).min(1).max(MOVIE_CLIP_MAX),
     transitions: z
       .array(timelineTransitionSchema)
       .describe('이어진 두 컷마다 하나씩, 컷 순서대로. 길이는 `cuts.length - 1`.'),

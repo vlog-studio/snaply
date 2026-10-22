@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from pipeline.transition import Transition, TransitionError, validate_transition
 
 
-MAX_CLIPS = 10
+# 무비의 컷 상한(docs/specs/movie.md MOV-5). 원천은 shared-types 의 `MOVIE_CLIP_MAX` 이고 API 테스트가 같은지 본다.
+MAX_CLIPS = 20
 MIN_CLIP_DURATION_MS = 100
 
 

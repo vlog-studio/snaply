@@ -4,7 +4,7 @@
  * 고정하는 계약:
  *   ① 제안은 무비가 아니다 — 컷(촬영순)과 넣지 않은 스냅을 돌려주고, 앱이 그것으로 무비를 만든다
  *   ② 업로드되지 않은 스냅과 신호가 없는 스냅은 빼지 않고 구간 없이 놓는다. 신호가 없으면 신호 계산을 적재한다
- *   ③ 상한은 서버가 집행한다 — 한 번에 30개(400 `TOO_MANY_SNAPS` + max) · 24시간 10번(429 `DRAFT_LIMIT`)
+ *   ③ 상한은 서버가 집행한다 — 한 번에 `MAX_DRAFT_SNAPS`개(400 `TOO_MANY_SNAPS` + max) · 24시간 10번(429 `DRAFT_LIMIT`)
  *   ④ 같은 요청은 24시간 안에서 같은 제안이고 횟수에 세지 않는다(신호를 기다리는 스냅이 없었던 제안만 — 이 신호 버전으로
  *      읽을 수 없다고 끝난 스냅은 기다릴 것이 없다). 끝난 신호 작업은 지우고 다시 적재한다
  *   ⑤ 남의 스냅은 403. 자기 스냅이지만 지워졌거나 준비되지 않은 스냅은 거절하지 않고 `unavailable` 로 알린다
@@ -13,7 +13,11 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Queue, Worker } from 'bullmq';
+import { MAX_DRAFT_SNAPS, MOVIE_CLIP_MAX } from '@vlog-studio/shared-types';
 import { createHarness, type Harness, type TestUser } from './helpers/harness.js';
 import { createRedisConnection } from '../src/lib/redis.js';
 import { DAILY_DRAFT_LIMIT } from '../src/services/movie-draft.service.js';
@@ -28,6 +32,7 @@ afterAll(async () => {
   await h.close();
 });
 
+const REPO = fileURLToPath(new URL('../../..', import.meta.url));
 const T0 = Date.parse('2026-10-01T09:00:00Z');
 
 let hashSeed = 0;
@@ -275,16 +280,34 @@ describe('상한 — 동시에 온 요청', () => {
 });
 
 describe('상한', () => {
-  it('31개는 400 TOO_MANY_SNAPS 이고 max 를 알려준다', async () => {
+  it(`${MAX_DRAFT_SNAPS}개까지 받아 컷 상한(${MOVIE_CLIP_MAX})만큼 고른다`, async () => {
     const user = await h.createUser();
-    const snaps = Array.from({ length: 31 }, (_, i) => ({
+    const snaps = Array.from({ length: MAX_DRAFT_SNAPS }, (_, i) => ({
+      localId: `l-${i}`,
+      capturedAt: new Date(T0 + i * 60_000).toISOString(),
+    }));
+    const res = await requestDraft(user, { snaps });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.cuts).toHaveLength(MOVIE_CLIP_MAX);
+    expect(res.json().data.excluded).toHaveLength(MAX_DRAFT_SNAPS - MOVIE_CLIP_MAX);
+  });
+
+  it(`${MAX_DRAFT_SNAPS + 1}개는 400 TOO_MANY_SNAPS 이고 max 를 알려준다`, async () => {
+    const user = await h.createUser();
+    const snaps = Array.from({ length: MAX_DRAFT_SNAPS + 1 }, (_, i) => ({
       localId: `l-${i}`,
       capturedAt: new Date(T0 + i * 60_000).toISOString(),
     }));
     const res = await requestDraft(user, { snaps });
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().error).toMatchObject({ code: 'TOO_MANY_SNAPS', max: 30 });
+    expect(res.json().error).toMatchObject({ code: 'TOO_MANY_SNAPS', max: MAX_DRAFT_SNAPS });
+  });
+
+  it('앱이 처음 아는 상한이 서버와 같다 — 앱은 거절의 max 를 받기 전까지 자기 값으로 고르게 한다', () => {
+    const source = readFileSync(join(REPO, 'apps/mobile/src/entities/movie/model/movie.ts'), 'utf-8');
+    expect(Number(/^export const MovieDraftSnapLimit = (\d+);$/m.exec(source)?.[1])).toBe(MAX_DRAFT_SNAPS);
   });
 
   it(`같은 요청은 같은 제안이고 세지 않는다 — 다른 요청은 ${DAILY_DRAFT_LIMIT}번까지`, async () => {

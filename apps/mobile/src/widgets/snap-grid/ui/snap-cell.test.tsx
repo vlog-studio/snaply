@@ -88,4 +88,58 @@ describe('SnapCell', () => {
 
     expect(screen.queryByText(daysLeftPattern)).toBeNull();
   });
+
+  // The order is drawn only on the pick disc, inside a cell whose own name is
+  // all a screen reader hears — and it becomes the movie's cut order.
+  it.each<[string, number | undefined, string]>([
+    ['picked second', 2, '3\uCD08 \uC2A4\uB0C5, 2\uBC88\uC9F8\uB85C \uACE0\uB984'], // 3초 스냅, 2번째로 고름
+    ['not picked', undefined, '3\uCD08 \uC2A4\uB0C5'], // 3초 스냅
+  ])('names a snap %s with its pick order, if any', async (_label, pickNumber, name) => {
+    await render(
+      <SnapCell
+        snap={snap}
+        width={120}
+        pickNumber={pickNumber}
+        selecting
+        isHeld={false}
+        onPress={jest.fn()}
+        onLongPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name, selected: pickNumber !== undefined })).toBeTruthy();
+  });
+
+  // The pick disc is 22dp: its number must not outgrow it at 2x system text.
+  it('caps the pick number inside its disc', async () => {
+    await render(
+      <SnapCell
+        snap={snap}
+        width={120}
+        pickNumber={2}
+        selecting
+        isHeld={false}
+        onPress={jest.fn()}
+        onLongPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText('2').props.maxFontSizeMultiplier).toBe(1.3);
+  });
+
+  // The print's foot is a 20dp strip: past 1.25x the length was cut at its bottom.
+  it("caps the length inside the print's foot", async () => {
+    await render(
+      <SnapCell
+        snap={snap}
+        width={120}
+        selecting={false}
+        isHeld={false}
+        onPress={jest.fn()}
+        onLongPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/\uCD08$/)).toHaveProp('maxFontSizeMultiplier', 1.25); // …초
+  });
 });

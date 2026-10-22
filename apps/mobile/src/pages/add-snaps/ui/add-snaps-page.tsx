@@ -139,7 +139,12 @@ export function AddSnapsPage({ movieId, onlyLeftOut = false }: AddSnapsPageProps
       );
       return;
     }
-    goBack();
+    // Leave a frame after the append, not in the same tick. The write
+    // re-renders this screen (the picks turn 담김) and the movie under it (the
+    // new cuts); popping in the same commit threw in Android's view mounting
+    // (addViewAt: the specified child already has a parent) on every confirm,
+    // while backing out without a write never did.
+    requestAnimationFrame(goBack);
   };
 
   return (

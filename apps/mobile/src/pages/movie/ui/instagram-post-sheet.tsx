@@ -11,6 +11,8 @@ import { Spacing, useTheme } from '@/shared/ui/theme';
 import { ThemedText } from '@/shared/ui/themed-text';
 import { Reel } from '@/shared/ui/reel';
 
+import { ErrorLine } from './error-line';
+
 export type InstagramPostStepProps = {
   movieId: string;
   title: string;
@@ -70,8 +72,11 @@ export function InstagramPostStep({
         setHandoffProblem(undefined);
         void onOpenInstagramApp().then((outcome) => {
           if (outcome === 'opened') onHandedOff();
-          // A tap while one is running is ignored, not reported.
-          else if (outcome !== 'busy') setHandoffProblem(InstagramHandoffMessages[outcome]);
+          // A tap while one is running, or before the file's address has
+          // arrived, is ignored, not reported — the address wait used to read
+          // as "no finished movie" (MOVIE-3).
+          else if (outcome !== 'busy' && outcome !== 'resolving')
+            setHandoffProblem(InstagramHandoffMessages[outcome]);
         });
       }}
     />
@@ -132,11 +137,7 @@ function InstagramHandoffRow({
       <ThemedText type="small" themeColor="textSecondary">
         연결하지 않아도 올릴 수 있어요. 무비를 앨범에 저장하고 Instagram 앱을 열어요.
       </ThemedText>
-      {problem ? (
-        <ThemedText type="small" themeColor="cherryInk">
-          {problem}
-        </ThemedText>
-      ) : null}
+      <ErrorLine message={problem} />
       <SnaplyButton
         variant="secondary"
         title={busy ? '앨범에 저장하는 중…' : 'Instagram 앱에서 올리기'}
@@ -188,11 +189,7 @@ function ConnectStep({
         {reconnect ? '다시 연결하면 게시할 수 있어요.' : '프로페셔널 계정만 연결할 수 있어요.'}
       </ThemedText>
 
-      {error ? (
-        <ThemedText type="small" themeColor="cherryInk">
-          {error}
-        </ThemedText>
-      ) : null}
+      <ErrorLine message={error} />
 
       <View style={styles.actions}>
         <SnaplyButton

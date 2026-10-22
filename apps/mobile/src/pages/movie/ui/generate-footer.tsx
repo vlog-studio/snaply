@@ -2,33 +2,22 @@ import { useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { Movie } from '@/entities/movie';
-import type { CutsRefusal } from '@/features/compose-movie';
 import type { MovieSharing } from '@/features/share-movie';
+import { AlertCard } from '@/shared/ui/notice';
+import { Reel } from '@/shared/ui/reel';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
-import { Spacing } from '@/shared/ui/theme';
-import { AlertCard, NoticeBand } from '@/shared/ui/notice';
+import { Spacing, useTheme } from '@/shared/ui/theme';
 
-import { CutsRefusalMessages, RefusalNotice } from './refusal-notice';
 import { RemakeConfirm } from './remake-confirm';
 
 export type GenerateFooterProps = {
   movie: Movie;
   /** Cuts the movie holds; nothing to generate is a refusal, not a run. */
   cutCount: number;
-  /** Why the last cut edit was refused, if it was. */
-  cutsRefusal: CutsRefusal | undefined;
-  /**
-   * True on a finished movie whose cut list drifted from what its render was
-   * made from — the one state where what plays is not what was made.
-   */
-  editedSinceRender: boolean;
-  /** Puts the cut list back to the render's own composition. */
-  onRestoreCuts: () => void;
   sharing: MovieSharing;
   /**
    * The selected cut's controls, standing in for the action row while a cut
-   * is held. The notices above the slot stay either way — a refused cut edit
-   * has to be answered exactly while a cut is selected.
+   * is held.
    */
   inspector?: ReactNode;
   onStart: () => void;
@@ -47,22 +36,25 @@ export type GenerateFooterProps = {
  * the video jump. Deselecting (a tap on the strip's empty space) brings the
  * generate button back.
  *
- * The button and what refused it, and nothing else. A summary line under it
- * used to restate the configuration (컷 수, 길이, 스타일, 음악) and the standing
- * caveats about how long a run takes and how little it really does; on a screen
- * whose stage lives on leftover height, three lines of prose that the strip, the
+ * Refusals — a refused run, a refused cut edit — and the edited-since-render
+ * notice are not here: they are standing notices, and every standing notice on
+ * this screen stands under the head (`MovieNotices`), where a pile of them
+ * scrolls instead of pushing this slot off a small phone. The page draws them.
+ *
+ * The button and the failure, and nothing else. A summary line under it used to
+ * restate the configuration (컷 수, 길이, 스타일, 음악) and the standing caveats
+ * about how long a run takes and how little it really does; on a screen whose
+ * stage lives on leftover height, three lines of prose that the strip, the
  * chips, and the progress panel each already say cost more than they told.
  */
 export function GenerateFooter({
   movie,
   cutCount,
-  cutsRefusal,
-  editedSinceRender,
-  onRestoreCuts,
   sharing,
   inspector,
   onStart,
 }: GenerateFooterProps) {
+  const theme = useTheme();
   const hasFailed = movie.status === 'failed';
   const isReady = movie.status === 'ready';
   // A finished movie's run replaces its result and is paid again, so that one
@@ -71,28 +63,16 @@ export function GenerateFooter({
 
   return (
     <View style={styles.footer}>
-      {/* An edited finished movie says so: this stage previews the changed
-          composition, but the movie itself — watch mode, 공유 — still plays the
-          render as it was made, and only 다시 만들기 closes that gap. The restore is the one-tap way back when the edit was a
-          mis-tap — screen-local undo dies with the visit, this does not. */}
-      {isReady && editedSinceRender ? (
-        <NoticeBand
-          message="완성한 뒤에 컷 구성이 달라졌어요. 다시 만들기 전까지 무비는 완성 당시 구성으로 재생돼요."
-          action={{ label: '완성 당시 구성으로 되돌리기', onPress: onRestoreCuts }}
-        />
-      ) : null}
-
       {hasFailed ? (
         // The stored reason, not a generic apology: the user has to know
         // whether running it again is worth anything, and today's one failure
         // is only answered by putting cuts back first. The server's own
         // diagnostic (`movie.errorDetail`) stays in the store for debugging but
         // is never drawn: it is what a bug report needs, not what the failure
-        // means, and raw server text is not user copy.
-        <AlertCard message={movie.error ?? '무비를 만들지 못했어요.'} />
+        // means, and raw server text is not user copy. A standing state of the
+        // movie, read where it sits rather than on every visit.
+        <AlertCard message={movie.error ?? '무비를 만들지 못했어요.'} announce={false} />
       ) : null}
-
-      {cutsRefusal ? <RefusalNotice message={CutsRefusalMessages[cutsRefusal]} /> : null}
 
       <View style={styles.actionSlot}>
         {inspector ??
@@ -107,10 +87,17 @@ export function GenerateFooter({
           ) : (
             <View style={styles.actions}>
               {isReady ? (
+                // The wait is the reel, not words: the file downloads before the
+                // sheet can open, and '공유 준비 중…' wrapped to three lines in a
+                // third of the row on a 360dp phone, growing the slot the stage
+                // is sized against. The name stays 공유; the ticket keeps its
+                // colour and reports busy (`SnaplyButton`'s `busy`).
                 <SnaplyButton
-                  title={sharing.busy ? '공유 준비 중…' : '공유'}
+                  title="공유"
                   variant="secondary"
-                  disabled={sharing.blocked !== undefined || sharing.busy}
+                  leading={sharing.busy ? <Reel size={18} color={theme.navy} /> : undefined}
+                  busy={sharing.busy}
+                  disabled={sharing.blocked !== undefined}
                   onPress={sharing.share}
                   style={styles.share}
                 />

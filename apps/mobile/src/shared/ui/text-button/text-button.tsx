@@ -5,6 +5,12 @@ import { ThemedText } from '@/shared/ui/themed-text';
 
 export type TextButtonProps = Omit<PressableProps, 'children'> & {
   label: string;
+  /**
+   * `default` marks the words in pink. `delete` marks them in kraft — a delete
+   * that is only a word (a list row's or a selection bar's 삭제): ink on kraft,
+   * never red, because red is the main action.
+   */
+  tone?: 'default' | 'delete';
 };
 
 /** Grow a short line of text to the 48dp minimum without a taller row. */
@@ -14,11 +20,23 @@ const VerticalSlop = (Sizes.touchMin - 20) / 2;
  * A text button (the design system's `jj-textbtn`): bold ink with a pink
  * highlighter stroke under the words. It is not red — red is the main action —
  * and on a sticker colour it stays dark ink in both schemes (`stickerInk`).
+ * A disabled button drops the band, so its words sit on whatever is under it
+ * and take that ground's own ink (`text`, faded) — sticker ink on night paper
+ * would all but vanish. A notice or a post-it pins its contents to the day
+ * scheme, so there that ink is dark too.
  * The row stays one text line tall; the press target reaches 48dp through
  * `hitSlop`, which a clipping ancestor still cuts on Android (cookbook §14).
  */
-export function TextButton({ label, disabled, hitSlop, style, ...props }: TextButtonProps) {
+export function TextButton({
+  label,
+  tone = 'default',
+  disabled,
+  hitSlop,
+  style,
+  ...props
+}: TextButtonProps) {
   const theme = useTheme();
+  const band = tone === 'delete' ? theme.kraft : theme.pink;
   return (
     <Pressable
       accessibilityRole="button"
@@ -43,7 +61,7 @@ export function TextButton({ label, disabled, hitSlop, style, ...props }: TextBu
         type="link"
         style={[
           styles.label,
-          { color: theme.stickerInk, backgroundColor: disabled ? undefined : theme.pink },
+          disabled ? { color: theme.text } : { color: theme.stickerInk, backgroundColor: band },
         ]}
       >
         {label}

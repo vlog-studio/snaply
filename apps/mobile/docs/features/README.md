@@ -67,7 +67,7 @@ Root stack (groups in declaration order, which is also the fallback priority)
 └── /auth/reset        Password-recovery deep-link landing (unguarded, declared last)
 ```
 
-The tab bar hosts four tabs with a floating ember capture button centered over the bar. The button is not a tab; it opens the `/capture` modal from any tab.
+The tab bar hosts four tabs with a cherry capture disc centered over the bar. The button is not a tab; it opens the `/capture` modal from any tab.
 
 There is no separate capture-setup screen: `/capture` opens straight into the viewfinder and the clip length is tuned inline while it is idle.
 
@@ -87,7 +87,7 @@ Tap the center capture button in the tab bar
 by hand:    Snap tab → 선택 → pick snaps → 이 스냅으로 새 무비
             → a draft movie, opened right away; refillable later via 스냅 더 넣기
 
-for me:     Studio → 스냅 골라 자동 편집 → pick up to 30 → 자동으로 편집하기
+for me:     Studio → 스냅 골라 자동 편집 → pick up to 40 → 자동으로 편집하기
             → the server picks, orders, and cuts them into a draft movie, opened right away
 
 by template: Studio → 템플릿으로 시작 → the app matches one outing into the slots
@@ -118,7 +118,7 @@ Three rules shape that flow; each is owned by the document it links to:
 | [Snap library](snaps.md) | Day-grouped snap grid, playback, saving a snap to the device's album (one at a time, or every capture automatically), selection → a new or existing movie, deletion everywhere or from this device only, bringing a deleted snap back (되돌리기, 최근 삭제), the file and thumbnail model, and the account's snaps kept in step across devices (arriving, deleted everywhere, expiring) | `Functional` (cross-device sync verified on a phone, the emulator and the iOS Simulator; an iPhone waits for the iOS release, root backlog A-4 "iOS 출시 전"; an undo reaching another device not yet seen) |
 | [Capture flow](capture-flow.md) | Inline duration option, permissions, press-and-hold recording, saving a snap, in-camera feedback, recording library | `Functional` |
 | [Snap extraction](snap-extract.md) | Cutting snaps out of a gallery video: system picker, filmstrip with a draggable 0.5–5s window, looped window playback, native trim (media3 / AVAssetExportSession), snaps landing in the library like captures | `Functional` (iOS never built — root backlog A-4 "iOS 출시 전") |
-| [Me tab](me.md) | Profile with the account's nickname, the week record and snap/movie stats, and the preference screens — the account-held notification preferences, theme, the consent to snap analysis, the automatic album copy, the account's interests (`/settings/interests`), the linked Instagram account (TikTok 준비 중) — with 준비 중 rows for capture reminders; sign-out and account deletion | `Partial` |
+| [Me tab](me.md) | Profile with the account's nickname, the week record and snap/movie stats, and the preference screens — the account-held notification preferences, theme, the consent to snap analysis, the automatic album copy, the account's interests (`/settings/interests`), the linked Instagram account (TikTok 준비 중) — with 준비 중 rows for capture reminders; sign-out, account deletion, and the terms and privacy policy links (spec ACC-12) | `Partial` |
 | [Credits and rewarded ads](credits-and-rewarded-ads.md) | The credit balance and ledger (`/settings/credits`), earning credits by watching a rewarded ad, and the movie screen's insufficient-credit refusal; what an edit draft costs is in [Studio and movies](studio.md#the-edit-draft-자동-편집). **Blocked on AdMob app review** — the SDK and provider are wired, but the AdMob app cannot be verified until Snaply is on Play, so its ad units serve nothing and no credit can be earned. Purchasing credits is not implemented | `Partial` |
 | [Location alerts and push notifications](location-and-push-notifications.md) | FCM token registration, geofence monitoring, arrival reporting, foreground notification presentation, and where a tapped notification lands | `Partial` |
 

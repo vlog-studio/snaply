@@ -27,7 +27,7 @@ import {
   type TimelinePlayhead,
 } from '../model/timeline-layout';
 import type { Cut } from '../model/use-movie-cuts';
-import { TimelineCut, TimelineCutHeight } from './timeline-cut';
+import { TimelineCut, TimelineCutHeight, TrimHandleReach } from './timeline-cut';
 import { PendingTransitionGlyph, TransitionGlyph } from './transition-glyph';
 
 export type TimelineStripProps = {
@@ -211,6 +211,8 @@ export function TimelineStrip({
     canEdit && !isPlaying && selectedIndex >= 0 && cuts[selectedIndex]?.snap !== undefined
       ? selectedIndex
       : -1;
+  // The last clip's end handle reaches over the add tile beside it while out.
+  const lastFocused = focusedIndex >= 0 && focusedIndex === cuts.length - 1;
   const sizes: TimelineCutSize[] = cuts.map((cut) => ({
     usedSec: cut.usedSec,
     fullSec: cut.snap?.durationSec,
@@ -372,6 +374,9 @@ export function TimelineStrip({
                 style={[
                   styles.addTile,
                   { borderColor: theme.butter, opacity: room === 0 ? 0.45 : 1 },
+                  // Clear of the last clip's end handle while it is out, which
+                  // would otherwise lie over most of the tile and take its taps.
+                  lastFocused && styles.addTileBesideHandle,
                 ]}
               >
                 <DoodleIcon name="plus" size={20} color={theme.butter} />
@@ -515,4 +520,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  addTileBesideHandle: { marginLeft: TrimHandleReach },
 });

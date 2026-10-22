@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -59,9 +60,9 @@ export type SnapSelectionBarProps = {
  * The selection mode's bottom bar: how many snaps are picked against the
  * target's remaining room, and what can be done with them.
  *
- * It reports the room rather than a bare count because the ten-snap cap is the
+ * It reports the room rather than a bare count because the movie's snap cap is the
  * product's one hard constraint (MOV-5) and the moment it bites is here —
- * the user has to see why an eleventh pick is refused.
+ * the user has to see why the pick past it is refused.
  */
 export function SnapSelectionBar({
   selectedCount,
@@ -80,6 +81,8 @@ export function SnapSelectionBar({
   tone = 'primary',
 }: SnapSelectionBarProps) {
   const theme = useTheme();
+  // Whether the ticket sat on a line of its own when it was last idle.
+  const [ticketOwnLine, setTicketOwnLine] = useState(false);
   const insets = useSafeAreaInsets();
   const room = Math.max(capacity - heldCount, 0);
   const canConfirm = selectedCount > 0 && room > 0 && !busy && !confirmDisabled;
@@ -113,10 +116,12 @@ export function SnapSelectionBar({
         <ThemedText type="bodySm" style={styles.count}>
           {selectedCount}개 선택
         </ThemedText>
+        {/* Not clamped: with no room beside the count (large system text on a
+            narrow phone) it moves to its own line, whole — clamped, Android
+            cut its second line in half. */}
         <ThemedText
           type="data"
           themeColor={room === 0 ? 'cherryInk' : undefined}
-          numberOfLines={1}
           style={styles.room}
         >
           {/* A target holding nothing yet (a movie about to be created) has no
@@ -129,50 +134,74 @@ export function SnapSelectionBar({
         </ThemedText>
       </View>
 
+      {/* The word actions, then the ticket. With no room for the ticket's words
+          on one line beside them (a 360dp phone, or large system text) the
+          ticket takes its own full-width line instead of breaking its words a
+          syllable at a time (`이 스냅으로 새 무 / 비`). */}
       <View style={styles.actions}>
-        {onDelete ? (
+        <View style={styles.wordActions}>
+          {onDelete ? (
+            <TextAction
+              label="삭제"
+              accessibilityLabel={`${selectedCount}개 스냅 삭제`}
+              disabled={!canChange}
+              danger
+              onPress={onDelete}
+            />
+          ) : null}
+          {onSaveToAlbum ? (
+            <TextAction
+              label="저장"
+              accessibilityLabel={`${selectedCount}개 스냅 앨범에 저장`}
+              disabled={!canChange}
+              onPress={onSaveToAlbum}
+            />
+          ) : null}
           <TextAction
-            label="삭제"
-            accessibilityLabel={`${selectedCount}개 스냅 삭제`}
+            label="해제"
+            accessibilityLabel="선택 해제"
             disabled={!canChange}
-            danger
-            onPress={onDelete}
+            onPress={onClear}
           />
-        ) : null}
-        {onSaveToAlbum ? (
-          <TextAction
-            label="저장"
-            accessibilityLabel={`${selectedCount}개 스냅 앨범에 저장`}
-            disabled={!canChange}
-            onPress={onSaveToAlbum}
+        </View>
+        {/* While the ticket works its words change (`편집하는 중…`,
+            `저장하는 중…`) and a reel joins them; laid out from those, it
+            could jump to or from its own line under the finger that just
+            pressed. Busy, it keeps the line it had when it was last idle. */}
+        <View
+          onLayout={busy ? undefined : (event) => setTicketOwnLine(event.nativeEvent.layout.x < 1)}
+          style={[
+            styles.confirm,
+            busy && (ticketOwnLine ? styles.confirmOwnLine : styles.confirmBeside),
+          ]}
+        >
+          <SnaplyButton
+            title={confirmLabel}
+            accessibilityLabel={confirmLabel}
+            variant={tone}
+            busy={busy}
+            disabled={!canConfirm && !busy}
+            onPress={onConfirm}
+            leading={
+              busy ? (
+                <Reel color={tone === 'ai' ? theme.stickerInk : theme.onPrimary} size={16} />
+              ) : undefined
+            }
           />
-        ) : null}
-        <TextAction
-          label="해제"
-          accessibilityLabel="선택 해제"
-          disabled={!canChange}
-          onPress={onClear}
-        />
-        <SnaplyButton
-          title={confirmLabel}
-          accessibilityLabel={confirmLabel}
-          variant={tone}
-          busy={busy}
-          disabled={!canConfirm && !busy}
-          onPress={onConfirm}
-          leading={
-            busy ? (
-              <Reel color={tone === 'ai' ? theme.stickerInk : theme.onPrimary} size={16} />
-            ) : undefined
-          }
-          style={styles.confirm}
-        />
+        </View>
       </View>
     </View>
   );
 }
 
-/** A quiet word-only action of the bar: 삭제 in cherry ink, the rest in ink. */
+/**
+ * A quiet word-only action of the bar, in ink. 삭제 is not red — cherry is the
+ * main action — but ink over a kraft highlighter (the design system's
+ * `sg-act--danger`, root docs/decisions/junk-journal-design-system.md): the
+ * stroke is the text's own ground, as `TextButton` draws its pink one, and the
+ * ink on it is `stickerInk` because kraft stays light at night. A disabled
+ * action drops the stroke.
+ */
 function TextAction({
   label,
   accessibilityLabel,
@@ -186,6 +215,8 @@ function TextAction({
   danger?: boolean;
   onPress: () => void;
 }) {
+  const theme = useTheme();
+  const highlighted = danger && !disabled;
   return (
     <Pressable
       accessibilityRole="button"
@@ -198,7 +229,12 @@ function TextAction({
       <ThemedText
         selectable={false}
         type="smallBold"
-        themeColor={disabled ? 'textSecondary' : danger ? 'cherryInk' : 'text'}
+        themeColor={disabled ? 'textSecondary' : 'text'}
+        style={
+          highlighted
+            ? [styles.highlighter, { color: theme.stickerInk, backgroundColor: theme.kraft }]
+            : undefined
+        }
       >
         {label}
       </ThemedText>
@@ -223,13 +259,21 @@ const styles = StyleSheet.create({
   noticeText: { flex: 1 },
   counts: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'baseline',
     justifyContent: 'space-between',
     gap: Spacing.three,
   },
   count: { fontWeight: 700 },
-  room: { flexShrink: 1, textAlign: 'right' },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
+  room: { flexShrink: 1, marginLeft: 'auto', textAlign: 'right' },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: Spacing.two + Spacing.half,
+    rowGap: Spacing.two,
+  },
+  wordActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.half },
   textAction: {
     minHeight: Sizes.touchMin,
     minWidth: Sizes.touchMin,
@@ -237,5 +281,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  confirm: { flex: 1, marginLeft: Spacing.two },
+  highlighter: { paddingHorizontal: 2 },
+  // Grow only: a ticket that may also shrink is laid out from a zero basis
+  // and never moves to its own line. `maxWidth` lets its words wrap once it
+  // fills a line of its own.
+  confirm: { flexGrow: 1, maxWidth: '100%' },
+  // Busy, the line the ticket had when idle: all of its own, or what is left
+  // beside the word actions (its words wrap there rather than move it down).
+  confirmOwnLine: { flexBasis: '100%' },
+  confirmBeside: { flexBasis: 0, flexShrink: 1 },
 });

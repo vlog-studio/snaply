@@ -23,20 +23,19 @@ export type RefusalAction = {
 };
 
 /**
- * The line that answers a refusal — one component for both places on this
- * screen a refusal surfaces.
- *
- * A refused edit is normally answered in the footer, under the button that
- * refused it; while a job owns the movie the footer is gone, and the refusal
- * still has to be answered. Wording the same rule in two files is how two
- * surfaces come to disagree about it, which the rules the refusals stand for
- * (`features/compose-movie`) exist to prevent.
+ * The band that answers a refusal — one component for both refusals on this
+ * screen, a refused run and a refused cut edit, which stand together under the
+ * head with the studio's other notices (`MovieNotices`). Wording the same rule
+ * in two files is how two surfaces come to disagree about it, which the rules
+ * the refusals stand for (`features/compose-movie`) exist to prevent.
  *
  * A refusal the user can resolve somewhere else carries the way there
  * (`action`) as a text button in the band — not a second button competing
  * with the one that refused. It is a standing notice (`NoticeBand`): it stays
- * while the refusal holds.
+ * while the refusal holds. It answers a press, so a screen reader hears it as
+ * it arrives (`announce`) — a band that mounts already holding its words is
+ * not read out by a live region on Android.
  */
 export function RefusalNotice({ message, action }: { message: string; action?: RefusalAction }) {
-  return <NoticeBand message={message} action={action} />;
+  return <NoticeBand message={message} action={action} announce />;
 }
