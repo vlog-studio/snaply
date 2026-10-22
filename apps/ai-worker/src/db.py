@@ -63,6 +63,38 @@ async def fetch_source_keys(user_id: str, video_ids: list[str]) -> dict[str, str
     return {str(row["id"]): row["s3_key"] for row in rows if row["s3_key"]}
 
 
+async def fetch_accent_inputs(video_ids: list[str]) -> tuple[dict[str, dict], dict[str, list[float]]]:
+    """텍스트 액센트의 입력 — (스냅마다 최신 완료 분석의 목록 필드, 스냅마다 움직임 곡선).
+
+    분석은 동의한 스냅에만 있다(동의를 거두면 지워진다 — ANA-3). 없는 스냅은 빠진다 — 액센트는 그 컷을 장소 키워드나 쉼으로 둔다.
+    """
+    async with _pool_or_raise().acquire() as conn:
+        analyses = await conn.fetch(
+            "SELECT DISTINCT ON (video_id) video_id, summary, topics, places, objects, actions, moods "
+            "FROM video_analyses WHERE video_id = ANY($1::uuid[]) AND status='done' "
+            "ORDER BY video_id, analysis_version DESC",
+            video_ids,
+        )
+        signals = await conn.fetch(
+            "SELECT video_id, motion FROM video_signals WHERE video_id = ANY($1::uuid[])", video_ids
+        )
+    by_video = {
+        str(row["video_id"]): {k: (list(row[k]) if k != "summary" else row[k]) for k in
+                               ("summary", "topics", "places", "objects", "actions", "moods")}
+        for row in analyses
+    }
+    return by_video, {str(row["video_id"]): list(row["motion"] or []) for row in signals}
+
+
+async def fetch_captured_at(video_ids: list[str]) -> dict:
+    """스냅마다 촬영 시각(없으면 빠진다) — 하루 타임스탬프 포맷의 글. 저장된 그대로(UTC)라 표시할 때 시간대를 맞춘다."""
+    async with _pool_or_raise().acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, captured_at FROM videos WHERE id = ANY($1::uuid[]) AND captured_at IS NOT NULL", video_ids
+        )
+    return {str(row["id"]): row["captured_at"] for row in rows}
+
+
 async def set_video_result(
     video_id: str,
     edited_url: str,

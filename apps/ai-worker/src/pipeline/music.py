@@ -153,14 +153,26 @@ def _capture(exc: BaseException) -> None:
     sentry_sdk.capture_exception(exc)
 
 
-def mix(video_in: str, bgm_path: str, out: str, video_duration: float) -> None:
-    """원본 오디오 위에 BGM을 낮은 볼륨으로 합성하고, 끝에서 fade-out."""
+BGM_GAIN = 0.25
+# 음원만 모드(원본 소리를 빼는 트렌드 숏폼)의 BGM 크기 — 마지막 손질(finalize)이 무비 전체를 -14 LUFS 로 맞추므로 1.0 이면 된다
+MUSIC_ONLY_BGM_GAIN = 1.0
+
+
+def mix(video_in: str, bgm_path: str, out: str, video_duration: float,
+        source_gain: float = 1.0, bgm_gain: float = BGM_GAIN, end_fade: float = 0.0) -> None:
+    """원본 오디오 위에 BGM 을 합성하고, 끝에서 fade-out. source_gain=0 이면 원본 소리를 빼고 BGM 만 남긴다(음원만 모드).
+    end_fade 초가 있으면 섞은 소리 전체(원본 포함)를 끝에서 닫는다 — 원본 소리가 마지막 컷에서 뚝 끊기지 않게(레시피 무비)."""
     fade_start = max(video_duration - 2.0, 0.0)
-    fc = (
-        f"[1:a]volume=0.25,afade=t=out:st={fade_start:.2f}:d=2,"
-        f"atrim=0:{video_duration:.2f}[bg];"
-        f"[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[a]"
-    )
+    bg = f"[1:a]volume={bgm_gain:g},afade=t=out:st={fade_start:.2f}:d=2,atrim=0:{video_duration:.2f}"
+    if source_gain == 0:
+        fc = f"{bg},aresample=48000,aformat=channel_layouts=stereo[a]"
+    elif source_gain == 1.0:
+        # 지금까지의 무비와 같은 섞기(amix 의 기본 정규화 포함) — 기본값이 결과를 바꾸지 않게
+        fc = f"{bg}[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[a]"
+    else:
+        fc = f"{bg}[bg];[0:a]volume={source_gain:g}[src];[src][bg]amix=inputs=2:duration=first:dropout_transition=0[a]"
+    if end_fade:
+        fc = fc[:-len("[a]")] + f",afade=t=out:st={max(video_duration - end_fade, 0.0):.2f}:d={end_fade:g}[a]"
     subprocess.run(
         [
             "ffmpeg", "-y",
@@ -175,7 +187,8 @@ def mix(video_in: str, bgm_path: str, out: str, video_duration: float) -> None:
     logger.info("BGM 합성 완료 track={}", Path(bgm_path).name)
 
 
-def apply_bgm(video_in: str, tag: str, out: str, video_duration: float, key: str) -> tuple[str, bool]:
+def apply_bgm(video_in: str, tag: str, out: str, video_duration: float, key: str,
+              source_gain: float = 1.0, bgm_gain: float = BGM_GAIN) -> tuple[str, bool]:
     """BGM 합성 시도. `key` 는 곡을 고정하는 값(무비 id). 반환: (결과 경로, BGM 적용 여부).
 
     합성이 실패하면 BGM 없이 간다(backlog E-51) — 컷을 다 붙인 뒤라 무비 전체를 실패시키면 처음부터 다시 돈다.
@@ -186,7 +199,7 @@ def apply_bgm(video_in: str, tag: str, out: str, video_duration: float, key: str
     if track is None:
         return video_in, False
     try:
-        mix(video_in, track, out, video_duration)
+        mix(video_in, track, out, video_duration, source_gain, bgm_gain)
     except subprocess.CalledProcessError as exc:
         logger.warning("BGM 합성 실패 — BGM 없이 진행 (track={}): {}", Path(track).name, (exc.stderr or "")[-300:])
         _capture(exc)

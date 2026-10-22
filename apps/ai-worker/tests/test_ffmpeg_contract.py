@@ -28,7 +28,8 @@ from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from pipeline import color_match, hdr, music, rendition, subtitle  # noqa: E402
+from pipeline import accent_render, ass, ass_caption, color_match, hdr, music, rendition, subtitle, text_accent  # noqa: E402
+from pipeline import editor  # noqa: E402
 from pipeline.editor import (  # noqa: E402
     ClipSource,
     _parse_ebur128,
@@ -729,6 +730,20 @@ class HdrContract(unittest.TestCase):
             for measured, expected in zip((quick.r, quick.g, quick.b), reference):
                 self.assertAlmostEqual(measured, expected, delta=0.03)
 
+    def test_hdr_cut_with_colour_match_keeps_the_whole_picture(self) -> None:
+        """톤매핑 직후의 부동소수 RGB 에 색 맞춤(colorchannelmixer)이 걸리면 화면 폭이 1/4 로 깨졌다(2026-10-22, Debian 7.1)."""
+        from pipeline import cut_fx
+
+        with tempfile.TemporaryDirectory() as work:
+            hdr_src, sdr_src = os.path.join(work, "hdr.mov"), os.path.join(work, "sdr.mp4")
+            self.make_hdr10(hdr_src)
+            make_tone_clip(sdr_src, volume=0.2, seconds=1.0, color="0x806040")  # 색이 달라 색 맞춤이 걸린다
+            band = cut_fx.band_spec(DEFAULT_RENDER_SPEC)
+            hdr_seg, _ = editor.prepare_segments([ClipSource(hdr_src), ClipSource(sdr_src)], get_preset("일상"), band, work, fast=True)
+            self.assertEqual((probe(hdr_seg)["video"]["width"], probe(hdr_seg)["video"]["height"]), (1080, 608))
+            # testsrc 의 오른쪽에서 둘째 줄(빨강, x≈810~945) — 폭이 깨지면 이 자리가 검다(맨 오른쪽 줄은 원래 검정)
+            self.assertGreater(pixel(hdr_seg, 0.5, x=880, y=520)[0], 100)
+
     def test_sdr_source_tags_are_left_alone(self) -> None:
         """SDR 원본의 태그는 이미 사실이다 — 덮어쓸 이유가 없다."""
         with tempfile.TemporaryDirectory() as work:
@@ -751,6 +766,397 @@ def _movflags_state(path: str) -> str:
     if mdat == -1 or moov < mdat:
         return "faststart"
     return "moov-after-mdat"
+
+
+def burn_ass(work: str, document: str | None, at: float, crop: str) -> tuple[bytes, str]:
+    """검은 1080x1920 의 `at` 초 프레임에 ASS 를 구워 `crop` 영역의 회색조 화소와 libass 로그를 돌려준다."""
+    vf = crop
+    if document is not None:
+        path = os.path.join(work, "doc.ass")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(document)
+        vf = f"{ass.filter_arg(path)},{crop}"
+    result = subprocess.run(
+        [
+            "ffmpeg", "-v", "verbose", "-f", "lavfi",
+            "-i", f"color=c=black:s={ass.PLAY_RES_X}x{ass.PLAY_RES_Y}:rate=30:duration=6",
+            "-ss", f"{at:.3f}", "-frames:v", "1", "-vf", vf, "-f", "rawvideo", "-pix_fmt", "gray", "-",
+        ],
+        capture_output=True,
+        check=True,
+    )
+    return result.stdout, result.stderr.decode("utf-8", "replace")
+
+
+def missing_glyphs(log: str) -> list[str]:
+    return [line for line in log.splitlines() if "Glyph" in line and "not found" in line]
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class AssCaptionContract(unittest.TestCase):
+    """말소리 자막 — libass 가 번들 글꼴로 **한글**을 그리고, 하단 여백 위에 놓고, 정해진 시각에 내린다."""
+
+    def test_both_styles_draw_korean_while_the_line_is_up(self) -> None:
+        words = [ass_caption.Word(200, 700, "오늘은"), ass_caption.Word(700, 1200, "성수동")]
+        band_bottom = ass.PLAY_RES_Y - ass_caption.MARGIN_V
+        crop = f"crop={ass.PLAY_RES_X}:200:0:{band_bottom - 160}"
+        for style in ass_caption.STYLES:
+            with self.subTest(style=style), tempfile.TemporaryDirectory() as work:
+                document = ass_caption.build_document(ass_caption.group_lines(words), style)
+                self.assertLess(max(burn_ass(work, None, 1.0, crop)[0]), 40)
+                pixels, log = burn_ass(work, document, 1.0, crop)
+                self.assertEqual(missing_glyphs(log), [])
+                self.assertGreater(max(pixels), 150)
+                # 줄은 마지막 단어 끝 + LINGER_MS 에 내려간다
+                self.assertLess(max(burn_ass(work, document, 1.8, crop)[0]), 40)
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class TextAccentContract(unittest.TestCase):
+    """텍스트 액센트 — 네 종류의 번들 글꼴이 전부 한글을 그리고, 액센트가 고른 자리에 그려진다."""
+
+    def test_every_category_draws_korean_where_it_was_placed(self) -> None:
+        cuts = [
+            text_accent.CutContext("a", 0, 1000, {"objects": ("coffee",)}, (0.30, 0.40, 0.70, 0.70)),
+            text_accent.CutContext("b", 1000, 2000, {"moods": ("calm",)}, (0.30, 0.40, 0.70, 0.70)),
+            text_accent.CutContext("c", 2000, 3000, {"moods": ("lively",)}, (0.30, 0.40, 0.70, 0.70)),
+            text_accent.CutContext("d", 3000, 4000, {"places": ("office",)}, (0.30, 0.40, 0.70, 0.70)),
+        ]
+        accents = text_accent.plan(cuts, 500, 7).accents
+        self.assertEqual([a.choice.category for a in accents], ["sound", "feeling", "exclaim", "keyword"])
+        document = accent_render.build_document(accents)
+        for accent in accents:
+            with self.subTest(category=accent.choice.category), tempfile.TemporaryDirectory() as work:
+                x0, y0, x1, y1 = accent.rect
+                crop = (f"crop={int((x1 - x0) * ass.PLAY_RES_X)}:{int((y1 - y0) * ass.PLAY_RES_Y)}:"
+                        f"{int(x0 * ass.PLAY_RES_X)}:{int(y0 * ass.PLAY_RES_Y)}")
+                at = (accent.start_ms + 400) / 1000
+                pixels, log = burn_ass(work, document, at, crop)
+                self.assertEqual(missing_glyphs(log), [])
+                self.assertGreater(max(pixels), 150)
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class StickerOverlayContract(unittest.TestCase):
+    """이모지 스티커 트랙 — 알파가 살아 있어 스티커 자리만 덮고 나머지는 원본 그대로다."""
+
+    def test_overlay_track_keeps_alpha_and_draws_the_sticker(self) -> None:
+        from pipeline import sticker, sticker_render
+
+        placed = sticker.Sticker("a", "1f525", "", "freezone.topLeft", (0.3, 0.3), 240, 0.0, "popBob", 0, 1500, (0, 500, 1000))
+        with tempfile.TemporaryDirectory() as work:
+            track = sticker_render.bake_overlay([placed], 1500, os.path.join(work, "stickers.mov"))
+            base = os.path.join(work, "base.mp4")
+            make_tone_clip(base, volume=0.1, seconds=1.5, color="0x204060")
+            out = os.path.join(work, "out.mp4")
+            subprocess.run(
+                ["ffmpeg", "-v", "error", "-y", "-i", base, "-i", track,
+                 "-filter_complex", "[0:v][1:v]overlay=0:0:format=auto", "-c:v", "libx264", "-pix_fmt", "yuv420p", out],
+                capture_output=True, check=True,
+            )
+            sticker_px = pixel(out, 0.8, x=int(0.3 * 1080), y=int(0.3 * 1920))
+            untouched = pixel(out, 0.8, x=900, y=1700)
+            self.assertGreater(max(sticker_px) - min(sticker_px), 60, sticker_px)  # 🔥 의 주황
+            self.assertLess(sum(abs(a - b) for a, b in zip(untouched, (0x20, 0x40, 0x60))), 30, untouched)
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class AccentInputsContract(unittest.TestCase):
+    """대표 프레임의 휘도 격자 — 위가 밝고 아래가 어두운 프레임이면 격자도 그렇다(대비 규칙의 입력)."""
+
+    def test_luma_grid_reads_the_frame_top_down(self) -> None:
+        from pipeline import accent_inputs
+
+        with tempfile.TemporaryDirectory() as work:
+            path = os.path.join(work, "sky.mp4")
+            subprocess.run(
+                ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=black:s=720x1280:rate=30:duration=1",
+                 "-vf", "drawbox=x=0:y=0:w=iw:h=ih/2:color=white:t=fill", "-c:v", "libx264", "-pix_fmt", "yuv420p", path],
+                capture_output=True, check=True,
+            )
+            grid = accent_inputs.luma_grid(path, 500)
+            self.assertEqual((len(grid), len(grid[0])), (accent_inputs.ROWS, accent_inputs.COLS))
+            self.assertGreater(min(grid[0]), 0.85)
+            self.assertLess(max(grid[-1]), 0.15)
+            with self.assertRaises(accent_inputs.AccentInputError):
+                accent_inputs.luma_grid(os.path.join(work, "missing.mp4"), 0)
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class BeatGridContract(unittest.TestCase):
+    """실제 음원 파일(ffmpeg 디코딩)에서 템포와 박자를 찾고, 곡 옆에 캐시를 남긴다."""
+
+    def test_a_120_bpm_click_track(self) -> None:
+        from pipeline import beat_grid
+
+        with tempfile.TemporaryDirectory() as work:
+            track = os.path.join(work, "click.m4a")
+            kick = "0.9*sin(2*PI*(50*mod(t\\,0.5)+130/18*(1-exp(-18*mod(t\\,0.5)))))*exp(-mod(t\\,0.5)*9)"
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"aevalsrc={kick}:s=44100:d=12",
+                            "-c:a", "aac", track], capture_output=True, check=True)
+            grid = beat_grid.load_or_analyze(track)
+            self.assertAlmostEqual(grid.bpm, 120, delta=2.5)
+            on_grid = [min(abs(b - k * 500) for k in range(25)) for b in grid.beats_ms]
+            self.assertLess(max(on_grid), 60, grid.beats_ms[:8])  # aac 앞의 지연(priming)까지 포함한 여유
+            self.assertTrue(os.path.exists(track + beat_grid.SIDECAR_SUFFIX))
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class AccentStageContract(unittest.TestCase):
+    """편집 워커의 액센트 단계를 실제로 굽는다 — 규격 · 길이 · 소리는 그대로, 글 · 스티커가 화면에 생긴다."""
+
+    def test_burns_accents_and_stickers_onto_the_edited_movie(self) -> None:
+        from pipeline import accent_stage
+
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "src.mp4")
+            make_tone_clip(src, volume=0.2, seconds=3.0, color="0x203040")
+            cuts = [accent_stage.CutSource("v1", src, 0, 1500, 3000), accent_stage.CutSource("v1", src, 1500, 3000, 3000)]
+            analyses = {"v1": {"places": ["카페"], "objects": ["라떼"], "moods": ["활기"]}}
+            out = os.path.join(work, "with_accents.mp4")
+            path, outcome = accent_stage.apply(src, cuts, analyses, {}, None, 3000, "movie-1", work, out)
+
+            self.assertTrue(outcome.applied, outcome.reason)
+            self.assertEqual(path, out)
+            self.assertTrue(outcome.accents and outcome.stickers > 0)
+            before, after = probe(src), probe(out)
+            self.assertEqual((after["video"]["width"], after["video"]["height"]),
+                             (before["video"]["width"], before["video"]["height"]))
+            self.assertAlmostEqual(float(after["format"]["duration"]), float(before["format"]["duration"]), delta=0.1)
+            audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type",
+                                    "-of", "csv=p=0", out], capture_output=True, text=True, check=True).stdout
+            self.assertIn("audio", audio)
+            # 배경은 단색이다 — 무언가 그려졌으면 프레임 어딘가가 배경과 크게 다르다
+            frame = subprocess.run(["ffmpeg", "-v", "error", "-ss", "0.8", "-i", out, "-frames:v", "1", "-vf", "scale=108:192",
+                                    "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True, check=True).stdout
+            self.assertGreater(max(frame) - min(frame), 120)
+
+
+def audio_level(path: str, start: float, seconds: float) -> float:
+    """[start, start+seconds) 구간 소리의 RMS(0~1)."""
+    pcm = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{seconds:.3f}", "-i", path, "-ac", "1",
+                          "-ar", "16000", "-f", "s16le", "-"], capture_output=True, check=True).stdout
+    samples = struct.unpack(f"<{len(pcm) // 2}h", pcm)
+    return (sum(v * v for v in samples) / max(1, len(samples))) ** 0.5 / 32768
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class TrendRecipeContract(unittest.TestCase):
+    """트렌드 레시피의 렌더 능력 — 배속, 효과음 자리, 타이틀 한글, 이음 재기, 그리고 한 편 전체."""
+
+    def test_retime_halves_the_cut_and_keeps_sound(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "src.mp4")
+            make_tone_clip(src, volume=0.3, seconds=3.0)
+            fast = editor.retime_clip(editor.ClipSource(src, 0, 2000), 2.0, os.path.join(work, "fast.mp4"))
+            self.assertAlmostEqual(float(probe(fast.path)["format"]["duration"]), 1.0, delta=0.1)
+            self.assertGreater(audio_level(fast.path, 0.2, 0.5), 0.01)
+
+    def test_sound_effects_land_where_planned_on_a_silent_movie(self) -> None:
+        from pipeline import sfx
+
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "silent.mp4")
+            make_tone_clip(src, volume=0.0, seconds=3.0)
+            event = sfx.SfxEvent(1500, "apple-bite.mp3", 800, 0.0, "아삭")
+            out = sfx.mix_into(src, [event], os.path.join(work, "with_sfx.mp4"))
+            self.assertLess(audio_level(out, 0.2, 1.0), 0.002)
+            self.assertGreater(audio_level(out, 1.5, 0.8), 0.005)
+
+    def test_ducking_lowers_the_music_under_a_sound_effect(self) -> None:
+        from pipeline import sfx
+
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "music.mp4")
+            # 음원 대신 계속 울리는 스테레오 소리(무비 구간은 늘 스테레오다 — editor.normalize_clip 의 -ac 2)
+            subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=gray:s=1080x1920:rate=30:duration=4",
+                            "-f", "lavfi", "-i", "sine=frequency=330:duration=4", "-af", "volume=0.5", "-ac", "2",
+                            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", src],
+                           capture_output=True, check=True)
+            loud = sfx.SfxEvent(2000, "crunch-chips.mp3", 900, 0.0, "바삭")
+            plain = sfx.mix_into(src, [loud], os.path.join(work, "plain.mp4"))
+            ducked = sfx.mix_into(src, [loud], os.path.join(work, "ducked.mp4"), duck=True)
+            self.assertAlmostEqual(duration_of(ducked), duration_of(plain), delta=0.1)
+            def music(path: str, start: float, seconds: float) -> float:
+                """330Hz(음원) 대역만의 크기 — 효과음 소리를 빼고 음원이 줄었는지만 본다."""
+                pcm = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{seconds:.3f}", "-i", path,
+                                      "-af", "bandpass=f=330:width_type=q:w=8", "-ac", "1", "-ar", "16000", "-f", "s16le", "-"],
+                                     capture_output=True, check=True).stdout
+                samples = struct.unpack(f"<{len(pcm) // 2}h", pcm)
+                return (sum(v * v for v in samples) / max(1, len(samples))) ** 0.5 / 32768
+
+            self.assertAlmostEqual(music(ducked, 0.5, 1.0), music(plain, 0.5, 1.0), delta=0.003)  # 효과음 전에는 같다
+            self.assertLess(music(ducked, 2.05, 0.25), music(plain, 2.05, 0.25) * 0.7)  # 효과음이 날 때 음원이 내려간다
+            # 마지막 효과음(2.9초)이 끝나도 음원은 무비 끝까지 — 사이드체인이 끝나며 소리가 끊긴 적이 있다(2026-10-22)
+            self.assertAlmostEqual(music(ducked, 3.3, 0.5), music(plain, 3.3, 0.5), delta=0.01)
+
+    def test_title_fonts_draw_korean(self) -> None:
+        from pipeline import title_card
+
+        doc = ass.document(title_card.styles(), title_card.events("typewriter", [{"topics": ["가족 나들이"]}], 3000, None)
+                           + title_card.events("script", [{"places": ["실내 수족관"]}], 3000, 3000))
+        with tempfile.TemporaryDirectory() as work:
+            pixels, log = burn_ass(work, doc, 1.0, f"crop={ass.PLAY_RES_X}:400:0:{int(ass.PLAY_RES_Y * 0.3)}")
+            self.assertEqual(missing_glyphs(log), [])
+            self.assertGreater(max(pixels), 150)
+
+    def test_continuity_reads_a_covered_lens(self) -> None:
+        from pipeline import continuity
+
+        with tempfile.TemporaryDirectory() as work:
+            path = os.path.join(work, "cover.mp4")
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=size=720x1280:rate=30:duration=3",
+                            "-vf", "drawbox=x=0:y=0:w=iw:h=ih:color=black:t=fill:enable='between(t,1.5,1.8)'",
+                            "-c:v", "libx264", "-pix_fmt", "yuv420p", path], capture_output=True, check=True)
+            dark = continuity.covers(continuity.read_series(path))
+            self.assertTrue(dark and 14 <= dark[0] <= 16, dark)
+
+    def test_many_cuts_join_in_groups_without_losing_time(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            clips = []
+            # 9컷 — 8 + 1 로 나뉘어 마지막 묶음이 구간 하나다(2026-10-22 샘플 9컷 무비가 여기서 죽었다)
+            for i in range(9):
+                path = os.path.join(work, f"c{i}.mp4")
+                make_tone_clip(path, volume=0.2, seconds=0.6, color=("0x303060" if i % 2 else "0x603030"))
+                clips.append(ClipSource(path))
+            out = edit_timeline(clips, [Transition("hardcut")] * 8, get_preset("일상"), DEFAULT_RENDER_SPEC, work)
+            self.assertTrue(os.path.exists(os.path.join(work, "group_1.mp4")))
+            self.assertAlmostEqual(float(probe(out)["format"]["duration"]), 5.4, delta=0.25)
+            self.assertGreater(audio_level(out, 4.9, 0.4), 0.01)  # 마지막 한 구간의 소리도 남는다
+
+    def test_a_whole_trend_movie_renders(self) -> None:
+        from pipeline import trend_edit
+
+        with tempfile.TemporaryDirectory() as work:
+            snaps = []
+            for i, color in enumerate(("0x305070", "0x705030", "0x407040")):
+                path = os.path.join(work, f"s{i}.mp4")
+                make_tone_clip(path, volume=0.3, seconds=2.5, color=color)
+                snaps.append(trend_edit.Snap(path, {"objects": ["사과"], "topics": ["가족 나들이"]} if i == 0 else {"actions": ["걷기"]}))
+            track = os.path.join(work, "bgm.m4a")
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=330:duration=12",
+                            "-c:a", "aac", track], capture_output=True, check=True)
+            out = os.path.join(work, "trend.mp4")
+            result = trend_edit.render(snaps, "trend-routine", track, "m-1", work, out)
+            info = probe(out)
+            self.assertEqual((info["video"]["width"], info["video"]["height"]), (1080, 1920))
+            self.assertEqual(result.title[0], "가족 나들이")
+            self.assertTrue(any("아삭" in reason for reason in result.sfx), result.sfx)
+            # 15초를 못 채우는 원본(2.5초 × 3)이면 배속을 풀고 거의 전부 쓴다
+            self.assertGreater(duration_of(out), 6.0)
+            self.assertIsNotNone(result.look)
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class CutFxContract(unittest.TestCase):
+    """컷 효과의 렌더 — 전환 효과 · 줌 · 색 필터가 이 ffmpeg 에서 돌고 길이를 지키는지, 화면 분할이 칸을 차례로 쌓는지."""
+
+    def test_every_effect_zoom_and_look_renders_and_keeps_the_length(self) -> None:
+        from pipeline import cut_fx, look
+
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "src.mp4")
+            make_tone_clip(src, volume=0.2, seconds=1.2, color="0x406080")
+            cases = [cut_fx.CutFx(intro=k, outro=k) for k in cut_fx.EDGE_MS]
+            cases += [cut_fx.CutFx(zoom="push"), cut_fx.CutFx(zoom="pull"), cut_fx.CutFx(zoom="punch", punch_ms=500)]
+            for i, fx in enumerate(cases):
+                with self.subTest(fx=fx):
+                    out = cut_fx.apply(src, os.path.join(work, f"fx{i}.mp4"), fx, 1.2, DEFAULT_RENDER_SPEC, None)
+                    self.assertAlmostEqual(duration_of(out), 1.2, delta=0.1)
+                    self.assertEqual((probe(out)["video"]["width"], probe(out)["video"]["height"]), (1080, 1920))
+            for name in look.LOOKS:
+                with self.subTest(look=name):
+                    out = cut_fx.apply(src, os.path.join(work, f"look_{name}.mp4"), cut_fx.CutFx(), 1.2, DEFAULT_RENDER_SPEC, name)
+                    self.assertAlmostEqual(duration_of(out), 1.2, delta=0.1)
+            mono = os.path.join(work, "look_mono.mp4")
+            r, g, b = pixel(mono, 0.6)
+            self.assertLess(max(r, g, b) - min(r, g, b), 6)  # 흑백
+
+    def test_split_stacks_panels_one_after_another(self) -> None:
+        from pipeline import cut_fx
+
+        with tempfile.TemporaryDirectory() as work:
+            panels = []
+            for i, color in enumerate(("red", "green", "blue")):
+                path = os.path.join(work, f"p{i}.mp4")
+                make_tone_clip(path, volume=0.2, seconds=0.6, color=color)
+                panels.append(path)
+            out = cut_fx.split(panels, [0.6, 0.6, 0.6], os.path.join(work, "split.mp4"), DEFAULT_RENDER_SPEC, None)
+            self.assertAlmostEqual(duration_of(out), 1.8, delta=0.1)
+            top, middle = pixel(out, 0.2, y=320), pixel(out, 0.2, y=960)
+            self.assertGreater(top[0], 150)
+            self.assertGreater(min(middle), 200)  # 둘째 칸은 0.3초에 들어온다 — 아직 흰 바탕
+            late = [pixel(out, 1.6, y=y) for y in (320, 960, 1600)]
+            self.assertGreater(late[0][0], 150)  # 첫 칸은 마지막 프레임에 멈춰 남는다
+            self.assertGreater(late[1][1], 90)
+            self.assertGreater(late[2][2], 150)
+
+    def test_many_prepared_segments_join_by_copy_without_the_sound_drifting(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            clips = []
+            for i in range(12):
+                path = os.path.join(work, f"c{i}.mp4")
+                make_tone_clip(path, volume=0.4 if i % 2 else 0.0, seconds=0.5, color=("0x303060" if i % 2 else "0x603030"))
+                clips.append(ClipSource(path))
+            prepared = editor.prepare_segments(clips, get_preset("일상"), DEFAULT_RENDER_SPEC, work, level_audio=False, fast=True)
+            out = editor.join_prepared(prepared, [Transition("hardcut")] * 11, DEFAULT_RENDER_SPEC, work)
+            self.assertFalse(os.path.exists(os.path.join(work, "group_0.mp4")))  # 다시 인코딩하는 결합을 타지 않았다
+            self.assertAlmostEqual(duration_of(out), 6.0, delta=0.1)
+            # 끝쪽 구간들(짝수 번째는 무음) — 경계 앞뒤 100ms 를 비우고 잰다. 100ms 넘게 밀렸다면 소리 있는 구간과 없는 구간이 섞인다
+            # (Debian ffmpeg 7.1 에서 경계 몇 곳이 25~50ms 밀린다 — 9.0 은 0. 음원만 레시피는 원본 소리를 빼므로 영향이 없다)
+            self.assertLess(audio_level(out, 5.1, 0.3), 0.005)
+            self.assertGreater(audio_level(out, 5.6, 0.3), 0.015)  # 모노 원본이 스테레오가 되며 -3dB(0.035 → 0.025)
+            self.assertGreater(audio_level(out, 4.6, 0.3), 0.015)
+            self.assertLess(audio_level(out, 4.1, 0.3), 0.005)
+            self.assertGreater(abs(pixel(out, 5.25)[0] - pixel(out, 5.75)[0]), 30)  # 영상도 제자리
+
+    def test_speed_and_effects_go_in_the_one_normalize_pass(self) -> None:
+        from pipeline import cut_fx
+
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "s.mp4")
+            make_tone_clip(src, volume=0.3, seconds=2.0, color="0x406080")
+            vf = cut_fx.video_filter(cut_fx.CutFx(zoom="push", outro="flash"), 1.0, DEFAULT_RENDER_SPEC, "mono")
+            out, = editor.prepare_segments([ClipSource(src)], get_preset("일상"), DEFAULT_RENDER_SPEC, work,
+                                          speeds=[2.0], extras=[vf], fast=True)
+            self.assertAlmostEqual(duration_of(out), 1.0, delta=0.06)
+            self.assertGreater(audio_level(out, 0.3, 0.3), 0.02)
+            r, g, b = pixel(out, 0.4)
+            self.assertLess(max(r, g, b) - min(r, g, b), 6)  # 색 필터(흑백)도 같은 인코딩에
+            self.assertGreater(min(pixel(out, 0.95)), 150)  # 끝의 flash
+
+    def test_subject_is_read_in_the_segment_shape_and_reference_keeps_boundary_pairs(self) -> None:
+        from pipeline import match_cut, reference
+
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "s.mp4")
+            # 세로 영상 오른쪽 위의 빨간 원판
+            subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "color=c=gray:s=1080x1920:rate=30:duration=2",
+                            "-vf", "geq=r='if(lt(hypot(X-760,Y-760),150),230,128)':g='if(lt(hypot(X-760,Y-760),150),40,128)':"
+                                   "b='if(lt(hypot(X-760,Y-760),150),40,128)'",
+                            "-c:v", "libx264", "-pix_fmt", "yuv420p", src], capture_output=True, check=True)
+            start, end = match_cut.ends_of(src, 0, 2000, match_cut.read_size(1080, 1920))
+            self.assertAlmostEqual(start.cx, 760 / 1080, delta=0.08)
+            self.assertAlmostEqual(start.cy, 760 / 1920, delta=0.06)
+            # 띠(16:9) 모양으로 읽으면 세로 가운데가 잘려 원판의 세로 자리가 달라진다 — 구간 좌표와 같아야 한다
+            band = match_cut.ends_of(src, 0, 2000, match_cut.read_size(1080, 608))[0]
+            self.assertAlmostEqual(band.cy, (760 - (1920 - 608) / 2) / 608, delta=0.12)
+            pairs = reference.boundaries(src, [1000], 2000, match_cut.read_size(1080, 1920))
+            self.assertEqual(len(pairs), 1)
+            self.assertEqual(set(pairs[0]), {"at_ms", "prev_end", "next_start", "link"})
+
+    def test_prepared_segments_join_with_a_flash(self) -> None:
+        with tempfile.TemporaryDirectory() as work:
+            clips = []
+            for i, color in enumerate(("0x303060", "0x603030")):
+                path = os.path.join(work, f"c{i}.mp4")
+                make_tone_clip(path, volume=0.2, seconds=1.0, color=color)
+                clips.append(ClipSource(path))
+            prepared = editor.prepare_segments(clips, get_preset("일상"), DEFAULT_RENDER_SPEC, work)
+            out = editor.join_prepared(prepared, [Transition("flash", 200)], DEFAULT_RENDER_SPEC, work)
+            self.assertAlmostEqual(duration_of(out), 2.0, delta=0.1)
+            self.assertGreater(max(pixel(out, 1.0)), 180)
+
 
 class ParseEbur128Test(unittest.TestCase):
     """ffmpeg 없이 — ebur128 이 stderr 끝에 찍는 요약에서 통합 음량을 읽는다."""

@@ -1,0 +1,49 @@
+{
+  "_note": "효과음 사전 — 컷에서 보이는 것에 맞는 소리(사과 → 아삭)와 이음(휩팬 · 렌즈 가림)에 넣는 소리. 파일은 apps/ai-worker/assets/sfx/{file}(Pixabay Content License, 출처는 assets/sfx/README.md). 지금은 워커(pipeline/sfx.py)만 읽는다. 결정: docs/decisions/trend-recipes.md. 소리 · 매칭 규칙을 바꾸면 sfxVocabularyVersion 을 올린다.",
+  "sfxVocabularyVersion": 6,
+
+  "_matchNote": "점수 = evokedBy 의 내용 개념이 맞은 필드의 무게(행동 · 사물 3, 장소 · 주제 2 — content-vocabulary 의 하위 개념은 상위를 물려받는다) + keywords 가 분석의 자유 문자열(summary · topics · places · objects · actions)에 들어 있으면 3. 키워드를 따로 두는 이유: 분석은 '사과' · '수영장' 처럼 개념 사전에 없는 말을 자주 쓴다. anchor 가 action 이면 컷 안에서 움직임이 치솟는 순간(없으면 컷 길이의 30%), start 면 컷 시작 + 80ms. maxMs 만큼만 쓰고 끝을 짧게 줄인다. gainDb 는 음원 위에 얹는 크기. 키워드는 두 글자 이상이다(한 글자 '면' 이 '화면' 에 걸렸다 — 2026-10-22 샘플). notKeywords 에 든 말은 먼저 지우고 찾는다('물고기' 의 '고기').",
+  "fieldWeights": { "actions": 3, "objects": 3, "places": 2, "topics": 2 },
+  "keywordWeight": 3,
+  "cooldownCuts": 2,
+  "maxPerSound": 2,
+
+  "sounds": {
+    "apple-bite": { "file": "apple-bite.mp3", "label": "아삭", "anchor": "action", "maxMs": 900, "gainDb": -2, "evokedBy": {}, "keywords": ["사과", "과일", "당근", "오이"] },
+    "crunch": { "file": "crunch-chips.mp3", "label": "바삭", "anchor": "action", "maxMs": 1000, "gainDb": -3, "evokedBy": { "objects": ["bread"] }, "keywords": ["과자", "감자칩", "크로플", "튀김", "바삭", "쿠키"] },
+    "gulp": { "file": "gulp.mp3", "label": "꿀꺽", "anchor": "action", "maxMs": 900, "gainDb": -2, "evokedBy": { "actions": ["drink"] }, "keywords": ["마시", "음료", "커피", "맥주", "주스"] },
+    "slurp": { "file": "slurp.mp3", "label": "후루룩", "anchor": "action", "maxMs": 1200, "gainDb": -4, "evokedBy": { "objects": ["bowl"] }, "keywords": ["라면", "국수", "짜장면", "냉면", "빨대", "우동"] },
+    "sizzle": { "file": "sizzle.mp3", "label": "지글지글", "anchor": "start", "maxMs": 1500, "gainDb": -8, "evokedBy": {}, "keywords": ["고기", "굽는", "불판", "삼겹살", "철판", "볶음"], "notKeywords": ["물고기", "고기잡이"] },
+    "clink": { "file": "glass-clink.mp3", "label": "짠", "anchor": "action", "maxMs": 900, "gainDb": -4, "evokedBy": { "objects": ["cup"] }, "keywords": ["건배", "맥주잔", "와인", "유리잔"] },
+    "splash": { "file": "water-splash.mp3", "label": "첨벙", "anchor": "action", "maxMs": 1100, "gainDb": -4, "evokedBy": { "places": ["sea"] }, "keywords": ["수영", "물놀이", "파도", "분수", "튜브"] },
+    "shutter": { "file": "camera-shutter.mp3", "label": "찰칵", "anchor": "action", "maxMs": 700, "gainDb": -4, "evokedBy": { "actions": ["take_photo"] }, "keywords": ["사진", "셀카", "촬영"] },
+    "door": { "file": "door.mp3", "label": "딸깍", "anchor": "start", "maxMs": 1000, "gainDb": -6, "evokedBy": { "objects": ["door"] }, "keywords": ["현관", "문 열"] },
+    "car-door": { "file": "car-door.mp3", "label": "탁", "anchor": "start", "maxMs": 900, "gainDb": -6, "evokedBy": { "places": ["car"] }, "keywords": ["차량", "승용차", "자동차", "카시트", "운전"] },
+    "footsteps": { "file": "footsteps.mp3", "label": "저벅", "anchor": "start", "maxMs": 1200, "gainDb": -10, "evokedBy": { "actions": ["walk"] }, "keywords": ["걷는", "걷기", "걷고", "걸어", "산책"] },
+    "typing": { "file": "typing.mp3", "label": "타닥", "anchor": "start", "maxMs": 1200, "gainDb": -8, "evokedBy": { "objects": ["computer"] }, "keywords": ["키보드", "노트북", "타이핑"] },
+    "paper-bag": { "file": "paper-bag.mp3", "label": "바스락", "anchor": "start", "maxMs": 1000, "gainDb": -6, "evokedBy": { "topics": ["shopping"] }, "keywords": ["쇼핑백", "봉투", "포장"] },
+    "sparkle": { "file": "sparkle.mp3", "label": "반짝", "anchor": "start", "maxMs": 1200, "gainDb": -8, "evokedBy": { "objects": ["lighting"] }, "keywords": ["야경", "불빛", "반짝"] },
+    "bubble-pop": { "file": "bubble-pop.mp3", "label": "뽁", "anchor": "action", "maxMs": 600, "gainDb": -6, "evokedBy": {}, "keywords": ["비눗방울", "풍선"] }
+  },
+
+  "_seamsNote": "경계 · 등장 순간에 넣는 소리. 이음(continuity 가 찾은 자연스러운 컷 지점): whip(카메라를 휙 돌린 순간)은 휙, cover(렌즈를 가렸다 뗀 순간)는 짧은 스우시. 전환 효과(cut_fx): fx-whip · fx-spin 은 휙, fx-zoom · fx-zoompunch 는 스우시, fx-flash 는 찰칵. 화면 분할 칸이 들어올 때(panel) 뽁, 얼굴 스티커가 붙을 때(face) 반짝. 경계보다 leadMs 먼저 시작한다. 레시피 sfx.seams 가 켜졌을 때만. 수 상한은 없고, 다른 효과음과 minSpacingMs 안에 겹치면 넣지 않는다. 여기 없는 종류(glitch · shake · dip)는 소리 없이.",
+  "seams": {
+    "whip": { "file": "whoosh.mp3", "maxMs": 700, "gainDb": -6, "leadMs": 180 },
+    "cover": { "file": "swoosh-fast.mp3", "maxMs": 600, "gainDb": -8, "leadMs": 120 },
+    "fx-whip": { "file": "whoosh.mp3", "maxMs": 600, "gainDb": -8, "leadMs": 160 },
+    "fx-spin": { "file": "whoosh.mp3", "maxMs": 700, "gainDb": -8, "leadMs": 220 },
+    "fx-zoom": { "file": "swoosh-fast.mp3", "maxMs": 500, "gainDb": -8, "leadMs": 200 },
+    "fx-zoompunch": { "file": "swoosh-fast.mp3", "maxMs": 450, "gainDb": -9, "leadMs": 60 },
+    "fx-flash": { "file": "camera-shutter.mp3", "maxMs": 500, "gainDb": -10, "leadMs": 60 },
+    "panel": { "file": "pop.mp3", "maxMs": 400, "gainDb": -10, "leadMs": 0 },
+    "face": { "file": "sparkle.mp3", "maxMs": 800, "gainDb": -12, "leadMs": 0 },
+    "low-link": { "file": "swoosh-fast.mp3", "maxMs": 450, "gainDb": -9, "leadMs": 120 },
+    "ramp": { "file": "whoosh.mp3", "maxMs": 700, "gainDb": -7, "leadMs": 150 },
+    "freeze": { "file": "camera-shutter.mp3", "maxMs": 500, "gainDb": -6, "leadMs": 40 }
+  },
+  "minSpacingMs": 220,
+  "_mixNote": "섞기(trend-recipes.md §10): 효과음은 파일의 트랜지언트(소리가 '탁' 터지는 순간)를 동작 피크에 맞춰 놓는다. 동시에 울리는 효과음은 maxVoices 개까지 — 넘으면 점수가 낮은 쪽(경계 소리)을 뺀다. 앞 소리의 꼬리는 다음 소리와 tailOverlapMs 까지만 겹치게 줄인다(겹치는 느낌은 남기되 뭉개지지 않게). duck 을 켠 레시피는 효과음이 날 때 음원을 sidechaincompress 로 잠깐 낮춘다.",
+  "maxVoices": 2,
+  "tailOverlapMs": 250,
+  "duck": { "threshold": 0.015, "ratio": 6, "attackMs": 5, "releaseMs": 250 }
+}

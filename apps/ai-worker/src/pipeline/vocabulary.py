@@ -32,11 +32,15 @@ import config
 # 새로 만들면 여기에 넣기 전까지 테스트가 실패하고, 넣으면 기동 검증이 자동으로 따라온다 —
 # `worker.py` 는 손대지 않는다.
 REQUIRED = (
+    "accent-vocabulary.json",
     "anchor-vocabulary.json",
     "content-vocabulary.json",
     "cut-role-vocabulary.json",
     "stage-vocabulary.json",
     "invalidation-vocabulary.json",
+    "recipe-vocabulary.json",
+    "motion-link-vocabulary.json",
+    "sfx-vocabulary.json",
     "transition-vocabulary.json",
 )
 

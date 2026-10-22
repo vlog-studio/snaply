@@ -19,7 +19,8 @@ import config
 import db
 import notify
 import storage
-from pipeline import anchor, editor, invalidation, music, seed, subtitle, transition, vocabulary
+from pipeline import (accent_stage, anchor, editor, invalidation, music, orient, recipe, seed, subtitle, transition,
+                      trend_edit, vocabulary)
 from pipeline.edit_spec import parse_job_clips, parse_timeline
 from pipeline.editor import get_preset
 from pipeline.render_spec import parse_render_spec
@@ -100,6 +101,7 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     clip_specs = timeline.cuts if timeline is not None else parse_job_clips(data)
     preset = get_preset(edit_spec["stylePreset"])
     render_spec = parse_render_spec(data.get("renderSpec"))
+    recipe_name = _recipe_of(edit_spec)
 
     ctx = await db.fetch_job_context(job_id)
     if ctx is None:
@@ -124,11 +126,20 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
         local = os.path.join(work_dir, f"src_{i}{os.path.splitext(key)[1] or '.mp4'}")
         await asyncio.to_thread(storage.download, key, local)
         local_sources[video_id] = local
+    local_sources = await _upright_sources(local_sources, work_dir)
     clips = [
         editor.ClipSource(local_sources[clip.video_id], clip.start_ms, clip.end_ms)
         for clip in clip_specs
     ]
     await _progress(job_id, 10, "원본 다운로드 완료")
+
+    # 2') 레시피가 컷까지 고르는 무비(MOV-28) — 컷 구간 · 순서를 전부 AI 가 정했을 때만(autoCuts). 레시피가 스냅에서 컷을
+    #     다시 고르고(매치컷 · 점수 위주 순서) 효과 · 음원 · 글 · 효과음까지 한 번에 굽는다. 실패하면 아래 보통 경로로 간다.
+    if timeline is not None and recipe_name != recipe.CLASSIC and edit_spec.get("autoCuts"):
+        trend = await _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir)
+        if trend is not None:
+            await _finish(job_id, user_id, output_video_id, trend, work_dir)
+            return
 
     # 2) 컷편집
     if timeline is not None:
@@ -143,9 +154,15 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     # 3) BGM 매칭/합성 — 곡은 무비 단위로 고정된다(E-5). 무비를 모르는 예전 작업은 작업 id 로 고른다.
     with_bgm_path = os.path.join(work_dir, "with_bgm.mp4")
     current, _bgm_ok = await asyncio.to_thread(
-        music.apply_bgm, base, preset.bgm_tag, with_bgm_path, duration, data.get("movieId") or job_id
+        music.apply_bgm, base, preset.bgm_tag, with_bgm_path, duration, data.get("movieId") or job_id,
+        *_audio_gains(recipe_name),
     )
     await _progress(job_id, 60, "음악 매칭 중...")
+
+    # 3-1) 텍스트 액센트 · 이모지 스티커 — 켰을 때, 컷이 timeline 에 있는 v3 무비만(MOV-27). 실패하면 없이 간다.
+    if (config.TEXT_ACCENTS_ENABLED or recipe_name != recipe.CLASSIC) and timeline is not None:
+        current = await _apply_accents(current, clips, clip_specs, preset, _bgm_ok, duration, data, job_id, work_dir,
+                                       recipe_name)
 
     # 4) 자막 생성/삽입 — 요청 시에만 (쇼츠용이 기본이라 디폴트는 건너뜀 → whisper 추론 비용 절약)
     if data.get("subtitles", False):
@@ -160,6 +177,12 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     # 마지막 손질 — 전체 음량을 플랫폼 기준으로, 첫 재생을 앞당긴다(editor.finalize).
     current = await asyncio.to_thread(_finalize_or_keep, current, os.path.join(work_dir, "final.mp4"))
 
+    await _finish(job_id, user_id, output_video_id, current, work_dir)
+
+
+async def _finish(job_id: str, user_id: str, output_video_id: str, current: str, work_dir: str) -> None:
+    """썸네일 · 업로드 · 결과 반영 · 완료 알림 — 보통 경로와 레시피 경로가 같이 쓴다."""
+    duration = await asyncio.to_thread(editor.probe_duration, current)
     # 5) 썸네일 추출 (기본 1초, 짧은 결과물은 중간 시점)
     thumb_path = os.path.join(work_dir, "thumb.jpg")
     thumbnail_at = min(1.0, duration / 2)
@@ -188,6 +211,95 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     # 앱이 꺼져 있어도 알 수 있게 푸시를 요청한다. WS 는 화면이 열려 있을 때만 닿는다.
     await notify.movie_ready(user_id, output_video_id)
     logger.info("편집 완료 job_id={} url={}", job_id, edited_url)
+
+
+async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir) -> str | None:
+    """레시피로 스냅에서 컷을 다시 골라 한 편을 굽는다(trend_edit.render). 실패하면 None — 보통 경로로 간다."""
+    movie_key = data.get("movieId") or job_id
+    try:
+        analyses, _motions = await db.fetch_accent_inputs(video_ids)
+        captured = await db.fetch_captured_at(video_ids)
+        snaps = [trend_edit.Snap(local_sources[v], analyses.get(v) or {}, _local_time(captured.get(v))) for v in video_ids]
+        track = music.pick_track(preset.bgm_tag, movie_key)
+        await _progress(job_id, 20, "레시피 편집 중...")
+        out = os.path.join(work_dir, "trend.mp4")
+        # 곡은 무비마다 같고(movie_key), 순서 · 효과의 시드는 작업마다 다르다 — 다시 만들 때마다 다른 변형(자유도가 있는 레시피)
+        result = await asyncio.to_thread(trend_edit.render, snaps, recipe_name, track, f"{movie_key}:{job_id}", work_dir, out)
+        logger.info(
+            "레시피 편집 job_id={} recipe={} duration={} cuts={} links={} accents={} sfx={} edl={}",
+            job_id, recipe_name, result.duration_s, len(result.cuts), [l.get("score") for l in result.links],
+            result.accents, len(result.sfx), json.dumps(result.edl, ensure_ascii=False, default=str)[:4000],
+        )
+        await _progress(job_id, 85, "레시피 편집 완료")
+        return out
+    except JobCanceled:
+        raise
+    except Exception as exc:  # noqa: BLE001 — 레시피 경로가 실패해도 무비는 보통 경로로 만든다
+        logger.warning("레시피 편집 실패 — 보통 경로로 job_id={} recipe={}: {}", job_id, recipe_name, exc)
+        _capture(exc)
+        return None
+
+
+async def _upright_sources(local_sources: dict[str, str], work_dir: str) -> dict[str, str]:
+    """회전 정보가 잘못 붙은 원본(메신저를 거친 영상 — 세우면 오히려 눕는다)을 바로잡는다(pipeline/orient.py). 실패하면 원본 그대로."""
+    out = {}
+    for video_id, path in local_sources.items():
+        try:
+            fixed = await asyncio.to_thread(orient.fix, path, work_dir)
+        except Exception as exc:  # noqa: BLE001 — 바로잡지 못해도 편집은 계속한다
+            logger.warning("회전 확인 실패 — 원본 그대로 video_id={}: {}", video_id, exc)
+            fixed = path
+        if fixed != path:
+            logger.info("회전 정보 바로잡음 video_id={}", video_id)
+        out[video_id] = fixed
+    return out
+
+
+def _local_time(at):
+    """저장된 촬영 시각(UTC) → 화면에 쓸 시각. 사용자 시간대를 아직 모르므로 서비스 기준 시간대(KST)로(backlog A-18)."""
+    if at is None:
+        return None
+    from datetime import timedelta, timezone  # noqa: PLC0415
+    aware = at if at.tzinfo else at.replace(tzinfo=timezone.utc)
+    return aware.astimezone(timezone(timedelta(hours=9))).replace(tzinfo=None)
+
+
+def _recipe_of(edit_spec: dict) -> str:
+    """무비의 레시피 — 스펙에 없으면 워커 기본값(MOVIE_RECIPE). 모르는 이름이면 classic 으로(작업을 실패시키지 않는다)."""
+    name = edit_spec.get("recipe") or config.MOVIE_RECIPE
+    try:
+        return recipe.get(name).name
+    except recipe.RecipeError:
+        logger.warning("모르는 레시피 {} — classic 으로", name)
+        return recipe.CLASSIC
+
+
+async def _apply_accents(current, clips, clip_specs, preset, bgm_ok, duration, data, job_id, work_dir,
+                         recipe_name: str) -> str:
+    movie_key = data.get("movieId") or job_id
+    windows = await asyncio.to_thread(editor.cut_windows, clips)
+    cuts = [
+        accent_stage.CutSource(spec.video_id, clip.path, start, end, source)
+        for spec, clip, (start, end, source) in zip(clip_specs, clips, windows)
+    ]
+    analyses, motions = await db.fetch_accent_inputs(list(dict.fromkeys(c.video_id for c in cuts)))
+    # BGM 을 입혔으면 그 곡(무비마다 같은 곡 — music.pick_track)의 비트에 맞춘다
+    track = music.pick_track(preset.bgm_tag, movie_key) if bgm_ok else None
+    result, outcome = await asyncio.to_thread(
+        accent_stage.apply, current, cuts, analyses, motions, track, int(duration * 1000), movie_key,
+        work_dir, os.path.join(work_dir, "with_accents.mp4"), recipe_name,
+    )
+    logger.info(
+        "텍스트 액센트 job_id={} applied={} accents={} stickers={} bpm={} reason={}",
+        job_id, outcome.applied, outcome.accents, outcome.stickers, outcome.bpm, outcome.reason,
+    )
+    return result
+
+
+def _audio_gains(recipe_name: str) -> tuple[float, float]:
+    """레시피의 (원본 소리, BGM) 크기. 음원만 모드여도 BGM 이 없으면 music.apply_bgm 이 원본을 그대로 둔다 — 무음 무비를 만들지 않는다."""
+    audio = recipe.get(recipe_name).spec["audio"]
+    return audio["sourceGain"], audio["bgmGain"]
 
 
 def _is_last_attempt(job) -> bool:
@@ -270,6 +382,8 @@ async def main() -> None:
     # 소비 모듈을 임포트했는지와 무관하게 도는 것이 요점이다. 임포트에만 기대면 사전을 늘릴
     # 때마다 이 파일도 같이 고쳐야 하고, 실제로 두 번 빠뜨렸다. 넷째가 생겨도 이 줄은 그대로다.
     loaded = vocabulary.verify_all()
+    # 레시피 이름이 틀리면 작업 중간이 아니라 여기서 멈춘다(RecipeError)
+    recipe.get(config.MOVIE_RECIPE)
 
     _init_sentry()
     await db.init_pool()

@@ -67,11 +67,16 @@ def tonemap_filter() -> str:
 
     `npl=100` 은 기준 백색 100nit. `hable` 은 하이라이트를 부드럽게 눌러 얼굴이 날아가지 않게
     한다. `desat=0` 은 자동 채도 저하를 끄는 것 — 기본값은 밝은 부분을 회색으로 만든다.
+
+    끝의 `format=yuv420p` 는 zscale 이 내놓는 부동소수 RGB(gbrpf32le)를 여기서 끝낸다. 그대로 두면 뒤의 색 맞춤
+    (`colorchannelmixer`)이 그 형식에서 화면 폭을 1/4 로 깨뜨렸다(Debian ffmpeg 7.1, 2026-10-22 — 아이폰 HDR 세로 영상이
+    레터박스 띠 왼쪽의 좁은 줄로 나왔다). 이후 단계는 어차피 8비트 SDR 이다.
     """
     return (
         "zscale=t=linear:npl=100,"
         "tonemap=tonemap=hable:desat=0,"
-        "zscale=p=bt709:t=bt709:m=bt709:r=tv"
+        "zscale=p=bt709:t=bt709:m=bt709:r=tv,"
+        "format=yuv420p"
     )
 
 

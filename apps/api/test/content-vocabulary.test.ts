@@ -2,7 +2,7 @@
  * 스냅 내용 개념 사전의 정합성을 고정한다.
  *
  * 원본은 `packages/shared-types/src/content-vocabulary.json` **하나**이고 워커도 같은 파일을 같은 규칙으로
- * 검사한다(`tests/test_content_vocabulary.py`). 시드 힌트가 사전에 있는지는 카탈로그를 읽는 DB 테스트
+ * 검사한다(`tests/test_content_vocabulary.py`, 정규화는 공유 사례 `fixtures/content-normalization.json` 으로 `tests/test_content.py`). 시드 힌트가 사전에 있는지는 카탈로그를 읽는 DB 테스트
  * (`movie-templates.test.ts`)가 본다.
  *
  * 결정: docs/decisions/ontology-personalization.md §3. DB·Redis 를 쓰지 않는 순수 검사다.
@@ -30,6 +30,7 @@ import {
   isContentField,
   normalizeContentValue,
   normalizeContentValues,
+  type ContentField,
 } from '@vlog-studio/shared-types';
 
 const SHARED_TYPES = join(fileURLToPath(new URL('../../..', import.meta.url)), 'packages', 'shared-types');
@@ -211,6 +212,22 @@ describe('normalizeContentValue', () => {
       'coffee',
       'cake',
     ]);
+  });
+
+  // 워커(pipeline/content.py)도 분석 결과를 개념으로 바꾼다(텍스트 액센트) — 같은 사례 파일로 두 구현을 묶는다.
+  it('agrees with the shared normalization fixture', () => {
+    const fixture = JSON.parse(
+      readFileSync(join(SHARED_TYPES, 'fixtures', 'content-normalization.json'), 'utf-8'),
+    ) as {
+      cases: [ContentField, string, string | null][];
+      lists: { field: ContentField; values: string[]; expected: string[] }[];
+    };
+    for (const [field, value, expected] of fixture.cases) {
+      expect(normalizeContentValue(field, value) ?? null, `${field}:${value}`).toBe(expected);
+    }
+    for (const { field, values, expected } of fixture.lists) {
+      expect(normalizeContentValues(field, values)).toEqual(expected);
+    }
   });
 });
 

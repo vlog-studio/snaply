@@ -63,6 +63,38 @@ class ApplyBgmTest(_LibraryCase):
         self.assertEqual((path, applied), ("in.mp4", False))
         capture.assert_called_once_with(failure)
 
+    def test_gains_reach_the_mix(self) -> None:
+        self.put("calm", "a.mp3")
+        with mock.patch.object(music, "mix") as mix:
+            music.apply_bgm("in.mp4", "calm", "out.mp4", 5.0, "movie-1", 0.0, 1.0)
+        self.assertEqual(mix.call_args.args[-2:], (0.0, 1.0))
+
+
+class MixGraphTest(unittest.TestCase):
+    """섞기 그래프 — 기본값은 지금까지의 무비와 글자 하나 다르지 않고, 음원만 모드는 원본 소리를 쓰지 않는다."""
+
+    def graph(self, *gains) -> str:
+        with mock.patch.object(music.subprocess, "run") as run:
+            music.mix("in.mp4", "bgm.mp3", "out.mp4", 10.0, *gains)
+        cmd = run.call_args.args[0]
+        return cmd[cmd.index("-filter_complex") + 1]
+
+    def test_default_is_the_old_graph(self) -> None:
+        self.assertEqual(self.graph(), "[1:a]volume=0.25,afade=t=out:st=8.00:d=2,atrim=0:10.00[bg];"
+                                       "[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[a]")
+
+    def test_music_only_drops_the_source_sound(self) -> None:
+        graph = self.graph(0.0, 1.0)
+        self.assertNotIn("[0:a]", graph)
+        self.assertIn("volume=1", graph)
+
+    def test_partial_source_is_turned_down(self) -> None:
+        self.assertIn("[0:a]volume=0.35[src]", self.graph(0.35, 0.7))
+
+    def test_end_fade_closes_the_whole_mix(self) -> None:
+        for gains in [(1.0, 0.25), (0.35, 0.7), (0.0, 1.0)]:
+            self.assertTrue(self.graph(*gains, 1.0).endswith(",afade=t=out:st=9.00:d=1[a]"), gains)
+
 
 class ParseManifestTest(unittest.TestCase):
     def test_reads_the_tag_and_file_of_each_track(self) -> None:

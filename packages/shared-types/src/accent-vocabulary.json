@@ -1,0 +1,150 @@
+{
+  "_note": "텍스트 액센트(의성어 · 느낌 · 감탄 · 키워드)와 이모지 스티커의 사전 — 컷의 내용 개념에서 무엇을 어떤 모양으로 붙일지의 원본이다. 지금은 워커(pipeline/text_accent.py · pipeline/sticker.py)만 읽고 tests/test_accent_vocabulary.py 가 검사한다. 개념 id 는 content-vocabulary.json, 자리 이름은 anchor-vocabulary.json 의 kind.ref 이다. 결정과 a·b·c 층(사전 · 에이전트 · 생성)의 관계는 docs/decisions/text-accent-stickers.md. 텍스트 · 개념 · 모양 규칙을 바꾸면 accentVocabularyVersion 을 올린다 — 같은 무비를 다시 만들 때 결과가 바뀌는 변경이기 때문이다.",
+  "accentVocabularyVersion": 1,
+
+  "_matchNote": "evokedBy 의 개념 C 와 컷의 개념 A 가 같은 필드에서 A 가 C 이거나 C 의 하위 개념이면 맞는다(content-vocabulary 의 narrower). 점수는 맞은 필드의 fieldWeights 합이고, 가장 높은 것을 고른다 — 동점은 시드로 가른다. 최근 cooldown 개 안에 쓴 액센트는 후보에서 뺀다. 아무것도 맞지 않으면 places 개념의 label 로 키워드(#카페)를 만든다.",
+  "fieldWeights": { "actions": 3, "objects": 3, "places": 2, "topics": 2, "moods": 2 },
+  "cooldown": 3,
+
+  "_categoriesNote": "종류마다 모양과 자리의 성격이 다르다. font 는 apps/ai-worker/assets/fonts 의 패밀리 이름, size · outline · shadow 는 1080x1920 기준 px, tiltDeg 는 기울기 범위(±), box 는 라벨 상자(채움색 상자 + 외곽선색 글자). placement 는 자리 후보의 무리를 선호 순으로 둔 것이다 — 들어가는 첫 무리 안에서 시드로 고르고, 어느 무리에도 자리가 없으면 drop. holdBeats 는 등장부터 몇 박자 머무는지.",
+  "categories": {
+    "sound": {
+      "label": "의성어", "font": "Black Han Sans", "size": 170, "outline": 12, "shadow": 6, "tiltDeg": 12, "box": false,
+      "placement": [["object.above"], ["object.beside"], ["freezone.topLeft", "freezone.topRight", "freezone.bottomLeft", "freezone.bottomRight"]],
+      "holdBeats": 2
+    },
+    "feeling": {
+      "label": "느낌", "font": "Jua", "size": 130, "outline": 9, "shadow": 6, "tiltDeg": 5, "box": false,
+      "placement": [["object.above"], ["object.beside"], ["freezone.topLeft", "freezone.topRight", "freezone.bottomLeft", "freezone.bottomRight"]],
+      "holdBeats": 3
+    },
+    "exclaim": {
+      "label": "감탄", "font": "Do Hyeon", "size": 120, "outline": 22, "shadow": 0, "tiltDeg": 7, "box": true,
+      "placement": [["freezone.topLeft", "freezone.topRight", "freezone.bottomLeft", "freezone.bottomRight"], ["object.above", "object.beside"]],
+      "holdBeats": 2
+    },
+    "keyword": {
+      "label": "키워드", "font": "Pretendard GOV", "size": 64, "outline": 18, "shadow": 0, "tiltDeg": 0, "box": true,
+      "placement": [["safeArea.upper"], ["freezone.topLeft", "freezone.topRight", "freezone.bottomLeft", "freezone.bottomRight"]],
+      "holdBeats": 4
+    }
+  },
+
+  "_motionsNote": "등장 · 머묾 모션. stamp: 크게 찍혀 줄어듦, shake: 찍힌 뒤 흔들림, pop: 0 에서 튀어나옴, pulse: 박자마다 맥박, wave: 좌우로 살랑, slide: 옆에서 미끄러져 들어옴. 모든 모션은 끝에서 줄며 사라지고, holdBeats 가 둘 이상이면 다음 박자마다 살짝 튄다.",
+  "motions": ["stamp", "shake", "pop", "pulse", "wave", "slide"],
+
+  "_energyNote": "영상의 움직임으로 모션과 등장 시각을 바꾼다. 컷의 에너지는 video_signals.motion(100ms 마다 이웃 프레임 차이)의 컷 구간 평균을 **무비 안의 다른 컷과 견줘** 정한다(edit-director 와 같은 상대 기준) — 상위 1/3 high, 하위 1/3 low, 나머지 mid. 움직임이 있는 컷이 셋 미만이거나 가장 큰 평균이 floor 이하면 전부 mid. high 인데 사전 모션이 gentle 이면, low 인데 impact 면 energyMotions 의 종류별 모션으로 바꾼다. 컷 안의 최댓값이 floor 를 넘고 평균의 peakRatio 배 이상이면 그 순간을 정점으로 보고, 정점에 가장 가까운 박자에 등장한다(머물 박자 하나가 남지 않으면 그 앞 박자).",
+  "energy": {
+    "floor": 0.004,
+    "peakRatio": 1.6,
+    "impact": ["stamp", "shake", "pop"],
+    "gentle": ["wave", "pulse", "slide"],
+    "energyMotions": {
+      "high": { "sound": "shake", "feeling": "pop", "exclaim": "stamp", "keyword": "slide" },
+      "low": { "sound": "wave", "feeling": "pulse", "exclaim": "slide", "keyword": "slide" }
+    }
+  },
+
+  "_contrastNote": "글자가 놓일 자리의 배경 밝기(대표 프레임을 작은 격자로 줄인 휘도의 평균, 0~1)와 채움색의 휘도 차가 minLumaGap 보다 작으면 채움색과 외곽선색을 맞바꾼다 — 밝은 하늘에 흰 글자가 묻히지 않게. 상자(box) 종류는 상자가 대비를 만들므로 바꾸지 않는다. 휘도는 0.2126R + 0.7152G + 0.0722B.",
+  "contrast": { "minLumaGap": 0.3 },
+
+  "_palettesNote": "색은 분위기에서 정한다 — 키는 content-vocabulary 의 moods 개념 id 와 food(objects 의 food · drink 계열이 보일 때), default. fill 은 글자(상자면 상자) 색, line 은 외곽선(상자면 글자) 색, RRGGBB. 컷에 분위기가 여럿이면 moods 의 첫 개념을 쓴다.",
+  "palettes": {
+    "calm": { "fill": "FFF4D6", "line": "4A3B22" },
+    "cozy": { "fill": "FFC2B0", "line": "6B2E2E" },
+    "refreshing": { "fill": "3DE0FF", "line": "0B2A4A" },
+    "emotional": { "fill": "FF5FA2", "line": "FFFFFF" },
+    "lively": { "fill": "C6FF00", "line": "111111" },
+    "nostalgic": { "fill": "C9B6FF", "line": "2E2350" },
+    "food": { "fill": "FFD400", "line": "3A1F00" },
+    "default": { "fill": "FFFFFF", "line": "111111" }
+  },
+  "foodConcepts": { "objects": ["food", "drink"] },
+
+  "_accentsNote": "액센트 하나 = 글 · 종류 · 모션 · 불러내는 개념. 글은 화면에 그대로 구워지므로 8자 이하로 둔다(키워드 제외).",
+  "accents": {
+    "gulp": { "text": "꿀꺽", "category": "sound", "motion": "pop", "evokedBy": { "actions": ["drink"], "objects": ["drink"] } },
+    "yum": { "text": "냠냠", "category": "sound", "motion": "pop", "evokedBy": { "actions": ["eat"], "objects": ["food"] } },
+    "crunch": { "text": "바삭!", "category": "sound", "motion": "stamp", "evokedBy": { "objects": ["bread"], "places": ["bakery"] } },
+    "melt": { "text": "사르르", "category": "feeling", "motion": "wave", "evokedBy": { "objects": ["dessert"] } },
+    "splash": { "text": "철썩~", "category": "sound", "motion": "wave", "evokedBy": { "places": ["sea"] } },
+    "breeze": { "text": "살랑살랑", "category": "sound", "motion": "wave", "evokedBy": { "objects": ["tree"], "places": ["park"] } },
+    "steps": { "text": "총총", "category": "sound", "motion": "pop", "evokedBy": { "actions": ["walk"], "topics": ["walk"] } },
+    "zoom": { "text": "슝~", "category": "sound", "motion": "slide", "evokedBy": { "actions": ["ride"], "places": ["vehicle"] } },
+    "click": { "text": "찰칵!", "category": "sound", "motion": "stamp", "evokedBy": { "actions": ["take_photo"] } },
+    "peek": { "text": "두리번", "category": "sound", "motion": "wave", "evokedBy": { "actions": ["look_around"] } },
+    "sparkle": { "text": "반짝반짝", "category": "feeling", "motion": "pulse", "evokedBy": { "objects": ["lighting"], "places": ["viewpoint"] } },
+    "sky": { "text": "하늘 미쳤다", "category": "exclaim", "motion": "stamp", "evokedBy": { "objects": ["sky"] } },
+    "flutter": { "text": "두근두근", "category": "feeling", "motion": "pulse", "evokedBy": { "topics": ["date"] } },
+    "cozy": { "text": "포근~", "category": "feeling", "motion": "wave", "evokedBy": { "moods": ["cozy"], "places": ["home"] } },
+    "chill": { "text": "여유~", "category": "feeling", "motion": "wave", "evokedBy": { "moods": ["calm"] } },
+    "fresh": { "text": "시원~", "category": "feeling", "motion": "slide", "evokedBy": { "moods": ["refreshing"] } },
+    "vibe": { "text": "감성 충전", "category": "feeling", "motion": "pulse", "evokedBy": { "moods": ["emotional"] } },
+    "hype": { "text": "신난다!!", "category": "exclaim", "motion": "stamp", "evokedBy": { "moods": ["lively"] } },
+    "dreamy": { "text": "몽글몽글", "category": "feeling", "motion": "wave", "evokedBy": { "moods": ["nostalgic"] } },
+    "cute": { "text": "귀여워!!", "category": "exclaim", "motion": "pop", "evokedBy": { "topics": ["pet"], "objects": ["child"] } },
+    "legend": { "text": "레전드", "category": "exclaim", "motion": "stamp", "evokedBy": { "places": ["tourist_spot"], "topics": ["travel"] } },
+    "tasty": { "text": "맛집 인정", "category": "exclaim", "motion": "stamp", "evokedBy": { "topics": ["food_spot"], "places": ["restaurant"] } },
+    "chatter": { "text": "수다 타임", "category": "exclaim", "motion": "pop", "evokedBy": { "actions": ["talk"], "topics": ["friends"] } },
+    "focus": { "text": "열공 모드", "category": "exclaim", "motion": "stamp", "evokedBy": { "topics": ["study"] } },
+    "burn": { "text": "불태워", "category": "exclaim", "motion": "shake", "evokedBy": { "topics": ["exercise"] } },
+    "haul": { "text": "득템!", "category": "exclaim", "motion": "stamp", "evokedBy": { "topics": ["shopping"] } },
+    "inspired": { "text": "영감 충전", "category": "feeling", "motion": "pulse", "evokedBy": { "topics": ["art"], "places": ["exhibition"] } }
+  },
+
+  "_stickersNote": "이모지 스티커. byConcept 는 필드 → 개념 id → 코드포인트 목록(앞일수록 더 어울림)이고 하위 개념은 상위의 목록을 물려받는다. 파일은 apps/ai-worker/assets/stickers/emoji/{코드포인트}.png. sparkle 은 분위기가 lively · emotional 일 때 더하는 반짝이. 컷마다 1 + (2박 이상이면 1) + (시드로 0~1) 개, 반 박자씩 늦게 차례로 붙는다. 바로 앞 컷에 붙인 이모지는 후보의 뒤로 미룬다. 모션은 컷의 에너지(energy)가 high · low 면 energyMotions 안에서, mid 면 motions 전체에서 시드로 고른다.",
+  "stickers": {
+    "sizePx": [190, 260],
+    "tiltDeg": 18,
+    "holdBeats": 3,
+    "motions": ["popBob", "wobble", "floatUp", "spin"],
+    "energyMotions": { "high": ["spin", "wobble"], "low": ["floatUp", "popBob"] },
+    "sparkle": ["2728", "1f31f"],
+    "sparkleMoods": ["lively", "emotional"],
+    "_generatedPoolNote": "층 c(생성)에서 LLM 이 고를 수 있는 이모지 — 이 목록 밖은 버린다. byConcept · sparkle 의 이모지는 전부 여기 들어 있다(테스트). 파일은 같은 디렉터리.",
+    "generatedPool": [
+      "1f60d", "1f929", "1f60b", "1f60e", "1f979", "1f606", "1f923", "1f633", "1f970", "1f62d", "1f924", "1f62e",
+      "1faf6", "1f44d", "1f44f", "1f64c", "270c", "1f4aa", "2764", "1f496", "1f495", "1f497", "2728", "1f31f",
+      "2b50", "1f4a5", "1f4a6", "1f4a8", "1f4ab", "1f525", "1f389", "1f3b6", "1f3b5", "1f4af", "2757", "2753",
+      "1f4ad", "1f4ac", "1f4cd", "1f4f8", "2600", "2601", "1f308", "1f30a", "1f338", "1f337", "1f340", "1f33f",
+      "1f343", "1f333", "1f319", "2744", "1f305", "1fae7", "2615", "1f375", "1f9cb", "1f964", "1f370", "1f366",
+      "1f369", "1f36a", "1f950", "1f9c7", "1f355", "1f354", "1f35c", "1f363", "1f353", "1f351", "1f34b", "1f37a",
+      "1f942", "1f436", "1f431", "1f43e", "1f430", "1f43b", "1f3a8", "1f4da", "1f6cd", "1f381", "1f388", "1f45f",
+      "1f68c", "1f697", "2708", "1f6b2", "1f3d6", "26f0", "1f3a2", "1f3a4", "1f3a7", "1f4bb", "1f4f1", "1f576",
+      "1f451", "1f48e", "1f9f8", "1f382", "1f56f", "1f476"
+    ],
+    "byConcept": {
+      "places": {
+        "sea": ["1f30a", "1f4a6", "1fae7"], "park": ["1f333", "1f343"], "cafe": ["2615"], "bakery": ["1f950"],
+        "restaurant": ["1f60b"], "vehicle": ["1f68c", "1f4a8"], "tourist_spot": ["1f4cd"], "viewpoint": ["1f305"],
+        "exhibition": ["1f3a8"], "home": ["1f9f8"]
+      },
+      "objects": {
+        "coffee": ["2615"], "tea": ["1f375"], "drink": ["1f4a6"], "food": ["1f60b"], "bread": ["1f950", "1f9c7"],
+        "dessert": ["1f370", "1f366"], "bowl": ["1f35c"], "sunset": ["1f305", "1f496"], "sky": ["2601"],
+        "tree": ["1f333"], "lighting": ["2728"], "child": ["1f476", "1f495"]
+      },
+      "actions": {
+        "drink": ["2615"], "eat": ["1f60b"], "walk": ["1f45f", "1f43e"], "ride": ["1f4a8"], "take_photo": ["1f4f8"],
+        "talk": ["1f4ac"]
+      },
+      "topics": {
+        "pet": ["1f436", "1f43e"], "date": ["1f495", "1f496", "2764"], "friends": ["1f389"], "study": ["1f4da"],
+        "exercise": ["1f4aa", "1f525"], "shopping": ["1f6cd"], "art": ["1f3a8"], "travel": ["1f4cd"], "food_spot": ["1f60b"]
+      },
+      "moods": {
+        "calm": ["2601", "1f343"], "cozy": ["1f9f8", "1f495"], "refreshing": ["1fae7", "1f4a6"],
+        "emotional": ["1f496", "2728"], "lively": ["1f525", "1f389"], "nostalgic": ["1f4ad", "1f3b5"]
+      }
+    }
+  },
+
+  "_generatedNote": "층 c(생성) 의 글이 화면에 구워지기 전에 지나야 하는 문턱. 한글 · 공백 · 허용 문장부호만, 길이 이하, 금칙어 없음. 지나지 못하면 버리고 사전(층 a)으로 돌아간다. 금칙어는 부분 문자열로 본다. 생성 글의 종류는 categories(키워드 제외), 컷마다 이모지는 maxEmojiPerCut 개까지(stickers.generatedPool 안에서).",
+  "generated": {
+    "maxChars": 8,
+    "maxEmojiPerCut": 3,
+    "categories": ["sound", "feeling", "exclaim"],
+    "allowedPunctuation": "!?~.",
+    "banned": ["시발", "씨발", "병신", "좆", "개새", "존나", "섹스", "자살", "죽어"]
+  }
+}

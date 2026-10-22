@@ -1,0 +1,130 @@
+{
+  "_note": "content-vocabulary.json 의 정규화 규칙(_normalizeNote)을 TS(content-vocabulary.ts normalizeContentValue)와 워커(pipeline/content.py normalize_value)가 같은 답으로 구현하는지 묶는 사례. [필드, 분석의 자유 문자열, 개념 id 또는 null(사전 밖)]. 사례를 바꾸면 apps/api/test/content-vocabulary.test.ts 와 apps/ai-worker/tests/test_content.py 가 함께 돈다.",
+  "cases": [
+    [
+      "topics",
+      "카페 투어",
+      "cafe"
+    ],
+    [
+      "topics",
+      "  카페   투어 ",
+      "cafe"
+    ],
+    [
+      "places",
+      "강의실",
+      "school"
+    ],
+    [
+      "objects",
+      "나무 테이블",
+      "table"
+    ],
+    [
+      "places",
+      "역사 박물관",
+      "exhibition"
+    ],
+    [
+      "objects",
+      "붉은 노을",
+      "sunset"
+    ],
+    [
+      "actions",
+      "카페에 앉아 있기",
+      "sit"
+    ],
+    [
+      "places",
+      "역 앞 버스 정류장",
+      "bus_stop"
+    ],
+    [
+      "objects",
+      "소파에 놓인 쿠션",
+      "sofa"
+    ],
+    [
+      "places",
+      "바다에서 수영",
+      "sea"
+    ],
+    [
+      "places",
+      "대학 강의",
+      null
+    ],
+    [
+      "places",
+      "맛집",
+      "restaurant"
+    ],
+    [
+      "places",
+      "주차장",
+      null
+    ],
+    [
+      "objects",
+      "잔디",
+      null
+    ],
+    [
+      "actions",
+      "기타 연주하기",
+      null
+    ],
+    [
+      "places",
+      "차",
+      "car"
+    ],
+    [
+      "objects",
+      "차",
+      "tea"
+    ],
+    [
+      "topics",
+      "소파",
+      null
+    ],
+    [
+      "moods",
+      "잔잔한",
+      "calm"
+    ],
+    [
+      "moods",
+      "따뜻한 분위기",
+      "cozy"
+    ],
+    [
+      "places",
+      "   ",
+      null
+    ],
+    [
+      "objects",
+      "스테이플러",
+      null
+    ]
+  ],
+  "lists": [
+    {
+      "field": "objects",
+      "values": [
+        "라떼",
+        "케이크",
+        "아메리카노",
+        "스테이플러"
+      ],
+      "expected": [
+        "coffee",
+        "cake"
+      ]
+    }
+  ]
+}

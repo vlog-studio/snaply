@@ -237,7 +237,8 @@ export const ENV_VARS = [
     key: 'EDIT_AGENT_MODEL',
     required: false,
     origin: 'shared',
-    description: 'AI 편집 에이전트 모델(MOV-25, decisions/ai-edit-agent.md). 기본 gpt-5.6-luna — 잠정값, 실측 뒤 고정한다(backlog A-12)',
+    description:
+      'AI 편집 에이전트 모델(MOV-25, decisions/ai-edit-agent.md). 편집 워커도 텍스트 액센트의 생성 글(MOV-27, decisions/text-accent-stickers.md)에 같은 모델을 쓴다. 기본 gpt-5.6-luna — 잠정값, 실측 뒤 고정한다(backlog A-12)',
   },
   {
     key: 'OPENAI_VISION_MODEL',
@@ -553,6 +554,20 @@ export const ENV_VARS = [
     required: false,
     origin: 'shared',
     description: '편집 작업 1건의 타임아웃(초). 기본 600',
+  },
+  {
+    key: 'TEXT_ACCENTS_ENABLED',
+    required: false,
+    origin: 'shared',
+    description:
+      '편집 워커가 무비 결과물에 텍스트 액센트 · 이모지 스티커를 굽는다(MOV-27, decisions/text-accent-stickers.md). true 일 때만, 기본 false. 분석에 동의한 스냅의 분석 결과와 고른 BGM 의 비트를 쓴다',
+  },
+  {
+    key: 'MOVIE_RECIPE',
+    required: false,
+    origin: 'shared',
+    description:
+      '편집 워커의 기본 레시피 — 무비가 레시피를 갖지 않은 작업(예전 작업 · classic 무비)에만 쓴다. 무비마다 사용자가 고른 레시피는 editSpec 의 recipe 가 이긴다(specs MOV-28). 이름은 packages/shared-types/src/recipe-vocabulary.json(classic · trend-routine · trend-montage · cinematic · daylog), 기본 classic(지금까지의 무비). 없는 이름이면 워커가 기동하지 않는다(decisions/trend-recipes.md)',
   },
   {
     key: 'BGM_DIR',

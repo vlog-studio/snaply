@@ -12,6 +12,10 @@ asyncpg==0.30.0
 faster-whisper==1.1.0
 boto3==1.35.99
 requests==2.32.5
+# 이모지 스티커 오버레이 트랙 (pipeline/sticker_render.py) — libass 가 컬러 이모지를 못 그려 이미지로 굽는다
+Pillow==11.3.0
+# 얼굴 스티커 (pipeline/face.py) — FaceDetectorYN + YuNet 모델(assets/models). GUI 없는 빌드
+opencv-python-headless==4.10.0.84
 
 # 스냅 내용 분석 워커 (analysis_worker.py) — vision 모델 호출
 openai==1.68.2

@@ -85,6 +85,12 @@ BGM_DIR = os.environ.get("BGM_DIR", "assets/bgm")
 # 이 접두의 버킷 객체(`{prefix}manifest.json` 과 곡)를 BGM_DIR 로 받아 온다(pipeline/music.py `sync_library`).
 # 비우면 받지 않고 BGM_DIR 에 둔 곡을 그대로 쓴다. 곡은 git 에 없다 — docs/decisions/bgm-sourcing.md
 BGM_S3_PREFIX = os.environ.get("BGM_S3_PREFIX", "")
+# 텍스트 액센트 · 이모지 스티커를 결과물에 굽는다(MOV-27, docs/decisions/text-accent-stickers.md). 기본 꺼짐 — 운영 결과물이
+# 예고 없이 바뀌지 않게, 켜는 것은 시크릿 값으로 정한다.
+TEXT_ACCENTS_ENABLED = os.environ.get("TEXT_ACCENTS_ENABLED", "false").strip().lower() == "true"
+# 숏브이로그 스타일 레시피(packages/shared-types/src/recipe-vocabulary.json) — 소리 구성 · 고정 타이틀 · 글 밀도 · 효과음. 기본 classic
+# (지금까지의 무비). 컷 구간 · 배속 · 이음은 렌더가 아니라 AI 초안 단계의 일이라 여기서는 쓰지 않는다(docs/decisions/trend-recipes.md).
+MOVIE_RECIPE = os.environ.get("MOVIE_RECIPE", "classic").strip() or "classic"
 
 # 스냅 내용 분석 (analysis_worker.py 전용)
 # 결과는 자동 편집 추천의 입력이다 — docs/decisions/snap-content-analysis.md
@@ -95,6 +101,9 @@ OPENAI_IMAGE_DETAIL = os.environ.get("OPENAI_IMAGE_DETAIL", "low")
 VIDEO_ANALYSIS_TIMEOUT_SECONDS = int(os.environ.get("VIDEO_ANALYSIS_TIMEOUT_SECONDS", "90"))
 VIDEO_ANALYSIS_CONCURRENCY = int(os.environ.get("VIDEO_ANALYSIS_CONCURRENCY", "3"))
 VIDEO_ANALYSIS_PROMPT_VERSION = os.environ.get("VIDEO_ANALYSIS_PROMPT_VERSION", "v1")
+
+# 텍스트 액센트의 생성 글(층 c) — AI 편집 에이전트와 같은 모델을 쓴다(docs/decisions/text-accent-stickers.md §2)
+EDIT_AGENT_MODEL = os.environ.get("EDIT_AGENT_MODEL", "gpt-5.6-luna")
 
 
 def edit_progress_channel(job_id: str) -> str:
