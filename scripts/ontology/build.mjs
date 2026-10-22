@@ -7,7 +7,11 @@
  * 모델: 개념마다 SKOS 개념이자 필드 클래스(Place · Object · …)의 개체다. 상위 개념은 `skos:broader`, 별칭은 `skos:altLabel`,
  * 관계(`typicallyAt` · `evokes` · `suits` · `roleAffinity`)는 `snaply:` 객체 속성이다. 사전의 "하위 개념은 상위 값을 물려받는다"는
  * 규칙은 OWL 로 펼치지 않는다 — 적힌 값만 낸다(물려받기는 코드의 읽기 규칙이다).
+ *
+ * 입력에 `editing`(편집 사전 넷 — 효과음 · 의성어 · 움직임 연결 · 레시피)이 있으면 편집 쪽 클래스 · 관계 · 개체도 같은 파일에 엮는다
+ * (`editing.mjs`).
  */
+import { checkEditing, EDITING_EDGE_KINDS, EDITING_GROUPS, editingGraph, editingTurtle } from './editing.mjs';
 
 export const NAMESPACE = 'https://snaply.dweaxai.com/ontology#';
 
@@ -45,7 +49,8 @@ export function literal(text, lang = 'ko') {
  * 입력을 검사한다 — 관계가 가리키는 것이 모두 있는지. 사전 정합성 테스트가 이미 보지만, 내보내기는 다른 어휘(전환 · 스타일 ·
  * 컷 역할)를 함께 엮으므로 엮는 자리에서 한 번 더 막는다.
  */
-function check({ vocabulary, transitionKinds, stylePresets, cutRoles }) {
+function check({ vocabulary, transitionKinds, stylePresets, cutRoles, editing }) {
+  if (editing) checkEditing({ vocabulary, editing });
   for (const preset of stylePresets) {
     if (!STYLE_NAMES[preset]) throw new Error(`스타일 프리셋 ${preset} 의 IRI 이름이 없습니다(STYLE_NAMES).`);
   }
@@ -75,7 +80,7 @@ function check({ vocabulary, transitionKinds, stylePresets, cutRoles }) {
 
 /**
  * OWL 온톨로지(Turtle).
- * @param {{ vocabulary: any, transitionKinds: string[], transitionLabels: Record<string, string>, stylePresets: string[], cutRoles: string[] }} input
+ * @param {{ vocabulary: any, transitionKinds: string[], transitionLabels: Record<string, string>, stylePresets: string[], cutRoles: string[], editing?: any }} input
  */
 export function buildTurtle(input) {
   check(input);
@@ -98,7 +103,7 @@ export function buildTurtle(input) {
   statement('<https://snaply.dweaxai.com/ontology>', [
     ['a', ['owl:Ontology']],
     ['rdfs:label', [literal('Snaply 스냅 내용 · 편집 온톨로지')]],
-    ['rdfs:comment', [literal('packages/shared-types/src/content-vocabulary.json 에서 만든 생성물. 원천은 그 JSON 사전이다.')]],
+    ['rdfs:comment', [literal('packages/shared-types/src/ 의 개념 사전(content-vocabulary.json)과 편집 사전들(효과음 · 의성어 · 움직임 연결 · 레시피)에서 만든 생성물. 원천은 그 JSON 사전들이다.')]],
     ['owl:versionInfo', [literal(`content-vocabulary v${vocabulary.contentVocabularyVersion}`, null)]],
   ]);
 
@@ -175,11 +180,12 @@ export function buildTurtle(input) {
       ]);
     }
   }
+  if (input.editing) editingTurtle(input, { statement, literal, conceptIri, transitionIri, out });
   return out.join('\n');
 }
 
 /**
- * 그래프 시각화용 노드 · 엣지. 엣지 종류는 `broader` · `typicallyAt` · `evokes` · `suits`.
+ * 그래프 시각화용 노드 · 엣지. 엣지 종류는 `broader` · `typicallyAt` · `evokes` · `suits`, 편집 사전이 있으면 `EDITING_EDGE_KINDS` 도.
  * @returns {{ nodes: Array<{id: string, label: string, group: string, title: string}>, edges: Array<{from: string, to: string, kind: string}> }}
  */
 export function buildGraph(input) {
@@ -209,6 +215,11 @@ export function buildGraph(input) {
   for (const preset of stylePresets) {
     nodes.push({ id: `style:${preset}`, label: preset, group: 'style', title: '스타일 프리셋' });
   }
+  if (input.editing) {
+    const more = editingGraph(input, id);
+    nodes.push(...more.nodes);
+    edges.push(...more.edges);
+  }
   return { nodes, edges };
 }
 
@@ -217,6 +228,7 @@ export const GRAPH_GROUPS = {
   ...Object.fromEntries(Object.entries(FIELD_CLASSES).map(([field, { label, color }]) => [field, { label, color }])),
   transition: { label: EDIT_CLASSES.transition.label, color: EDIT_CLASSES.transition.color },
   style: { label: EDIT_CLASSES.style.label, color: EDIT_CLASSES.style.color },
+  ...EDITING_GROUPS,
 };
 
 export const EDGE_KINDS = {
@@ -224,4 +236,5 @@ export const EDGE_KINDS = {
   typicallyAt: { label: '흔히 보이는 곳', color: '#4C8BF5', dashes: true },
   evokes: { label: '자아내는 분위기', color: '#E8336D', dashes: true },
   suits: { label: '어울리는 전환 · 스타일', color: '#5F6368', dashes: [2, 4] },
+  ...EDITING_EDGE_KINDS,
 };

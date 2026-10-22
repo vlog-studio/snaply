@@ -11,15 +11,20 @@ import {
   TRANSITION_KINDS,
   TRANSITION_VOCABULARY,
 } from '@vlog-studio/shared-types';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildGraph, buildTurtle, conceptIri, literal } from './build.mjs';
+import { readEditing } from './editing.mjs';
 import { buildHtml } from './html.mjs';
 
+const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const input = {
   vocabulary: CONTENT_VOCABULARY,
   transitionKinds: [...TRANSITION_KINDS],
   transitionLabels: Object.fromEntries(Object.entries(TRANSITION_VOCABULARY.kinds).map(([kind, entry]) => [kind, entry.label])),
   stylePresets: [...STYLE_PRESETS],
   cutRoles: [...CUT_ROLES],
+  editing: await readEditing(root),
 };
 
 test('declares every concept once with its label, aliases and parent', () => {
@@ -61,7 +66,11 @@ test('draws every concept and relation in the graph', () => {
     assert.ok(ids.has(edge.from) && ids.has(edge.to), `${edge.from} → ${edge.to}`);
   }
   const concepts = Object.values(CONTENT_VOCABULARY.concepts).reduce((sum, field) => sum + Object.keys(field).length, 0);
-  assert.equal(graph.nodes.length, concepts + TRANSITION_KINDS.length + STYLE_PRESETS.length);
+  const { sfx, accents, motionLinks, recipes } = input.editing;
+  const looks = new Set(Object.values(recipes.recipes).map((r) => r.look).filter((l) => l && l !== 'auto'));
+  const editing = Object.keys(sfx.sounds).length + Object.keys(accents.accents).length + motionLinks.motions.length
+    + Object.keys(recipes.recipes).length + looks.size;
+  assert.equal(graph.nodes.length, concepts + TRANSITION_KINDS.length + STYLE_PRESETS.length + editing);
 });
 
 test('embeds the graph in a page that a closing script tag cannot break', () => {
@@ -70,4 +79,22 @@ test('embeds the graph in a page that a closing script tag cannot break', () => 
   const html = buildHtml(graph, { version: 1 });
   assert.equal(html.split('</script>').length - 1, 2);
   assert.ok(html.includes('vis-network@9.1.9'));
+});
+
+test('links the editing dictionaries — sounds and accents to concepts, motion rules, recipes', () => {
+  const turtle = buildTurtle(input);
+  assert.match(turtle, /snaply:sound_crunch\n[^.]*snaply:evokedBy snaply:object_bread/);
+  assert.match(turtle, /snaply:accent_gulp\n[^.]*snaply:evokedBy [^.]*snaply:action_drink/);
+  assert.match(turtle, /snaply:motion_zoom_in\n[^.]*snaply:linksWellTo snaply:motion_zoom_out/);
+  assert.match(turtle, /snaply:motion_pan_left\n[^.]*snaply:linksBadlyTo snaply:motion_pan_right/);
+  assert.match(turtle, /snaply:motionlink_zoom_in__zoom_out\n[^.]*snaply:linkScore "1"\^\^xsd:decimal/);
+  assert.match(turtle, /snaply:recipe_cinematic\n[^]*?snaply:usesLook snaply:look_soft/);
+  assert.match(turtle, /snaply:seam_fx_flash\n[^]*?snaply:accompaniesTransition snaply:transition_flash/);
+  assert.match(turtle, /snaply:evokesEditElement\n[^]*?owl:inverseOf snaply:evokedBy/);
+});
+
+test('refuses an editing link to a concept that does not exist', () => {
+  const broken = structuredClone(input.editing);
+  broken.sfx.sounds.crunch.evokedBy = { objects: ['nowhere'] };
+  assert.throws(() => buildTurtle({ ...input, editing: broken }), /nowhere/);
 });

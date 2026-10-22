@@ -2,7 +2,8 @@
 /**
  * 개념 사전에서 발표용 온톨로지 파일을 만든다(backlog A-13 8단계, docs/decisions/ontology-personalization.md §3.3).
  *
- *   dist/ontology/snaply-ontology.ttl   OWL 온톨로지(Turtle) — 개념 · 상위 관계 · 별칭 · typicallyAt · evokes · suits · roleAffinity
+ *   dist/ontology/snaply-ontology.ttl   OWL 온톨로지(Turtle) — 개념 · 상위 관계 · 별칭 · typicallyAt · evokes · suits · roleAffinity,
+ *                                       편집 사전의 효과음 · 의성어(evokedBy) · 카메라 움직임 연결 규칙 · 레시피
  *   dist/ontology/snaply-ontology.html  그래프 시각화(브라우저로 연다)
  *
  * 원천은 `packages/shared-types/src/content-vocabulary.json` 이다. 결과는 생성물이라 커밋하지 않는다(`dist/` 는 무시된다).
@@ -23,6 +24,7 @@ import {
   TRANSITION_VOCABULARY,
 } from '@vlog-studio/shared-types';
 import { buildGraph, buildTurtle } from './ontology/build.mjs';
+import { readEditing } from './ontology/editing.mjs';
 import { buildHtml } from './ontology/html.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
@@ -36,6 +38,7 @@ const input = {
   transitionLabels: Object.fromEntries(Object.entries(TRANSITION_VOCABULARY.kinds).map(([kind, entry]) => [kind, entry.label])),
   stylePresets: [...STYLE_PRESETS],
   cutRoles: [...CUT_ROLES],
+  editing: await readEditing(root),
 };
 
 const turtle = buildTurtle(input);

@@ -94,6 +94,11 @@
 공모전 심사와 문서에는 JSON 에서 만든 **그래프 시각화와 OWL/Turtle 내보내기**를 보인다 — 원천은 하나이고 내보내기는 생성물이다
 (`npm run ontology:export` → `dist/ontology/`, 2026-10-13. 커밋하지 않는다).
 
+2026-10-22 부터 내보내기는 개념 사전 밖의 **편집 사전**도 엮는다 — 효과음(`sfx-vocabulary.json`) · 의성어(`accent-vocabulary.json`)의 `evokedBy`(소리 · 글 →
+개념), 카메라 움직임 연결 규칙(`motion-link-vocabulary.json`), 편집 레시피(`recipe-vocabulary.json` — 색감 · 컷 효과 · 배속 행동 · 컷 고르기 · 잇기 전략).
+`EditElement` 아래 클래스와 관계로 두고(`scripts/ontology/editing.mjs`), 적힌 방향만 낸다(개념 → 효과음은 `owl:inverseOf` 선언). 원천은 각 JSON 사전이고
+개념 사전 판은 그대로다. 배경 · 기각한 대안은 [trend-recipes.md](trend-recipes.md) §12.
+
 ### 3.4 정규화 · 매칭 규칙 — 원천은 사전 파일이다
 
 분석의 자유 문자열을 개념으로 바꾸는 규칙과 슬롯 힌트 ↔ 스냅 개념의 점수는 사전 파일
