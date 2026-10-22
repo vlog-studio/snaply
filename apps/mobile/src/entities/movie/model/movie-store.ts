@@ -6,10 +6,11 @@ import { createScopedPersistence, deleteScopedState } from '@/shared/lib/scoped-
 import { randomUuid } from '@/shared/lib/uuid';
 
 import { DefaultMovieBgm } from '../lib/movie-bgm';
+import { DefaultMovieRecipe, movieRecipeOrDefault } from '../lib/movie-recipe';
 import { DefaultMovieStyle } from '../lib/movie-style';
 import { mergeRemoteMovies, movieFromRemote, type PendingWrite } from '../lib/movie-sync';
 import { movieTitle } from '../lib/movie-title';
-import type { Movie, MovieArranger, MovieRender, MovieStyle, SnapRef } from './movie';
+import type { Movie, MovieArranger, MovieRecipe, MovieRender, MovieStyle, SnapRef } from './movie';
 import type { RemoteMovie } from './remote-movie';
 
 /** What the caller gets to decide when a movie is started from picked snaps. */
@@ -49,6 +50,8 @@ export type CreateMovieInput = {
  */
 export type MovieStylePatch = {
   style?: MovieStyle;
+  /** The editing recipe; never touches who owns the cuts. */
+  recipe?: MovieRecipe;
   bgm?: string;
   captions?: boolean;
 };
@@ -190,6 +193,7 @@ function createDraft(
     updatedAt: createdAt,
     snapRefs: snapIds.map((snapId, order) => ({ snapId, order, ...windows?.get(snapId) })),
     style: style ?? DefaultMovieStyle,
+    recipe: DefaultMovieRecipe,
     bgm: bgm ?? DefaultMovieBgm,
     captions: false,
     ratio: '9:16',
@@ -281,6 +285,7 @@ export const useMovieStore = create<MovieState>()(
             const next = { ...movie, ...patch, updatedAt };
             const changed =
               next.style !== movie.style ||
+              movieRecipeOrDefault(next.recipe) !== movieRecipeOrDefault(movie.recipe) ||
               next.bgm !== movie.bgm ||
               next.captions !== movie.captions;
             return changed ? next : movie;
@@ -365,6 +370,7 @@ export const useMovieStore = create<MovieState>()(
                   render: {
                     ...render,
                     style: movie.style,
+                    recipe: movieRecipeOrDefault(movie.recipe),
                     snapRefs: [...movie.snapRefs].sort((left, right) => left.order - right.order),
                   },
                   job: undefined,

@@ -181,3 +181,32 @@ describe('trim owners', () => {
     ]);
   });
 });
+
+describe('recipes', () => {
+  const base = {
+    title: '무비',
+    snapRefs: [{ snapId: 'a', order: 0 }],
+    style: 'daily' as const,
+    captions: false,
+    arranger: 'user' as const,
+  };
+
+  it('reads the recipe back, and a missing or unknown one as classic', () => {
+    const withRecipe = movieDtoSchema.parse({ ...dto([]), recipe: 'trend-montage' });
+    // `dto` builds the shape of a server older than recipes: no field at all.
+    const older = dto([]);
+    const newer = movieDtoSchema.parse({ ...dto([]), recipe: 'vaporwave' });
+
+    expect(mapRemoteMovie(withRecipe, snapIdOf).recipe).toBe('trend-montage');
+    expect(older.recipe).toBeUndefined();
+    expect(mapRemoteMovie(older, snapIdOf).recipe).toBe('classic');
+    expect(mapRemoteMovie(newer, snapIdOf).recipe).toBe('classic');
+  });
+
+  it('sends the recipe, and classic for a movie stored before recipes', () => {
+    const videoIdOf = (snapId: string) => `v-${snapId}`;
+
+    expect(toMovieBody({ ...base, recipe: 'cinematic' }, videoIdOf)?.recipe).toBe('cinematic');
+    expect(toMovieBody(base, videoIdOf)?.recipe).toBe('classic');
+  });
+});

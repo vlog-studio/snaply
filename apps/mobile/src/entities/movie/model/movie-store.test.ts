@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react-native';
 import { isUuid } from '@/shared/lib/uuid';
 
 import type { Movie } from './movie';
+import { toMovieBody } from '../api/movie.dto';
 import type { RemoteMovie } from './remote-movie';
 import {
   getMovieById,
@@ -172,6 +173,7 @@ describe('creating a movie', () => {
     expect(movie).toMatchObject({
       status: 'draft',
       ratio: '9:16',
+      recipe: 'classic',
       createdAt,
       updatedAt: createdAt,
     });
@@ -336,6 +338,39 @@ describe('editing a movie', () => {
       captions: true,
       updatedAt: 999,
     });
+  });
+
+  it('writes the recipe without touching who owns the cuts, and owes the server an update', async () => {
+    useMovieStore.setState({
+      movies: [
+        {
+          ...makeMovie('m1', []),
+          arranger: 'ai',
+          snapRefs: [{ snapId: 's1', order: 0, trim: { startSec: 0, endSec: 1 }, trimOwner: 'ai' }],
+        },
+      ],
+      pending: {},
+    });
+    const { result } = await renderHook(() => useUpdateMovieStyle());
+
+    await act(async () => result.current('m1', { recipe: 'trend-routine' }, 999));
+
+    const [movie] = useMovieStore.getState().movies;
+    expect(movie).toMatchObject({ recipe: 'trend-routine', style: 'daily', arranger: 'ai' });
+    expect(movie.snapRefs[0].trimOwner).toBe('ai');
+    expect(getMovieOutbox().pending.m1).toBe('update');
+    expect(toMovieBody(movie, (snapId) => `v-${snapId}`)?.recipe).toBe('trend-routine');
+  });
+
+  // A movie stored before recipes has none, and reads as classic — picking
+  // classic for it is no change, and owes the server nothing.
+  it('treats classic as no change for a movie stored before recipes', async () => {
+    const before = useMovieStore.getState().movies[0];
+    const { result } = await renderHook(() => useUpdateMovieStyle());
+
+    await act(async () => result.current('m1', { recipe: 'classic' }, 999));
+
+    expect(useMovieStore.getState().movies[0]).toBe(before);
   });
 
   it('leaves the movie identical when a style write changes nothing', async () => {
@@ -511,6 +546,27 @@ describe('generating a movie', () => {
     expect(useMovieStore.getState().movies[0].render?.style).toBe('travel');
   });
 
+  it('freezes the recipe the run was made with, classic for a movie stored without one', async () => {
+    useMovieStore.setState({
+      movies: [{ ...makeMovie('m1', ['s1']), recipe: 'daylog' }, makeMovie('m2', ['s2'])],
+    });
+    const { result } = await renderHook(() => ({
+      begin: useBeginMovieJob(),
+      finish: useCompleteMovieJob(),
+      updateStyle: useUpdateMovieStyle(),
+    }));
+
+    await act(async () => result.current.begin('m1', 'job-1', startedAt));
+    await act(async () => result.current.begin('m2', 'job-2', startedAt));
+    await act(async () => result.current.finish('m1', render, 999));
+    await act(async () => result.current.finish('m2', render, 999));
+    await act(async () => result.current.updateStyle('m1', { recipe: 'cinematic' }, 1_000));
+
+    expect(getMovieById('m1')?.recipe).toBe('cinematic');
+    expect(getMovieById('m1')?.render?.recipe).toBe('daylog');
+    expect(getMovieById('m2')?.render?.recipe).toBe('classic');
+  });
+
   // The cover arrives after the movie is already `ready` (the download does not
   // gate the result), so it is written by its own action — and only onto the
   // render it was made for.
@@ -635,6 +691,7 @@ describe('the outbox', () => {
       title: '무비 m1',
       status: 'draft',
       style: 'daily',
+      recipe: 'classic',
       captions: false,
       ratio: '9:16',
       arranger: 'user',

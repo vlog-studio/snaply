@@ -68,6 +68,12 @@ export { MovieDraftSnapLimit, MovieSnapLimit } from './model/movie';
 export { MovieTitleMaxLength } from './lib/movie-title';
 export { MovieBgmCatalog } from './lib/movie-bgm';
 export { MovieStyleCatalog, movieStyleLabel, movieStyleOrDefault } from './lib/movie-style';
+export {
+  MovieRecipeCatalog,
+  movieRecipeLabel,
+  movieRecipeOrDefault,
+  type MovieRecipeOption,
+} from './lib/movie-recipe';
 export { movieJobRatio } from './lib/movie-generation';
 export {
   MovieResultCountdownDays,
@@ -87,6 +93,7 @@ export type {
   CutTransition,
   Movie,
   MovieArranger,
+  MovieRecipe,
   MovieRender,
   MovieStatus,
   MovieStyle,

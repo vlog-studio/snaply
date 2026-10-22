@@ -1,0 +1,114 @@
+import type { MOVIE_RECIPES } from '@vlog-studio/shared-types';
+
+import type { MovieRecipe } from '../model/movie';
+
+/** One entry of the recipe catalog, as the recipe sheet draws it. */
+export type MovieRecipeOption = {
+  id: MovieRecipe;
+  label: string;
+  /** One line on what the recipe does to the cut. */
+  description: string;
+};
+
+/**
+ * What each recipe is. Keyed by `MovieRecipe` rather than listed, so a recipe
+ * added to the contract fails to compile until it is described here.
+ *
+ * The descriptions are written from what the server's recipe dictionary
+ * (`packages/shared-types/src/recipe-vocabulary.json`, decision
+ * `docs/decisions/trend-recipes.md`) really does, for the same reason the style
+ * catalog's are: a card that promises an edit the renderer does not make is
+ * found out only after the wait.
+ */
+const RecipeOptions: Record<MovieRecipe, Omit<MovieRecipeOption, 'id'>> = {
+  classic: { label: '기본', description: '지금까지처럼 담백한 컷편집' },
+  'trend-routine': {
+    label: '루틴',
+    description: '원본 줌으로 자연스럽게 잇고, 의성어·이모지를 맞는 순간에만',
+  },
+  'trend-montage': {
+    label: '몽타주',
+    description: '0.5~1.5초 빠른 컷으로 장소를 훑는 여행 미니 브이로그',
+  },
+  cinematic: {
+    label: '시네마틱',
+    description: "위아래 검은 띠(레터박스)와 'Vlog' 타이틀, 담백한 매치컷",
+  },
+  'fast-cut': {
+    label: '빠른 컷',
+    description: '0.5~1초 컷을 빠르게 잇고, 컷마다 어울리는 효과음을 겹치게',
+  },
+  'beat-sync': {
+    label: '비트싱크',
+    description: '컷이 박자에 딱 맞게 넘어가고, 음악이 터지는 순간 번쩍',
+  },
+  'speed-ramp': {
+    label: '스피드램프',
+    description: '동작 가운데만 빨라졌다 다시 느려지는 속도 연출',
+  },
+  'day-stamp': {
+    label: '하루 타임스탬프',
+    description: '찍은 순서대로, 화면 아래에 촬영 시각(AM 9:12)',
+  },
+  'before-after': {
+    label: '비포·애프터',
+    description: '같은 구도에서 달라진 모습끼리 이어 보여 주기',
+  },
+  asmr: { label: 'ASMR', description: '고요한 장면을 길게, 원본 소리를 살리고 음악은 작게' },
+  'freeze-text': {
+    label: '프리즈',
+    description: '가장 또렷한 순간에 잠깐 멈추고 큰 글자로 강조',
+  },
+  daylog: { label: '하루로그', description: '조금 긴 컷, 원본 소리를 살짝, 필름 색감' },
+};
+
+/**
+ * Presentation order — the contract's own (`MOVIE_RECIPES`, the dictionary's
+ * order). Typed as that tuple, so a reorder or a new name on the server is a
+ * compile error here rather than a sheet in a different order from the server's.
+ * A copy rather than an import because the contract package is type-only in the
+ * app (it is not in the bundle).
+ */
+const RecipeOrder: typeof MOVIE_RECIPES = [
+  'classic',
+  'trend-routine',
+  'trend-montage',
+  'cinematic',
+  'fast-cut',
+  'beat-sync',
+  'speed-ramp',
+  'day-stamp',
+  'before-after',
+  'asmr',
+  'freeze-text',
+  'daylog',
+];
+
+/** The recipes a movie can be cut with, in the server's order. */
+export const MovieRecipeCatalog: readonly MovieRecipeOption[] = RecipeOrder.map((id) => ({
+  id,
+  ...RecipeOptions[id],
+}));
+
+/**
+ * What a movie is cut with until the user picks otherwise — the contract's
+ * `DEFAULT_MOVIE_RECIPE`, which is also what the server records when a write
+ * names none.
+ */
+export const DefaultMovieRecipe: MovieRecipe = 'classic';
+
+/**
+ * The recipe a stored movie is really cut with. Movies stored before recipes
+ * existed have none, and a server newer than this build may name one it has not
+ * heard of; both read as {@link DefaultMovieRecipe} rather than crashing a card
+ * or being sent back as a value the build cannot describe.
+ */
+export function movieRecipeOrDefault(recipe: string | undefined): MovieRecipe {
+  return recipe !== undefined && Object.prototype.hasOwnProperty.call(RecipeOptions, recipe)
+    ? (recipe as MovieRecipe)
+    : DefaultMovieRecipe;
+}
+
+export function movieRecipeLabel(recipe: string | undefined): string {
+  return RecipeOptions[movieRecipeOrDefault(recipe)].label;
+}

@@ -1,8 +1,9 @@
 import { z } from 'zod';
 
+import { movieRecipeOrDefault } from '../lib/movie-recipe';
 import { movieStyleOrDefault } from '../lib/movie-style';
 import { isTransitionKind, transitionAfter } from '../lib/movie-transition';
-import type { Movie, MovieStyle, SnapRef, TransitionKind } from '../model/movie';
+import type { Movie, MovieRecipe, MovieStyle, SnapRef, TransitionKind } from '../model/movie';
 
 import type { RemoteMovie } from '../model/remote-movie';
 
@@ -10,9 +11,9 @@ import type { RemoteMovie } from '../model/remote-movie';
  * The wire shape of a movie (`GET /movies`, `GET /movies/{id}`, and what every
  * write returns). Only the fields the app maps are declared; Zod strips the rest.
  *
- * `status`, `stylePreset`, `arranger` and `ratio` stay `string` at the boundary
- * — a value the server adds later must not fail the whole read — and are
- * narrowed in the mapper, where an unknown one falls back rather than throws.
+ * `status`, `stylePreset`, `recipe`, `arranger` and `ratio` stay `string` at the
+ * boundary — a value the server adds later must not fail the whole read — and
+ * are narrowed in the mapper, where an unknown one falls back rather than throws.
  */
 const clipDtoSchema = z.object({
   videoId: z.string(),
@@ -38,6 +39,8 @@ export const movieDtoSchema = z.object({
   title: z.string(),
   status: z.string(),
   stylePreset: z.string(),
+  // Optional: a server older than recipes sends none, which reads as `classic`.
+  recipe: z.string().optional(),
   captions: z.boolean(),
   ratio: z.string(),
   arranger: z.string(),
@@ -104,6 +107,7 @@ export function mapRemoteMovie(dto: MovieDto, snapIdOf: SnapIdResolver): RemoteM
     title: dto.title,
     status,
     style: movieStyleOrDefault(StyleByPreset[dto.stylePreset]),
+    recipe: movieRecipeOrDefault(dto.recipe),
     captions: dto.captions,
     ratio: '9:16',
     arranger: dto.arranger === 'ai' ? 'ai' : 'user',
@@ -160,6 +164,7 @@ export type MovieBody = {
   title: string;
   clips: MovieClipBody[];
   stylePreset: (typeof StylePresets)[MovieStyle];
+  recipe: MovieRecipe;
   captions: boolean;
   arranger: 'user' | 'ai';
 };
@@ -192,7 +197,7 @@ function toClipBody(videoId: string, ref: SnapRef): MovieClipBody {
  * waits for it.
  */
 export function toMovieBody(
-  movie: Pick<Movie, 'title' | 'snapRefs' | 'style' | 'captions' | 'arranger'>,
+  movie: Pick<Movie, 'title' | 'snapRefs' | 'style' | 'recipe' | 'captions' | 'arranger'>,
   videoIdOf: VideoIdResolver,
 ): MovieBody | undefined {
   const ordered = [...movie.snapRefs].sort((left, right) => left.order - right.order);
@@ -217,6 +222,9 @@ export function toMovieBody(
     title: movie.title,
     clips,
     stylePreset: StylePresets[movieStyleOrDefault(movie.style)],
+    // Always sent, so a movie stored before recipes is recorded as what it is
+    // (`classic`) rather than left to whatever the server's default becomes.
+    recipe: movieRecipeOrDefault(movie.recipe),
     captions: movie.captions,
     arranger: movie.arranger ?? 'user',
   };

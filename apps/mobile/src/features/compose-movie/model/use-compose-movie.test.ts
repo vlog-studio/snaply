@@ -649,6 +649,21 @@ describe('saveStyle', () => {
     expect(mockUpdateMovieStyle).toHaveBeenCalledWith('m1', { style: 'travel' });
   });
 
+  it('writes the recipe alone — the cuts and who owns them are not part of the write', async () => {
+    mockGetMovieById.mockReturnValue(makeMovie({ status: 'draft', arranger: 'ai' }));
+    const { result } = await renderHook(() => useComposeMovie(), { wrapper });
+
+    let applied;
+    await act(async () => {
+      applied = result.current.saveStyle('m1', { recipe: 'trend-montage' });
+    });
+
+    expect(applied).toBe(true);
+    expect(mockUpdateMovieStyle).toHaveBeenCalledWith('m1', { recipe: 'trend-montage' });
+    expect(mockSetMovieArranger).not.toHaveBeenCalled();
+    expect(mockUpdateMovieCuts).not.toHaveBeenCalled();
+  });
+
   it('refuses a generating movie', async () => {
     mockGetMovieById.mockReturnValue(makeMovie({ status: 'generating' }));
     const { result } = await renderHook(() => useComposeMovie(), { wrapper });

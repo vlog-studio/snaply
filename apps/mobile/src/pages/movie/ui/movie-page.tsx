@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   isAiArranged,
+  movieRecipeLabel,
   movieStyleLabel,
   transitionAfter,
   useClearMovieLeftOut,
@@ -59,6 +60,7 @@ import {
   RefusalNotice,
   type RefusalAction,
 } from './refusal-notice';
+import { RecipePickerSheet } from './recipe-picker-sheet';
 import { StylePickerSheet } from './style-picker-sheet';
 import { TransitionPickerSheet } from './transition-picker-sheet';
 import { TimelineStrip } from './timeline-strip';
@@ -126,6 +128,7 @@ export function MoviePage({ movieId }: MoviePageProps) {
 
   const [renaming, setRenaming] = useState(false);
   const [styleOpen, setStyleOpen] = useState(false);
+  const [recipeOpen, setRecipeOpen] = useState(false);
   // The boundary whose transition picker is open — after cut N — or -1.
   const [transitionIndex, setTransitionIndex] = useState(-1);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -535,6 +538,13 @@ export function MoviePage({ movieId }: MoviePageProps) {
                 tilt={-1}
                 onPress={() => setStyleOpen(true)}
               />
+              <TapeChip
+                label={`편집 · ${movieRecipeLabel(movie.recipe)}`}
+                accessibilityLabel={`편집 스타일 ${movieRecipeLabel(movie.recipe)}`}
+                color="tapeLavender"
+                tilt={-0.5}
+                onPress={() => setRecipeOpen(true)}
+              />
               {/* The chip's second line is the one thing inside the sheet the
                   user can still change — since 배경 음악 left it (2026-08-13),
                   that is 순서 고정, read out in the sheet's own words. */}
@@ -697,6 +707,13 @@ export function MoviePage({ movieId }: MoviePageProps) {
         onChange={(patch) => saveStyle(movie.id, patch)}
         onClose={() => setStyleOpen(false)}
       />
+      <RecipePickerSheet
+        visible={recipeOpen}
+        movie={movie}
+        canEdit={canEdit}
+        onChange={(patch) => saveStyle(movie.id, patch)}
+        onClose={() => setRecipeOpen(false)}
+      />
       <DetailSheet
         visible={detailOpen}
         movie={movie}
@@ -780,7 +797,8 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     paddingBottom: Spacing.two,
   },
-  chips: { flexDirection: 'row', gap: Spacing.three, paddingTop: Spacing.two },
+  // Wraps: three chips with a long value do not fit one line on a narrow phone.
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, paddingTop: Spacing.two },
   footer: {
     width: '100%',
     maxWidth: MaxContentWidth,

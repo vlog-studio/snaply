@@ -1,3 +1,5 @@
+import type { MovieRecipe as ContractMovieRecipe } from '@vlog-studio/shared-types';
+
 /**
  * How many snaps one movie may hold. The single hard constraint of the product
  * (MOV-5): a movie is a short-form vlog, not an album. Every picking
@@ -31,6 +33,20 @@ export const MovieDraftSnapLimit = 30;
  * trusting this type at runtime.
  */
 export type MovieStyle = 'emotional' | 'travel' | 'daily';
+
+/**
+ * The editing recipe a movie is cut with (root docs/specs/movie.md MOV-28) —
+ * how it sounds, titles, captions, punctuates, and frames itself. Separate from
+ * {@link MovieStyle}, which is the colour and music tendency: a recipe is the
+ * *editing* style (`classic` is the movie as it always was; the rest are short
+ * trend-vlog styles).
+ *
+ * The names are the contract's own (`MOVIE_RECIPES` in
+ * `@vlog-studio/shared-types`, type-only here), so a recipe renamed or added on
+ * the server stops this build compiling until the catalog
+ * (`lib/movie-recipe.ts`) describes it.
+ */
+export type MovieRecipe = ContractMovieRecipe;
 
 /**
  * A movie's lifecycle.
@@ -181,6 +197,12 @@ export type MovieRender = {
   videoId?: string;
   style?: MovieStyle;
   /**
+   * The recipe the run was cut with, frozen like `style` and for the same
+   * reason. Optional on renders stored before the field existed; a missing one
+   * is left unsaid rather than read off the live value.
+   */
+  recipe?: MovieRecipe;
+  /**
    * The render's own cover image, as a **local** file — the backend's
    * thumbnail brought onto the device.
    *
@@ -263,6 +285,15 @@ export type Movie = {
   updatedAt: number;
   snapRefs: SnapRef[];
   style: MovieStyle;
+  /**
+   * The editing recipe. Optional because movies stored before the field
+   * existed have none and the local store has no migration step — read it
+   * through `movieRecipeOrDefault`, so a missing value reads as `classic`, the
+   * movie as it was made before recipes existed. Changing it never touches who
+   * owns the cuts (`SnapRef.trimOwner`, `arranger`): whether the server may
+   * re-cut by the recipe is decided by those, not by the pick.
+   */
+  recipe?: MovieRecipe;
   /**
    * Track identifier from the BGM catalog. Stored and defaulted, but **read by
    * nothing** since 2026-08-13: the pipeline scores a run from the style preset

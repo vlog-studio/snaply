@@ -10,6 +10,7 @@ function remote(overrides: Partial<RemoteMovie> = {}): RemoteMovie {
     title: '무비', // 무비
     status: 'draft',
     style: 'daily',
+    recipe: 'classic',
     captions: false,
     ratio: '9:16',
     arranger: 'user',

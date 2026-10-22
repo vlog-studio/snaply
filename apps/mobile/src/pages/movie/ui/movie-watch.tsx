@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { movieStyleLabel, type Movie } from '@/entities/movie';
+import { movieRecipeLabel, movieStyleLabel, type Movie } from '@/entities/movie';
 import { useSnapFiles, type Snap } from '@/entities/snap';
 import type { RenderSource } from '@/features/compose-movie';
 import { ShareBlockMessages, type MovieSharing } from '@/features/share-movie';
@@ -114,10 +114,14 @@ export function MovieWatch({
   // No track among them either — the pipeline scores from the preset, so the
   // stored `bgm` never described what this file plays.
   const renderedStyle = movie.render?.style;
+  // The recipe the same way; `classic` is the movie as it always was, so only
+  // the trend recipes are worth naming.
+  const renderedRecipe = movie.render?.recipe;
   const facts = [
     movie.render ? `${formatDateTime(movie.render.renderedAt)} 완성` : undefined,
     formatSeconds(totalSec),
     renderedStyle ? movieStyleLabel(renderedStyle) : undefined,
+    renderedRecipe && renderedRecipe !== 'classic' ? movieRecipeLabel(renderedRecipe) : undefined,
   ].filter((fact) => fact !== undefined);
   // When the unfinished file goes away (MOV-16). Read once per visit: the line
   // is a deadline in days, and a screen left open across midnight is rare.

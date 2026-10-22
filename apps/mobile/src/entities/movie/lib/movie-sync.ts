@@ -44,6 +44,7 @@ export function movieFromRemote(remote: RemoteMovie, local: Movie | undefined): 
     updatedAt: remote.updatedAt,
     snapRefs: remote.snapRefs,
     style: remote.style,
+    recipe: remote.recipe,
     // The server has no track field (the pipeline scores from the preset), so
     // the stored choice is this device's and is simply kept.
     bgm: local?.bgm ?? DefaultMovieBgm,
