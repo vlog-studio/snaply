@@ -2247,3 +2247,221 @@ A-15 구현의 토대. 순서는 토대 → 공용 컴포넌트 → 셸(탭 바)
   편집 · 나 탭 · 계정 삭제를 낮 · 밤 · 동작 줄이기 · 글자 1.3배 · 2배로 봤다. 위 두 수정은 다음 빌드(EAS `21da7cd1`)에서 확인했다 — 나 탭 설정 행에 값과 셰브런이 제자리에 있고, 무비 탭 · 스냅 탭의 종이가 화면 끝까지 간다. 계정 삭제 화면의
   `소셜 연결이 모두 끊겨요` 줄(H-16)을 보고 ACC-8 의 괄호를 지웠다. 휴대폰 확인과 iOS 확인(A-4)은 남았다.
 - **앱 크기** — tester APK 158.2MB.
+
+
+## 2026-10-20 — 단어 단위 ASS 자막과 번들 한글 글꼴(backlog A-7)
+
+번인 자막 결정([decisions/subtitle-rendering.md](./decisions/subtitle-rendering.md), 미결)을 기다리지 않고 만들 수 있는 부분 — whisper 단어
+타임스탬프를 줄로 묶어 ASS 문서를 만드는 일 — 을 렌더 경로 밖에 먼저 넣었다.
+
+- **ASS 공용 부품** — `pipeline/ass.py`: 시각(센티초) · 이스케이프(`{` `}` `\` 는 전각으로) · 색(`RRGGBB` → `&HAABBGGRR`) · 스타일 줄 · 문서 조립 ·
+  `ass` 필터 인자(번들 글꼴 디렉터리를 항상 `fontsdir` 로). 텍스트 액센트도 같은 부품을 쓴다.
+- **말소리 자막** — `pipeline/ass_caption.py`: 쉼(600ms) · 글자 수(14) · 줄 길이(2.5초)로 줄을 나누고, `karaoke`(말하는 단어가 채워짐) · `pop`(단어가 말하는
+  순간 나타남) 두 스타일. whisper 가 한 어절을 여러 조각으로 내도 띄어쓰기를 그대로 붙이고, `\k` 를 절대 시각의 센티초 차이로 써 밀리지 않는다.
+- **찾은 결함 — 한글이 빈 네모로 구워졌다** — 처음 문서가 글꼴을 `Pretendard` 로 요청했는데 저장소의 파일은 패밀리 이름이 `Pretendard GOV` 라
+  libass 가 DejaVu 로 대체했고 한글 글리프가 하나도 없었다(데모로 구워 보고 찾음 — 영문으로만 검사한 렌더 테스트는 통과했다). 글꼴을 워커 이미지에
+  함께 넣고(`apps/ai-worker/assets/fonts/` — Pretendard GOV Bold, OFL), `tests/test_ass.py` 가 스타일 글꼴 이름을 파일의 `name` 표 패밀리 이름에 묶고,
+  ffmpeg 계약 테스트가 **한글**을 굽고 libass 의 "Glyph not found" 를 실패로 본다.
+- **검증** — 아래 항목의 전체 실행에 포함.
+
+## 2026-10-20 (이어서) — 텍스트 액센트 · 이모지 스티커 엔진(MOV-27 `부분`, backlog A-17)
+
+BGM 컷편집 무비의 글은 받아쓰기가 아니라 컷의 내용에 맞는 의성어 · 감탄 · 키워드와 이모지 스티커라는 방향을 데모로 맞춘 뒤(yoojinhee03,
+결정은 [decisions/text-accent-stickers.md](./decisions/text-accent-stickers.md) — 잠정, 미디어/편집 트랙 담당 검토 전) 사전과 워커 엔진을 넣었다.
+**결과물에는 아직 붙지 않는다** — 엔진을 부르는 곳이 없다(렌더 경로 · 피사체 위치 · 에이전트 · 생성은 A-17).
+
+- **사전** — [`accent-vocabulary.json`](../packages/shared-types/src/accent-vocabulary.json)(v1): 액센트 27개(꿀꺽 · 바삭! · 철썩~ · 찰칵! · 여유~ ·
+  신난다!! · 하늘 미쳤다 …)와 불러내는 content 개념 id, 종류 넷(의성어 · 느낌 · 감탄 · 키워드)의 글꼴 · 크기 · 자리 무리 · 머무는 박자, 분위기별 팔레트,
+  개념별 이모지, 생성 글 문턱(한글 · `!?~.` · 8자 · 금칙어). 워커 `vocabulary.REQUIRED` 에 넣어 기동 시 검증된다.
+- **엔진** — `pipeline/text_accent.py`(고르기 · 색 · 자리 · 박자), `pipeline/accent_render.py`(ASS — 모션 여섯은 오버라이드 태그만),
+  `pipeline/sticker.py`(이모지 배치 — 피사체 가장자리에 걸치게, 액센트와 서로를 피함, 반 박자씩 차례로, 바로 앞 컷의 이모지는 뒤로),
+  `pipeline/sticker_render.py`(Pillow 로 흰 칼선 스티커를 그려 길이 전체의 RGBA 트랙 한 장 — qtrle .mov — 으로 굽는다. libass 는 컬러 이모지를 못 그린다),
+  `pipeline/layout.py`(세이프 에어리어 · 겹침 판정 공용). 하위 개념은 상위의 액센트 · 이모지를 물려받고(커피 → 음료 → 꿀꺽), 피사체 상자가 없으면 빈 모서리만
+  쓴다. 층 b(에이전트가 사전 id 를 고름) · c(생성 글)는 `Override` 입구와 문턱까지 — 사전에 없는 id 는 오류, 문턱을 못 지난 생성 글은 버리고 사전으로.
+  모든 선택은 `style-director` 스테이지 시드의 sha256 으로만 갈린다.
+- **에셋** — 글꼴 셋(Black Han Sans · Jua · Do Hyeon, OFL)을 `assets/fonts/` 에, Noto Emoji `v2.047` PNG 44개를 `assets/stickers/emoji/` 에(라이선스 문서
+  불일치는 A-17 에 남김). 워커 의존성에 `Pillow==11.3.0`.
+- **데모** — 같은 엔진으로 10컷(120 BPM 합성 박자, 피사체 상자는 흉내)을 구워 Playwright 로 확인했다. 데모에서 고친 것: 감탄 상자가 `!` 를 한 글자
+  폭으로 재서 너무 넓어 다음 키워드가 자리를 잃었다(문장부호 · 영숫자는 반 폭으로), 같은 장소가 이어지는 컷에 스티커가 똑같이 되풀이됐다(앞 컷 이모지를 뒤로).
+- **검증** — CI 와 같은 조건(Docker `python:3.11-slim` + apt ffmpeg 7.1, `requirements.txt`, `REQUIRE_FFMPEG=1`, ResourceWarning 을 오류로)에서
+  `python -m unittest discover -s tests` **341건 통과**, `compileall` 통과. 새 테스트: `test_ass.py` · `test_ass_caption.py` · `test_accent_vocabulary.py`(개념 id ·
+  자리 이름 · 글꼴 · 이모지 파일 · 팔레트를 다른 사전 · 파일과 묶음) · `test_text_accent.py` · `test_sticker.py`, 계약 테스트에 말소리 자막(한글) · 액센트 네 종류의
+  한글 · 스티커 트랙 알파 합성. 휴대폰 · 공모전 서버 확인은 결과물에 붙인 뒤(A-17).
+
+## 2026-10-20 (이어서) — 액센트를 영상에 맞춘다: 움직임 · 정점 · 배경 대비(MOV-27, backlog A-17)
+
+사전에서 고른 글 · 모션 · 색이 영상과 무관하던 것을, 이미 잰 영상 신호로 맞추게 했다 — 모델을 부르지 않는다
+([decisions/text-accent-stickers.md](./decisions/text-accent-stickers.md) §3 "영상에 맞추기").
+
+- **에너지** — `pipeline/accent_fit.py`: 컷 구간 움직임(`video_signals.motion`) 평균을 무비 안에서 견줘 high · mid · low(상위 · 하위 1/3, 움직이는 컷이 셋 미만이거나
+  전부 floor 이하면 mid, 신호가 없는 컷은 mid). 어긋나는 사전 모션만 바꾼다(빠른 컷의 wave → shake 등, 사전 `energy.energyMotions`). 스티커 모션도 에너지를 따른다.
+- **정점** — 컷 안 최댓값이 floor 를 넘고 평균의 1.6배 이상이면 그 순간에 가장 가까운 박자에 등장(머물 박자 하나가 남지 않으면 앞 박자). `timing` 을 `accent_fit` 으로 옮겼다.
+- **대비** — 컷 가운데 프레임을 6x10 휘도 격자로 줄여(`pipeline/accent_inputs.py` `luma_grid`) 글자 자리의 배경 밝기를 재고, 채움색과 0.3 미만 차이면 채움 · 외곽선을 맞바꾼다(상자 종류 제외).
+  바뀐 근거는 액센트 `notes` 에 남는다.
+- **데모에서 찾은 결함** — 가만히 있는 클립의 인코딩 잡음이 평균의 몇 배라 "움직임 정점"으로 잡혔다 → 정점에도 절대 floor 를 걸었다(테스트로 고정).
+- **데모** — 장면마다 실제 클립(가만히 · 천천히 · 계속 흔들림 · 한 번 크게 튐 · 밝은 하늘)을 만들어 `snap_signals.read_signals` 와 `luma_grid` 로 재서 엔진에 넣었다:
+  가만히 있는 카페는 low(꿀꺽 pop → wave), 흔들리는 두 컷은 high(스티커 회전 · 흔들림), 튀는 바다는 정점(7.1초) 근처 박자 7초에 철썩~ 등장(컷 시작 6초 대신),
+  밝은 하늘(휘도 0.94)은 크림색 글자를 진한 글자로.
+- **검증** — 새 테스트 `test_accent_fit.py`(상대 에너지 · 모션 바꾸기 · 정점과 잡음 · 대비 · 엔진 반영 · 스티커 에너지 · 컷 구간 자르기), 계약 테스트에 휘도 격자(위 흰색 · 아래 검정).
+  전체 실행은 다음 항목과 함께.
+
+## 2026-10-20 (이어서) — 층 c — 생성 글 · 이모지 풀(MOV-27, backlog A-17)
+
+사전에 없는 장면에도 글이 붙도록 LLM 이 컷마다 짧은 글과 이모지를 짓는 코드를 넣었다([decisions/text-accent-stickers.md](./decisions/text-accent-stickers.md) §2).
+같은 날 키를 넣고 실제 모델로 한 번 쟀다(아래 "실측").
+
+- **생성** — `pipeline/accent_writer.py`: 무비 하나에 Responses API 호출 한 번(컷 전부 · 허용 이모지 목록 · 구조화 출력 strict). 입력은 컷의 장면 설명(분석 summary) ·
+  개념 이름 · 에너지 · 사전 후보, 모델은 `EDIT_AGENT_MODEL`(워커 config 에 추가 — 이미 `shared` 로 선언된 변수라 env-spec 은 설명만 고쳤다). 응답은 문턱(한글 8자 ·
+  금칙어) · 종류 · 이모지 풀을 지나야 하고, 버린 것은 `rejected` 로 남긴다. `to_inputs` 가 엔진 입력(`text_accent.plan` 의 overrides · `sticker.plan` 의 emoji_overrides)으로 잇는다.
+- **이모지 풀** — 사전 `stickers.generatedPool` 102개(Noto `v2.047` PNG, 2.4MB). 사전의 개념별 이모지는 전부 이 안에 있다(테스트).
+- **찾은 결함 — 긴 생성 글이 늘 drop** — 테스트로 넣은 "라떼아트 미쳤다"(8자)가 감탄 크기(120px)로는 세이프 에어리어보다 넓어 자리를 못 찾았다. 자리에 들어가지 않으면
+  80% · 65% 로 줄여 보고(`text_accent.SHRINK`, ASS `\fs`), 생성 글의 기본 모션을 종류별로(의성어 · 감탄 stamp, 느낌 wave) 정했다. 생성 이모지는 사전 후보의 시드 회전과 무관하게
+  맨 앞에 붙는다.
+- **실측 스크립트** — `apps/ai-worker/scripts/try-accent-writer.py`: 지어낸 장면 8개(사용자 스냅을 보내지 않음)로 한 번 호출해 사전 후보와 생성 글 · 이모지 · 버린 것 · 토큰 ·
+  지연을 찍는다. 키가 없으면 안내하고 끝난다(확인함).
+- **검증** — `test_accent_writer.py`(요청 모양 · 문턱으로 거르기 · 변형 선택자 · 모르는 컷 · 엔진으로 잇기 · 호출 실패를 가짜 SDK 로), `test_accent_vocabulary.py` 에 풀 · 에너지 규칙.
+  API 의 env-spec 테스트는 vitest 전역 셋업이 로컬 Postgres 를 요구하는데 DB 가 떠 있지 않아 돌리지 못했다(바뀐 것은 `EDIT_AGENT_MODEL` 설명 문자열 하나).
+- **실측(1회)** — `try-accent-writer.py`, `gpt-5.6-luna`, 지어낸 장면 8개: 8컷 모두 글이 나왔고 문턱에서 버린 글 · 이모지 0. 사전 후보가 맞는 3컷(꿀꺽 · 철썩~ ·
+  두근두근)은 그대로 두고 5컷은 장면을 더 짚었다(크루아상 "결이 살아!", 질주하는 강아지 "쏜살같이", 동시 점프 "폴짝!", 케이크 "달콤해!", 전시 "와 멋지다!"), 이모지는
+  컷마다 2개(🥐🤤 · 🐶💨 …). 입력 1,209 · 출력 610 토큰(추론 379), 지연 8.4초. 표본 1회 · 지어낸 입력이라 품질 판단의 근거로는 부족하다 — 실제 분석 summary 로 다시 잰다(A-17).
+- **전체 실행(이 항목과 앞 항목)** — CI 와 같은 조건(Docker `python:3.11-slim` + ffmpeg 7.1, `REQUIRE_FFMPEG=1`, ResourceWarning 을 오류로)에서
+  워커 `unittest discover` **376건 통과**, `compileall` 통과.
+
+## 2026-10-21 — BGM 비트 그리드 · 액센트를 결과물에 굽는다(MOV-27, backlog A-17 · A-7)
+
+텍스트 액센트가 고정 500ms 간격이 아니라 무비에 깔린 곡의 박자에 맞고, 편집 워커가 결과물에 실제로 굽게 했다 — 스위치(`TEXT_ACCENTS_ENABLED`, 기본 false)를 켰을 때만.
+
+- **비트 그리드** — `pipeline/beat_grid.py`: librosa 없이 numpy 로 같은 방식 — 로그 간격 24대역의 spectral flux(대역마다 같은 비중) → 자기상관 + 120 BPM 중심 사전분포로 템포 →
+  Ellis(2007) 동적 계획법으로 박자, 프레임 시각은 창의 가운데. 곡 옆 `<곡>.beats.json` 에 캐시(버전이 다르면 다시 계산). 무비보다 짧은 곡은 박자도 되풀이(`in_movie`).
+  합성 곡(킥 정박 + 하이햇 엇박 + 패드 + 잡음)으로 잰 값: 90 · 100 · 120 · 128 · 140 · 174 BPM 모두 템포 ±1% 안, 박자 전부 찾음, 위치 오차 중앙값 15~23ms · 최대 33ms
+  (계획서 §11 의 50ms 기준 안). 3분 곡 분석 0.08초.
+- **분석 중 찾은 것** — ① 칸을 그냥 더하면 넓은 칸을 차지하는 하이햇이 킥을 눌러 박자가 엇박에 붙었다(오차가 박자 간격의 ~0.4) → 대역 평균 + 저음 onset 이 반 박자 옆에서 더 세면
+  옮기기. ② 창의 시작을 시각으로 써 ~46ms 앞섰다 → 창 가운데. ③ 140 BPM 이 70 으로(옥타브 오류) → 80 BPM 미만으로 잡혔을 때만 두 배 템포를 본다(90 · 100 이 180 · 200 이
+  되지 않게). ④ 캐시의 BPM 자릿수와 처음 분석값이 달랐다 → 같은 자릿수로.
+- **엔진** — `accent_fit.timing` · `sticker.plan` 이 박자 목록을 받는다(정수 간격도 그대로 받는다). 머무는 길이 · 반 박자 차례 · 박자마다 튐이 그 자리의 실제 간격을 쓴다.
+- **결과물 연결** — `pipeline/accent_stage.py` + `worker.py` 3-1 단계(BGM 뒤 · 자막 앞): 컷 경계(컷 길이 누적), 스냅의 최신 완료 분석(`db.fetch_accent_inputs`) → 개념 id
+  (`pipeline/content.py` — TS `normalizeContentValue` 의 이식, 공유 사례 `packages/shared-types/fixtures/content-normalization.json` 22건으로 두 구현을 묶음), `video_signals.motion`,
+  원본 대표 프레임의 밝기, 고른 곡의 비트로 액센트 · 스티커를 정해 스티커 트랙 → 글(ASS) 순서로 굽는다. 소리는 그대로(copy). 실패하면 이 단계 없이, 붙일 것이 없으면 다시
+  인코딩하지 않는다. 층 c(생성)는 렌더 때 부르지 않는다. 고른 결과를 구성에 고정하는 것 · 피사체 위치는 A-17 에 남았다.
+- **설정** — 워커 `TEXT_ACCENTS_ENABLED`(env-spec · `.env.example` 에 추가, origin shared). 운영(공모전 서버)은 켜지 않았다.
+
+## 2026-10-22 — 트렌드 레시피 — 음원만 · 고정 타이틀 · 효과음 · 이음 · 배속(MOV-28, backlog A-18 · E-59)
+
+사용자가 준 레퍼런스 릴스 4편(프레임 · 소리 분석, [decisions/trend-recipes.md](./decisions/trend-recipes.md) §1)을 따라 숏브이로그 스타일을 레시피(데이터)로 두고,
+각 요소의 엔진을 워커에 넣었다. 렌더 쪽(소리 · 타이틀 · 글 밀도 · 효과음)은 편집 워커에 `MOVIE_RECIPE`(기본 `classic` — 지금까지와 같다)로 붙었고,
+컷 구간을 바꾸는 이음 · 배속은 AI 초안 단계에 잇기 전이다(A-18).
+
+- **레시피** — `packages/shared-types/src/recipe-vocabulary.json`(classic · trend-routine · trend-montage · daylog), `pipeline/recipe.py`. 워커 시작 때 `MOVIE_RECIPE` 를 검사한다.
+- **음원만** — `music.mix` 에 원본 · BGM 크기. 기본(1 · 0.25)은 이전과 같은 필터 그래프(테스트로 고정), 원본 0 이면 BGM 만.
+- **고정 타이틀** — `pipeline/title_card.py`: 타자기체(D2Coding) "vlog / 부제" 내내, 손글씨(Gaegu) "Mini VLog / in 장소!!" 처음 3초. 부제 · 장소는 분석 `topics` · `places` 최빈값.
+  글꼴 둘(OFL)을 `assets/fonts` 에 더했다.
+- **글 밀도** — `pipeline/density.py`: 사전 글은 점수 하한 · 상한 · 4초 간격, 스티커는 글이 남은 컷에만. classic 은 제한 없음(이전과 같음).
+- **효과음** — `sfx-vocabulary.json`(소리 15 + 이음 2, Pixabay 19개 `assets/sfx`, 출처 README) · `pipeline/sfx.py`: 내용 개념 + 분석 자유 문자열의 키워드로 컷마다 하나,
+  같은 소리 두 컷 쉬기, 상한. 시각은 움직임 정점 또는 컷 시작.
+- **이음** — `pipeline/continuity.py`: 10fps 작은 프레임의 밝기(렌즈 가림) · 차이 + 위상 상관 가로 이동(휩팬) · 구도 유사도로 자를 곳과 다음 컷 시작을 정하고, 없으면 경계를
+  곡 박자에 맞춘다. 경계는 전부 바로 넘김.
+- **배속** — `editor.retime_clip`(구간만 setpts · atempo 로 미리 굽기, 0.5~4배). 레시피의 행동(걷기 · 이동)을 분석이 본 스냅만.
+- **많은 컷 결합(E-59 ② 일부)** — `editor.join_groups`/`_join`: 9컷 이상이면 바로 넘김 경계에서 8개씩 묶어 잇고 concat 으로 다시 인코딩 없이 붙인다.
+- **레퍼런스 분석기** — `pipeline/reference.py` · `scripts/analyze-reference.py`: 영상 하나에서 컷(히스토그램 변화 — 휩팬은 컷으로 세지 않음) · 컷 길이 분포 · 박자 맞춤 비율 ·
+  가림/휩팬 수 · (선택) whisper 로 말소리를 재고 가까운 레시피를 제안한다.
+- **한 번에 렌더** — `pipeline/trend_edit.render`: 이음 계획 → 배속 → 결합 → 음원 → 타이틀 · 글 · 스티커 → 효과음 → 마지막 손질. 데모와 이후 초안 연결의 자리.
+- **샘플로 찾은 결함(같은 날 고침)** — 샘플 스냅 32개로 5편을 렌더해 보며: ① 9컷 무비가 8 + 1 로 나뉘면 마지막 묶음(구간 하나)의 소리 라벨 `[0:a:0]` 을 필터 출력처럼
+  매핑해 ffmpeg 가 거부 → 대괄호 없이 매핑, 계약 테스트를 9컷으로. ② '화면이 고르게 움직이면 배속' 조건이 손으로 든 영상에서 거의 늘 참(32컷 중 21컷) → 분석의 행동만
+  (8컷으로). ③ 한 글자 키워드 '면' 이 '화면' 에, '고기' 가 '물고기' 에 걸려 후루룩 · 지글지글이 남발 → 키워드 두 글자 이상(테스트), `notKeywords`, `sfxVocabularyVersion` 2.
+- **샘플 렌더(로컬 전용 — 가족 영상)** — 8GB Docker 에서 ffmpeg 스레드만 줄여 5편 모두 통과(32컷 무비 포함 — 묶음 결합 전에는 같은 환경에서 죽었다). 길이 3.2~16.7초,
+  배속 컷 0~8개, 이음은 휩팬 1곳씩 · 나머지 박자(샘플이 가림 · 휩팬을 의도하고 찍은 영상이 아니다), 효과음은 승용차 → 탁 · 촬영 → 찰칵 · 걷기 → 저벅 · 수영 → 첨벙.
+  타이틀 한글이 구워진 것을 프레임으로 확인했다. 부제가 '어린이' 처럼 밋밋한 것은 A-18 '타이틀 문구'.
+- **검증** — 테스트: `test_recipe`(레시피 · 배속 · 묶음 나누기) · `test_title_card` · `test_density` · `test_sfx`(키워드 두 글자 · notKeywords 포함) · `test_continuity`(가림 · 휩팬 · 구도 ·
+  박자 경계 · 배속 규칙) · `test_reference`, `test_music`(섞기 그래프 고정), `test_edit_worker`(레시피 연결), `test_ffmpeg_contract.py` `TrendRecipeContract`(배속 길이 · 효과음 자리 ·
+  타이틀 한글 · 가림 읽기 · 9컷 묶음 결합의 길이와 마지막 구간 소리 · 한 편 전체). CI 와 같은 조건(Docker `python:3.11-slim` + ffmpeg 7.1, `REQUIRE_FFMPEG=1`, ResourceWarning 을 오류로)에서
+  워커 `unittest discover` **459건 통과**, `compileall` 통과. API `env-spec.test.ts` · `content-vocabulary.test.ts` 40건 통과(로컬 Postgres).
+
+## 2026-10-22 (이어서) — 트렌드 레시피 편집 효과 — 전환 · 분할 · 줌 · 색 필터 · 얼굴 스티커 · 최소 15초(MOV-28, backlog A-18)
+
+첫 데모를 본 사용자 요청으로 트렌드 레시피에 편집 효과를 더했다. 결정 · 기각한 대안은 [decisions/trend-recipes.md](./decisions/trend-recipes.md) §7.
+레시피 사전 v2(`transitions` · `split` · `zoom` · `look` · `faceStickers` · `continuity.minMovieMs` · `accents.gapMs`), classic 은 모두 꺼짐(이전과 같음).
+
+- **최소 15초** — `continuity.budgets`(스냅마다 고르게, 스냅 길이를 넘지 않게) + 같은 스냅의 점프컷(`jump`). 원본이 모자라면 배속을 풀고, 건너뛰는 길이(200ms)는 원본에
+  여유가 있을 때만 — 처음엔 원본이 빠듯해도 200ms 씩 건너뛰어 2.5초 × 3 원본이 5.3초가 됐다(계약 테스트가 잡음, 고침).
+- **전환 효과 · 줌 · 분할** — `pipeline/cut_fx.py`: 이음 없는 경계의 rate 비율에 palette 무게로(같은 것 연달아 금지). 결합 전환(flash · dip · zoompunch)은 편집기가,
+  컷 전환(whip · zoom · spin · glitch · shake)은 나가는/들어오는 컷에 반씩 zoompan · rotate · avgblur · gblur · rgbashift · noise 로 굽는다. 줌 push · pull · punch(박자).
+  분할 2 · 3칸은 칸이 좌우에서 차례로 밀려 들어오고 길이는 칸의 합 — 처음엔 앞 칸 길이만큼 기다려 샘플에서 흰 빈칸이 1초 가까이 남고 거기 글이 얹혀,
+  칸 길이의 절반 · 최대 0.4초 간격으로 바꿨다. 편집기에 `prepare_segments`(정규화 + 색 맞춤) · `join_prepared`(효과 구운 구간 결합)를 더했다.
+  ffmpeg 식이 `+-(` 를 읽지 못해 whip · spin 의 들어오는 쪽이 실패 → `(-1)*` 로.
+- **색 필터** — `pipeline/look.py`: film · warm · cool · vivid · mono · retro, `auto` 는 장면 단어가 컷의 1/3 이상일 때만. 컷 효과와 같은 인코딩에 붙는다.
+- **얼굴 스티커** — `pipeline/face.py` + OpenCV `FaceDetectorYN` · YuNet(`assets/models`, MIT, 227KB) · `opencv-python-headless==4.10.0.84`. 결합본을 10fps 로 읽어 트랙을
+  잇고(겹침 0.3, 한 프레임 놓침 허용, 3프레임 이동 평균) 조건에 맞는 얼굴에 왕관 · 선글라스 · 하트 · 반짝이. `sticker_render` 가 같은 오버레이 트랙에 굽는다.
+  샘플 프레임 비교: Haar 6장 맞힘 1 · 오검출 3, YuNet 8장 얼굴 13 · 오검출 0.
+- **효과음 · 글** — 트렌드 레시피의 효과음 상한을 없애고 경계 소리(fx-* · panel · face, `sfxVocabularyVersion` 3)를 더했다 — 수 상한 대신 220ms 안 겹침만 뺀다.
+  글은 상한 대신 간격(`gapMs`).
+- **검증** — `test_cut_fx` · `test_look` · `test_face`(트랙 · 고르기 · 보간 · 모델 파일 · 빈 프레임에 얼굴 없음), `test_continuity`(최소 길이 · 점프컷 · 배속 풀기 · budgets),
+  `test_density`(gapMs), `test_sfx`(상한 없음 · 경계 소리), `test_recipe`(새 칸 · 값 검사), `test_ffmpeg_contract.py` `CutFxContract`(효과 5종 · 줌 3종 · 색 6종이 이 ffmpeg 에서
+  돌고 길이를 지킴, mono 는 무채색, 3칸 분할의 차례 · 멈춘 첫 칸, flash 결합). CI 와 같은 조건(Docker `python:3.11-slim` + ffmpeg 7.1, `REQUIRE_FFMPEG=1`)에서
+  워커 `unittest discover` **498건 통과**. 실행 시간이 96초 → 919초로 늘었는데, 같은 시각 Docker VM(8GB)에 다른 프로젝트 컨테이너(opensearch · kafka · mongodb 등)가
+  떠 있어 손대지 않은 기존 테스트(색 맞춤 60초 · 전환 58초)도 함께 느려졌다. 새 테스트 중 가장 무거운 것은 트렌드 한 편 렌더(이 환경에서 180초) · 효과 렌더(55초).
+
+## 2026-10-22 (이어서) — 렌더 속도 · 시네마틱 레시피 · 매치컷 · HDR 폭 결함(MOV-28, backlog A-18)
+
+- **렌더 속도** — 단계별 측정(트렌드 한 편 D: 78초 — 컷 정규화 37% · 효과 굽기 19% · 결합 15% · 합성 10% · ffprobe 135회 11초)으로 고쳤다: 배속 · 효과 · 색을 컷
+  정규화 **한 번**에(`editor.prepare_segments` 의 speeds · extras), 전환 효과를 전부 구간 안에 굽고 결합은 **다시 인코딩하지 않고**(`editor.concat_copy` — 영상 프레임 수로
+  자리를 정하고 소리만 aresample async), ffprobe 결과 캐시(경로 · 수정 시각 · 크기), 음원만 레시피는 컷 음량 측정 생략, 중간 파일 `ultrafast`(결과물 설정은 합성 한 번),
+  스티커 트랙은 스티커가 있는 프레임 · 영역만. classic 경로의 명령은 바뀌지 않는다(인자 기본값). 전후 비교 측정은 같은 VM 의 다른 컨테이너 부하로 흔들려
+  (손대지 않은 합성 단계도 8 → 16초) 사용자 요청으로 중단 — 확정된 수치는 없다. 이어 붙이기는 Debian ffmpeg 7.1 에서 경계 몇 곳의 소리가 25~50ms 밀린다(9.0 은 0).
+- **시네마틱 · 매치컷** — decisions/trend-recipes.md §8. `cinematic` 레시피(레터박스 · 한 스냅 한 컷 · 매치컷 · 점수 위주 순서), `pipeline/match_cut.py`,
+  `cut_fx` 의 match 줌 · letterbox · band_spec, `title_card` 의 cinematic, `look` 의 soft, `reference.boundaries`. sample/02(친구 · 음식 7개)로 렌더:
+  15.3초 · 7컷, 순서가 음식끼리 모였고 경계 6곳 중 4곳에 매치 줌. 피사체를 흰 종이로 잡는 경계가 있다(backlog).
+- **HDR 폭 결함** — 톤매핑 직후 `format=yuv420p`(위 §8). `HdrContract.test_hdr_cut_with_colour_match_keeps_the_whole_picture`.
+- **검증** — 매치컷 이전 코드로 Docker(ffmpeg 7.1) 워커 `unittest discover` **512건 통과**. 이후 `test_match_cut`(피사체 · 움직임 · 연결 점수 · 순서 · 매치 필터) ·
+  `test_continuity`(한 스냅 한 컷 · 가장 안정된 구간 · 박자에 맞춰도 15초) · `test_cut_fx` · `test_recipe` · `test_title_card` · `test_reference` 와
+  `CutFxContract` 의 피사체 좌표 · 경계 쌍 테스트를 로컬에서 통과 — 전체 실행은 아직.
+
+
+## 2026-10-22 (이어서) — 무비마다 레시피 고르기(앱 → API → 워커) · 온톨로지 · 빠른 컷 · 포맷 12개 · 레퍼런스 따라 하기(MOV-28, backlog A-18)
+
+결정 · 근거는 [decisions/trend-recipes.md](./decisions/trend-recipes.md) §9~§11.
+
+- **무비마다 레시피(실제 앱 경로)** — 계약: `MOVIE_RECIPES`(`packages/shared-types/src/recipe.ts`, 사전 이름과 테스트로 묶음) · `movieRecipeSchema`, 무비
+  응답 · 생성 · 수정에 `recipe`(기본 `classic`), editSpec v3 에 `recipe` · `autoCuts`(classic 이 아닐 때만 싣는다 — classic 무비의 스펙은 그대로). DB:
+  `movies.recipe`(마이그레이션 `20261022000000_movie_recipe`). API: 저장 · 응답 · 생성 시 `autoCuts` = `arranger: ai` + 모든 컷 `trimOwner: ai`. 워커: 무비의 레시피를
+  읽고(모르는 이름은 classic), `autoCuts` 면 `trend_edit.render` 로 컷 · 순서 · 효과 · 음원 · 글 · 효과음까지(실패하면 보통 경로), 아니면 보통 경로에 레시피의 소리 ·
+  타이틀 · 글 · 효과음만. 시드는 무비 + 작업(다시 만들 때마다 다른 변형, 곡은 같다). 촬영 시각은 `db.fetch_captured_at`. 앱: 무비 화면 칩 `편집 · {이름}` →
+  `RecipePickerSheet`(12개, 레시피마다 한 줄 설명, AI 컷 무비 · 손본 무비에서 무엇이 바뀌는지 안내), 저장은 스타일과 같은 길(outbox `PATCH`) — apps/mobile/docs/features/movie.md.
+  `openapi.json` · api-spec 갱신.
+- **온톨로지 · 자유도(§9)** — 연결 점수의 태그를 개념 계층 매칭 0.7 + 사전 밖 낱말 0.3 으로(`match_cut.concept_similarity` · `tag_similarity`), 움직임 연결
+  규칙 사전 `motion-link-vocabulary.json`(소프트 점수), 순서의 temperature · explore(규칙 밖 예산) 샘플링.
+- **빠른 컷 + 효과음(§10)** — `pipeline/fast_cut.py`(모션 피크 후보 · 흔들림/초점 거르기 · 빔 서치), 효과음 트랜지언트 정렬 · 동시 발음 2 · 꼬리 250ms ·
+  낮은 점수 경계 전환음(간격 · 상한) · 덕킹(`sidechaincompress`), 팬 이어주기, EDL(`Result.edl`), 트렌드 포맷은 화면을 꽉 채움(cover).
+- **포맷 = 전략 묶음(§11)** — 레시피 `format`(cuts · link · primitives · overlay), 프리미티브 스피드램프(구간 setpts 식) · 프리즈(loop) · 드롭 플래시, 오버레이 촬영 시각 ·
+  프리즈 라벨, before/after 점수(`match_cut.link_contrast`), 새 포맷 6개(비트싱크 · 스피드램프 · 하루 타임스탬프 · before/after · ASMR · 프리즈+텍스트) — 레시피 12개.
+  레퍼런스 따라 하기 엔진(`reference.to_recipe` · `letterbox`, `analyze-reference.py --recipe`, `trend_edit.render(spec=...)`).
+- **샘플로 찾은 결함(같은 날 고침)** — 흔들림 필터가 한 번 움직이는 영상의 피크 구간을 흔들림으로 버림(평균 → '구간 70% 가 중간값 4배' 로), 빠른 컷의 전환음
+  과다(15개 중 10개), 같은 의성어 두 번, 가로 영상이 흐린 배경 띠 안에 작게, 촬영 순서 포맷이 앞 스냅을 건너뛰고 9초로 끝남(가장 이른 스냅에서 시작), 덕킹이 거의 안
+  걸림(문턱 0.04 → 0.015 · 비율 6, 음원 대역만 재는 계약 테스트로 확인).
+- **검증** — API `npm test -w apps/api` **845건 통과**(새 `movie-recipe.test.ts` — 저장 · 400 · classic 스펙 그대로 · autoCuts 세 경우 · 사전 이름 일치; 큐는 다른 프로젝트
+  Redis 를 쓰지 않게 테스트 전용 Redis 6390 에서). 앱 `npm run verify:mobile` 통과(테스트 1,592 · format · lint · typecheck). 워커: 매치컷 이전 Docker 전체 512건 통과,
+  이후 단위 · 계약 테스트(`test_fast_cut` · `test_formats` · `test_match_cut` · `test_sfx` · `test_reference` · `test_edit_worker` 20건 · `CutFxContract` · 덕킹)를 로컬에서
+  통과. Docker(ffmpeg 7.1) 워커 `unittest discover` **559건 중 558건 통과** — 남은 1건(`test_rendition_worker` 의 `test_slow_signals_leave_the_saved_rendition_ready`)은
+  이번에 손대지 않은 렌디션 워커의 시간 제한 테스트로, 따로 돌리면 통과하고 전체를 같이 돌릴 때(같은 VM 에 다른 컨테이너가 떠 있는 상태)만 시간 초과로 흔들렸다.
+  전체 실행에서 찾은 결함 1건 — 원본에 줌이 없는 스냅의 구간이 1.5초로 고정돼 최소 길이를 못 채움(`motion_windows(target=)` — 최소 길이 몫) — 은 고쳤다.
+- **실제 엔진으로 두 편** — 워커의 레시피 경로(`worker._render_trend` → `trend_edit.render`)를 그대로 불러(DB 조회 두 개만 샘플의 저장된 분석 · 파일의 촬영 시각으로
+  바꿔 끼움, 음원은 고른 Pixabay 곡 폴더에서 워커가 무비 키로) sample/01(가족 나들이 32개) → 빠른 컷 15.2초 · 20컷 · 의성어 4 · 얼굴 스티커(왕관) · 효과음 11 · 56초,
+  sample/02(친구 · 음식 7개) → 시네마틱 15.6초 · 11컷 · 의성어 2 · 띠 분할 1 · 효과음 6 · 75초(8GB Docker, ffmpeg 스레드 제한). 로컬 전용(가족 영상).
+  앱 → API → 워커를 실제로 이은 끝에서 끝까지 실행(로컬 스택)은 하지 않았다.
+- **잘못된 회전 정보 바로잡기(같은 날)** — sample/02 의 카카오톡 영상 하나가 회전 정보(90°)대로 세우면 오히려 누웠다(회전 정보를 무시하면 바로 선다). `pipeline/orient.py`:
+  회전 정보가 있는 원본만, 세 프레임을 '회전 적용' · '무시' 로 읽어 얼굴(YuNet) 수를 비교하고 무시한 쪽이 뚜렷이 많을 때만 회전 정보를 0 으로 덮어 다시 감싼다
+  (`-display_rotation:v:0 0 -c copy`, 다시 인코딩 없음). 얼굴이 없으면 파일 정보대로. 워커는 원본을 받은 직후 이것을 거친다(보통 경로 · 레시피 경로 모두).
+  sample/02 7개 중 그 1개만, sample/01 33개(회전 정보 있는 30개) 중 0개가 걸렸다. 레터박스 화면 분할은 첫 칸을 원래 띠 자리에 두고 둘째 칸을 아래에서 연다
+  ('Vlog' 타이틀이 두 칸 사이 틈에 걸렸다). `test_orient`(판정 규칙 · 회전 읽기 · 얼굴 없으면 그대로) — Docker 48건(orient · 워커 · cut_fx · CutFxContract) 통과.
+- **분할 뒤 멈춤 · 소리 끊김 · 끝맺음(같은 날)** — 실제 엔진으로 만든 sample/02 무비에서 세 가지가 보였다. ① 소리가 9.2초에서 끊김(영상 15.5초):
+  효과음 덕킹(`sfx.mix_into(duck=True)`)의 사이드체인이 마지막 효과음에서 끝나 압축기가 음원까지 멈췄다 — 단계별 길이를 재 보니 이 단계에서만 짧아졌다.
+  효과음 묶음을 `apad` 로 늘리고 길이는 음원이 정한다(01 의 0.5초 짧음도 같은 원인). ② 분할 화면에서 첫 칸이 0.7초 멈춤: 칸은 분할이 끝날 때까지 보이는데
+  원본을 컷 길이만큼만 잘라 나머지를 마지막 프레임으로 채웠다 — 칸마다 원본을 (분할 길이 − 들어온 시각)만큼 더 쓰고(원본이 모자라면 그때만 멈춤,
+  `trend_edit._panel_ends` · `cut_fx.split_graph(lengths=)`), 소리는 그대로 칸 길이만큼 차례로. ③ 끝이 뚝 잘림: 마지막 단위를 0.5초 검게
+  닫고(`END_FADE_S`), 섞은 소리 전체를 1초 페이드 아웃(`music.mix(end_fade=)` — 기본 그래프는 그대로). 다시 만든 02: 영상 15.5초 · 소리 15.49초,
+  freezedetect(0.3초) 0건, 끝 0.4초에서 −13dB → −42dB. 01: 15.1초 · 15.08초, 멈춤 0건. 덕킹 계약 테스트에 '마지막 효과음 뒤에도 음원이 그대로' ·
+  분할 칸 길이 · 끝 페이드 단위 테스트를 더했다 — Docker 전체 564건 통과.
+- **편집 사전을 온톨로지 내보내기에(같은 날)** — 팀 질문(편집 스킬 · 효과음이 스키마에 있나)에 따라 발표용 OWL 내보내기에 효과음 · 의성어(`evokedBy` → 개념) ·
+  카메라 움직임 연결 규칙 · 레시피를 클래스 · 관계 · 개체로 엮었다(`scripts/ontology/editing.mjs`, decisions/trend-recipes.md §12 ·
+  ontology-personalization.md §3.3). 원천은 각 JSON 사전이고 개념 사전 판(v2)은 그대로 — 추천 재사용 키 영향 없음. `npm run ontology:test` 8건 통과
+  (편집 관계 · 없는 개념을 가리키면 거부 포함), 내보낸 Turtle 을 rdflib 로 읽어 트리플 1,682개(효과음 15 · 이음 효과음 12 · 의성어 27 · 움직임 5 · 연결 규칙 7 ·
+  레시피 12 · 색감 3 · 컷 효과 4 · evokedBy 52)를 확인했다.
