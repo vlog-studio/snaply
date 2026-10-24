@@ -2698,3 +2698,18 @@ BGM 컷편집 무비의 글은 받아쓰기가 아니라 컷의 내용에 맞는
   두고, 워커 설정을 바꿔 끼우던 테스트를 스펙의 `recipe` 로 바꿨다. 워커 이미지(Debian ffmpeg 7.1)에서 `REQUIRE_FFMPEG=1 python -m unittest discover -s tests`
   **566건 통과**. `npm run typecheck` · `npm run lint`(`apps/api` · `packages/shared-types`) 통과. `npm test -w apps/api` 는 세 번 돌려 세 번 모두 851건
   통과 — 첫 번째에만 vitest 가 처리되지 않은 오류 1건을 보고해 실패로 끝났고(내용은 남기지 못했다), 두 번째 · 세 번째는 오류 없이 통과했다.
+
+## 2026-10-24 — 배포가 CI 를 기다린다(backlog E-68)
+
+`deploy.yml` 이 CI 결과를 보지 않아, 2026-10-22 `b3321a0` 처럼 CI 가 실패한 커밋도 운영에 나갔다.
+
+- **바꾼 것** — Deploy 맨 앞에 `wait-for-ci` 잡을 더했다. 같은 커밋의 CI(`ci.yml`, push) 실행을 GitHub API 로 찾아(나타날 때까지 최대 10분)
+  끝나기를 기다리고(최대 60분), 결론이 `success` 가 아니면 실패한다. `deploy-aws` 는 `wait-for-ci` 와 `build-and-push` 를 둘 다 기다린다.
+  이미지 빌드 · 스모크는 그동안 나란히 돌아 배포가 그만큼만 늦는다.
+- **고른 이유** — CI 의 `workflow_run` 으로 Deploy 를 띄우는 안은 `paths` 를 걸 수 없어 앱만 바꾼 커밋도 배포되고, AWS runner 의 작업 전 검사가
+  push 로 뜬 작업만 받는다. Deploy 안에서 CI 검사를 다시 돌리는 안은 같은 검사를 두 번 돌리고 목록이 따로 낡는다. 배포 경로는 모두 CI 의
+  `paths-ignore` 밖이라 배포되는 커밋에는 CI 가 반드시 돈다.
+- **검증** — 잡이 쓰는 API 조회를 지난 커밋에 돌려 봤다: `b3321a0` → `completed failure`(막힌다), `ca9599f` → `completed success`(통과),
+  문서만 바꾼 `52f4aa9` → CI 실행 없음(이 커밋은 배포 경로가 아니라 Deploy 도 뜨지 않는다). YAML 구문 확인. 실제 Deploy 에서 기다리는 모습은
+  다음 배포 경로 커밋에서 본다 — 이 커밋이 `deploy.yml` 을 바꿔 바로 그 첫 실행이 된다.
+- **문서** — deployment-aws.md §3(흐름 그림 · CI 실패 시 배포하지 않음). B-9(브랜치 보호)는 오너 판단으로 개발 단계 동안 보류.

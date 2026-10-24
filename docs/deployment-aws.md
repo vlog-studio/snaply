@@ -114,14 +114,21 @@ aws secretsmanager put-secret-value --profile dweax-snaply --secret-id dweax/ser
 
 ```
 main 머지
-  ↓  GitHub 이 빌려주는 컴퓨터 — 이미지 빌드 → 스모크 검사 → GHCR(커밋 SHA 태그)       (build-and-push)
-  ↓  이 인스턴스의 runner — deploy.yml 의 deploy-aws
+  ↓  GitHub 이 빌려주는 컴퓨터 — 두 잡이 나란히 돈다
+     · 같은 커밋의 CI(ci.yml) 가 끝나기를 기다려 성공인지 본다                         (wait-for-ci)
+     · 이미지 빌드 → 스모크 검사 → GHCR(커밋 SHA 태그)                                  (build-and-push)
+  ↓  둘 다 통과해야 — 이 인스턴스의 runner, deploy.yml 의 deploy-aws
      배포 파일을 /data/compose 로 → 시크릿을 env 파일로 → GHCR 로그인 → pull → 마이그레이션 → up → 태그 기록
      → /health 가 db=connected 인지 → 72시간 넘은 이미지 정리
 ```
 
 - **GitHub 에 AWS 키를 두지 않는다.** runner 가 GitHub 쪽으로 먼저 연결해 일을 받아오고(나가는 연결만), 시크릿은
   인스턴스 역할로 읽는다. GHCR 패키지는 비공개라 잡마다 주어지는 토큰으로 받는다.
+- **CI 가 실패한 커밋은 배포하지 않는다.** `wait-for-ci` 가 같은 커밋의 CI 실행을 찾아(없으면 최대 10분, 끝날 때까지 최대
+  60분) 결론이 성공이 아니면 실패하고, `deploy-aws` 는 돌지 않는다. CI 를 고친 다음 커밋이 다시 배포를 부른다. CI 의
+  `workflow_run` 으로 배포를 띄우지 않은 것은, 그 이벤트에는 `paths` 를 걸 수 없어 앱만 바꾼 커밋도 배포되고 이 runner 가
+  push 로 뜬 작업만 받기 때문이다(작업 전 검사). 배포 경로는 모두 CI 의 `paths-ignore`(문서 · 마크다운) 밖이라 배포되는
+  커밋에는 CI 가 반드시 돈다. 실패한 CI 를 Re-run 해 성공하면, Deploy 의 실패한 잡도 Re-run 하면 된다.
 - **마이그레이션이 먼저다.** 실패하면 거기서 멈추고 이전 버전이 계속 돈다.
 - **`deploy/` 를 고친 커밋도 서버에서 따로 할 일이 없다** — 배포가 `/data/compose` 로 덮어쓴다(서버에서 `git pull` 하지 않는다).
 - **되돌리기**: 이전 커밋의 Deploy 실행에서 `Deploy to the AWS server` 잡을 Re-run 한다. 마이그레이션은 되돌아가지

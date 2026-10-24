@@ -30,6 +30,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  wait-for-ci:
+    # 운영에는 CI 를 통과한 커밋만 나간다(backlog E-68). 같은 커밋의 CI(ci.yml, push)가 끝날 때까지 기다렸다가
+    # 성공이 아니면 여기서 실패해 deploy-aws 가 돌지 않는다. 이미지 빌드 · 스모크는 그동안 나란히 돈다.
+    # CI 의 workflow_run 으로 Deploy 를 띄우지 않는 이유: workflow_run 은 paths 를 걸 수 없어 앱만 바꾼 커밋도
+    # 배포되고, AWS runner 는 push 로 뜬 작업만 받는다(deploy/aws/runner-job-started.sh).
+    # 배포 경로는 모두 CI 의 paths-ignore(docs · 마크다운) 밖이라 이 커밋에는 CI 가 반드시 돈다.
+    name: Wait for CI on this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SHA: ${{ github.sha }}
+    steps:
+      - name: Wait for the CI run and require success
+        run: |
+          set -euo pipefail
+          # CI 실행이 아직 만들어지지 않았을 수 있다 — 나타날 때까지 기다린다(최대 10분).
+          for attempt in $(seq 1 360); do
+            run=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$SHA&event=push&per_page=1" \
+              --jq '.workflow_runs[0] | select(.) | "\(.id) \(.status) \(.conclusion // "")"' || true)
+            if [ -n "$run" ]; then
+              set -- $run
+              id=$1; status=$2; conclusion=${3:-}
+              if [ "$status" = "completed" ]; then
+                echo "CI run $id: $conclusion"
+                [ "$conclusion" = "success" ] && exit 0
+                echo "::error::이 커밋의 CI 가 $conclusion 로 끝나 배포하지 않는다 — https://github.com/$REPO/actions/runs/$id"
+                exit 1
+              fi
+            elif [ "$attempt" -gt 60 ]; then
+              echo "::error::이 커밋의 CI 실행을 10분 동안 찾지 못했다 — 배포하지 않는다"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "::error::CI 가 끝나기를 기다리다 시간이 다 됐다"
+          exit 1
+
   build-and-push:
     # 스모크를 통과한 **그 이미지**만 GHCR 로 간다. 빌드해서 바로 push 하던 때는
     # Dockerfile 이 깨져도 CI 가 초록이었고 실행되지 않는 이미지가 :latest 로 올라갔다
@@ -101,7 +142,7 @@ jobs:
     # 먼저 연결해 일을 받아오므로 인바운드도, GitHub 에 둘 AWS 키도 없다 — 시크릿은 인스턴스 역할로 읽는다.
     # 저장소가 public 이라 runner 는 main 의 이 워크플로(push)만 받는다(deploy/aws/runner-job-started.sh).
     name: Deploy to the AWS server
-    needs: build-and-push
+    needs: [wait-for-ci, build-and-push]
     runs-on: [self-hosted, snaply-aws]
     # 서버 준비(deploy/aws/install.sh · 시크릿)가 끝나기 전에는 돌지 않는다. 저장소 Variables 에서 켠다.
     if: ${{ vars.DEPLOY_AWS_ENABLED == 'true' }}
