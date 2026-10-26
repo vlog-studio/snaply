@@ -8,7 +8,8 @@
 값의 원천은 [`recipe-vocabulary.json`](../../packages/shared-types/src/recipe-vocabulary.json) · [`sfx-vocabulary.json`](../../packages/shared-types/src/sfx-vocabulary.json),
 코드는 워커의 [`recipe.py`](../../apps/ai-worker/src/pipeline/recipe.py) · [`continuity.py`](../../apps/ai-worker/src/pipeline/continuity.py) ·
 [`sfx.py`](../../apps/ai-worker/src/pipeline/sfx.py) · [`title_card.py`](../../apps/ai-worker/src/pipeline/title_card.py) · [`density.py`](../../apps/ai-worker/src/pipeline/density.py) ·
-[`trend_edit.py`](../../apps/ai-worker/src/pipeline/trend_edit.py) · [`reference.py`](../../apps/ai-worker/src/pipeline/reference.py) · [`cut_fx.py`](../../apps/ai-worker/src/pipeline/cut_fx.py) ·
+[`trend_edit.py`](../../apps/ai-worker/src/pipeline/trend_edit.py) · [`reference.py`](../../apps/ai-worker/src/pipeline/reference.py) ·
+[`reference_corpus.py`](../../apps/ai-worker/src/pipeline/reference_corpus.py) · [`reference-corpus.py`](../../apps/ai-worker/scripts/reference-corpus.py) · [`cut_fx.py`](../../apps/ai-worker/src/pipeline/cut_fx.py) ·
 [`look.py`](../../apps/ai-worker/src/pipeline/look.py) · [`face.py`](../../apps/ai-worker/src/pipeline/face.py) ·
 [`match_cut.py`](../../apps/ai-worker/src/pipeline/match_cut.py) · [`fast_cut.py`](../../apps/ai-worker/src/pipeline/fast_cut.py) ·
 [`orient.py`](../../apps/ai-worker/src/pipeline/orient.py) · `editor.retime_clip` · `editor.prepare_segments` · `editor.join_prepared` · `music.mix`
@@ -204,3 +205,39 @@
   (점수는 MotionLink 개체의 `linkScore`) · `usesLook` · `usesEffect` · `speedsUp` · `accompaniesTransition` 관계를 두었다(`scripts/ontology/editing.mjs`).
   기각: 개념 사전(`content-vocabulary.json`)에 `sounds` · `accents` 를 직접 적기 — 효과음 → 개념 방향이 이미 편집 사전에 있어 값이 두 곳이 되고, 판을 올리면
   추천 재사용 키가 바뀐다.
+
+## 13. 레퍼런스 말뭉치 — 오프라인 포맷 발굴 (2026-10-25 추가)
+
+yoojinhee03 결정: 인스타 릴스 · 틱톡 · 유튜브 쇼츠의 인기 숏브이로그를 사람이 모아 **새 포맷 후보를 늘리는 데만** 쓴다. §11 '새 포맷 찾기'의 첫 단계다.
+
+- **운영은 쓰지 않는다** — 워커 · API · 랭커 · 프롬프트(few-shot)는 레퍼런스 데이터를 읽지 않는다. 운영에 들어가는 것은 사람이 검토해
+  `recipe-vocabulary.json` 에 등록한 레시피뿐이다. 레퍼런스의 프레임 · 음원은 결과물 · 화면에 나오지 않는다(§1 · §4 의 저작권 곡 판단과 같다).
+- **수집은 도구가** — 같은 날 yoojinhee03 가 플랫폼 약관 위반 리스크를 감수하고 자동 다운로드로 정했다(처음 안은 '사람이 앱 저장 · 화면 녹화').
+  `collect` 가 yt-dlp 로 목록(유튜브 쇼츠 해시태그 피드 · 계정 · 영상 URL)을 훑어 길이(기본 90초 이하) · 조회수(1만 이상) · 업로드일(기본 60일 안)로 고른 것만
+  받고 시트에 적는다(`capture: download`, 요청 사이 2~5초 쉰다). yt-dlp 는 운영 이미지에 넣지 않는 연구용 의존성(`requirements-research.txt`)이다.
+  틱톡 · 인스타그램은 해시태그 목록을 yt-dlp 로 읽을 수 없어 계정 · 영상 URL 을 따로 찾아야 하고, **봇 차단 우회(요청 위장 · 탐색 페이지 긁기)는 하지 않는다**.
+  인스타그램은 로그인이 필요해 Chrome 쿠키(`--cookies-from-browser chrome`)를 쓴다 — 계정이 막힐 수 있다.
+  사람이 모을 때는 시트(`sheet.csv`)에 한 줄씩: 플랫폼(`instagram` · `tiktok` · `youtube_shorts`) · URL · 업로드일 ·
+  조회수 · 좋아요 · 팔로워 · 음원명 · 저장 방식(`save` · `screen`) · 사람 라벨(레시피 id 또는 `unknown`) · 라벨 단 사람 · 잘라낼 앞뒤(엔딩 카드) ·
+  위아래 크롭(화면 녹화 UI). 조회수는 수집 필터일 뿐 학습 라벨이 아니다. 새 포맷을 찾는 일이라 포맷마다 수를 채우기보다 고르게 넓게 모은다.
+- **도구** — `apps/ai-worker/scripts/reference-corpus.py` (`init` · `collect` · `analyze` · `report`), 수집은 `pipeline/reference_collect.py`, 순수 로직은 `pipeline/reference_corpus.py`
+  (시트 `reference_rows.py` · 군집 `reference_cluster.py` · 리포트 `reference_corpus_md.py`). 분석은 `analyze-reference.py` 와 같은 `reference.measure`.
+  - `analyze`: 30fps 고정(화면 녹화의 가변 프레임레이트가 컷 · 박자 타이밍을 흔든다) · 앞뒤 자르기 · 크롭으로 정규화한 뒤 재고, 특징 문서
+    (`source: <플랫폼>_ref` · `featureVersion` · 레시피 사전 판 포함)를 남기고 **원본을 지운다**.
+  - `report`: 커버리지 — 영상마다 레시피별로 표현 못 하는 축(`shot` 컷 길이 · `beat` 박자 맞춤 · `frame` 레터박스 · `speech` 원본 말소리 · `whip` 휩팬)을
+    재서 하나도 없는 레시피가 있으면 '커버됨'. 지문(컷 길이 분포 · 박자 · 휩 · 가림 · 경계 움직임 쌍 · 연결 구도 · 색)을 k-means(silhouette 로 k)로 묶어
+    군집마다 커버 비율 · 흔한 못 맞춘 축 · 사람 라벨 분포 · 중앙값으로 만든 레시피 초안(`reference.to_recipe`)을 낸다. 커버 비율 0.5 미만 군집이 후보다.
+- **재는 방법 보정(2026-10-26)** — 첫 수집(쇼츠 135편)에서 컷을 크게 놓쳤다: 밝기 분포만 보고(문턱 0.35) 가로 영상을 세로 화면에 넣은
+  검은 띠가 분포 변화를 묻었다. `reference.cuts_of` 는 검은 띠를 뺀 화면에서 분포 변화(0.2) 또는 주변보다 튀는 픽셀 차이(0.12 · 앞뒤 1초 중앙값의 3배,
+  휩팬 프레임 제외)로 센다 — 직접 고른 10편에서 ffmpeg scene(검은 띠 자른 뒤 >0.25) 컷 수와 평균 로그 오차 약 0.12(이전엔 1/3~1/4 만 잡음).
+  휩팬 · 가림은 프레임이 아니라 사건으로 세고(`reference.events`), 컷 바로 옆 휩팬은 뺀다(`whip_events`). 컷 3개 미만(원테이크)은 편집 포맷의 대상이 아니라
+  커버리지 · 군집에서 빼고 수만 알린다(`MIN_CUTS`). 같은 10편으로 맞춘 값이라 말뭉치가 커지면 다시 확인한다. 운영 렌더의 `continuity` 는 바꾸지 않았다.
+- **판정의 뜻** — 커버되지 않는 군집은 둘 중 하나다: 레시피 값만 바꾸면 되는 새 포맷(초안 → 샘플 스냅으로 렌더 → 사람 검토 → 등록), 또는 지금 엔진에 없는
+  재료(primitive · 개념)가 필요한 것(backlog A-20 에 올린다). **진척 지표는 커버리지**다 — 기존 포맷으로 설명되는 레퍼런스의 몫.
+- **보관** — 말뭉치 디렉터리는 git 작업 트리 밖이어야 한다(도구가 거부한다). 접근을 제한한 곳에 두고, 남는 것은 시트 · 특징 문서 · 리포트다.
+- **한계** — 재는 축은 위 다섯과 경계 특징뿐이다. 배속 · 프리즈 · 분할 · 글 · 효과음은 아직 재지 않아 '커버됨'이 그것까지 같다는 뜻은 아니다.
+  워터마크(틱톡 저장본은 자리를 옮긴다)는 마스킹하지 않아 경계의 피사체 · 색 특징이 조금 오염될 수 있다. 내용 개념(온톨로지 태그)은 아직 붙이지 않는다
+  (`link.tags` 0) — 붙이려면 사용자 스냅과 같은 분석기 · 프롬프트 판을 써야 분포가 맞는다.
+- 기각: **원본 보관**(특징 추출기를 바꾸면 다시 못 재는 대가를 감수하고 지운다 —
+  `featureVersion` 이 섞이면 리포트가 알린다), **조회수로 랭커 학습**(양성 표본뿐이고 조회수는 팔로워 · 음원 유행이 좌우한다), **레퍼런스 EDL 을 pgvector 에
+  넣어 운영 few-shot 으로**(운영에 레퍼런스가 들어간다 — few-shot 이 필요하면 우리 엔진이 만든 결과로), **sklearn · HDBSCAN 의존성**(수백 편이라 numpy k-means 로 충분하다).

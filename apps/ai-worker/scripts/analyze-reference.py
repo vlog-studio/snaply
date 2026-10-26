@@ -9,9 +9,7 @@ trend_edit.render 의 spec 인자로 바로 쓸 수 있다. 결과는 docs/decis
 """
 
 import json
-import subprocess
 import sys
-import tempfile
 from dataclasses import asdict
 from pathlib import Path
 
@@ -19,35 +17,18 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from pipeline import beat_grid, continuity, reference  # noqa: E402
-
-
-def has_speech(path: str) -> bool:
-    from faster_whisper import WhisperModel  # noqa: PLC0415 — 요청할 때만
-
-    segments, _ = WhisperModel("base", device="cpu", compute_type="int8").transcribe(path, vad_filter=True)
-    return any(len(s.text.strip()) >= 4 for s in segments)
+from pipeline import reference  # noqa: E402
 
 
 def main() -> None:
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    path = sys.argv[1]
-    series = continuity.read_series(path)
-    samples = beat_grid.decode(path)
-    grid = beat_grid.analyze_samples(samples) if len(samples) else None
-    beats = grid.beats_ms if grid and grid.beats_ms else None
-    speech = None
-    if "--speech" in sys.argv:
-        with tempfile.NamedTemporaryFile(suffix=".wav") as wav:
-            subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", path, "-ac", "1", "-ar", "16000", wav.name], check=True)
-            speech = has_speech(wav.name)
-    reading = reference.read(series, beats, grid.bpm if grid else None, speech)
-    out = asdict(reading)
-    if "--boundaries" in sys.argv:
-        out["boundaries"] = reference.boundaries(path, reading.cuts_ms, reading.duration_ms)
+    measured = reference.measure(sys.argv[1], speech="--speech" in sys.argv, with_boundaries="--boundaries" in sys.argv)
+    out = asdict(measured.reading)
+    if measured.boundaries is not None:
+        out["boundaries"] = measured.boundaries
     if "--recipe" in sys.argv:
-        base, spec = reference.to_recipe(reading, reference.letterbox(series))
+        base, spec = reference.to_recipe(measured.reading, measured.letterbox)
         out["recipe"] = {"base": base, "spec": spec}
     print(json.dumps(out, ensure_ascii=False, indent=1, default=lambda v: v.item() if isinstance(v, np.generic) else v))
 
