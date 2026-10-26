@@ -57,6 +57,10 @@ class SubjectTest(unittest.TestCase):
         self.assertAlmostEqual(cy, 0.35, delta=0.08)
         self.assertLess(size, 0.6)
 
+    def test_a_flat_frame_has_its_subject_in_the_middle(self):
+        """검은 프레임 · 단색 — 눈에 띄는 곳이 없어도 멈추지 않는다(2026-10-26 레퍼런스의 검은 컷에서 ZeroDivisionError)."""
+        self.assertEqual(mc.subject(np.zeros((H, W, 3), np.uint8)), (0.5, 0.5, 0.5))
+
     def test_focus_zoom_fills_and_is_bounded(self):
         self.assertAlmostEqual(mc.focus_zoom(0.3, 0.5), 0.5 / 0.3)
         self.assertEqual(mc.focus_zoom(0.9, 0.5), mc.ZOOM_RANGE[0])
