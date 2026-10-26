@@ -28,6 +28,19 @@ class ReadTest(unittest.TestCase):
         self.assertEqual(r.cuts_ms, [800, 1600, 2400])
         self.assertEqual(r.shot_median_ms, 800)
 
+    def test_cuts_inside_black_bars_are_found(self):
+        """가로 영상을 세로 화면에 넣은 레퍼런스 — 띠가 화면의 3/4 이어도 가운데의 장면 전환을 센다."""
+        inner = montage([8, 8, 8, 8])
+        boxed = np.zeros_like(inner)
+        rows = inner.shape[1] // 8
+        boxed[:, 3 * rows:5 * rows] = inner[:, 3 * rows:5 * rows]
+        self.assertEqual(reference.cuts_of(ct.series_of(boxed)), [800, 1600, 2400])
+
+    def test_whips_next_to_a_cut_are_not_counted(self):
+        s = ct.series_of(panning(20, 1, whip_at=10))
+        self.assertEqual(len(reference.whip_events(s, [])), 1)
+        self.assertEqual(reference.whip_events(s, [1000]), [])
+
     def test_a_whip_is_not_a_cut(self):
         self.assertEqual(reference.cuts_of(ct.series_of(panning(20, 1, whip_at=10))), [])
 
@@ -35,6 +48,12 @@ class ReadTest(unittest.TestCase):
         s = ct.series_of(montage([8, 8, 8, 8]))
         self.assertEqual(reference.read(s, beats=(0, 800, 1600, 2400)).on_beat_ratio, 1.0)
         self.assertEqual(reference.read(s, beats=(0, 400, 1200, 2000, 2800)).on_beat_ratio, 0.0)
+
+
+class EventsTest(unittest.TestCase):
+    def test_adjacent_frames_are_one_event(self):
+        self.assertEqual(reference.events([10, 11, 12, 30, 32, 50]), [10, 30, 50])
+        self.assertEqual(reference.events([]), [])
 
 
 class SuggestTest(unittest.TestCase):
