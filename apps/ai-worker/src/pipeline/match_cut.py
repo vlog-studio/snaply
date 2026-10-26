@@ -111,6 +111,8 @@ def subject(rgb: np.ndarray) -> tuple[float, float, float]:
         return face
     s = saliency(rgb)
     mask = s >= max(float(np.quantile(s, 0.85)), 0.5)  # 상위 15% 중에서도 가장 눈에 띄는 것의 절반 이상만 — 배경이 섞이지 않게
+    if not mask.any():  # 고른 화면(검은 프레임 · 단색) — 눈에 띄는 곳이 없다. 빈 구간(ends_of)과 같은 가운데 · 중간 크기로
+        return 0.5, 0.5, 0.5
     ys, xs = np.nonzero(mask)
     weights = s[mask]
     h, w = s.shape
