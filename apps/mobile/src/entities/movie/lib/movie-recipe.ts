@@ -59,7 +59,7 @@ const RecipeOptions: Record<MovieRecipe, Omit<MovieRecipeOption, 'id'>> = {
     label: '프리즈',
     description: '가장 또렷한 순간에 잠깐 멈추고 큰 글자로 강조',
   },
-  daylog: { label: '하루로그', description: '조금 긴 컷, 원본 소리를 살짝, 필름 색감' },
+  daylog: { label: '하루로그', description: '조금 긴 컷, 필름 색감, 아주 맞는 순간에만 글' },
 };
 
 /**

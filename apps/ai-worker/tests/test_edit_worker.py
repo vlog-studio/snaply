@@ -161,6 +161,10 @@ V3_SPEC = {
 }
 
 
+# classic 의 (원본 소리, BGM) — 2026-10-26 사용자: 모든 무비는 원본 소리를 빼고 음원만(ASMR 만 예외). 되돌리면 (1.0, 0.25)
+CLASSIC_GAINS = (0.0, 1.0)
+
+
 class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
     """텍스트 액센트 단계는 v3 무비만 돈다 — classic 무비는 켰을 때만(MOV-27), 레시피 무비는 늘(MOV-28, backlog H-19).
     끄면 classic 무비의 결과물이 지금과 같다."""
@@ -198,7 +202,7 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         await self.run_pipeline(V3_SPEC, enabled=False)
         self.accents.assert_not_awaited()
         worker.storage.upload.assert_any_call("with_bgm.mp4", mock.ANY, "video/mp4")
-        self.assertEqual(self.bgm.call_args.args[-2:], (1.0, 0.25))
+        self.assertEqual(self.bgm.call_args.args[-2:], CLASSIC_GAINS)
 
     async def test_a_trend_recipe_drops_the_source_sound_and_runs_the_stage_while_switched_off(self) -> None:
         await self.run_pipeline({**V3_SPEC, "recipe": "trend-routine"}, enabled=False)
@@ -214,13 +218,13 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         # API 는 classic 무비에 recipe 를 싣지 않는다 — 사용자가 고른 '기본'을 워커 전체의 값이 덮으면 안 된다(backlog E-67)
         with mock.patch.dict("os.environ", {"MOVIE_RECIPE": "cinematic"}):
             await self.run_pipeline(V3_SPEC, enabled=False)
-        self.assertEqual(self.bgm.call_args.args[-2:], (1.0, 0.25))
+        self.assertEqual(self.bgm.call_args.args[-2:], CLASSIC_GAINS)
         self.accents.assert_not_awaited()
         self.assertFalse(hasattr(worker.config, "MOVIE_RECIPE"))
 
     async def test_an_unknown_recipe_falls_back_to_classic_instead_of_failing(self) -> None:
         await self.run_pipeline({**V3_SPEC, "recipe": "tiktok-max"}, enabled=False)
-        self.assertEqual(self.bgm.call_args.args[-2:], (1.0, 0.25))
+        self.assertEqual(self.bgm.call_args.args[-2:], CLASSIC_GAINS)
         self.accents.assert_not_awaited()
 
     async def test_auto_cut_movies_are_re_cut_by_the_recipe(self) -> None:

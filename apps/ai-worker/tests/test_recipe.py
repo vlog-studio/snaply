@@ -25,12 +25,23 @@ class RecipeTest(unittest.TestCase):
 
     def test_classic_is_the_movie_as_before(self):
         c = recipe.get("classic")
-        self.assertEqual((c.spec["audio"]["sourceGain"], c.spec["audio"]["bgmGain"]), (1.0, music.BGM_GAIN))
-        self.assertFalse(c.music_only)
+        # 2026-10-26 사용자: 모든 무비는 원본 소리를 빼고 음원만(ASMR 만 예외). 되돌리면 (1.0, music.BGM_GAIN) · music_only False
+        self.assertEqual((c.spec["audio"]["sourceGain"], c.spec["audio"]["bgmGain"]), (0.0, music.MUSIC_ONLY_BGM_GAIN))
+        self.assertTrue(c.music_only)
         self.assertIsNone(c.spec["title"])
         self.assertEqual(c.spec["accents"], {"max": None, "minScore": 1, "keyword": True, "gapMs": None})
         self.assertEqual(c.spec["sfx"]["max"], 0)
         self.assertFalse(c.spec["continuity"]["enabled"] or c.spec["speed"]["enabled"])
+
+    def test_only_asmr_keeps_the_source_sound(self):
+        keeps = {name for name, spec in recipe.RECIPES.items() if spec["audio"]["sourceGain"] > 0}
+        self.assertEqual(keeps, {"asmr"})
+
+    def test_letterbox_splits_fill_above_and_below_the_band(self):
+        """레터박스 분할은 띠 · 아래 · 위 순으로 연다(cut_fx.split_graph) — 2칸이면 위가 비었다(2026-10-26)."""
+        for name, spec in recipe.RECIPES.items():
+            if spec["frame"] == "letterbox" and spec["split"]["sizes"]:
+                self.assertEqual(spec["split"]["sizes"], [3], name)
 
     def test_values_agree_with_the_modules(self):
         for name, spec in recipe.RECIPES.items():
@@ -71,9 +82,9 @@ class RecipeTest(unittest.TestCase):
         self.assertEqual(c["transitions"]["rate"], 0.0)  # 전환 효과 없이 — 매치컷 · 바로 넘김
         self.assertTrue(c["continuity"]["oneCutPerSnap"])
         self.assertTrue(c["match"]["enabled"] and c["match"]["order"] and c["match"]["motion"])  # 원본 줌으로 잇고 점수 위주로 순서를 섞는다
-        # 효과는 몰리지 않게 — 글은 간격으로, 분할은 2단 띠로 드물게, 얼굴 스티커는 오래 보이는 얼굴의 절반만
+        # 효과는 몰리지 않게 — 글은 간격으로, 분할은 3칸(띠 · 아래 · 위)으로 드물게, 얼굴 스티커는 오래 보이는 얼굴의 절반만
         self.assertGreaterEqual(c["accents"]["gapMs"], 3000)
-        self.assertEqual((c["split"]["sizes"], c["split"]["everyCuts"]), ([2], 6))
+        self.assertEqual((c["split"]["sizes"], c["split"]["everyCuts"]), ([3], 6))
         self.assertTrue(c["faceStickers"]["enabled"])
         self.assertNotIn("shades", c["faceStickers"]["kinds"])
 

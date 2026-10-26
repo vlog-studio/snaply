@@ -2804,3 +2804,13 @@ release 빌드 — EAS 무료 빌드 한도 소진)을 에뮬레이터에 깔아
   지금은 cinematic 만 레터박스이고 박자 맞춤이 켜져 있다) · 원본 말소리 2 · 박자 2. 박자에 맞은 컷의 몫은 대부분 0.24~0.43 으로 우연(±80ms 창 · 약 120BPM 에서
   약 1/3)과 비슷하다 — 박자 맞춤은 10편 중 2편뿐. 군집은 k=2 · silhouette 0.13 으로 10편으로는 구조가 약하다.
 - 전체 `unittest discover` 600개 중 실패 9건은 모두 `test_ffmpeg_contract`(로컬 ffmpeg 에 libass 없음 — 변경 전과 같음).
+
+## 2026-10-26 (이어서) — 모든 무비는 음원만(ASMR 예외) · 시네마틱 분할 3칸(MOV-28, trend-recipes §14)
+
+- 레퍼런스 후보 렌더(워커 Docker 이미지 — 로컬 ffmpeg 에 libass 가 없어 트렌드 렌더가 안 된다, 샘플 스냅 14개 · 합성 박자음)를 본 사용자 결정.
+  `recipe-vocabulary.json` 11판: classic · 하루 타임스탬프 · 하루로그의 소리를 원본 0 · 음원 1.0 으로, 시네마틱 `split.sizes` [2] → [3].
+  렌더로 확인: 2칸이면 둘째 칸이 띠 아래에만 열려 위가 비었고, 3칸이면 띠 · 아래 · 위가 찬다. 스펙 MOV-28 을 먼저 고쳤다.
+- 검증: 워커 `unittest discover` 602개 — 실패 9건은 모두 `test_ffmpeg_contract`(libass 없음, 변경 전과 같음). classic 소리를 고정한 테스트는 새 값과
+  되돌릴 값(주석)으로, ASMR 만 원본을 남기는지 · 레터박스 분할이 3칸인지 테스트 추가. 모바일 `jest src/entities/movie` 242개 통과.
+  API `test/movie-recipe.test.ts` 는 3개 통과(레시피 이름 계약 포함) · 4개 시간 초과 — 로컬 Redis 컨테이너(두 달 전 것)가 `NOAUTH` 로 큐 연결을 막아서이고
+  이 변경과 무관하다(컨테이너는 손대지 않음).
