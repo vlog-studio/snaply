@@ -145,12 +145,12 @@ describe('content vocabulary', () => {
     }
   });
 
-  it('scores a broader concept below a narrower one', () => {
+  it('gives a broader concept no score', () => {
     const { exact, narrower, broader } = vocabulary.match;
     expect(exact).toBe(1);
     expect(narrower).toBe(1);
-    expect(broader).toBeGreaterThan(0);
-    expect(broader).toBeLessThan(narrower);
+    // 2026-10-26 실측(backlog A-6)으로 잠정 0.5 → 0. 되돌리면 0 < broader < narrower 로 되돌린다.
+    expect(broader).toBe(0);
   });
 });
 
@@ -243,8 +243,17 @@ describe('contentMatchScore', () => {
     expect(contentMatchScore('objects', 'food', 'cake')).toBe(1);
   });
 
-  it('scores a broader snap concept 0.5', () => {
-    expect(contentMatchScore('places', 'cafe', 'shop')).toBe(0.5);
+  it('scores a broader snap concept 0 — a shop is mostly not a cafe', () => {
+    // 2026-10-26 실측(backlog A-6) 전에는 0.5 였다.
+    expect(contentMatchScore('places', 'cafe', 'shop')).toBe(0);
+    expect(contentMatchScore('objects', 'sunset', 'sky')).toBe(0);
+    expect(contentMatchScore('actions', 'walk', 'move')).toBe(0);
+  });
+
+  it('keeps a road out of the street slot', () => {
+    // 2026-10-26 실측: 도로가 거리의 하위였을 때 시골 도로가 골목 · 거리 슬롯을 채웠다.
+    expect(contentMatchScore('places', 'street', 'road')).toBe(0);
+    expect(contentMatchScore('places', 'road', 'road')).toBe(1);
   });
 
   it('scores siblings, unrelated and unknown concepts 0', () => {

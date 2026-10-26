@@ -103,6 +103,26 @@
     ],
     [
       "places",
+      "비포장도로",
+      "road"
+    ],
+    [
+      "places",
+      "산악 지대",
+      "mountain"
+    ],
+    [
+      "places",
+      "건조한 평원",
+      "scenery"
+    ],
+    [
+      "places",
+      "산지 초원",
+      "scenery"
+    ],
+    [
+      "places",
       "   ",
       null
     ],

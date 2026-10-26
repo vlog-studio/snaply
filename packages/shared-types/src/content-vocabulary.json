@@ -1,6 +1,6 @@
 {
   "_note": "스냅 내용의 개념 사전 — 분석의 자유 문자열(장소·사물·행동·주제·분위기)을 닫힌 개념으로 바꾼다. 원본은 이 파일 하나이고 API(packages/shared-types/src/content-vocabulary.ts)와 워커(tests/test_content_vocabulary.py)가 같은 규칙으로 검사한다. 정규화·매칭 규칙의 원천은 이 파일의 _normalizeNote · _matchNote · match 이고(사례는 apps/api/test/content-vocabulary.test.ts), 온톨로지로서의 쓰임은 docs/decisions/ontology-personalization.md. 개념 · 별칭 · 매칭 규칙을 바꾸면 contentVocabularyVersion 을 올린다(관계는 매칭에 쓰지 않아 올리지 않는다 — 관계를 채점에 쓰기 시작하면 그때부터 함께 올린다) — 추천 재사용 키에 들어가 예전 결과가 돌아오지 않는다.",
-  "contentVocabularyVersion": 2,
+  "contentVocabularyVersion": 3,
 
   "_fieldsNote": "분석 결과의 목록 필드와 같은 이름이다(워커 schema.py LIST_FIELDS). 개념 id 는 필드 안에서만 유일하다 — places 의 car(차)와 objects 의 tea(차)는 다른 개념이고, 매칭도 같은 필드끼리만 한다. matchFields 는 템플릿 슬롯 힌트(match_hints)가 쓰는 필드다. moods 는 슬롯 매칭에 쓰지 않고 분위기 추론에만 쓴다(ontology-personalization §3.2 의 evokes · suits).",
   "fields": ["places", "objects", "actions", "topics", "moods"],
@@ -10,8 +10,8 @@
   "_normalizeNote": "분석의 자유 문자열 하나를 개념 하나로 바꾸는 규칙. ① 앞뒤 공백을 지우고 연속 공백을 하나로 만든 값 전체가 별칭이면 그 개념. ② 아니면 끝 낱말로 끝나는 구(뒤쪽 낱말 묶음)를 긴 것부터 보아 별칭이면 그 개념 — 한국어 명사구·동사구는 머리가 끝에 온다('카페에 앉아 있기' → '앉아 있기'). ③ 아니면 나머지 낱말을 오른쪽부터 하나씩 보며 처음 맞는 하나. 머리가 아닌 낱말은 별칭이 아니면 끝의 조사를 하나 떼어 남은 것이 별칭인지 본다 — 떼어 낸 결과가 별칭일 때만 받는다. 머리 낱말은 조사를 떼지 않는다(머리에는 조사가 거의 붙지 않고, 떼면 '강의'가 '강'이 된다). ④ 맞는 것이 없으면 사전 밖이다(매칭에 쓰지 않고 집계에만 남긴다). 부분 문자열은 보지 않는다. label 도 별칭으로 친다.",
   "normalize": { "particles": ["에서", "으로", "에게", "까지", "부터", "에", "을", "를", "이", "가", "은", "는", "과", "와", "의", "로", "도", "만"] },
 
-  "_matchNote": "슬롯 힌트의 개념 H 와 스냅의 개념 A 를 잰다. A 가 H 이거나 H 의 하위 개념이면 narrower(카페는 가게다 — 가게 슬롯을 온전히 채운다), A 가 H 의 상위 개념이면 broader(가게라고만 했으면 카페일 수도 있다), 그 밖은 0. 힌트 하나의 점수는 스냅 개념 중 가장 높은 값이고, keyword 점수는 지금처럼 힌트 점수의 평균이다. broader 0.5 는 잠정값이다.",
-  "match": { "exact": 1, "narrower": 1, "broader": 0.5 },
+  "_matchNote": "슬롯 힌트의 개념 H 와 스냅의 개념 A 를 잰다. A 가 H 이거나 H 의 하위 개념이면 narrower(카페는 가게다 — 가게 슬롯을 온전히 채운다), A 가 H 의 상위 개념이면 broader, 그 밖은 0. 힌트 하나의 점수는 스냅 개념 중 가장 높은 값이고, keyword 점수는 지금처럼 힌트 점수의 평균이다. broader 는 0 이다 — 2026-10-26 운영 분석 28건 실측(backlog A-6)에서 잠정 0.5 가 만든 쌍 23개 중 18개가 오탐이었다(상점 → 카페 슬롯, 구름(하늘) → 노을 슬롯, 차량 이동 → 걷기 슬롯). 가게라고만 했으면 카페일 수도 있지만, 실제로는 대개 아니었다.",
+  "match": { "exact": 1, "narrower": 1, "broader": 0 },
 
   "_roleNote": "roleAffinity 는 이 개념이 보이는 컷이 맡기 좋은 컷 역할(cut-role-vocabulary.json 의 역할 이름)이다. 하위 개념은 상위의 값을 물려받고, 자기 값이 있으면 그것을 쓴다. 매칭에는 쓰지 않고, 아직 아무 데서도 쓰지 않는다 — edit-director 의 역할 판정에 쓰는 것은 제안이다(backlog A-13).",
   "_relationsNote": "개념 사이의 관계(ontology-personalization §3.2). 매칭에는 쓰지 않는다 — 취향 반영(ontology-personalization §4.4 · §7)과 AI 편집 에이전트가 쓴다. typicallyAt: objects · actions 개념이 흔히 보이는 places 개념(커피 → 카페). 취향 확장에 쓴다(장소가 적히지 않은 스냅의 장소 추론에는 아직 쓰지 않는다). evokes: places · objects · actions 개념이 자아내는 moods 개념(바다 → 청량함). suits: moods 개념에 어울리는 전환(transition-vocabulary.json 의 kinds)과 스타일 프리셋(STYLE_PRESETS), 앞에 둔 것일수록 더 어울린다. typicallyAt · evokes 는 roleAffinity 처럼 하위 개념이 상위의 값을 물려받고 자기 값이 있으면 그것을 쓴다. 모든 moods 개념은 suits 를 가진다 — 분위기에서 전환 · 스타일까지의 사슬이 끊기지 않게.",
@@ -27,7 +27,7 @@
       "street": { "label": "거리", "roleAffinity": "establish", "aliases": ["길", "길거리", "도심"], "evokes": ["lively"] },
       "alley": { "label": "골목", "parent": "street", "aliases": ["골목길"], "evokes": ["emotional"] },
       "residential_area": { "label": "주택가", "parent": "street", "aliases": ["동네"], "evokes": ["calm"] },
-      "road": { "label": "도로", "parent": "street", "aliases": ["차도", "고속도로", "교차로"] },
+      "road": { "label": "도로", "aliases": ["차도", "고속도로", "교차로", "비포장도로", "포장도로"] },
       "square": { "label": "광장", "parent": "street", "aliases": [] },
       "entrance": { "label": "입구", "aliases": ["출입구", "정문"] },
       "station": { "label": "역", "roleAffinity": "establish", "aliases": ["전철역"] },
@@ -45,13 +45,13 @@
       "bakery": { "label": "빵집", "parent": "shop", "aliases": ["베이커리", "제과점"], "evokes": ["cozy"] },
       "convenience_store": { "label": "편의점", "parent": "shop", "aliases": [] },
       "market": { "label": "시장", "parent": "shop", "aliases": ["전통시장", "재래시장"], "evokes": ["lively"] },
-      "scenery": { "label": "풍경", "roleAffinity": "establish", "aliases": ["경치", "전망", "야경", "뷰"], "evokes": ["emotional"] },
+      "scenery": { "label": "풍경", "roleAffinity": "establish", "aliases": ["경치", "전망", "야경", "뷰", "초원", "들판", "평원", "구릉지", "사막", "모래사막", "모래언덕"], "evokes": ["emotional"] },
       "viewpoint": { "label": "전망대", "parent": "scenery", "aliases": [] },
       "park": { "label": "공원", "parent": "scenery", "aliases": [], "evokes": ["calm"] },
       "trail": { "label": "산책로", "parent": "park", "aliases": ["둘레길"] },
       "river": { "label": "강", "parent": "scenery", "aliases": ["강변", "한강", "하천", "개울"], "evokes": ["calm"] },
       "sea": { "label": "바다", "parent": "scenery", "aliases": ["바닷가", "해변", "해수욕장", "해안"], "evokes": ["refreshing"] },
-      "mountain": { "label": "산", "parent": "scenery", "aliases": ["등산로", "산길"], "evokes": ["refreshing"] },
+      "mountain": { "label": "산", "parent": "scenery", "aliases": ["등산로", "산길", "산지", "산악", "산악 지대"], "evokes": ["refreshing"] },
       "tourist_spot": { "label": "관광지", "roleAffinity": "establish", "aliases": ["명소", "랜드마크"], "evokes": ["lively"] },
       "exhibition": { "label": "전시", "parent": "tourist_spot", "aliases": ["전시장", "전시회", "미술관", "박물관", "갤러리"], "evokes": ["calm"] }
     },

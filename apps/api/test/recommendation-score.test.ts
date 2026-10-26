@@ -82,7 +82,7 @@ describe('assignSlots', () => {
     expect(score - noMatch).toBeCloseTo(SCORE_WEIGHTS.keyword, 5);
   });
 
-  it('하위 개념은 슬롯을 온전히 채우고, 상위 개념은 반만 채운다', () => {
+  it('하위 개념은 슬롯을 온전히 채우고, 상위 개념은 채우지 않는다', () => {
     const shop: ScoringSlot = { slotId: 'shop', position: 0, hints: { places: ['shop'] } };
     const cafe: ScoringSlot = { slotId: 'cafe', position: 0, hints: { places: ['cafe'] } };
     const empty = (slot: ScoringSlot) => scorePair(slot, 1, candidate('none', 0), 1);
@@ -92,11 +92,8 @@ describe('assignSlots', () => {
       SCORE_WEIGHTS.keyword,
       5,
     );
-    // 가게라고만 했으면 카페일 수도 있다 — 잠정 0.5.
-    expect(scorePair(cafe, 1, candidate('y', 0, { places: ['가게'] }), 1) - empty(cafe)).toBeCloseTo(
-      SCORE_WEIGHTS.keyword * 0.5,
-      5,
-    );
+    // 가게라고만 했으면 카페가 아닌 때가 많다 — 2026-10-26 실측(backlog A-6)으로 0. 그 전에는 SCORE_WEIGHTS.keyword * 0.5 였다.
+    expect(scorePair(cafe, 1, candidate('y', 0, { places: ['가게'] }), 1)).toBeCloseTo(empty(cafe), 5);
     // 형제(식당)는 맞지 않는다.
     expect(scorePair(cafe, 1, candidate('z', 0, { places: ['음식점'] }), 1)).toBeCloseTo(empty(cafe), 5);
   });
