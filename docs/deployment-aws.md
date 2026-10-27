@@ -341,3 +341,44 @@ Android SDK 가 없는 컴퓨터에서도 만들 수 있고, 결과가 설치 �
 - **Supabase 값은 서버와 같은 프로젝트여야 한다.** 서버 시크릿의 `SUPABASE_URL` 과 같은 프로젝트의 URL, 그 프로젝트 대시보드
   (Project Settings → API Keys)의 publishable 또는 anon 키를 넣는다. 서버는 anon 키가 없어도 된다(JWKS 로 검증) —
   시크릿에 없다고 앱도 비워 두면 로그인이 안 된다.
+
+### Google Play 내부 테스트로 내기
+
+회사 Google Play Console 의 내부 테스트 트랙으로 테스터에게 낸다(2026-10-27 부터). 패키지 이름은 `com.dweax.snaply` 다 — 위 APK 의 예전 이름
+(`com.anonymous.snaplyapp`)과 다른 앱이라, 예전 테스터 앱은 따로 남는다. 패키지 · 서명을 이렇게 정한 이유는
+[decisions/android-release-config.md](./decisions/android-release-config.md) "패키지 이름 · 업로드 키", 설정 위치는
+[app-branding-and-native-config.md](../apps/mobile/docs/workflows/app-branding-and-native-config.md#package-name-and-release-signing)다.
+
+**한 번만 하는 준비**
+
+1. **Firebase** — 프로젝트 `snaply-829b9` 에 Android 앱 `com.dweax.snaply` 를 더하고, 받은 `google-services.json` 으로 `apps/mobile/google-services.json`
+   을 바꾼다(예전 패키지의 client 도 함께 들어 있다). 이 패키지의 client 가 없으면 debug 를 포함한 모든 Android 빌드가 실패한다.
+2. **업로드 키** — 저장소 밖에 만들고, 키 파일과 비밀번호를 잃지 않게 회사 보관소에 둔다(잃으면 Play 지원팀에 재설정을 요청해야 한다).
+
+   ```bash
+   keytool -genkeypair -v -storetype PKCS12 -keystore ~/keys/snaply-upload.keystore -alias snaply-upload -keyalg RSA -keysize 2048 -validity 10000
+   ```
+
+   `~/.gradle/gradle.properties` 에 `SNAPLY_UPLOAD_STORE_FILE`(절대 경로) · `SNAPLY_UPLOAD_STORE_PASSWORD` · `SNAPLY_UPLOAD_KEY_ALIAS` · `SNAPLY_UPLOAD_KEY_PASSWORD` 를 적는다.
+3. **Play Console** — 회사 개발자 계정에서 앱을 만들고(앱 이름 Snaply, 무료), 테스트 → 내부 테스트에서 테스터 이메일 목록을 만든다. 첫 업로드 때
+   Play 앱 서명(Google 이 앱 서명 키를 보관)을 받아들인다.
+
+**올릴 때마다**
+
+`apps/mobile/app.json` 의 `android.versionCode` 를 1 올린 뒤(첫 업로드는 1), 위 APK 와 같이 prebuild 로 `android/` 를 다시 만들고 번들을 만든다.
+
+```bash
+cd apps/mobile/android && EXPO_PUBLIC_API_BASE_URL=https://snaply-api.dweaxai.com ./gradlew app:bundleRelease -x lint -x test
+```
+
+```bash
+unzip -p app/build/outputs/bundle/release/app-release.aab base/assets/index.android.bundle | grep -ao 'https://snaply-api.dweaxai.com'
+```
+
+```bash
+keytool -printcert -jarfile app/build/outputs/bundle/release/app-release.aab | grep -i 'owner'
+```
+
+두 번째 명령이 주소를 한 줄 내고, 세 번째가 debug 인증서(`CN=Android Debug`)가 아닌 업로드 키의 소유자를 내면 된다. Play Console 의 내부 테스트 → 새 버전
+만들기에 `app-release.aab` 를 올리고 출시한다. 테스터는 내부 테스트의 참여 링크로 받는다. 백그라운드 위치(위치 알림) 같은 민감한 권한은 Play 가 신고서를
+요구할 수 있다 — 출시가 막히면 그 화면이 알려 준다.

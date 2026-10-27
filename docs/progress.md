@@ -2878,3 +2878,18 @@ release 빌드 — EAS 무료 빌드 한도 소진)을 에뮬레이터에 깔아
 - **바꾼 것** — 워커 `config.EDIT_TIMEOUT_SECONDS` 기본값 600 → 900. `env-spec.ts` · `.env.example` · api-spec.md(`TIMEOUT` 설명) · MOV-5 라벨 ·
   deployment-aws.md §6 을 맞췄다. 운영은 코드 기본값을 쓴다 — Secrets Manager 에 `EDIT_TIMEOUT_SECONDS` 가 있으면 그 값이 이긴다.
 - **남은 것** — 최대 길이 무비의 실측(A-18). 900초에 가까우면 다시 정한다.
+
+## 2026-10-27 (이어서) — Play 내부 테스트 준비 — 패키지 `com.dweax.snaply` · 업로드 키 서명(backlog A-18)
+
+테스터 버전을 회사 Google Play Console 내부 테스트로 낸다(2026-10-30 까지, 오너 결정). 결정 · 기각한 대안은
+[decisions/android-release-config.md](./decisions/android-release-config.md) "패키지 이름 · 업로드 키".
+
+- **바꾼 것** — `app.json` 의 `android.package` 를 `com.anonymous.snaplyapp` → `com.dweax.snaply`(오너 결정, Play 는 바꿀 수 없다), `android.versionCode: 1`.
+  새 설정 플러그인 `plugins/with-release-signing.js` 가 release 를 업로드 키로 서명한다 — 키 · 비밀번호는 Gradle 속성(`SNAPLY_UPLOAD_*`, 저장소 밖)이고, 없으면
+  debug 키 그대로라 테스터 APK 는 어디서나 빌드된다. prebuild 템플릿이 바뀌어 고칠 자리를 못 찾으면 플러그인이 prebuild 를 실패시킨다(조용히 debug 키로 남지 않게).
+  기기 설치 스크립트의 앱 id 도 바꿨다. iOS 번들 ID 는 그대로다.
+- **아직 빌드는 못 한다** — Firebase 의 `google-services.json` 에 새 패키지의 client 가 없어 Android 빌드(debug 포함)가 실패한다. Firebase 앱 등록 · 업로드 키 ·
+  Play Console 앱 만들기는 오너 몫이다(deployment-aws.md §8 "Google Play 내부 테스트로 내기").
+- **확인** — 플러그인 테스트(템플릿에 서명 넣기 · debug 빌드와 키 없는 release 는 debug 키 · 두 번 돌려도 같음 · 템플릿이 바뀌면 실패), 지금 `android/app/build.gradle`
+  에 플러그인을 돌려 `signingConfigs.release` 와 조건부 `signingConfig` 가 들어가는 것을 봤다. `release-config.test.ts` 가 패키지 이름과 플러그인 등록을 고정한다.
+  `npm run verify:mobile` 239 suites / 1,768 tests 통과(lint 경고 2건은 이번에 손대지 않은 테스트 파일의 것).

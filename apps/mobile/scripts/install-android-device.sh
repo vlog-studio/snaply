@@ -23,7 +23,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
 SDK_DIR="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 ADB="$SDK_DIR/platform-tools/adb"
-APP_ID="com.anonymous.snaplyapp"
+APP_ID="com.dweax.snaply"
 SCHEME="snaplyapp"
 METRO_PORT=8081
 

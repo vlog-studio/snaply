@@ -1,7 +1,7 @@
 # Android 첫 출시 설정 — 최소 Android 9, 대화면에서도 세로 고정, 라우트 사이트맵 끄기
 
 **작성일**: 2026-10-19
-**상태**: 결정 — 최소 Android 9(API 28), Android 16 대화면에서도 세로 고정(임시 옵트아웃), Expo Router 라우트 사이트맵 끄기
+**상태**: 결정 — 최소 Android 9(API 28), Android 16 대화면에서도 세로 고정(임시 옵트아웃), Expo Router 라우트 사이트맵 끄기. 2026-10-27: 패키지 이름 `com.dweax.snaply` · 업로드 키 서명
 **원천**: Android 앱의 최소 버전 · Android 16 대화면의 화면 방향 · 라우트 사이트맵을 이렇게 정한 이유. 설정 위치 · 생성되는 네이티브 파일 · 확인 방법은
 [app-branding-and-native-config.md](../../apps/mobile/docs/workflows/app-branding-and-native-config.md#android-platform-settings)다
 **출처**: 2026-10-19 출시 점검(오너 결정 — minSdk 28 · 대화면 세로 고정 · 사이트맵 끄기) · [backlog.md](../backlog.md) A-15
@@ -43,3 +43,26 @@
 
 - **targetSdk 를 37 로 올리기 전** — 옵트아웃이 더는 듣지 않는다. 그 전에 넓은 화면 · 가로 레이아웃이 있어야 한다.
 - **minSdk** — Android 9 미만 지원 요구가 생기면 대안 1(테두리)과 함께 다시 본다. React Native 가 낮은 버전에서 바깥 그림자를 그리게 되어도 다시 본다.
+
+## 패키지 이름 · 업로드 키 (2026-10-27 덧붙임)
+
+테스터 버전을 회사 Google Play Console 의 내부 테스트로 낸다(2026-10-30 까지, 오너 결정). Play 는 한 번 올린 앱의 패키지 이름을 바꿀 수 없고, debug 키로
+서명한 번들을 받지 않는다.
+
+1. **Android 패키지 이름은 `com.dweax.snaply` 다**(오너 결정). Expo 기본값 `com.anonymous.snaplyapp` 를 버린다. 회사 메일 도메인(`dweax.com`) 기준이다.
+   패키지가 바뀌면 기기에서는 다른 앱이다 — 예전 개발 · 테스터 앱은 따로 남는다. Firebase 에 이 패키지의 Android 앱을 더해 받은 `google-services.json`
+   이 있어야 Android 빌드가 된다(FCM). iOS 번들 ID 는 iOS 출시 전(backlog A-4)이라 그대로 둔다. 딥링크 스킴 `snaplyapp://` 은 패키지와 무관해 그대로다.
+2. **release 는 업로드 키로 서명한다.** 키와 비밀번호는 저장소에 넣지 않고 Gradle 속성(`~/.gradle/gradle.properties` 의 `SNAPLY_UPLOAD_STORE_FILE` ·
+   `SNAPLY_UPLOAD_STORE_PASSWORD` · `SNAPLY_UPLOAD_KEY_ALIAS` · `SNAPLY_UPLOAD_KEY_PASSWORD`)으로 읽는다(`apps/mobile/plugins/with-release-signing.js`).
+   속성이 없으면 debug 키 그대로라 테스터 APK([deployment-aws.md](../deployment-aws.md) §8)는 어느 컴퓨터에서나 빌드된다. 앱 서명 키는 Play 앱 서명(Google 보관)에 맡긴다.
+3. **`versionCode` 는 `app.json` 에 둔다**(`appVersionSource: local`). Play 에 올릴 때마다 1 씩 올린다.
+
+**기각한 대안**
+
+| 대안 | 기각 이유 |
+|---|---|
+| `com.anonymous.snaplyapp` 그대로 | Firebase 를 건드리지 않아도 되지만, 정식 출시도 이 이름으로 가야 한다 — Play 는 패키지 이름을 바꿀 수 없다 |
+| EAS 가 업로드 키를 만들고 보관(`eas credentials`) · EAS 로 AAB 빌드 | EAS 프로젝트가 개인 Expo 계정(`dayomi`)에 있고 2026-10-26 무료 빌드 한도를 다 썼다. 회사 앱의 키가 개인 계정에 묶인다 |
+| 업로드 키 비밀번호를 `android/` 나 `eas.json` 에 | `android/` 는 prebuild 가 다시 만들고, 저장소는 공개라 비밀값을 둘 수 없다 |
+
+**다시 볼 때**: EAS 프로젝트를 회사 Expo 조직으로 옮기면 업로드 키를 EAS 로 옮길지 본다. iOS 출시 전에 번들 ID 를 같은 이름으로 맞출지 정한다.

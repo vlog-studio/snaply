@@ -27,10 +27,16 @@ describe('the Android release config in app.json', () => {
     expect(pluginOptions('expo-router')).toEqual({ sitemap: false });
   });
 
+  // Google Play never lets an app change its package once uploaded.
+  it('ships as com.dweax.snaply', () => {
+    expect(appConfig.expo.android.package).toBe('com.dweax.snaply');
+  });
+
   // A plugin that is not registered never runs, however well its own test passes.
   it.each([
     './plugins/with-paper-window-background.js',
     './plugins/with-large-screen-portrait-lock.js',
+    './plugins/with-release-signing.js',
   ])('registers %s', (plugin) => {
     expect(plugins).toContain(plugin);
   });

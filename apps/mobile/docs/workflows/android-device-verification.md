@@ -20,7 +20,7 @@ Resolve the serial at run time and target it explicitly; never hardcode it. A wi
 
 ```bash
 DEVICE=$(adb devices -l | awk '/model:SM_S908N/ {print $1; exit}')
-PKG=com.anonymous.snaplyapp
+PKG=com.dweax.snaply
 ```
 
 The **one** device can hold **both** transports at once — `adb connect` and mDNS pairing each register a serial, so `adb devices` lists two entries for the same phone. Hence the `exit`: without it the variable holds two serials and every `adb -s` call fails. Either transport works; take the first.

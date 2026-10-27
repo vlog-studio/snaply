@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.snaplyapp",
+      "package": "com.dweax.snaply",
+      "versionCode": 1,
       "googleServicesFile": "./google-services.json",
       "permissions": ["android.permission.CAMERA", "android.permission.RECORD_AUDIO"],
       "blockedPermissions": ["android.permission.READ_MEDIA_VISUAL_USER_SELECTED"]
@@ -138,7 +139,8 @@
       ],
       "./plugins/with-gradle-jvmargs.js",
       "./plugins/with-paper-window-background.js",
-      "./plugins/with-large-screen-portrait-lock.js"
+      "./plugins/with-large-screen-portrait-lock.js",
+      "./plugins/with-release-signing.js"
     ],
     "experiments": {
       "typedRoutes": true,

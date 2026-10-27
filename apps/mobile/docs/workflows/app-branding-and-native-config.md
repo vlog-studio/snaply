@@ -34,6 +34,8 @@ Consequences you must internalize:
 | Minimum Android version | `expo-build-properties` plugin config → `android.minSdkVersion` | `android/gradle.properties` → `android.minSdkVersion` (read into `rootProject.ext.minSdkVersion`) |
 | Android window background | `plugins/with-paper-window-background.js` | `res/values/colors.xml` and `res/values-night/colors.xml` → `activityBackground`; `res/values/styles.xml` → `AppTheme` `android:windowBackground` |
 | Android 16 large-screen opt-out | `plugins/with-large-screen-portrait-lock.js` | `AndroidManifest.xml` → `<application>` `<property android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY">` |
+| Android package · version code | `expo.android.package` (`com.dweax.snaply`) · `expo.android.versionCode` in `app.json` | `android/app/build.gradle` → `namespace` · `applicationId` · `versionCode` |
+| Release signing | `plugins/with-release-signing.js` + the `SNAPLY_UPLOAD_*` Gradle properties (outside the repo) | `android/app/build.gradle` → `signingConfigs.release` and the release build type's `signingConfig` |
 | Route sitemap | `expo-router` plugin config → `sitemap` | not native: `extra.router` in the app config, which the build embeds (`expo-constants`) and Metro serves in development |
 
 ## App font
@@ -71,7 +73,7 @@ The fonts cannot reach text the OS draws: permission dialogs, `Alert`, notificat
 
 ## Android platform settings
 
-Four settings shape the Android app outside React. They were set together for the first release (2026-10-19); the reasons and the alternatives turned down are in the decision record [`android-release-config.md`](../../../../docs/decisions/android-release-config.md). All four take effect only in a **new build** — none is a JavaScript change. Three of them (all but the sitemap) live in generated `android/` files, so a local build from an existing `android/` leaves them out until a prebuild regenerates it ([pitfall](#known-pitfalls-all-observed-on-this-project)).
+Four settings shape the Android app outside React. They were set together for the first release (2026-10-19); the package name and release signing joined them for the Google Play internal test (2026-10-27, [below](#package-name-and-release-signing)); the reasons and the alternatives turned down are in the decision record [`android-release-config.md`](../../../../docs/decisions/android-release-config.md). All four take effect only in a **new build** — none is a JavaScript change. Three of them (all but the sitemap) live in generated `android/` files, so a local build from an existing `android/` leaves them out until a prebuild regenerates it ([pitfall](#known-pitfalls-all-observed-on-this-project)).
 
 | Setting | Where | What it does | To see it |
 | --- | --- | --- | --- |
@@ -88,9 +90,24 @@ Four settings shape the Android app outside React. They were set together for th
 
 Android 16 (API 36) ignores `screenOrientation`, `resizeableActivity`, `minAspectRatio` and `maxAspectRatio` on displays whose smallest width is at least 600dp for apps that target API 36 — this app does, through React Native's version catalog (`targetSdk = "36"`). The property is Android's documented opt-out ([behavior changes: Android 16](https://developer.android.com/about/versions/16/behavior-changes-16#ignore-orientation)). It is on the application rather than `MainActivity` so library activities keep their Android 15 behavior too. **It stops working once the app targets API 37**: a layout for wide screens has to exist before `targetSdkVersion` is raised to 37. Multi-window is unaffected — it was allowed before and still is.
 
+### Package name and release signing
+
+The Android package is **`com.dweax.snaply`** (until 2026-10-27 the Expo default `com.anonymous.snaplyapp`). Google Play never lets an uploaded app change it, so `plugins/release-config.test.ts` pins it. A new package is a different app on a device: an installed build under the old package stays beside the new one. `google-services.json` must hold a client for this package — the Google Services Gradle plugin fails every Android build, debug included, when none matches. The iOS bundle identifier is unchanged until the iOS launch.
+
+`plugins/with-release-signing.js` adds `signingConfigs.release` to `app/build.gradle` and points the release build type at it **when the Gradle property `SNAPLY_UPLOAD_STORE_FILE` is set**; otherwise release keeps the template's debug keystore, so the tester APK still builds anywhere. The upload key and its passwords never enter the repository — put them in `~/.gradle/gradle.properties`:
+
+```properties
+SNAPLY_UPLOAD_STORE_FILE=/absolute/path/to/snaply-upload.keystore
+SNAPLY_UPLOAD_STORE_PASSWORD=...
+SNAPLY_UPLOAD_KEY_ALIAS=snaply-upload
+SNAPLY_UPLOAD_KEY_PASSWORD=...
+```
+
+The plugin throws during prebuild if the template's debug-signed release block is gone, rather than leaving release on the debug key. `versionCode` comes from `app.json` (`eas.json` `appVersionSource: local`); raise it by one for every bundle uploaded to Play. Build the bundle with `./gradlew app:bundleRelease` (procedure: root [`docs/deployment-aws.md`](../../../../docs/deployment-aws.md) §8).
+
 ### Verify without touching `android/`
 
-The resulting native files can be read without a prebuild: `npx expo config --type introspect --json` (from `apps/mobile`) runs every plugin's mods in introspection mode and writes nothing. The results are under `_internal.modResults.android` — `gradleProperties` (`android.minSdkVersion`), `colors` / `colorsNight` (`activityBackground`), `styles` (`AppTheme` → `android:windowBackground`) and `manifest` (`manifest.application[0].property`) — and the router options under `extra.router`. Introspection starts from the existing `android/` files when they are there, so it shows what a prebuild would make of them. On a device: `adb shell dumpsys package com.anonymous.snaplyapp | grep minSdk` shows `minSdk=28` once the new build is installed.
+The resulting native files can be read without a prebuild: `npx expo config --type introspect --json` (from `apps/mobile`) runs every plugin's mods in introspection mode and writes nothing. The results are under `_internal.modResults.android` — `gradleProperties` (`android.minSdkVersion`), `colors` / `colorsNight` (`activityBackground`), `styles` (`AppTheme` → `android:windowBackground`) and `manifest` (`manifest.application[0].property`) — and the router options under `extra.router`. Introspection starts from the existing `android/` files when they are there, so it shows what a prebuild would make of them. On a device: `adb shell dumpsys package com.dweax.snaply | grep minSdk` shows `minSdk=28` once the new build is installed.
 
 ## Standard procedure
 

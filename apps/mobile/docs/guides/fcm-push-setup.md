@@ -25,7 +25,7 @@
 | `GoogleService-Info.plist` (iOS) | Firebase → iOS 앱 등록 후 다운로드 | 모바일 workspace 루트 `apps/mobile/GoogleService-Info.plist` | iOS 쓸 때 |
 | APNs 인증 키 `.p8` | Apple Developer → Keys | Firebase → 프로젝트 설정 → Cloud Messaging 에 업로드 | iOS 실수신 시 |
 
-> **앱 식별자는 이미 정해져 있습니다** (`app.json` 기준): Android `package` / iOS `bundleIdentifier` 모두 **`com.anonymous.snaplyapp`**. Firebase 앱 등록 시 이 값을 그대로 입력하세요.
+> **앱 식별자는 이미 정해져 있습니다** (`app.json` 기준): Android `package` 는 **`com.dweax.snaply`**(2026-10-27 바뀜 — Play 에 올릴 이름), iOS `bundleIdentifier` 는 **`com.anonymous.snaplyapp`**(iOS 출시 전까지 그대로). Firebase 앱 등록 시 이 값을 그대로 입력하세요.
 
 > **`google-services.json`·`GoogleService-Info.plist`는 비밀 키가 아닙니다**(클라이언트에 배포되는 공개 설정). 이 저장소는 두 파일을 `apps/mobile/`에 커밋해 두었으므로, 다른 Firebase 프로젝트로 옮길 때는 같은 경로의 파일을 교체합니다. 커밋하지 않는 방식으로 바꾸면 EAS 빌드에는 [EAS 파일 환경변수](https://docs.expo.dev/eas/environment-variables/)로 제공해야 합니다. FCM 자체는 SHA-1 지문이 필요 없습니다(그건 Google 로그인·Dynamic Links용).
 
@@ -39,7 +39,7 @@
 ## 2. Android 앱 등록 → `google-services.json`
 
 1. 프로젝트 개요 → **앱 추가 → Android**.
-2. **Android 패키지 이름**에 `com.anonymous.snaplyapp` 입력. (앱 닉네임·SHA-1은 선택, FCM엔 불필요)
+2. **Android 패키지 이름**에 `com.dweax.snaply` 입력. (앱 닉네임·SHA-1은 선택, FCM엔 불필요)
 3. **`google-services.json` 다운로드** → `apps/mobile/google-services.json`으로 저장.
 
 ## 3. iOS 앱 등록 → `GoogleService-Info.plist` (iOS 필요 시)

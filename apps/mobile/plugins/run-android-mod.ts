@@ -1,7 +1,7 @@
 import type { ExpoConfig } from 'expo/config';
 import type { ExportedConfig, Mod } from 'expo/config-plugins';
 
-type AndroidModName = 'colors' | 'colorsNight' | 'styles' | 'manifest';
+type AndroidModName = 'colors' | 'colorsNight' | 'styles' | 'manifest' | 'appBuildGradle';
 
 /**
  * Test helper: runs the chain of `android.<name>` mods the plugins applied to
