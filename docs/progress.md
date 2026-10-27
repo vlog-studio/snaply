@@ -2868,3 +2868,13 @@ release 빌드 — EAS 무료 빌드 한도 소진)을 에뮬레이터에 깔아
 - **검증** — 워커 이미지(`REQUIRE_FFMPEG=1`)에서 새 `tests/test_ffmpeg_error.py`(`-nostats` 넣기 · 종료 상태 문구 · `editor._run`)와 실제 ffmpeg 를 1.5초 뒤 죽이는
   계약 테스트(`FailureMessageContract`)를 더했다. 전체 `unittest discover`(E-63 포함) 610개 중 실패 1 — `test_reference_corpus` 의 'git 저장소 안 경로 거부'가 저장소 안
   경로를 거부하지 못했다. 테스트를 위해 복사한 디렉터리에 `.git` 이 없어서이고 이 변경과 무관하다(CI 의 checkout 에는 있다).
+
+## 2026-10-27 (이어서) — 편집 제한 시간 900초(backlog A-18)
+
+테스터 앱(2026-10-30, 회사 Play Console 내부 테스트)을 내기 전에 정했다. 최대 길이(100초) 무비는 2026-10-26 실측(60초 무비 435초)에 비례하면 약 720초라 600초
+제한에서 실패한다. 재 보고 정할 시간이 없어 오너 결정으로 제한을 먼저 올렸다 — 근거 · 치르는 값 · 기각한 대안은
+[decisions/aws-contest-server.md](./decisions/aws-contest-server.md) "편집 제한 시간 900초".
+
+- **바꾼 것** — 워커 `config.EDIT_TIMEOUT_SECONDS` 기본값 600 → 900. `env-spec.ts` · `.env.example` · api-spec.md(`TIMEOUT` 설명) · MOV-5 라벨 ·
+  deployment-aws.md §6 을 맞췄다. 운영은 코드 기본값을 쓴다 — Secrets Manager 에 `EDIT_TIMEOUT_SECONDS` 가 있으면 그 값이 이긴다.
+- **남은 것** — 최대 길이 무비의 실측(A-18). 900초에 가까우면 다시 정한다.

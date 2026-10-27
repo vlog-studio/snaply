@@ -80,7 +80,8 @@ S3_DOWNLOAD_URL_EXPIRY_SECONDS = int(
 
 # 편집 엔진
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "small")
-EDIT_TIMEOUT_SECONDS = int(os.environ.get("EDIT_TIMEOUT_SECONDS", "600"))
+# 최대 길이(100초) 무비가 공모전 서버에서 약 720초로 추정돼 600 → 900(docs/decisions/aws-contest-server.md 2026-10-27)
+EDIT_TIMEOUT_SECONDS = int(os.environ.get("EDIT_TIMEOUT_SECONDS", "900"))
 BGM_DIR = os.environ.get("BGM_DIR", "assets/bgm")
 # 이 접두의 버킷 객체(`{prefix}manifest.json` 과 곡)를 BGM_DIR 로 받아 온다(pipeline/music.py `sync_library`).
 # 비우면 받지 않고 BGM_DIR 에 둔 곡을 그대로 쓴다. 곡은 git 에 없다 — docs/decisions/bgm-sourcing.md

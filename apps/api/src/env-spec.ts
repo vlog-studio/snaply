@@ -553,7 +553,7 @@ export const ENV_VARS = [
     key: 'EDIT_TIMEOUT_SECONDS',
     required: false,
     origin: 'shared',
-    description: '편집 작업 1건의 타임아웃(초). 기본 600',
+    description: '편집 작업 1건의 타임아웃(초). 기본 900',
   },
   {
     key: 'TEXT_ACCENTS_ENABLED',
