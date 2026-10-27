@@ -70,8 +70,10 @@ export { MovieBgmCatalog } from './lib/movie-bgm';
 export { MovieStyleCatalog, movieStyleLabel, movieStyleOrDefault } from './lib/movie-style';
 export {
   MovieRecipeCatalog,
+  cutsAreAllAi,
   movieRecipeLabel,
   movieRecipeOrDefault,
+  recipePicksCuts,
   type MovieRecipeOption,
 } from './lib/movie-recipe';
 export { movieJobRatio } from './lib/movie-generation';

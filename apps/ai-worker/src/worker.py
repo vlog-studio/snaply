@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import hashlib
 import json
 import os
 import shutil
@@ -136,7 +137,8 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     # 2') 레시피가 컷까지 고르는 무비(MOV-28) — 컷 구간 · 순서를 전부 AI 가 정했을 때만(autoCuts). 레시피가 스냅에서 컷을
     #     다시 고르고(매치컷 · 점수 위주 순서) 효과 · 음원 · 글 · 효과음까지 한 번에 굽는다. 실패하면 아래 보통 경로로 간다.
     if timeline is not None and recipe_name != recipe.CLASSIC and edit_spec.get("autoCuts"):
-        trend = await _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir)
+        trend = await _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir,
+                                    _variant_key(data.get("movieId") or job_id, edit_spec))
         if trend is not None:
             await _finish(job_id, user_id, output_video_id, trend, work_dir)
             return
@@ -213,8 +215,17 @@ async def _finish(job_id: str, user_id: str, output_video_id: str, current: str,
     logger.info("편집 완료 job_id={} url={}", job_id, edited_url)
 
 
-async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir) -> str | None:
-    """레시피로 스냅에서 컷을 다시 골라 한 편을 굽는다(trend_edit.render). 실패하면 None — 보통 경로로 간다."""
+def _variant_key(movie_key: str, edit_spec: dict) -> str:
+    """레시피 편집의 시드 — 무비 + 구성(편집 스펙). 같은 구성으로 다시 만들면 같은 편집이고(MOV-14), 컷 · 레시피 · 스타일이 바뀌면 새로 고른다.
+    작업 id 를 넣던 때는 다시 만들 때마다 순서 · 효과가 바뀌어 MOV-14 와 어긋났다(backlog E-65, 2026-10-27)."""
+    digest = hashlib.sha256(json.dumps(edit_spec, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
+    return f"{movie_key}:{digest}"
+
+
+async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir,
+                        variant_key: str | None = None) -> str | None:
+    """레시피로 스냅에서 컷을 다시 골라 한 편을 굽는다(trend_edit.render). 실패하면 None — 보통 경로로 간다.
+    variant_key 는 순서 · 효과의 시드(`_variant_key`) — 없으면 무비 키."""
     movie_key = data.get("movieId") or job_id
     try:
         analyses, _motions = await db.fetch_accent_inputs(video_ids)
@@ -223,8 +234,8 @@ async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job
         track = music.pick_track(preset.bgm_tag, movie_key)
         await _progress(job_id, 20, "레시피 편집 중...")
         out = os.path.join(work_dir, "trend.mp4")
-        # 곡은 무비마다 같고(movie_key), 순서 · 효과의 시드는 작업마다 다르다 — 다시 만들 때마다 다른 변형(자유도가 있는 레시피)
-        result = await asyncio.to_thread(trend_edit.render, snaps, recipe_name, track, f"{movie_key}:{job_id}", work_dir, out)
+        # 곡은 무비마다 같고(movie_key), 순서 · 효과의 시드는 무비 + 구성이다 — 같은 구성이면 같은 편집(MOV-14)
+        result = await asyncio.to_thread(trend_edit.render, snaps, recipe_name, track, variant_key or movie_key, work_dir, out)
         logger.info(
             "레시피 편집 job_id={} recipe={} duration={} cuts={} links={} accents={} sfx={} edl={}",
             job_id, recipe_name, result.duration_s, len(result.cuts), [l.get("score") for l in result.links],

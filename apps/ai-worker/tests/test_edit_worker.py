@@ -234,6 +234,17 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         self.bgm.assert_not_called()  # 음원 · 글 · 효과음은 레시피 경로가 한 번에
         worker.storage.upload.assert_any_call("trend.mp4", mock.ANY, "video/mp4")
 
+    async def test_the_recipe_seed_follows_the_composition_not_the_job(self) -> None:
+        with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
+            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True}, enabled=False)
+        key = trend.await_args.args[-1]
+        spec = {**V3_SPEC, "recipe": "cinematic", "autoCuts": True}
+        self.assertEqual(key, worker._variant_key(key.split(":")[0], spec))
+        # 같은 구성이면 같은 시드(MOV-14 — 다시 만들어도 같은 편집), 레시피나 컷이 바뀌면 다른 시드. 작업 id 는 들어가지 않는다
+        self.assertEqual(worker._variant_key("m1", spec), worker._variant_key("m1", dict(reversed(list(spec.items())))))
+        self.assertNotEqual(worker._variant_key("m1", spec), worker._variant_key("m1", {**spec, "recipe": "fast-cut"}))
+        self.assertNotEqual(worker._variant_key("m1", spec), worker._variant_key("m2", spec))
+
     async def test_user_trimmed_movies_keep_their_cuts(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
             await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": False}, enabled=False)

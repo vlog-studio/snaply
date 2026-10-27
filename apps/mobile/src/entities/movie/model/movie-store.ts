@@ -6,7 +6,7 @@ import { createScopedPersistence, deleteScopedState } from '@/shared/lib/scoped-
 import { randomUuid } from '@/shared/lib/uuid';
 
 import { DefaultMovieBgm } from '../lib/movie-bgm';
-import { DefaultMovieRecipe, movieRecipeOrDefault } from '../lib/movie-recipe';
+import { DefaultMovieRecipe, movieRecipeOrDefault, recipePicksCuts } from '../lib/movie-recipe';
 import { DefaultMovieStyle } from '../lib/movie-style';
 import { mergeRemoteMovies, movieFromRemote, type PendingWrite } from '../lib/movie-sync';
 import { movieTitle } from '../lib/movie-title';
@@ -366,12 +366,19 @@ export const useMovieStore = create<MovieState>()(
                   // the job ends (a mid-job deletion has already stripped its
                   // refs by now) and the preset it was made with. Frozen here
                   // rather than by the caller so no runner can finish a job into
-                  // a render that cannot say.
+                  // a render that cannot say. A run whose recipe picked the cuts
+                  // (MOV-28) leaves the cut list unknown instead: the file is the
+                  // recipe's edit, not this list, and freezing the list would let
+                  // the restore return to a composition the file never had
+                  // (backlog E-66) — unknown disables the drift notice and the
+                  // restore rather than faking either.
                   render: {
                     ...render,
                     style: movie.style,
                     recipe: movieRecipeOrDefault(movie.recipe),
-                    snapRefs: [...movie.snapRefs].sort((left, right) => left.order - right.order),
+                    snapRefs: recipePicksCuts(movie)
+                      ? undefined
+                      : [...movie.snapRefs].sort((left, right) => left.order - right.order),
                   },
                   job: undefined,
                   settledJobId: movie.job?.id,

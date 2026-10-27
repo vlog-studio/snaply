@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
   MovieRecipeCatalog,
+  cutsAreAllAi,
   movieRecipeOrDefault,
   type Movie,
   type MovieStylePatch,
@@ -19,19 +20,6 @@ export type RecipePickerSheetProps = {
   onChange: (patch: MovieStylePatch) => void;
   onClose: () => void;
 };
-
-/**
- * Whether every cut is still the edit draft's — the order and every window.
- * Only then does the server re-cut the movie by its recipe; a movie the user
- * has touched keeps its cuts (root docs/api-spec.md, 무비 · `recipe`).
- */
-function cutsAreAllAi(movie: Movie): boolean {
-  return (
-    movie.arranger === 'ai' &&
-    movie.snapRefs.length > 0 &&
-    movie.snapRefs.every((ref) => ref.trimOwner === 'ai')
-  );
-}
 
 /**
  * The editing recipe, picked from a sheet (root docs/specs/movie.md MOV-28).

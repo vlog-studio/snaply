@@ -1,6 +1,6 @@
 import type { MOVIE_RECIPES } from '@vlog-studio/shared-types';
 
-import type { MovieRecipe } from '../model/movie';
+import type { Movie, MovieRecipe } from '../model/movie';
 
 /** One entry of the recipe catalog, as the recipe sheet draws it. */
 export type MovieRecipeOption = {
@@ -111,4 +111,28 @@ export function movieRecipeOrDefault(recipe: string | undefined): MovieRecipe {
 
 export function movieRecipeLabel(recipe: string | undefined): string {
   return RecipeOptions[movieRecipeOrDefault(recipe)].label;
+}
+
+/**
+ * Whether every cut is still the edit draft's — the order and every window.
+ * Only then does the server re-cut the movie by its recipe; a movie the user
+ * has touched keeps its cuts (root docs/api-spec.md, 무비 · `recipe`).
+ */
+export function cutsAreAllAi(movie: Pick<Movie, 'arranger' | 'snapRefs'>): boolean {
+  return (
+    movie.arranger === 'ai' &&
+    movie.snapRefs.length > 0 &&
+    movie.snapRefs.every((ref) => ref.trimOwner === 'ai')
+  );
+}
+
+/**
+ * Whether a run of this movie lets its recipe pick the cuts (root
+ * docs/specs/movie.md MOV-28): a recipe other than `classic` on cuts the AI
+ * still owns. The file of such a run is the recipe's edit — the same snap more
+ * than once, sped-up or split windows — which the cut list cannot say, so the
+ * list is the material the recipe chose from, not what the file plays.
+ */
+export function recipePicksCuts(movie: Pick<Movie, 'recipe' | 'arranger' | 'snapRefs'>): boolean {
+  return movieRecipeOrDefault(movie.recipe) !== DefaultMovieRecipe && cutsAreAllAi(movie);
 }

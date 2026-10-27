@@ -527,6 +527,41 @@ describe('generating a movie', () => {
     ]);
   });
 
+  // A recipe that picks the cuts (MOV-28) renders an edit the cut list cannot
+  // say — the same snap twice, sped-up or split windows — so freezing the list
+  // would let the restore return to a composition the file never had (E-66).
+  it('leaves the render cut list unknown when the recipe picked the cuts, and freezes it otherwise', async () => {
+    const aiCuts = [
+      { snapId: 's1', order: 0, trimOwner: 'ai' as const },
+      { snapId: 's2', order: 1, trimOwner: 'ai' as const },
+    ];
+    useMovieStore.setState({
+      movies: [
+        { ...makeMovie('recut', []), recipe: 'cinematic', arranger: 'ai', snapRefs: aiCuts },
+        { ...makeMovie('classic', []), arranger: 'ai', snapRefs: aiCuts },
+        {
+          ...makeMovie('touched', []),
+          recipe: 'cinematic',
+          arranger: 'ai',
+          snapRefs: [aiCuts[0], { snapId: 's2', order: 1 }],
+        },
+      ],
+    });
+    const { result } = await renderHook(() => ({
+      begin: useBeginMovieJob(),
+      finish: useCompleteMovieJob(),
+    }));
+
+    for (const id of ['recut', 'classic', 'touched']) {
+      await act(async () => result.current.begin(id, `job-${id}`, startedAt));
+      await act(async () => result.current.finish(id, render, 999));
+    }
+
+    expect(getMovieById('recut')?.render?.snapRefs).toBeUndefined();
+    expect(getMovieById('classic')?.render?.snapRefs).toEqual(aiCuts);
+    expect(getMovieById('touched')?.render?.snapRefs).toHaveLength(2);
+  });
+
   // Watch mode names the style off the render, so it has to be the preset the
   // run was made with — a finished movie's style may be changed in the studio
   // without the movie being made again.
