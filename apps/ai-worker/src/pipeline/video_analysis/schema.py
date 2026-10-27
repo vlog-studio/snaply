@@ -4,6 +4,8 @@
 그래서 스키마 강제와 별개로 애플리케이션에서 한 번 더 검증한다.
 """
 
+from loguru import logger
+
 from pipeline.video_analysis.prompt import VISUAL_ISSUE_CODES
 
 SCHEMA_NAME = "snap_analysis"
@@ -59,7 +61,10 @@ def _validate_string_list(field: str, value: object) -> list[str]:
     if not isinstance(value, list):
         raise ResultSchemaError(f"{field} 는 배열이어야 합니다.")
     if len(value) > MAX_LIST_ITEMS:
-        raise ResultSchemaError(f"{field} 항목이 {MAX_LIST_ITEMS} 개를 넘습니다: {len(value)}")
+        # 사물이 많은 장면에서 모델이 7개 이상을 낸다(샘플 32개 중 2개, backlog E-63). 거절하면 같은 호출을 한 번 더
+        # 사므로 앞의 것만 남긴다 — 프롬프트에 한도를 적는 안은 프롬프트 버전(운영 시크릿)을 올려야 하고 지킨다는 보장도 없다.
+        logger.info("{} 항목 {}개 중 앞 {}개만 남긴다", field, len(value), MAX_LIST_ITEMS)
+        value = value[:MAX_LIST_ITEMS]
     items: list[str] = []
     for item in value:
         if not isinstance(item, str):

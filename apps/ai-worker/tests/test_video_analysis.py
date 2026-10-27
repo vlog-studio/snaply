@@ -235,11 +235,12 @@ class ResultValidationTest(unittest.TestCase):
         with self.assertRaises(ResultSchemaError):
             validate_result(payload)
 
-    def test_rejects_overlong_list(self) -> None:
+    def test_keeps_the_first_items_of_an_overlong_list(self) -> None:
+        # 거절하면 같은 호출을 한 번 더 산다(backlog E-63) — 넘친 뒤쪽은 빈 문자열이어도 보지 않는다.
         payload = _valid_payload()
-        payload["topics"] = [f"주제{index}" for index in range(7)]
-        with self.assertRaises(ResultSchemaError):
-            validate_result(payload)
+        payload["objects"] = [f"사물{index}" for index in range(6)] + [" "]
+        result = validate_result(payload)
+        self.assertEqual(result["objects"], [f"사물{index}" for index in range(6)])
 
     def test_rejects_blank_list_item(self) -> None:
         payload = _valid_payload()
