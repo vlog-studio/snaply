@@ -2853,3 +2853,18 @@ release 빌드 — EAS 무료 빌드 한도 소진)을 에뮬레이터에 깔아
 - **택하지 않은 안** — 프롬프트에 한도를 적기. 프롬프트를 바꾸면 `VIDEO_ANALYSIS_PROMPT_VERSION` 과 운영 시크릿을 함께 올려야 하고, 적어도 모델이 지킨다는 보장이
   없어 검증은 어차피 남는다.
 - **검증** — 워커 이미지(`snaply-ai-worker:measure`)에서 `tests.test_video_analysis` 통과. 거절을 고정하던 테스트를 '앞의 6개를 남기고 넘친 뒤쪽은 보지 않는다'로 바꿨다.
+
+## 2026-10-27 (이어서) — ffmpeg 실패의 원인이 오류에 남는다(backlog E-64 ①)
+
+오류에는 ffmpeg stderr 의 끝 800자만 싣는데, 그 자리를 진행 표시줄(`frame=… speed=…`)이 채워 원인이 잘렸다. 메모리 부족으로 커널이 죽이면(`SIGKILL`) ffmpeg 는
+아무 말도 남기지 못해 종료 이유도 없었다.
+
+- **바꾼 것** — 새 `pipeline/ffmpeg_error.py`. `editor._run`(편집 · `cut_fx` · `trend_edit`) · `rendition._run` 이 ffmpeg 를 `-nostats` 로 돌리고, 효과음 합성(`sfx`) ·
+  액센트 합성(`accent_stage`)은 명령에 `-nostats` 를 넣었다. 다섯 곳(스티커 트랙 `sticker_render` 포함 — 이미 `-v error`)이 종료 코드 · 신호를 오류 **끝**에 붙인다
+  (`… (exit 1)`, `… (SIGKILL — 메모리 부족으로 강제 종료됐을 수 있다)`) — 작업 실패 기록(`edit_jobs.error_message`)은 앞 1,000자를, 마지막 손질 실패 로그는 끝 300자를
+  자르므로 끝에 둔다. 운영 사양 메모리 실측(②)은 E-64 에 남았다.
+- **전후 비교**(워커 이미지 `snaply-ai-worker:measure`, ffmpeg 7.1.5) — 1080x1920 인코딩을 2초 뒤 `SIGKILL` 로 끝냈다. 예전 문구는 끝이 진행 줄 3개였고 종료 이유가
+  없었다(`returncode -9`). 고친 문구는 진행 줄 0개 · 출력 스트림 정보 뒤 `(SIGKILL — …)` 로 끝난다. 실제 렌더(435초)였다면 진행 줄이 800자를 다 채운다.
+- **검증** — 워커 이미지(`REQUIRE_FFMPEG=1`)에서 새 `tests/test_ffmpeg_error.py`(`-nostats` 넣기 · 종료 상태 문구 · `editor._run`)와 실제 ffmpeg 를 1.5초 뒤 죽이는
+  계약 테스트(`FailureMessageContract`)를 더했다. 전체 `unittest discover`(E-63 포함) 610개 중 실패 1 — `test_reference_corpus` 의 'git 저장소 안 경로 거부'가 저장소 안
+  경로를 거부하지 못했다. 테스트를 위해 복사한 디렉터리에 `.git` 이 없어서이고 이 변경과 무관하다(CI 의 checkout 에는 있다).

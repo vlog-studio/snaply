@@ -12,7 +12,7 @@ from functools import lru_cache
 from loguru import logger
 
 import pipeline.hdr as hdr
-from pipeline import color_match
+from pipeline import color_match, ffmpeg_error
 from pipeline import transition as tr
 from pipeline.render_spec import RenderSpec, build_video_filter
 
@@ -82,10 +82,11 @@ def get_preset(name: str) -> StylePreset:
 
 
 def _run(cmd: list[str]) -> None:
+    cmd = ffmpeg_error.no_stats(cmd)
     logger.debug("ffmpeg: {}", " ".join(cmd))
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
-        raise RuntimeError(f"ffmpeg 실패: {proc.stderr[-800:]}")
+        raise RuntimeError(f"ffmpeg 실패: {ffmpeg_error.describe(proc.returncode, proc.stderr)}")
 
 
 def _file_key(path: str) -> tuple[str, int, int]:

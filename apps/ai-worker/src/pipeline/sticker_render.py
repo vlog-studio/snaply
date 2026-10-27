@@ -13,7 +13,7 @@ from functools import lru_cache
 from PIL import Image, ImageFilter
 
 import config
-from pipeline import face as fc, layout
+from pipeline import face as fc, ffmpeg_error, layout
 from pipeline.sticker import Sticker
 
 EMOJI_DIR = config.WORKER_ROOT / "assets" / "stickers" / "emoji"
@@ -148,5 +148,5 @@ def bake_overlay(stickers: list[Sticker], total_ms: int, out_path: str, faces: t
     _, err = proc.communicate()
     if proc.returncode != 0:
         stderr = err.decode("utf-8", "replace") if err else ""
-        raise StickerRenderError(f"스티커 트랙 인코딩 실패: {stderr.strip()[-500:]}")
+        raise StickerRenderError(f"스티커 트랙 인코딩 실패: {ffmpeg_error.describe(proc.returncode, stderr, 500)}")
     return out_path

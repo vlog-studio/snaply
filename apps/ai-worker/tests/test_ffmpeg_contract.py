@@ -23,8 +23,10 @@ import struct
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import datetime, timedelta, timezone
+from unittest import mock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
@@ -1156,6 +1158,27 @@ class CutFxContract(unittest.TestCase):
             out = editor.join_prepared(prepared, [Transition("flash", 200)], DEFAULT_RENDER_SPEC, work)
             self.assertAlmostEqual(duration_of(out), 2.0, delta=0.1)
             self.assertGreater(max(pixel(out, 1.0)), 180)
+
+
+@unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
+class FailureMessageContract(unittest.TestCase):
+    """도중에 죽은 ffmpeg 도 원인이 오류에 남는다(backlog E-64 ①)."""
+
+    def test_a_killed_encode_names_the_signal_instead_of_progress_lines(self) -> None:
+        real_popen = subprocess.Popen
+
+        def popen(*args, **kwargs):
+            proc = real_popen(*args, **kwargs)
+            # 진행 표시줄이 몇 번 찍힐 만큼 돌린 뒤, 메모리가 모자랄 때 커널이 하듯 SIGKILL 로 끝낸다
+            threading.Timer(1.5, proc.kill).start()
+            return proc
+
+        with mock.patch("subprocess.Popen", side_effect=popen), self.assertRaises(RuntimeError) as caught:
+            editor._run(["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc2=size=1080x1920:rate=30:duration=600",
+                         "-c:v", "libx264", "-preset", "ultrafast", "-f", "null", "-"])
+        message = str(caught.exception)
+        self.assertNotIn("frame=", message)
+        self.assertTrue(message.endswith("(SIGKILL — 메모리 부족으로 강제 종료됐을 수 있다)"), message[-200:])
 
 
 class ParseEbur128Test(unittest.TestCase):

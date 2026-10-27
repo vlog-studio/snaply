@@ -19,8 +19,8 @@ from dataclasses import dataclass, field
 
 from loguru import logger
 
-from pipeline import (accent_inputs, accent_render, ass, beat_grid, content, density, recipe, seed, sfx, sticker,
-                      sticker_render, title_card)
+from pipeline import (accent_inputs, accent_render, ass, beat_grid, content, density, ffmpeg_error, recipe, seed, sfx,
+                      sticker, sticker_render, title_card)
 from pipeline import text_accent as ta
 
 # 곡이 없거나 분석하지 못했을 때의 박자 간격(120 BPM)
@@ -126,13 +126,13 @@ def composite(video_in: str, track: str, document: str, out: str) -> None:
     """영상 → 스티커 트랙 → 글 순서로 겹친다. 소리는 그대로 둔다."""
     graph = f"[0:v][1:v]overlay=0:0:format=auto:eof_action=pass[st];[st]{ass.filter_arg(document)}[v]"
     result = subprocess.run(
-        ["ffmpeg", "-y", "-i", video_in, "-i", track, "-filter_complex", graph,
+        ["ffmpeg", "-nostats", "-y", "-i", video_in, "-i", track, "-filter_complex", graph,
          "-map", "[v]", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-crf", FINAL_CRF,
          "-profile:v", "high", "-pix_fmt", "yuv420p", "-c:a", "copy", out],
         capture_output=True, text=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(f"액센트 합성 실패: {result.stderr[-500:]}")
+        raise RuntimeError(f"액센트 합성 실패: {ffmpeg_error.describe(result.returncode, result.stderr, 500)}")
 
 
 def apply(video_in: str, cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]],

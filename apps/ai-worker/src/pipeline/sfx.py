@@ -16,7 +16,7 @@ from functools import lru_cache
 import numpy as np
 
 import config
-from pipeline import accent_fit, text_accent as ta
+from pipeline import accent_fit, ffmpeg_error, text_accent as ta
 from pipeline import vocabulary as _vocabulary
 
 VOCABULARY: dict = _vocabulary.load("sfx-vocabulary.json")
@@ -161,8 +161,8 @@ def mix_into(video_in: str, events: list[SfxEvent], out: str, duck: bool = False
                  f"release={d['releaseMs']}[ducked];[ducked][fxout]amix=inputs=2:duration=first:normalize=0[a]")
     else:
         graph = ";".join(parts) + f";[0:a]{labels}amix=inputs={len(events) + 1}:duration=first:normalize=0[a]"
-    result = subprocess.run(["ffmpeg", "-y", *inputs, "-filter_complex", graph, "-map", "0:v", "-map", "[a]",
+    result = subprocess.run(["ffmpeg", "-nostats", "-y", *inputs, "-filter_complex", graph, "-map", "0:v", "-map", "[a]",
                              "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", out], capture_output=True, text=True)
     if result.returncode != 0:
-        raise RuntimeError(f"효과음 합성 실패: {result.stderr[-500:]}")
+        raise RuntimeError(f"효과음 합성 실패: {ffmpeg_error.describe(result.returncode, result.stderr, 500)}")
     return out

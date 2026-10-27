@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from loguru import logger
 
 import pipeline.hdr as hdr
+from pipeline import ffmpeg_error
 
 #: 배포본의 세로 상한. 원본이 이보다 작으면 키우지 않는다 — 화질은 늘지 않고 용량만 는다.
 MAX_HEIGHT = 1920
@@ -45,10 +46,11 @@ class RenditionOutcome:
 
 
 def _run(cmd: list[str]) -> None:
+    cmd = ffmpeg_error.no_stats(cmd)
     logger.debug("ffmpeg: {}", " ".join(cmd))
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
-        raise RenditionError(f"ffmpeg 실패: {proc.stderr[-800:]}")
+        raise RenditionError(f"ffmpeg 실패: {ffmpeg_error.describe(proc.returncode, proc.stderr)}")
 
 
 def probe_duration_ms(path: str) -> int | None:
