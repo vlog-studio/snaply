@@ -2893,3 +2893,17 @@ release 빌드 — EAS 무료 빌드 한도 소진)을 에뮬레이터에 깔아
 - **확인** — 플러그인 테스트(템플릿에 서명 넣기 · debug 빌드와 키 없는 release 는 debug 키 · 두 번 돌려도 같음 · 템플릿이 바뀌면 실패), 지금 `android/app/build.gradle`
   에 플러그인을 돌려 `signingConfigs.release` 와 조건부 `signingConfig` 가 들어가는 것을 봤다. `release-config.test.ts` 가 패키지 이름과 플러그인 등록을 고정한다.
   `npm run verify:mobile` 239 suites / 1,768 tests 통과(lint 경고 2건은 이번에 손대지 않은 테스트 파일의 것).
+
+## 2026-10-27 (이어서) — Play 내부 테스트용 번들 1.0.0(1) 빌드(backlog A-18)
+
+Firebase 프로젝트 `snaply-829b9` 에 Android 앱 `com.dweax.snaply` 를 더해 받은 `google-services.json`(예전 패키지의 client 도 함께)을 넣고, 오너가 만든 업로드 키를
+`~/.gradle/gradle.properties` 로 읽어 main `88aed66` 을 빌드했다.
+
+- **빌드** — `expo prebuild --clean --platform android` 뒤 `EXPO_PUBLIC_API_BASE_URL=https://snaply-api.dweaxai.com ./gradlew app:bundleRelease app:assembleRelease -x lint -x test`
+  (2분 18초). AAB 109MB · APK 200MB.
+- **확인** — 번들에 운영 서버 주소가 들어 있다. AAB · APK 모두 debug 인증서가 아니라 업로드 키(`O=DWEAX, C=KR`, SHA-256 `F8:E9:D8:E4:…:8E:31`)로 서명됐다.
+  `com.dweax.snaply` · versionCode 1 · versionName 1.0.0 · minSdk 28 · targetSdk 36. 에뮬레이터(API 35)에 APK 를 깔아 띄우면 크래시 없이 로그인 화면이 열린다
+  (로그인 · 무비 생성은 보지 않았다).
+- **Play 에 올리지 못했다** — 내부 테스트 첫 버전에서 Play 앱 서명 약관에 동의하려면 계정 권한이 필요해 막혔다. 회사 개발자 계정 관리자에게 문의 중이다.
+- **Play 가 요구할 수 있는 신고** — 번들의 권한에 광고 ID(`ACCESS_ADSERVICES_AD_ID` 등 — AdMob), 백그라운드 위치 · 위치 포그라운드 서비스(위치 알림)가 있다.
+  출시 전에 Play 의 광고 ID · 권한 신고나 데이터 보안 양식을 요구하면 그때 채우거나 그 권한을 뺀 빌드를 다시 올린다.
