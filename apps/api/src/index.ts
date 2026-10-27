@@ -4,6 +4,8 @@ import { loadConfig } from './config.js';
 import { disconnectPrisma } from './db/client.js';
 import { ensureBucketForDev } from './services/storage.service.js';
 import { closeEditQueue } from './queue/edit-queue.js';
+import { closeRenditionQueue } from './queue/rendition-queue.js';
+import { closeVideoAnalysisQueue } from './queue/video-analysis-queue.js';
 import { disconnectRedis } from './lib/redis.js';
 import { initSentry, flushSentry } from './lib/sentry.js';
 import { settleTasteSignals } from './services/taste/taste.service.js';
@@ -22,6 +24,8 @@ async function main(): Promise<void> {
     // 응답 뒤로 미룬 취향 반영을 끝내고 DB 를 닫는다 — 배포 때의 컨테이너 교체가 신호를 버리지 않게.
     await settleTasteSignals();
     await closeEditQueue();
+    await closeVideoAnalysisQueue();
+    await closeRenditionQueue();
     await disconnectRedis();
     await disconnectPrisma();
     // Sentry 전송은 비동기 버퍼링이라, flush 없이 종료하면 직전 5xx 이벤트가 유실된다.

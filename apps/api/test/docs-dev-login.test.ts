@@ -13,6 +13,7 @@ import { loadConfig } from '../src/config.js';
 import { disconnectPrisma } from '../src/db/client.js';
 import { disconnectRedis } from '../src/lib/redis.js';
 import { closeEditQueue } from '../src/queue/edit-queue.js';
+import { closeRenditionQueue } from '../src/queue/rendition-queue.js';
 import { closeVideoAnalysisQueue } from '../src/queue/video-analysis-queue.js';
 
 const FORM = { 'content-type': 'application/x-www-form-urlencoded' };
@@ -38,6 +39,7 @@ describe('개발 문서의 개발 로그인', () => {
     await app?.close();
     await closeEditQueue();
     await closeVideoAnalysisQueue();
+    await closeRenditionQueue();
     await disconnectRedis();
     await disconnectPrisma();
   });

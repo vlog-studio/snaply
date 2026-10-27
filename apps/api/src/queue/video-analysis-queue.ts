@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { createRedisConnection } from '../lib/redis.js';
+import { closeQueueWhenReady, createRedisConnection } from '../lib/redis.js';
 
 export interface VideoAnalysisJobData {
   /** video_analyses.id — BullMQ job id 로도 쓴다(중복 적재 방지). */
@@ -46,7 +46,7 @@ export async function enqueueVideoAnalysis(data: VideoAnalysisJobData): Promise<
 
 export async function closeVideoAnalysisQueue(): Promise<void> {
   if (queue) {
-    await queue.close();
+    await closeQueueWhenReady(queue);
     queue = null;
   }
 }

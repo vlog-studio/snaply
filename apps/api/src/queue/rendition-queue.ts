@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { createRedisConnection } from '../lib/redis.js';
+import { closeQueueWhenReady, createRedisConnection } from '../lib/redis.js';
 
 export interface RenditionJobData {
   /** videos.id — BullMQ job id 로도 쓴다(같은 스냅을 두 번 변환하지 않기 위해). */
@@ -104,7 +104,7 @@ function isUnreadable(result: unknown, signalsVersion: number): boolean {
 
 export async function closeRenditionQueue(): Promise<void> {
   if (queue) {
-    await queue.close();
+    await closeQueueWhenReady(queue);
     queue = null;
   }
 }

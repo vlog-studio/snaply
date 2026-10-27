@@ -2907,3 +2907,18 @@ Firebase 프로젝트 `snaply-829b9` 에 Android 앱 `com.dweax.snaply` 를 더�
 - **Play 에 올리지 못했다** — 내부 테스트 첫 버전에서 Play 앱 서명 약관에 동의하려면 계정 권한이 필요해 막혔다. 회사 개발자 계정 관리자에게 문의 중이다.
 - **Play 가 요구할 수 있는 신고** — 번들의 권한에 광고 ID(`ACCESS_ADSERVICES_AD_ID` 등 — AdMob), 백그라운드 위치 · 위치 포그라운드 서비스(위치 알림)가 있다.
   출시 전에 Play 의 광고 ID · 권한 신고나 데이터 보안 양식을 요구하면 그때 채우거나 그 권한을 뺀 빌드를 다시 올린다.
+
+## 2026-10-27 (이어서) — 큐를 연결 초기화가 끝난 뒤에 닫는다(backlog E-69)
+
+API 통합 테스트가 테스트는 모두 통과한 채 처리되지 않은 오류(`Error: Connection is closed.`, 3건)로 실패해 배포를 막았다(CI `29fdae7` 첫 실행, 2026-10-22 에도 한 번).
+
+- **원인(추정)** — 큐 셋(편집 legacy · v3 · 분석 · 렌디션)은 `lib/redis` 의 공유 ioredis 연결을 쓴다. BullMQ 5.80 은 초기화 중(`status: initializing`)인 공유 연결의 큐를
+  닫을 때 연결을 그대로 두고 오류 리스너만 뗀다(`RedisConnection.close` → `removeAllListeners`). 그 뒤 `disconnectRedis()` 가 연결을 끊으면 남은 초기화 명령(`INFO`)이
+  `Connection is closed` 로 거절되고, 초기화의 `.catch(err => this.emit('error', err))` 가 리스너 없는 `error` 를 던져 처리되지 않은 거절이 된다. CI 스택이 BullMQ 가
+  아니라 ioredis 의 소켓 종료(`event_handler.js` `close` → `flushQueue`)를 가리키는 것(던져진 것이 그 오류 객체 그대로)과, `close()` 로 닫는 큐가 셋이라 오류 3건인 것이
+  이 경로와 맞는다. 테스트 3개짜리 짧은 파일(`docs-dev-login`)이 CI Redis 의 초기화보다 먼저 끝날 때만 난다. 로컬에서는 같은 순서(큐 생성 직후 닫기 · 연결 끊기, 닫힌
+  포트)로 재현하지 못했다 — 느린 Redis 를 흉내 내는 로컬 프록시는 띄우지 않았다.
+- **바꾼 것** — `lib/redis.ts` 의 `closeQueueWhenReady`: 큐를 닫기 전에 연결 초기화(`waitUntilReady`)를 최대 5초 기다린다(초기화가 실패해도 · Redis 가 죽어 있어도
+  닫고 넘어간다 — 종료가 멈추지 않게). 세 큐 모듈의 `close*Queue` 가 이것으로 닫는다. 테스트 정리(공용 하네스 · `docs-dev-login`)와 서버 종료(`index.ts`)가 렌디션 큐도
+  닫는다 — 서버 종료는 분석 큐도 닫지 않고 있었다.
+- **확인** — 새 `test/close-queue-when-ready.test.ts`(준비 뒤에 닫음 · 준비가 안 오면 5초 뒤 닫음 · 초기화 실패여도 닫음), API typecheck · lint 통과. 로컬 `npm test -w apps/api` 를 두 번 돌려 두 번 모두 52 파일 · 855 테스트 통과, 처리되지 않은 오류 0. 재발 여부는 CI 에서 더 본다(E-69 완료 조건).

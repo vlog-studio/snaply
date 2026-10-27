@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
 import type { ClipSpec, EditSpec, RenderSpec, StylePreset } from '@vlog-studio/shared-types';
-import { createRedisConnection } from '../lib/redis.js';
+import { closeQueueWhenReady, createRedisConnection } from '../lib/redis.js';
 
 export interface EditJobData {
   jobId: string; // edit_jobs.id
@@ -81,7 +81,7 @@ export async function removeEditJob(jobId: string): Promise<void> {
 
 export async function closeEditQueue(): Promise<void> {
   if (queues) {
-    await Promise.all([queues.legacy.close(), queues.v3.close()]);
+    await Promise.all([closeQueueWhenReady(queues.legacy), closeQueueWhenReady(queues.v3)]);
     queues = null;
   }
 }
