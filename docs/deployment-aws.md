@@ -251,6 +251,10 @@ curl -s localhost:3000/health
 - 매니페스트를 읽지 못하면 있는 곡으로(없으면 BGM 없이) 렌더하고 Sentry 에 남긴다 — 음악 때문에 무비가 실패하지 않는다.
 - 곡을 고르는 규칙(무비마다 고정, 곡 수가 바뀌면 결과가 바뀔 수 있다)은 [BGM 라이브러리 README](../apps/ai-worker/assets/bgm/README.md#디렉터리-구조)다.
 - `assets/` 는 정리 배치(§4 · 계정 삭제)가 지우는 `uploads/` 밖이다.
+- **올리는 길** — 담당자 역할(`dweax-snaply`)로는 버킷 안의 파일을 읽고 쓸 수 없고, 서버에 명령을 바로 보내는 `AWS-StartNonInteractiveCommand` 도 막혀 있다
+  (대화형 셸만 된다). 2026-10-27 에는 서버 셸(`aws ssm start-session`)에서 `ai-worker` 컨테이너로 지금 매니페스트와 15분짜리 업로드 주소(presigned PUT)를
+  받아 내 컴퓨터에서 곡 → 매니페스트 순으로 올렸다. 곡 파일은 저장소가 public 이라 GitHub(릴리스 · 아티팩트)으로 옮기지 않는다 — 재배포가 된다.
+  CLI 프로필의 MFA 는 가상 MFA(인증 앱)여야 한다 — 보안 키 · 패스키(`u2f`)는 CLI 역할 전환에 쓸 수 없다.
 
 ### 실측 — 스냅 분석 · AI 편집 초안(backlog A-3 · A-12 · A-14)
 
