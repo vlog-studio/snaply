@@ -680,6 +680,9 @@
                       "before-after",
                       "asmr",
                       "freeze-text",
+                      "whip-montage",
+                      "letterbox-montage",
+                      "talk-vlog",
                       "daylog"
                     ]
                   },
@@ -1152,6 +1155,9 @@
               "before-after",
               "asmr",
               "freeze-text",
+              "whip-montage",
+              "letterbox-montage",
+              "talk-vlog",
               "daylog"
             ],
             "description": "편집 스타일 레시피 — 소리 구성 · 타이틀 · 글 · 효과음 · 컷 고르기(매치컷) · 화면 틀. 원천은 `recipe-vocabulary.json`. `classic` 이 지금까지의 무비다."
@@ -2281,6 +2287,9 @@
                       "before-after",
                       "asmr",
                       "freeze-text",
+                      "whip-montage",
+                      "letterbox-montage",
+                      "talk-vlog",
                       "daylog"
                     ]
                   },
@@ -2764,6 +2773,9 @@
               "before-after",
               "asmr",
               "freeze-text",
+              "whip-montage",
+              "letterbox-montage",
+              "talk-vlog",
               "daylog"
             ],
             "description": "편집 스타일 레시피 — 소리 구성 · 타이틀 · 글 · 효과음 · 컷 고르기(매치컷) · 화면 틀. 원천은 `recipe-vocabulary.json`. `classic` 이 지금까지의 무비다."
@@ -6508,6 +6520,9 @@
                       "before-after",
                       "asmr",
                       "freeze-text",
+                      "whip-montage",
+                      "letterbox-montage",
+                      "talk-vlog",
                       "daylog"
                     ]
                   },
@@ -7060,6 +7075,9 @@
                       "before-after",
                       "asmr",
                       "freeze-text",
+                      "whip-montage",
+                      "letterbox-montage",
+                      "talk-vlog",
                       "daylog"
                     ]
                   },

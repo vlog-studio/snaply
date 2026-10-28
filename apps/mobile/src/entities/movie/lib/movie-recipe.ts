@@ -59,6 +59,18 @@ const RecipeOptions: Record<MovieRecipe, Omit<MovieRecipeOption, 'id'>> = {
     label: '프리즈',
     description: '가장 또렷한 순간에 잠깐 멈추고 큰 글자로 강조',
   },
+  'whip-montage': {
+    label: '휩 몽타주',
+    description: '짧은 컷을 휙휙 밀어 넘기는 몽타주',
+  },
+  'letterbox-montage': {
+    label: '가로 몽타주',
+    description: '위아래 검은 띠 안에서 가로 영상을 흐르듯 잇는 몽타주',
+  },
+  'talk-vlog': {
+    label: '말소리 브이로그',
+    description: '말소리와 현장음을 살리고 음악은 작게, 찍은 순서대로',
+  },
   daylog: { label: '하루로그', description: '조금 긴 컷, 필름 색감, 아주 맞는 순간에만 글' },
 };
 
@@ -81,6 +93,9 @@ const RecipeOrder: typeof MOVIE_RECIPES = [
   'before-after',
   'asmr',
   'freeze-text',
+  'whip-montage',
+  'letterbox-montage',
+  'talk-vlog',
   'daylog',
 ];
 

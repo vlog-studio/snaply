@@ -264,7 +264,7 @@ def _match_beam(snaps: list[Snap], series, spec: dict, size, tags, seed: int, be
     st = _strategy(f["cuts"], beats, lo, hi, f)
     frames = [fast_cut.SnapFrames.read(s.path, size) for s in snaps]
     cands = [c for i, s in enumerate(series) for c in fast_cut.candidates(
-        i, s, frames[i], lo, hi, st["lengths"], st["peak_pos"], st["zoom_pairs"], st["steady"])]
+        i, s, frames[i], lo, hi, st["lengths"], st["peak_pos"], st["zoom_pairs"], st["steady"], bool(f.get("jumpCuts")))]
     ends = [fast_cut.ends(c, frames[c.snap]) for c in cands]
     weights = match_cut.MOTION_WEIGHTS
     cache: dict[tuple[int, int], dict] = {}
@@ -292,7 +292,7 @@ def _match_beam(snaps: list[Snap], series, spec: dict, size, tags, seed: int, be
     seq = fast_cut.beam(cands, lambda i, j: part(i, j)["score"], cont.get("minMovieMs") or 15000,
                         width=cfg.get("beamWidth", 8), per_snap=cfg.get("perSnap", 3),
                         temperature=cfg.get("temperature", 0.0), seed=seed, allowed=allowed,
-                        length_of=lambda k: cands[k].length_ms * scale, first=first)
+                        length_of=lambda k: cands[k].length_ms * scale, first=first, jump_cuts=bool(f.get("jumpCuts")))
     freeze = prims.get("freeze") or None
     frozen = set()
     if freeze:

@@ -23,6 +23,9 @@ export const MOVIE_RECIPES = [
   'before-after',
   'asmr',
   'freeze-text',
+  'whip-montage',
+  'letterbox-montage',
+  'talk-vlog',
   'daylog',
 ] as const;
 export type MovieRecipe = (typeof MOVIE_RECIPES)[number];

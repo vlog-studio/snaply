@@ -33,9 +33,24 @@ class RecipeTest(unittest.TestCase):
         self.assertEqual(c.spec["sfx"]["max"], 0)
         self.assertFalse(c.spec["continuity"]["enabled"] or c.spec["speed"]["enabled"])
 
-    def test_only_asmr_keeps_the_source_sound(self):
+    def test_only_asmr_and_the_talk_vlog_keep_the_source_sound(self):
+        # 2026-10-26 모든 무비는 음원만 — 원본 소리가 주인공인 레시피만 예외(ASMR, 2026-10-28 말소리 브이로그 — trend-recipes §15)
         keeps = {name for name, spec in recipe.RECIPES.items() if spec["audio"]["sourceGain"] > 0}
-        self.assertEqual(keeps, {"asmr"})
+        self.assertEqual(keeps, {"asmr", "talk-vlog"})
+
+    def test_the_reference_recipes_cover_the_axes_the_corpus_missed(self):
+        # 레퍼런스 10편에서 못 맞춘 축(휩팬 · 레터박스 + 박자 안 맞춤 · 원본 말소리)을 하나씩 겨냥한다(trend-recipes §15)
+        whip, wide, talk = (recipe.RECIPES[n] for n in ("whip-montage", "letterbox-montage", "talk-vlog"))
+        self.assertGreaterEqual(whip["transitions"]["rate"], 0.5)
+        self.assertIn("whip", whip["transitions"]["palette"])
+        self.assertEqual(wide["frame"], "letterbox")
+        self.assertFalse(wide["continuity"]["beatSnap"])
+        self.assertGreater(talk["audio"]["sourceGain"], talk["audio"]["bgmGain"])
+        self.assertEqual(talk["format"]["link"], "chronological")
+        # 컷 길이 · 박자 설정이 실제로 먹는 컷 고르기여야 한다 — zoom-pairs 는 shotMs · beatSnap 을 보지 않고(§14), steady 는 길이를 고정한다
+        self.assertEqual((whip["format"]["cuts"], wide["format"]["cuts"]), ("continuity", "continuity"))
+        lo, hi = talk["continuity"]["shotMs"]
+        self.assertTrue(all(lo <= length <= hi for length in talk["format"]["lengthsMs"]))
 
     def test_letterbox_splits_fill_above_and_below_the_band(self):
         """레터박스 분할은 띠 · 아래 · 위 순으로 연다(cut_fx.split_graph) — 2칸이면 위가 비었다(2026-10-26)."""
