@@ -47,6 +47,19 @@ export type StylePreset = z.infer<typeof stylePresetSchema>;
  */
 export const movieRecipeSchema = z.enum(MOVIE_RECIPES);
 
+/**
+ * 무비의 꾸밈 — 글자(텍스트 액센트) · 이모지 스티커 · 얼굴 스티커를 각각 켜고 끈다(specs/movie.md MOV-27). 붙일지는 이 값만 정하고
+ * 레시피는 양만 정한다. 무비를 만들 때와 레시피를 바꿀 때 레시피 기본값(`recipeDecorations`)으로 채운다.
+ */
+export const movieDecorationsSchema = z
+  .object({
+    text: z.boolean().describe('글자 효과(장면에 맞는 의성어 · 느낌 · 감탄).'),
+    emoji: z.boolean().describe('이모지 스티커. 글자를 끄고 이것만 켜면 장면이 잘 맞는 컷에 몰리지 않게 붙는다.'),
+    face: z.boolean().describe('얼굴을 따라다니는 스티커(왕관 · 하트 · 반짝이).'),
+  })
+  .describe('무비의 꾸밈(글자 · 이모지 · 얼굴 스티커). 바꾸면 다음 생성부터 적용된다 — 컷 · 순서 · 효과 · 곡은 그대로다.');
+export type MovieDecorations = z.infer<typeof movieDecorationsSchema>;
+
 /** 무비의 생애. `generating` 은 진행 중인 편집 작업이 있는 상태다. */
 export const MOVIE_STATUSES = ['draft', 'generating', 'ready', 'failed'] as const;
 export const movieStatusSchema = z.enum(MOVIE_STATUSES);
@@ -82,7 +95,12 @@ export const OUTPUT_PROFILES = [
 export const outputProfileSchema = z.enum(OUTPUT_PROFILES);
 export type OutputProfile = z.infer<typeof outputProfileSchema>;
 
-export const FIT_MODES = ['contain', 'cover', 'blur_background'] as const;
+/**
+ * 비율이 다른 원본을 출력 화면에 맞추는 방식. `blur_background` 는 남는 자리를 흐린 원본으로, `pad_black` · `pad_white` 는
+ * 단색 띠로 채운다(셋 다 원본을 화면 폭이나 높이까지 키운다 — specs/movie.md MOV-8). `contain` 은 작은 원본을 키우지 않고 검정
+ * 띠를 두는 예전 작업의 기본, `cover` 는 잘라서 꽉 채운다.
+ */
+export const FIT_MODES = ['contain', 'cover', 'blur_background', 'pad_black', 'pad_white'] as const;
 export const fitModeSchema = z.enum(FIT_MODES);
 export type FitMode = z.infer<typeof fitModeSchema>;
 

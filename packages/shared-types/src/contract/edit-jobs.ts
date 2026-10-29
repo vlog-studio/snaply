@@ -10,6 +10,7 @@ import {
   editJobErrorCodeSchema,
   editJobStatusSchema,
   fitModeSchema,
+  movieDecorationsSchema,
   movieRecipeSchema,
   outputProfileSchema,
   stylePresetSchema,
@@ -67,6 +68,11 @@ export const editSpecV3Schema = z.object({
   recipe: movieRecipeSchema
     .optional()
     .describe('편집 스타일 레시피(MOV-28). 생략하면 `classic` — classic 무비는 싣지 않는다.'),
+  decorations: movieDecorationsSchema
+    .optional()
+    .describe(
+      '무비의 꾸밈(MOV-27). 생략하면 레시피의 기본값 — 이 필드가 생기기 전의 작업도 같은 결과다. 레시피 편집의 시드(컷 · 순서 · 효과)에는 들어가지 않는다.',
+    ),
   autoCuts: z
     .boolean()
     .optional()

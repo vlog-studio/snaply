@@ -13,7 +13,7 @@ from pipeline import cut_fx, editor, face, look, music, recipe, title_card, voca
 
 CONTENT = vocabulary.load("content-vocabulary.json")["concepts"]
 SECTIONS = {"label", "audio", "title", "accents", "stickers", "sfx", "continuity", "speed", "transitions", "split", "zoom", "look",
-            "frame", "match", "faceStickers", "format"}
+            "frame", "match", "faceStickers", "format", "decorations"}
 
 
 class RecipeTest(unittest.TestCase):

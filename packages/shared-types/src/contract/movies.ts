@@ -12,7 +12,9 @@ import { defineRoute } from './define-route.js';
 import {
   MOVIE_CLIP_MAX,
   MOVIE_CLIP_MIN,
+  fitModeSchema,
   movieArrangerSchema,
+  movieDecorationsSchema,
   movieRecipeSchema,
   movieStatusSchema,
   stylePresetSchema,
@@ -105,6 +107,10 @@ export const movieSchema = z
     stylePreset: stylePresetSchema,
     recipe: movieRecipeSchema.describe('편집 스타일 레시피 — 소리 구성 · 타이틀 · 글 · 효과음 · 컷 고르기(매치컷) · 화면 틀. 원천은 `recipe-vocabulary.json`. `classic` 이 지금까지의 무비다.'),
     captions: z.boolean().describe('생성 시 소프트 자막을 만들지 여부.'),
+    fitMode: fitModeSchema.describe(
+      '비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다.',
+    ),
+    decorations: movieDecorationsSchema,
     ratio: z.string().describe('출력 비율. 현재는 `9:16` 뿐이다.'),
     arranger: movieArrangerSchema,
     clips: z.array(movieClipSchema).describe('컷 목록. **배열 순서가 곧 재생 순서**다.'),
@@ -181,6 +187,11 @@ export const createMovieBodySchema = z.object({
       '편집 스타일 레시피. 생략하면 `classic`. 컷을 전부 AI 가 정한 무비(`trimOwner: ai` · `arranger: ai`)는 생성 때 레시피가 컷 구간 · 순서까지 다시 고른다 — 사용자가 고친 무비는 구간 · 순서를 지키고 소리 · 타이틀 · 글 · 효과음만 레시피를 따른다.',
     ),
   captions: z.boolean().optional().describe('소프트 자막 생성 여부. 생략하면 `false`(쇼츠용).'),
+  fitMode: fitModeSchema.optional().describe('남는 자리를 채우는 방식. 생략하면 `blur_background`.'),
+  decorations: movieDecorationsSchema
+    .partial()
+    .optional()
+    .describe('꾸밈(글자 · 이모지 · 얼굴 스티커). 생략한 키는 레시피의 기본값이다.'),
   arranger: movieArrangerSchema
     .optional()
     .describe(
@@ -202,6 +213,13 @@ export const updateMovieBodySchema = z
     stylePreset: stylePresetSchema.optional(),
     recipe: movieRecipeSchema.optional(),
     captions: z.boolean().optional(),
+    fitMode: fitModeSchema.optional(),
+    decorations: movieDecorationsSchema
+      .partial()
+      .optional()
+      .describe(
+        '보낸 키만 바꾼다. `recipe` 를 바꾸면 꾸밈은 새 레시피의 기본값으로 돌아가고, 같은 요청의 `decorations` 가 그 위에 얹힌다.',
+      ),
     arranger: movieArrangerSchema.optional(),
   })
   .describe('보낸 필드만 바꾼다. 생성 중(`generating`)인 무비는 수정할 수 없다(409).');
