@@ -11,6 +11,7 @@ import os
 import shutil
 import signal
 import tempfile
+from dataclasses import replace
 
 import redis.asyncio as aioredis
 from bullmq import Worker
@@ -24,7 +25,7 @@ from pipeline import (accent_stage, anchor, editor, invalidation, music, orient,
                       trend_edit, vocabulary)
 from pipeline.edit_spec import parse_job_clips, parse_timeline
 from pipeline.editor import get_preset
-from pipeline.render_spec import parse_render_spec
+from pipeline.render_spec import RenderSpec, parse_render_spec
 from queue_connection import worker_connection
 
 _publisher: aioredis.Redis | None = None
@@ -103,6 +104,7 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     preset = get_preset(edit_spec["stylePreset"])
     render_spec = parse_render_spec(data.get("renderSpec"))
     recipe_name = _recipe_of(edit_spec)
+    render_spec = _framed(render_spec, recipe_name)
     # 무비의 꾸밈(글자 · 이모지 · 얼굴 스티커) — 붙일지는 이 값만 정한다(text-accent-stickers.md §9). 없으면 레시피 기본값.
     decorations = recipe.decorations_of(recipe_name, edit_spec.get("decorations"))
 
@@ -282,6 +284,14 @@ def _local_time(at):
     from datetime import timedelta, timezone  # noqa: PLC0415
     aware = at if at.tzinfo else at.replace(tzinfo=timezone.utc)
     return aware.astimezone(timezone(timedelta(hours=9))).replace(tzinfo=None)
+
+
+def _framed(render_spec: RenderSpec, recipe_name: str) -> RenderSpec:
+    """레터박스 레시피(시네마틱 등)는 보통 경로(컷을 손본 무비 · 레시피 렌더 실패)에서도 남는 자리를 검게 — 무비의 맞춤 방식(블러 · 흰색)을
+    쓰지 않는다. AI 컷 경로의 검은 띠와 같은 바탕이다(specs/movie.md MOV-8 · MOV-28, 2026-10-30 사용자)."""
+    if recipe.get(recipe_name).spec.get("frame") == "letterbox":
+        return replace(render_spec, fit_mode="pad_black")
+    return render_spec
 
 
 def _recipe_of(edit_spec: dict) -> str:
