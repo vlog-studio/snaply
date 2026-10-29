@@ -6,11 +6,26 @@ import { createScopedPersistence, deleteScopedState } from '@/shared/lib/scoped-
 import { randomUuid } from '@/shared/lib/uuid';
 
 import { DefaultMovieBgm } from '../lib/movie-bgm';
-import { DefaultMovieRecipe, movieRecipeOrDefault, recipePicksCuts } from '../lib/movie-recipe';
+import {
+  DefaultMovieRecipe,
+  RecipeDecorationDefaults,
+  movieDecorations,
+  movieRecipeOrDefault,
+  recipePicksCuts,
+  sameDecorations,
+} from '../lib/movie-recipe';
 import { DefaultMovieStyle } from '../lib/movie-style';
 import { mergeRemoteMovies, movieFromRemote, type PendingWrite } from '../lib/movie-sync';
 import { movieTitle } from '../lib/movie-title';
-import type { Movie, MovieArranger, MovieRecipe, MovieRender, MovieStyle, SnapRef } from './movie';
+import type {
+  Movie,
+  MovieArranger,
+  MovieDecorations,
+  MovieRecipe,
+  MovieRender,
+  MovieStyle,
+  SnapRef,
+} from './movie';
 import type { RemoteMovie } from './remote-movie';
 
 /** What the caller gets to decide when a movie is started from picked snaps. */
@@ -52,6 +67,11 @@ export type MovieStylePatch = {
   style?: MovieStyle;
   /** The editing recipe; never touches who owns the cuts. */
   recipe?: MovieRecipe;
+  /**
+   * The decorations, whole. A recipe change without them resets the movie to
+   * the new recipe's defaults, as the server does.
+   */
+  decorations?: MovieDecorations;
   bgm?: string;
   captions?: boolean;
 };
@@ -282,10 +302,24 @@ export const useMovieStore = create<MovieState>()(
       updateMovieStyle: (movieId, patch, updatedAt = Date.now()) =>
         set((state) =>
           editMovie(state, movieId, (movie) => {
-            const next = { ...movie, ...patch, updatedAt };
+            const { recipe } = patch;
+            const recipeChanged =
+              recipe !== undefined && recipe !== movieRecipeOrDefault(movie.recipe);
+            const next = {
+              ...movie,
+              ...patch,
+              // The server resets a movie's decorations to the new recipe's
+              // defaults (MOV-27); drawing the old ones until the read-back
+              // would show switches the next run does not follow.
+              ...(recipeChanged && patch.decorations === undefined
+                ? { decorations: RecipeDecorationDefaults[recipe] }
+                : null),
+              updatedAt,
+            };
             const changed =
               next.style !== movie.style ||
-              movieRecipeOrDefault(next.recipe) !== movieRecipeOrDefault(movie.recipe) ||
+              recipeChanged ||
+              !sameDecorations(movieDecorations(next), movieDecorations(movie)) ||
               next.bgm !== movie.bgm ||
               next.captions !== movie.captions;
             return changed ? next : movie;

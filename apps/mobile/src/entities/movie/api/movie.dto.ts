@@ -3,7 +3,14 @@ import { z } from 'zod';
 import { movieRecipeOrDefault } from '../lib/movie-recipe';
 import { movieStyleOrDefault } from '../lib/movie-style';
 import { isTransitionKind, transitionAfter } from '../lib/movie-transition';
-import type { Movie, MovieRecipe, MovieStyle, SnapRef, TransitionKind } from '../model/movie';
+import type {
+  Movie,
+  MovieDecorations,
+  MovieRecipe,
+  MovieStyle,
+  SnapRef,
+  TransitionKind,
+} from '../model/movie';
 
 import type { RemoteMovie } from '../model/remote-movie';
 
@@ -41,6 +48,9 @@ export const movieDtoSchema = z.object({
   stylePreset: z.string(),
   // Optional: a server older than recipes sends none, which reads as `classic`.
   recipe: z.string().optional(),
+  // Optional: a server older than decorations sends none; the movie then reads
+  // as its recipe's defaults (`movieDecorations`).
+  decorations: z.object({ text: z.boolean(), emoji: z.boolean(), face: z.boolean() }).optional(),
   captions: z.boolean(),
   ratio: z.string(),
   arranger: z.string(),
@@ -108,6 +118,7 @@ export function mapRemoteMovie(dto: MovieDto, snapIdOf: SnapIdResolver): RemoteM
     status,
     style: movieStyleOrDefault(StyleByPreset[dto.stylePreset]),
     recipe: movieRecipeOrDefault(dto.recipe),
+    ...(dto.decorations ? { decorations: dto.decorations } : null),
     captions: dto.captions,
     ratio: '9:16',
     arranger: dto.arranger === 'ai' ? 'ai' : 'user',
@@ -165,6 +176,8 @@ export type MovieBody = {
   clips: MovieClipBody[];
   stylePreset: (typeof StylePresets)[MovieStyle];
   recipe: MovieRecipe;
+  /** Left out for a movie that has never had its own — the server keeps what it holds. */
+  decorations?: MovieDecorations;
   captions: boolean;
   arranger: 'user' | 'ai';
 };
@@ -197,7 +210,10 @@ function toClipBody(videoId: string, ref: SnapRef): MovieClipBody {
  * waits for it.
  */
 export function toMovieBody(
-  movie: Pick<Movie, 'title' | 'snapRefs' | 'style' | 'recipe' | 'captions' | 'arranger'>,
+  movie: Pick<
+    Movie,
+    'title' | 'snapRefs' | 'style' | 'recipe' | 'decorations' | 'captions' | 'arranger'
+  >,
   videoIdOf: VideoIdResolver,
 ): MovieBody | undefined {
   const ordered = [...movie.snapRefs].sort((left, right) => left.order - right.order);
@@ -225,6 +241,10 @@ export function toMovieBody(
     // Always sent, so a movie stored before recipes is recorded as what it is
     // (`classic`) rather than left to whatever the server's default becomes.
     recipe: movieRecipeOrDefault(movie.recipe),
+    // Sent whole, after the recipe, so the server's own rule — a new recipe
+    // resets them, the same request's decorations land on top — leaves exactly
+    // what the screen showed (the store resets them on a recipe change too).
+    ...(movie.decorations ? { decorations: movie.decorations } : null),
     captions: movie.captions,
     arranger: movie.arranger ?? 'user',
   };
