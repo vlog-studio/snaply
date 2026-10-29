@@ -627,7 +627,7 @@ BGM 컷편집 무비에 컷의 내용에 맞는 의성어 · 감탄 · 키워드
 - [ ] **겹침 검사의 대상** — 막는 상자가 피사체와 바로 앞 액센트뿐이다(`text_accent.py:249` · `280`). 화면에 남은 앞 컷의 스티커 · 타이틀 · 타임스탬프 ·
       프리즈 라벨 · 얼굴 스티커를 넣는다. 타임스탬프(`title_card.py:96`, x 0.08 · y 0.76)는 왼쪽 아래 빈자리(`freezone.bottomLeft`)와 겹친다
 - [ ] **밝은 배경 · 흰 띠에서의 대비** — 감탄 · 키워드 라벨 상자는 대비 검사를 건너뛴다(`accent_fit.py:75`). 대비 규칙은 채움과 선을 바꿀 뿐 선 자체가 보이는지는
-      보지 않는다(`emotional` `FF5FA2` · `calm` `FFF4D6` 이 밝은 장면에서 약하다). 스티커 다이컷의 흰 테두리(`sticker_render.py:36`)는 흰 띠에서 사라지고,
+      보지 않는다(`emotional` `FF5FA2` · `calm` `FFF4D6` 이 밝은 장면에서 약하다). 스티커는 테두리 없이 원본 그대로라(2026-10-29) 밝은 배경에서 옅은 그림이 묻힐 수 있고,
       타이틀(TitleBig · CineBig · Stamp)은 외곽선이 없다(`title_card.py:42`)
 - [ ] **글이 보이는 순간의 휘도** — 휘도를 컷 가운데 프레임 한 장으로 잰다(`accent_stage.py:77`). 글은 움직임이 가장 큰 박자에 나타나므로 그 시각의 프레임으로 잰다
 - [ ] **키워드 반복** — 키워드 대체 글(`text_accent._keyword`, `text_accent.py:176`)은 쿨다운을 보지 않아 같은 장소의 컷마다 같은 `#카페` 가 붙는다.
@@ -655,7 +655,7 @@ BGM 컷편집 무비에 컷의 내용에 맞는 의성어 · 감탄 · 키워드
 - [ ] **이모지 늘리기** — 먼저 한다. 비교 샘플(현재 · Pretendard + Fluent Emoji 3D · Paperlogy + 테두리만 제거)에서 효과보다 Noto 이모지 그림 자체가
        문제로 보였다. 사전(`accent-vocabulary.json` `stickers`)의 이모지 후보를 늘리고 그림 세트를 고른다(라이선스 확인 — Fluent Emoji 는 MIT)
 - [ ] **글꼴 · 스티커 꾸밈 교체**(보류) — 이모지를 늘린 뒤 다시 비교한다. 후보: 굵은 외곽선(9~22px, `categories`) → 없음 · 부드러운 그림자, 감탄 · 키워드는
-       둥근 상자, 글꼴 Black Han Sans · Jua · Do Hyeon → Pretendard · Paperlogy(OFL), 스티커 흰 칼선(`sticker_render.die_cut`) 제거. 외곽선을 빼면 밝은
+       둥근 상자, 글꼴 Black Han Sans · Jua · Do Hyeon → Pretendard · Paperlogy(OFL). 스티커의 흰 칼선 · 그림자는 2026-10-29 에 먼저 없앴다(원본 그대로). 외곽선을 빼면 밝은
        배경에서 대비가 약해지므로 1묶음의 대비 항목과 함께 한다
 - [ ] **시네마틱 컷별 멘트를 LLM 으로** — 지금은 분석 낱말을 그대로 쓴다(trend-recipes.md §16). 층 c 실측 때 `accent_writer` 방식으로 문장을 짓고 구성에 고정할지 본다
 

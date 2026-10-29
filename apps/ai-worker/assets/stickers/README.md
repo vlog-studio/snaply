@@ -8,7 +8,7 @@
 - 라이선스: 그 태그의 `LICENSE`(SIL OFL 1.1)를 그대로 둔다 — `LICENSE-noto-emoji.txt`. 같은 태그의 README 는 "이미지 자원 대부분은
   Apache 2.0" 이라고도 적어 두 문서가 어긋난다. 둘 다 상업적 사용 · 재배포를 허용하지만, 출시 전 법무 확인 대상이다
   (docs/decisions/text-accent-stickers.md, backlog).
-- 스티커 모양(흰 칼선 테두리 · 그림자)은 렌더할 때 입힌다. 원본은 고치지 않는다.
+- 렌더는 원본 그림을 그대로 그린다(테두리 · 그림자 없음, 2026-10-29 — 예전엔 흰 칼선 · 그림자를 입혔다). 원본은 고치지 않는다.
 
 에셋 팩 매니페스트(docs/plans/asset-pack-manifest.md)가 들어오면 이 디렉터리는 버킷의 버전드 팩으로 옮긴다.
 
