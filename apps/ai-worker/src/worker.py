@@ -236,6 +236,9 @@ async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job
         analyses, _motions = await db.fetch_accent_inputs(video_ids)
         captured = await db.fetch_captured_at(video_ids)
         snaps = [trend_edit.Snap(local_sources[v], analyses.get(v) or {}, _local_time(captured.get(v))) for v in video_ids]
+        # 곡 라이브러리는 컨테이너 안에 받아 둔다(볼륨 없음) — 배포로 새로 뜬 워커는 비어 있으므로 고르기 전에 맞춘다. 보통 경로는
+        # music.apply_bgm 이 맞추지만 이 경로는 곡을 직접 고른다(빠뜨려 배포 직후 AI 컷 무비에 BGM 이 없었다, 2026-10-29)
+        await asyncio.to_thread(music.sync_library)
         track = music.pick_track(preset.bgm_tag, movie_key)
         await _progress(job_id, 20, "레시피 편집 중...")
         out = os.path.join(work_dir, "trend.mp4")
