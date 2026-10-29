@@ -615,7 +615,9 @@ BGM 컷편집 무비에 컷의 내용에 맞는 의성어 · 감탄 · 키워드
       `contentVocabularyVersion` 이 올라 추천 재사용 키가 바뀐다([ontology-personalization.md](./decisions/ontology-personalization.md)) — 그 영향과 함께 정한다
 - [ ] **에셋 라이선스 확인** — 글꼴 넷은 OFL. Noto Emoji `v2.047` 은 `LICENSE`(OFL)와 README("이미지는 Apache 2.0")가 어긋난다
       ([assets/stickers/README.md](../apps/ai-worker/assets/stickers/README.md)) — 둘 다 상업 사용 · 재배포를 허용하지만 출시 전 법무 확인. 에셋 팩 매니페스트가
-      오면 버킷으로 옮긴다([sticker-asset-sourcing.md](./decisions/sticker-asset-sourcing.md))
+      오면 버킷으로 옮긴다([sticker-asset-sourcing.md](./decisions/sticker-asset-sourcing.md)).
+      **seukku.cc 그림 411개(`sk-*`, 2026-10-29 개발용으로 넣음)는 라이선스 미확인**이다 — 헬로키티 등 캐릭터 · 상표와 남의 밈 문구가 섞여 있다.
+      공개 저장소 · 운영 워커에 들어가 있으므로 출시(외부 공개) 전에 사용 허락을 확인하거나 빼고 사전(`byConcept`)에서도 지운다
 - [ ] **앱 미리보기** — 편집 화면에서 액센트를 보이려면 TS 쪽 사전 로더와 같은 배치 규칙이 필요하다(지금은 워커만 읽는다)
 
 **완료 조건**: 공모전 서버에서 BGM 무비를 만들면 결과물에 액센트와 스티커가 붙고(피사체를 가리지 않음), 같은 구성으로 다시 만들면 같은 결과가

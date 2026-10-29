@@ -104,6 +104,8 @@ class EngineInputTest(unittest.TestCase):
     def test_every_dictionary_sticker_is_in_the_generated_pool(self):
         stickers = text_accent.VOCABULARY["stickers"]
         listed = set(stickers["sparkle"]).union(*(cps for table in stickers["byConcept"].values() for cps in table.values()))
+        # 이모지만 — 직접 받은 그림(sk-*)은 이모지 문자가 없어 생성(층 c)이 고를 수 없고 사전으로만 붙는다
+        listed = {cp for cp in listed if not cp.startswith("sk-")}
         self.assertTrue(listed <= set(aw.POOL), listed - set(aw.POOL))
 
 
