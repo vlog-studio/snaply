@@ -33,14 +33,21 @@ class Sticker:
     beats: tuple[int, ...]
 
 
-def candidates(cut: ta.CutContext, mood: str) -> list[tuple[str, str]]:
-    """(코드포인트, 근거) — 행동 · 사물 · 장소 · 주제 · 분위기 순, 같은 이모지는 한 번."""
+def candidates(cut: ta.CutContext, mood: str, stage_seed: int | None = None) -> list[tuple[str, str]]:
+    """(코드포인트, 근거) — 행동 · 사물 · 장소 · 주제 · 분위기 순, 같은 이모지는 한 번.
+
+    stage_seed 를 주면 개념마다 목록의 시작점을 시드로 돌린다 — 한 개념에 스티커가 많아도 앞의 몇 개만 반복되지 않게.
+    """
     found, seen = [], set()
     for fld in ("actions", "objects", "places", "topics", "moods"):
         table = STICKERS["byConcept"].get(fld, {})
         for concept in cut.concepts.get(fld, ()):
             for ancestor in sorted(ta.lineage(fld, concept), key=lambda c: c != concept):
-                for cp in table.get(ancestor, ()):
+                listed = list(table.get(ancestor, ()))
+                if stage_seed is not None and listed:
+                    k = ta.roll(stage_seed, cut.cut_id, "stk-pool", fld, ancestor) % len(listed)
+                    listed = listed[k:] + listed[:k]
+                for cp in listed:
                     if cp not in seen:
                         seen.add(cp)
                         found.append((cp, f"{fld}:{concept}"))
@@ -73,7 +80,7 @@ def plan_cut(cut: ta.CutContext, accent: ta.Accent | None, beats: accent_fit.Bea
     # 생성(층 c)이 고른 이모지가 먼저, 그 뒤에 사전 후보
     own = [(cp, "생성") for cp in generated]
     # 바로 앞 컷에 붙인 이모지는 뒤로 — 같은 장면이 이어져도 스티커가 똑같이 반복되지 않게
-    rest = sorted((item for item in candidates(cut, mood) if item[0] not in generated),
+    rest = sorted((item for item in candidates(cut, mood, stage_seed) if item[0] not in generated),
                   key=lambda item: item[0] in previous)
     found = own + rest
     if not found:
