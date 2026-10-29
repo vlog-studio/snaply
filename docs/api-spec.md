@@ -206,7 +206,7 @@ FE 가 알아야 할 동작:
     컷·여분 프레임에 맞추고, 겹쳐 녹이는 전환도 여분 프레임을 써서 결과물 길이는 컷 길이의 합이다.
 - **`recipe`** 는 편집 스타일 레시피다(2026-10-22, [specs/movie.md](./specs/movie.md) MOV-28) — `classic`(기본, 지금까지의 무비) ·
   `trend-routine` · `trend-montage` · `cinematic` · `fast-cut` · `beat-sync` · `speed-ramp` · `day-stamp` · `before-after` · `asmr` ·
-  `freeze-text` · `daylog`. 원천은 [`recipe-vocabulary.json`](../packages/shared-types/src/recipe-vocabulary.json)이고
+  `freeze-text` · `whip-montage` · `letterbox-montage` · `talk-vlog` · `daylog`(`whip-montage` · `letterbox-montage` · `talk-vlog` 는 2026-10-28 추가). 원천은 [`recipe-vocabulary.json`](../packages/shared-types/src/recipe-vocabulary.json)이고
   다른 이름은 400. `POST`·`PATCH` 로 보내고 응답에 늘 있다. `stylePreset`(색 · 음악 성향)과 따로다.
   - 생성(`export`)은 `classic` 이 아니면 editSpec v3 에 `recipe` 와 `autoCuts` 를 싣는다. **`autoCuts` 는 컷 구간 · 순서를 전부 AI 가 정한
     무비(모든 컷 `trimOwner: ai` + `arranger: ai`)일 때만 `true`** 이고, 그때만 워커가 레시피대로 스냅에서 컷을 다시 고르고 순서를 정한다

@@ -62,7 +62,7 @@ what a `generating` movie shows as a read-out, and what "무비 편집하기" in
 ├── chips                스타일 · 편집 · 세부 — tape chips (butter, lavender, sky), each opens
 │                         a bottom sheet; the row wraps on a narrow screen
 │                         스타일: the three style cards
-│                         편집 스타일: one row per recipe (12 — 기본 · 루틴 · 몽타주 ·
+│                         편집 스타일: one row per recipe (15 — 기본 · 루틴 · 몽타주 ·
 │                         시네마틱 · 빠른 컷 · … · 하루로그) and, under a trend recipe, what it will touch
 │                         세부: 순서 고정, 비율, 전체 길이, 완성(있으면)
 └── footer               a fixed-height action slot (a failed run's reason above it):

@@ -26,6 +26,20 @@ class WordsTest(unittest.TestCase):
         self.assertEqual(title_card.words([{"topics": ["가", "나"]}])[0], "가")
         self.assertEqual(len(title_card.words([{"topics": ["아주 아주 아주 긴 주제 문장입니다"]}])[0]), title_card.MAX_CHARS)
 
+    def test_cut_by_cut_words_are_gathered_by_concept_instead_of_taking_the_first_cut(self):
+        # 몽골 여행 — 컷마다 장소 · 주제 문자열이 달라 예전에는 첫 컷의 "암석 지형"이 부제가 됐다(2026-10-28 운영)
+        trip = [
+            {"topics": ["몽골 여행"], "places": ["암석 지형"]},
+            {"topics": ["자연 풍경"], "places": ["바다 해변"]},
+            {"topics": ["여행 기록"], "places": ["해변 산책로"]},
+        ]
+        subtitle, place = title_card.words(trip)
+        self.assertEqual(subtitle, "여행")
+        self.assertNotEqual(place, "암석 지형")
+
+    def test_nothing_shared_falls_back_instead_of_naming_the_first_cut(self):
+        self.assertEqual(title_card.words([{"topics": ["가"], "places": ["ㄱ"]}, {"topics": ["나"], "places": ["ㄴ"]}]), ("daily", ""))
+
     def test_without_analysis(self):
         self.assertEqual(title_card.words([{}, {}]), ("daily", ""))
 
@@ -63,7 +77,7 @@ class CinematicTest(unittest.TestCase):
 
 
 class CutCommentTest(unittest.TestCase):
-    """시네마틱 오른쪽 글을 컷마다(trend-recipes.md §15)."""
+    """시네마틱 오른쪽 글을 컷마다(trend-recipes.md §16)."""
 
     CUTS = [(0, 1000), (1000, 2000), (2000, 3000), (3000, 4000), (4000, 5000), (5000, 6000)]
 

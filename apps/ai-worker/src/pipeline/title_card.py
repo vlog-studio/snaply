@@ -6,16 +6,18 @@
 - `script` — 손글씨(Gaegu) "Mini VLog" 와 "in {장소}!!". 처음 몇 초만
 - `cinematic` — 레터박스 띠 안 왼쪽에 굵은 "Vlog", 오른쪽에 작은 "@{장소} !", 마지막 1.5초는 "See ya !<3"(2026-10-22 레퍼런스 ⑤ —
   "숏브이로그 in 대전"). 장소가 '실내' · '야외' 처럼 흔한 말이면 부제를 쓴다. 컷 구간을 받으면 오른쪽 글이 컷마다 그 컷의 멘트로
-  바뀐다(`cut_comments` — 2026-10-29, trend-recipes.md §15)
+  바뀐다(`cut_comments` — 2026-10-29, trend-recipes.md §16)
 
-부제 · 장소는 스냅 분석에서 만든다 — 컷들의 분석 `topics` · `places` 자유 문자열 중 가장 자주 나온 것(같으면 먼저 나온 것).
-분석이 없으면 부제는 "daily", 장소는 비운다.
+부제 · 장소는 무비 전체를 대표해야 한다 — 컷들의 분석 `topics` · `places` 에서 ① 두 컷 이상에 나온 같은 문자열(가장 많은 것, 같으면 먼저 나온 것),
+② 없으면 내용 개념(content-vocabulary)으로 묶어 상위 개념까지 쳐서 가장 많은 컷이 공유하는 개념(두 컷 이상, 같으면 더 구체적인 것)의 이름,
+③ 그래도 없으면 부제는 "daily", 장소는 비운다. 분석이 있는 컷이 하나뿐이면 그 컷의 첫 값. 문자열이 컷마다 다르면 첫 컷의 값이 뽑혀
+여행 전체를 대표하지 못했다(운영 2026-10-28 "@암석 지형 !" — 몽골 여행 8컷).
 """
 
 from collections import Counter
 from datetime import datetime
 
-from pipeline import ass
+from pipeline import ass, content
 
 TYPEWRITER, SCRIPT, CINEMATIC = "typewriter", "script", "cinematic"
 STYLES = (TYPEWRITER, SCRIPT, CINEMATIC)
@@ -23,22 +25,64 @@ OUTRO_MS = 1500
 GENERIC_PLACES = ("실내", "야외", "실외", "거리", "도로", "집", "방", "건물", "실내 공간", "야외 공간")
 MAX_CHARS = 14
 FADE_MS = 300
-CUT_COMMENT_MIN_MS = 900  # 한 멘트가 머무는 최소 시간 — 시네마틱 컷(중앙값 0.94초)마다 바뀌되 더 짧은 컷에서는 앞 멘트가 이어진다(§15)
+CUT_COMMENT_MIN_MS = 900  # 한 멘트가 머무는 최소 시간 — 시네마틱 컷(중앙값 0.94초)마다 바뀌되 더 짧은 컷에서는 앞 멘트가 이어진다(trend-recipes.md §16)
 CUT_COMMENT_FADE_MS = 150
 
 
-def _most_common(analyses: list[dict], field: str) -> str | None:
-    values = [" ".join(v.split()) for a in analyses for v in (a.get(field) or []) if v and v.strip()]
-    if not values:
+def _values(analysis: dict, field: str) -> list[str]:
+    return [" ".join(v.split()) for v in (analysis.get(field) or []) if v and v.strip()]
+
+
+def _lineage(field: str, concept: str) -> list[str]:
+    """개념과 그 상위 개념들(가까운 것부터)."""
+    concepts, chain = content.VOCABULARY["concepts"][field], []
+    while concept and concept not in chain:
+        chain.append(concept)
+        concept = concepts[concept].get("parent")
+    return chain
+
+
+def _shared_concept(analyses: list[dict], field: str) -> str | None:
+    """두 컷 이상이 공유하는 개념(상위 개념까지)의 이름 — 가장 많은 컷, 같으면 더 구체적인(깊은) 것, 그래도 같으면 먼저 나온 것."""
+    support: Counter = Counter()
+    depth: dict[str, int] = {}
+    order: list[str] = []
+    for analysis in analyses:
+        seen: set[str] = set()
+        for concept in content.normalize_values(field, _values(analysis, field)):
+            chain = _lineage(field, concept)
+            for k, c in enumerate(chain):
+                depth[c] = max(depth.get(c, 0), len(chain) - k)
+                seen.add(c)
+                if c not in order:
+                    order.append(c)
+        support.update(seen)
+    shared = [c for c in order if support[c] >= 2]
+    if not shared:
         return None
-    counts = Counter(values)
+    best = max(shared, key=lambda c: (support[c], depth[c], -order.index(c)))
+    return content.VOCABULARY["concepts"][field][best]["label"]
+
+
+def _representative(analyses: list[dict], field: str) -> str | None:
+    per_cut = [_values(a, field) for a in analyses]
+    with_values = [v for v in per_cut if v]
+    if not with_values:
+        return None
+    if len(with_values) == 1:
+        return with_values[0][0][:MAX_CHARS]
+    counts = Counter(v for values in per_cut for v in dict.fromkeys(values))  # 컷마다 한 번
+    flat = [v for values in per_cut for v in values]
     best = max(counts.values())
-    return next(v for v in values if counts[v] == best)[:MAX_CHARS]
+    if best >= 2:
+        return next(v for v in flat if counts[v] == best)[:MAX_CHARS]
+    shared = _shared_concept(analyses, field)
+    return shared[:MAX_CHARS] if shared else None
 
 
 def words(analyses: list[dict]) -> tuple[str, str]:
-    """(부제, 장소) — 분석에서."""
-    return _most_common(analyses, "topics") or "daily", _most_common(analyses, "places") or ""
+    """(부제, 장소) — 분석에서, 무비 전체를 대표하는 값."""
+    return _representative(analyses, "topics") or "daily", _representative(analyses, "places") or ""
 
 
 def _clean(value: str) -> str:

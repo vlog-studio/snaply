@@ -1,6 +1,6 @@
 {
   "_note": "숏브이로그 스타일 레시피 — 소리 구성 · 고정 타이틀 · 글 · 스티커 밀도 · 효과음 · 자연스러운 이음(컷 고르기) · 배속 · 전환 효과 · 화면 분할 · 줌 · 색 필터 · 얼굴 스티커를 스타일마다 데이터로 둔다. 2026-10-22 레퍼런스 릴스 4편 분석에서 나왔다(docs/decisions/trend-recipes.md). classic 은 지금까지의 무비와 같다. 워커(pipeline/recipe.py)가 읽고, API 는 무비의 꾸밈 기본값(decorations)만 읽는다. 값을 바꾸면 recipeVocabularyVersion 을 올린다 — 같은 무비를 다시 만들 때 결과가 바뀐다.",
-  "recipeVocabularyVersion": 12,
+  "recipeVocabularyVersion": 13,
 
   "_decorationsNote": "decorations: 무비를 만들 때와 레시피를 바꿀 때 무비의 꾸밈(글자 · 이모지 · 얼굴 스티커)을 채우는 기본값 — 붙일지는 무비 설정이 정하고 레시피는 양(accents · stickers · faceStickers)만 정한다(docs/decisions/text-accent-stickers.md §9). API 도 이 값을 읽는다. decorationFallback: 레시피가 0 으로 둔 것을 사용자가 켰을 때 쓰는 양. 글자를 끄고 이모지만 켜면 이모지는 글 대신 자기 근거(accents.minScore · gapMs)로 컷을 고른다.",
   "decorationFallback": {
@@ -9,7 +9,7 @@
     "faceStickers": {"enabled": true, "share": 0.4, "minTrackMs": 700, "gapMs": 4000, "kinds": ["crown", "hearts", "sparkles"]}
   },
 
-  "_fieldsNote": "audio.sourceGain: 원본 소리 크기(0 이면 빼고 음원만), audio.bgmGain: BGM 크기. title: 고정 타이틀 — null 이면 없음, style 은 title_card 의 모양, holdMs 가 null 이면 무비 끝까지. accents.max: 무비 하나의 글 수 상한(null 이면 제한 없음), accents.minScore: 사전 매칭 점수 하한(행동 · 사물 하나가 3), accents.keyword: 맞는 게 없을 때 장소 키워드를 쓸지, accents.gapMs: 글끼리 최소 간격(null 이면 없음). stickers.maxPerMovie · perCut: 이모지 수(null 이면 엔진 기본). sfx.max: 효과음 수 상한(null 이면 없음 — 장면이 맞는 컷마다), sfx.minScore: 매칭 점수 하한, sfx.seams: 이음 · 전환 효과 · 분할 등장에 효과음을 넣을지, sfx.lowLink: 연결 점수가 이보다 낮은 경계에 전환음(이음새를 덮는다), sfx.duck: 효과음이 날 때 음원을 잠깐 낮출지. continuity: 컷을 이음이 자연스러운 지점에서 자를지와 컷 길이 범위(ms) · 박자에 맞출지 · minMovieMs(무비가 이보다 짧으면 스냅에서 컷을 더 뽑는다 — 같은 스냅의 점프컷, 원본이 모자라면 배속을 푼다) · oneCutPerSnap(스냅마다 가장 덜 흔들리는 구간 한 번만, 최소 길이는 컷 길이로 채움). speed: 배속 — 분석이 이 행동을 본 긴 컷을 factor 배로. transitions: 이음이 없는 경계의 rate 비율에 palette(무게)에서 고른 전환 효과(pipeline/cut_fx.py — 전환 어휘의 flash · dip · zoompunch 와 컷 안에서 끝나는 whip · zoom · spin · glitch · shake). split: everyCuts 컷마다 한 번 sizes 중 하나의 화면 분할(짧은 컷을 위아래로 차례로 쌓는다, 패널 하나가 maxPanelMs 이하일 때만, null 이면 없음). zoom: 컷의 rate 비율에 kinds 중 하나(push 천천히 확대 · pull 천천히 축소 · punch 박자에 확 확대), alternate 면 kinds 를 차례로 번갈아, range 는 push · pull 의 확대 몫(기본 0.12). look: 무비 전체의 색 필터(pipeline/look.py, auto 면 장면에서 고름, null 이면 없음). match: 매치컷 — 컷 끝 · 시작의 피사체 · 구도 · 색 · 움직임으로 연결 점수를 매겨 order 면 점수 위주로 순서를 정하고(촬영 순서를 따르지 않음), minScore 이상인 경계는 앞 컷 끝에서 피사체로 줌 인 → 다음 컷 시작에서 피사체로부터 줌 아웃(share: 컷에서 차지하는 몫, subjectFill: 경계에서 피사체가 차는 화면 너비 몫, pipeline/match_cut.py). temperature · explore 는 순서의 자유도(0 이면 점수가 가장 높은 순서, 높을수록 확률적으로 · explore 몫은 점수와 무관하게 — 규칙 밖 예산). search 가 beam 이면 스냅마다 0.5~1초 후보(모션 피크 · 원본 줌 쌍)를 만들어 빔 서치로 순서 · 구간을 함께 고른다(beamWidth · perSnap — 한 스냅에서 쓸 수 있는 컷 수, pipeline/fast_cut.py). motion 이면 원본에 찍힌 줌을 먼저 쓴다 — 컷을 원본 줌 아웃의 시작부터 줌 인의 끝까지 잘라, A 줌 인 끝 → B 줌 아웃 시작으로 원본 움직임이 이어지게(그런 경계엔 디지털 줌 없음). frame: 화면 틀 — letterbox 면 세로 화면 가운데 16:9 띠만 영상, 위아래 검은 띠(시네마틱), null 이면 세로 전체. faceStickers: 얼굴에 붙는 스티커(왕관 · 선글라스 · 하트 · 반짝이) — 얼굴이 minTrackMs 이상 보이는 구간의 share 비율에, 서로 gapMs 떨어져서. format: 포맷 = 전략 묶음(trend-recipes.md §11) — cuts(컷 선택: continuity 이음 계획 · zoom-pairs 원본 줌 쌍 · motion-peaks 모션 피크 0.5~1초 · beats 박자 배수 · action-span 동작 전체 · steady 가장 안정된 구간, lengthsMs 로 길이를 정할 수 있다), link(연결 기준: similar 매치컷 · contrast 구도는 같고 내용은 다르게(before/after) · chronological 촬영 순서 · rhythm 에너지가 오르게), primitives(speedRamp 가운데 배속 · freeze {every, holdMs} 동작 피크에서 멈춤 · dropFlash 음원 드롭에 플래시), overlay(timestamp 촬영 시각 · freezeLabel 멈춘 동안 큰 글). 엔진(빔 서치 · 효과음 · 렌더)은 같고 포맷만 갈아 끼운다.",
+  "_fieldsNote": "audio.sourceGain: 원본 소리 크기(0 이면 빼고 음원만), audio.bgmGain: BGM 크기. title: 고정 타이틀 — null 이면 없음, style 은 title_card 의 모양, holdMs 가 null 이면 무비 끝까지. accents.max: 무비 하나의 글 수 상한(null 이면 제한 없음), accents.minScore: 사전 매칭 점수 하한(행동 · 사물 하나가 3), accents.keyword: 맞는 게 없을 때 장소 키워드를 쓸지, accents.gapMs: 글끼리 최소 간격(null 이면 없음). stickers.maxPerMovie · perCut: 이모지 수(null 이면 엔진 기본). sfx.max: 효과음 수 상한(null 이면 없음 — 장면이 맞는 컷마다), sfx.minScore: 매칭 점수 하한, sfx.seams: 이음 · 전환 효과 · 분할 등장에 효과음을 넣을지, sfx.lowLink: 연결 점수가 이보다 낮은 경계에 전환음(이음새를 덮는다), sfx.duck: 효과음이 날 때 음원을 잠깐 낮출지. continuity: 컷을 이음이 자연스러운 지점에서 자를지와 컷 길이 범위(ms) · 박자에 맞출지 · minMovieMs(무비가 이보다 짧으면 스냅에서 컷을 더 뽑는다 — 같은 스냅의 점프컷, 원본이 모자라면 배속을 푼다) · oneCutPerSnap(스냅마다 가장 덜 흔들리는 구간 한 번만, 최소 길이는 컷 길이로 채움). speed: 배속 — 분석이 이 행동을 본 긴 컷을 factor 배로. transitions: 이음이 없는 경계의 rate 비율에 palette(무게)에서 고른 전환 효과(pipeline/cut_fx.py — 전환 어휘의 flash · dip · zoompunch 와 컷 안에서 끝나는 whip · zoom · spin · glitch · shake). split: everyCuts 컷마다 한 번 sizes 중 하나의 화면 분할(짧은 컷을 위아래로 차례로 쌓는다, 패널 하나가 maxPanelMs 이하일 때만, null 이면 없음). zoom: 컷의 rate 비율에 kinds 중 하나(push 천천히 확대 · pull 천천히 축소 · punch 박자에 확 확대), alternate 면 kinds 를 차례로 번갈아, range 는 push · pull 의 확대 몫(기본 0.12). look: 무비 전체의 색 필터(pipeline/look.py, auto 면 장면에서 고름, null 이면 없음). match: 매치컷 — 컷 끝 · 시작의 피사체 · 구도 · 색 · 움직임으로 연결 점수를 매겨 order 면 점수 위주로 순서를 정하고(촬영 순서를 따르지 않음), minScore 이상인 경계는 앞 컷 끝에서 피사체로 줌 인 → 다음 컷 시작에서 피사체로부터 줌 아웃(share: 컷에서 차지하는 몫, subjectFill: 경계에서 피사체가 차는 화면 너비 몫, pipeline/match_cut.py). temperature · explore 는 순서의 자유도(0 이면 점수가 가장 높은 순서, 높을수록 확률적으로 · explore 몫은 점수와 무관하게 — 규칙 밖 예산). search 가 beam 이면 스냅마다 0.5~1초 후보(모션 피크 · 원본 줌 쌍)를 만들어 빔 서치로 순서 · 구간을 함께 고른다(beamWidth · perSnap — 한 스냅에서 쓸 수 있는 컷 수, pipeline/fast_cut.py). motion 이면 원본에 찍힌 줌을 먼저 쓴다 — 컷을 원본 줌 아웃의 시작부터 줌 인의 끝까지 잘라, A 줌 인 끝 → B 줌 아웃 시작으로 원본 움직임이 이어지게(그런 경계엔 디지털 줌 없음). frame: 화면 틀 — letterbox 면 세로 화면 가운데 16:9 띠만 영상, 위아래 검은 띠(시네마틱), null 이면 세로 전체. faceStickers: 얼굴에 붙는 스티커(왕관 · 선글라스 · 하트 · 반짝이) — 얼굴이 minTrackMs 이상 보이는 구간의 share 비율에, 서로 gapMs 떨어져서. format: 포맷 = 전략 묶음(trend-recipes.md §11) — cuts(컷 선택: continuity 이음 계획 · zoom-pairs 원본 줌 쌍 · motion-peaks 모션 피크 0.5~1초 · beats 박자 배수 · action-span 동작 전체 · steady 가장 안정된 구간, lengthsMs 로 길이를 정할 수 있다 · zoom-pairs 는 continuity.shotMs · beatSnap 을 보지 않는다), jumpCuts(true 면 같은 스냅의 다른 구간을 바로 이어도 된다 — 촬영 순서 포맷의 점프컷), link(연결 기준: similar 매치컷 · contrast 구도는 같고 내용은 다르게(before/after) · chronological 촬영 순서 · rhythm 에너지가 오르게), primitives(speedRamp 가운데 배속 · freeze {every, holdMs} 동작 피크에서 멈춤 · dropFlash 음원 드롭에 플래시), overlay(timestamp 촬영 시각 · freezeLabel 멈춘 동안 큰 글). 엔진(빔 서치 · 효과음 · 렌더)은 같고 포맷만 갈아 끼운다.",
 
   "recipes": {
     "classic": {
@@ -220,6 +220,63 @@
       "match": {"enabled": true, "order": true, "motion": true, "search": "beam", "beamWidth": 8, "perSnap": 3, "minScore": 0.5, "share": 0.45, "subjectFill": 0.5, "temperature": 0.25, "explore": 0.0},
       "faceStickers": {"enabled": false, "share": 0.0, "minTrackMs": 0, "gapMs": 0, "kinds": []},
       "format": {"cuts": "motion-peaks", "link": "rhythm", "primitives": {"freeze": {"every": 3, "holdMs": 500}}, "overlay": {"freezeLabel": true}}
+    },
+    "whip-montage": {
+      "label": "휩 몽타주 — 0.6~1.6초 컷을 박자에 묶지 않고, 경계 대부분을 휙 밀어 넘김(휩팬)으로 잇는 여행 · 일상 몽타주. 처음에만 손글씨 타이틀, 휙 소리(레퍼런스 말뭉치 — 휩팬 몽타주, trend-recipes §15)",
+      "audio": {"sourceGain": 0.0, "bgmGain": 1.0},
+      "title": {"style": "script", "holdMs": 2500},
+      "accents": {"max": null, "minScore": 3, "keyword": false, "gapMs": 2500},
+      "decorations": {"text": true, "emoji": true, "face": true},
+      "stickers": {"maxPerMovie": null, "perCut": 1},
+      "sfx": {"max": null, "minScore": 3, "seams": true, "lowLink": 0.4, "duck": true},
+      "continuity": {"enabled": true, "shotMs": [600, 1600], "beatSnap": false, "minMovieMs": 15000, "oneCutPerSnap": false},
+      "speed": {"enabled": true, "factor": 2.0, "actions": ["walk", "ride", "move"], "minShotMs": 1200},
+      "transitions": {"rate": 0.6, "palette": {"whip": 3, "zoompunch": 1}},
+      "split": {"everyCuts": null, "sizes": [], "maxPanelMs": 0},
+      "zoom": {"rate": 0.0, "kinds": []},
+      "look": "auto",
+      "frame": null,
+      "match": {"enabled": true, "order": true, "motion": true, "minScore": 0.45, "share": 0.45, "subjectFill": 0.5, "temperature": 0.3, "explore": 0.2},
+      "faceStickers": {"enabled": true, "share": 0.4, "minTrackMs": 600, "gapMs": 4000, "kinds": ["crown", "hearts", "sparkles"]},
+      "format": {"cuts": "continuity", "link": "similar", "primitives": {}, "overlay": {}}
+    },
+    "letterbox-montage": {
+      "label": "가로 몽타주 — 레터박스 띠 안에 0.8~2초 컷을 박자에 묶지 않고 흐르듯 잇는 몽타주(가로로 찍은 여행 영상). 휩 · 검게 넘기기 드물게, 분할 없음, 시네마틱 타이틀(레퍼런스 말뭉치 — 가로 영상 몽타주, trend-recipes §15)",
+      "audio": {"sourceGain": 0.0, "bgmGain": 1.0},
+      "title": {"style": "cinematic", "holdMs": 3000},
+      "accents": {"max": null, "minScore": 3, "keyword": false, "gapMs": 3000},
+      "decorations": {"text": true, "emoji": true, "face": true},
+      "stickers": {"maxPerMovie": null, "perCut": 1},
+      "sfx": {"max": null, "minScore": 3, "seams": true, "lowLink": 0.4, "duck": true},
+      "continuity": {"enabled": true, "shotMs": [800, 2000], "beatSnap": false, "minMovieMs": 15000, "oneCutPerSnap": false},
+      "speed": {"enabled": true, "factor": 1.5, "actions": ["walk", "ride", "move"], "minShotMs": 1500},
+      "transitions": {"rate": 0.25, "palette": {"whip": 1, "dip": 1}},
+      "split": {"everyCuts": null, "sizes": [], "maxPanelMs": 0},
+      "zoom": {"rate": 0.5, "kinds": ["push", "pull"], "alternate": true, "range": 0.1},
+      "look": "film",
+      "frame": "letterbox",
+      "match": {"enabled": true, "order": true, "motion": false, "minScore": 0.45, "share": 0.45, "subjectFill": 0.5, "temperature": 0.1, "explore": 0.1},
+      "faceStickers": {"enabled": true, "share": 0.5, "minTrackMs": 700, "gapMs": 4000, "kinds": ["crown", "hearts", "sparkles"]},
+      "format": {"cuts": "continuity", "link": "similar", "primitives": {}, "overlay": {}}
+    },
+    "talk-vlog": {
+      "label": "말소리 브이로그 — 원본 소리(말 · 현장음)를 살리고 음원은 작게 깐다. 0.8~2.5초 안정된 구간을 촬영 순서대로, 박자에 묶지 않음, 가끔 휩, 글은 드물게(레퍼런스 말뭉치 — 원본 말소리, trend-recipes §15)",
+      "audio": {"sourceGain": 1.0, "bgmGain": 0.12},
+      "title": {"style": "script", "holdMs": 3000},
+      "accents": {"max": null, "minScore": 6, "keyword": false, "gapMs": 6000},
+      "decorations": {"text": true, "emoji": true, "face": false},
+      "stickers": {"maxPerMovie": 2, "perCut": 1},
+      "sfx": {"max": 0, "minScore": 99, "seams": false, "lowLink": 0.0, "duck": false},
+      "continuity": {"enabled": true, "shotMs": [800, 2500], "beatSnap": false, "minMovieMs": 15000, "oneCutPerSnap": true},
+      "speed": {"enabled": false, "factor": 1.0, "actions": [], "minShotMs": 0},
+      "transitions": {"rate": 0.15, "palette": {"whip": 1, "dip": 1}},
+      "split": {"everyCuts": null, "sizes": [], "maxPanelMs": 0},
+      "zoom": {"rate": 0.5, "kinds": ["push"], "alternate": true, "range": 0.05},
+      "look": "auto",
+      "frame": null,
+      "match": {"enabled": true, "order": true, "motion": true, "search": "beam", "beamWidth": 8, "perSnap": 2, "minScore": 0.5, "share": 0.45, "subjectFill": 0.5, "temperature": 0.1, "explore": 0.0},
+      "faceStickers": {"enabled": false, "share": 0.0, "minTrackMs": 0, "gapMs": 0, "kinds": []},
+      "format": {"cuts": "steady", "link": "chronological", "lengthsMs": [1000, 1500, 2200], "jumpCuts": true, "primitives": {}, "overlay": {}}
     },
     "daylog": {
       "label": "하루로그형 — 1~3초 매치컷, 음원만, 필름 색, 아주 맞는 순간에만 글(레퍼런스 ③)",
