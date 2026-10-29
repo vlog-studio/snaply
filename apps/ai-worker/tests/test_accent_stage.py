@@ -10,7 +10,7 @@ from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from pipeline import accent_inputs, accent_stage, beat_grid  # noqa: E402
+from pipeline import accent_inputs, accent_stage, beat_grid, face, recipe  # noqa: E402
 from pipeline.accent_stage import CutSource  # noqa: E402
 
 CUTS = [
@@ -74,6 +74,29 @@ class ApplyTest(unittest.TestCase):
             path, outcome = accent_stage.apply("in.mp4", CUTS, {}, {}, None, 3000, "m1", "/w", "out.mp4")
         self.assertEqual((path, outcome.applied), ("in.mp4", False))
         composite.assert_not_called()
+
+
+
+class FaceStickerTest(unittest.TestCase):
+    """사용자가 컷을 고른 무비도 꾸밈의 얼굴을 켜면 편집본에서 얼굴을 찾는다(text-accent-stickers.md §9)."""
+
+    def test_face_on_looks_for_faces_in_the_edited_movie(self):
+        spec = recipe.decorated_spec(recipe.get("cinematic").spec, {"text": False, "emoji": False, "face": True})
+        with mock.patch.object(face, "detect", return_value=[]) as detect, \
+                mock.patch.object(face, "tracks", return_value=[]), \
+                mock.patch.object(face, "plan", return_value=["crown"]) as plan:
+            self.assertEqual(accent_stage._faces("with_bgm.mp4", spec, 7), ["crown"])
+        detect.assert_called_once_with("with_bgm.mp4")
+        self.assertEqual(plan.call_args.args[1:], (spec["faceStickers"], 7))
+
+    def test_face_off_or_undetectable_means_none(self):
+        off = recipe.decorated_spec(recipe.get("cinematic").spec, {"text": True, "emoji": True, "face": False})
+        with mock.patch.object(face, "detect") as detect:
+            self.assertEqual(accent_stage._faces("with_bgm.mp4", off, 7), [])
+        detect.assert_not_called()
+        on = recipe.get("cinematic").spec
+        with mock.patch.object(face, "detect", side_effect=face.FaceError("x")):
+            self.assertEqual(accent_stage._faces("with_bgm.mp4", on, 7), [])
 
 
 if __name__ == "__main__":

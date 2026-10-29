@@ -556,13 +556,6 @@ export const ENV_VARS = [
     description: '편집 작업 1건의 타임아웃(초). 기본 900',
   },
   {
-    key: 'TEXT_ACCENTS_ENABLED',
-    required: false,
-    origin: 'shared',
-    description:
-      '편집 워커가 classic 무비의 결과물에 텍스트 액센트 · 이모지 스티커를 굽는다(MOV-27, decisions/text-accent-stickers.md). true 일 때만, 기본 false. 분석에 동의한 스냅의 분석 결과와 고른 BGM 의 비트를 쓴다. 레시피 무비(MOV-28)는 이 값과 상관없이 레시피의 글 · 스티커를 쓴다',
-  },
-  {
     key: 'BGM_DIR',
     required: false,
     origin: 'shared',

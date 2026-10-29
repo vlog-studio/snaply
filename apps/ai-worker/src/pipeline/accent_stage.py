@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from loguru import logger
 
-from pipeline import (accent_inputs, accent_render, ass, beat_grid, content, density, ffmpeg_error, recipe, seed, sfx,
+from pipeline import (accent_inputs, accent_render, ass, beat_grid, content, density, face, ffmpeg_error, recipe, seed, sfx,
                       sticker, sticker_render, title_card)
 from pipeline import text_accent as ta
 
@@ -48,6 +48,7 @@ class Outcome:
     reason: str = ""
     sfx: list[str] = field(default_factory=list)
     title: bool = False
+    faces: int = 0
 
 
 def stage_seed(movie_id: str) -> int:
@@ -56,7 +57,8 @@ def stage_seed(movie_id: str) -> int:
     return seed.derive_stage_seed(root, "style-director", 0)
 
 
-def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]]) -> list[ta.CutContext]:
+def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]],
+               fit_mode: str = "blur_background") -> list[ta.CutContext]:
     """결과물 시간축의 컷 — 경계는 컷 길이의 누적이다(겹침 전환은 경계 양쪽에 반씩 걸쳐 경계가 그대로다)."""
     contexts, t = [], 0
     for i, cut in enumerate(cuts):
@@ -66,15 +68,16 @@ def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[s
             content.concepts_of(analyses.get(cut.video_id) or {}),
             None,
             motion=accent_inputs.cut_motion(motions.get(cut.video_id) or (), cut.start_ms, cut.end_ms),
-            luma=_luma(cut),
+            luma=_luma(cut, fit_mode),
         ))
         t += length
     return contexts
 
 
-def _luma(cut: CutSource):
+def _luma(cut: CutSource, fit_mode: str):
     try:
-        return accent_inputs.luma_grid(cut.path, accent_inputs.representative_ms(cut.start_ms, cut.end_ms, cut.source_ms))
+        return accent_inputs.luma_grid(cut.path, accent_inputs.representative_ms(cut.start_ms, cut.end_ms, cut.source_ms),
+                                       fit_mode)
     except accent_inputs.AccentInputError as exc:
         logger.warning("대표 프레임을 읽지 못해 대비 규칙 없이 간다 ({}): {}", cut.video_id, exc)
         return None
@@ -95,21 +98,25 @@ def beats_for(track_path: str | None, movie_ms: int) -> tuple[tuple[int, ...] | 
 
 def render(video_in: str, contexts: list[ta.CutContext], beats, movie_id: str, work_dir: str, out: str,
            spec: dict | None = None, analyses: list[dict] | None = None) -> Outcome:
-    """글 · 스티커 · (레시피면) 고정 타이틀 · 효과음. spec 은 레시피(없으면 classic — 지금까지와 같다)."""
+    """글 · 스티커 · 얼굴 스티커 · (레시피면) 고정 타이틀 · 효과음. spec 은 꾸밈을 입힌 레시피(`recipe.decorated_spec`, 없으면 classic)."""
     spec = spec or recipe.get(recipe.CLASSIC).spec
     analyses = analyses or [{} for _ in contexts]
     seed_value = stage_seed(movie_id)
     accents = density.limit_accents(ta.plan(contexts, beats, seed_value).accents, contexts, spec["accents"])
-    stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed_value), accents, spec["stickers"])
+    stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed_value), accents, spec["stickers"],
+                                      spec.get("stickerGate"))
+    faces = _faces(video_in, spec, seed_value)
     total_ms = max(c.end_ms for c in contexts)
     title = spec.get("title")
-    events = title_card.events(title["style"], analyses, total_ms, title.get("holdMs")) if title else []
+    cuts = [(c.start_ms, c.end_ms) for c in contexts]
+    events = title_card.events(title["style"], analyses, total_ms, title.get("holdMs"), cuts) if title else []
     sounds = sfx.plan(contexts, analyses, [], spec["sfx"])
-    if not accents and not stickers and not events and not sounds:
+    if not accents and not stickers and not faces and not events and not sounds:
         return Outcome(reason="붙일 것이 없다(분석 · 장소 개념 없음)")
     current = video_in
-    if accents or stickers or events:
-        track = sticker_render.bake_overlay(stickers, total_ms + 1000, os.path.join(work_dir, "accent_stickers.mov"))
+    if accents or stickers or faces or events:
+        track = sticker_render.bake_overlay(stickers, total_ms + 1000, os.path.join(work_dir, "accent_stickers.mov"),
+                                            tuple(faces))
         document = os.path.join(work_dir, "accents.ass")
         with open(document, "w", encoding="utf-8") as f:
             f.write(accent_render.build_document(accents, title_card.styles() if events else [], events))
@@ -119,7 +126,19 @@ def render(video_in: str, contexts: list[ta.CutContext], beats, movie_id: str, w
         sfx.mix_into(current, sounds, out)
     else:
         os.replace(current, out)
-    return Outcome(True, [a.choice.text for a in accents], len(stickers), sfx=[s.reason for s in sounds], title=bool(events))
+    return Outcome(True, [a.choice.text for a in accents], len(stickers), sfx=[s.reason for s in sounds], title=bool(events),
+                   faces=len(faces))
+
+
+def _faces(video_in: str, spec: dict, seed_value: int) -> list[face.FaceSticker]:
+    """편집본에서 얼굴을 찾아 얼굴 스티커를 고른다(AI 컷 경로의 `trend_edit._faces` 와 같다). 못 찾으면 없이 간다."""
+    cfg = spec.get("faceStickers") or {}
+    if not cfg.get("enabled"):
+        return []
+    try:
+        return face.plan(face.tracks(face.detect(video_in)), cfg, seed_value)
+    except face.FaceError:
+        return []
 
 
 def composite(video_in: str, track: str, document: str, out: str) -> None:
@@ -137,13 +156,14 @@ def composite(video_in: str, track: str, document: str, out: str) -> None:
 
 def apply(video_in: str, cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]],
           track_path: str | None, movie_ms: int, movie_id: str, work_dir: str, out: str,
-          recipe_name: str | None = None) -> tuple[str, Outcome]:
-    """굽기를 시도한다. 반환: (결과 경로, 무엇을 붙였나). 실패하면 입력 그대로."""
+          recipe_name: str | None = None, fit_mode: str = "blur_background",
+          decorations: dict[str, bool] | None = None) -> tuple[str, Outcome]:
+    """굽기를 시도한다. 반환: (결과 경로, 무엇을 붙였나). 실패하면 입력 그대로. decorations 는 무비의 꾸밈(`recipe.decorations_of`)."""
     try:
         beats, bpm = beats_for(track_path, movie_ms)
         per_cut = [analyses.get(c.video_id) or {} for c in cuts]
-        outcome = render(video_in, build_cuts(cuts, analyses, motions), beats, movie_id, work_dir, out,
-                         recipe.get(recipe_name).spec, per_cut)
+        outcome = render(video_in, build_cuts(cuts, analyses, motions, fit_mode), beats, movie_id, work_dir, out,
+                         recipe.decorated_spec(recipe.get(recipe_name).spec, decorations), per_cut)
         outcome.bpm = bpm
     except Exception as exc:  # noqa: BLE001 — 꾸밈이 없다고 무비를 실패시키지 않는다
         logger.warning("텍스트 액센트 단계 실패 — 없이 진행: {}", exc)

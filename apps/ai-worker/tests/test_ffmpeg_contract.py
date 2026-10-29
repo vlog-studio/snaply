@@ -18,6 +18,7 @@
 """
 
 import json
+from dataclasses import replace
 import os
 import struct
 import subprocess
@@ -106,6 +107,22 @@ class EditOutputContract(unittest.TestCase):
 
             info = probe(out)["video"]
             self.assertEqual((info["width"], info["height"]), (1080, 1920))
+
+    def test_solid_bars_fill_the_rest_of_a_landscape_source(self) -> None:
+        # 단색 띠 맞춤(MOV-8) — 가로 원본 위아래가 고른 색이고, 가운데는 원본이 화면 폭까지 커져 있다.
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "landscape.mp4")
+            make_clip(src, width=640, height=360)
+            for fit_mode, level in (("pad_white", 255), ("pad_black", 0)):
+                spec = replace(DEFAULT_RENDER_SPEC, fit_mode=fit_mode)
+                os.makedirs(os.path.join(work, fit_mode))
+                out = edit([ClipSource(src)], get_preset("일상"), spec, os.path.join(work, fit_mode))
+
+                self.assertEqual((probe(out)["video"]["width"], probe(out)["video"]["height"]), (1080, 1920))
+                for channel in pixel(out, 0.5, y=200):
+                    self.assertAlmostEqual(channel, level, delta=12)
+                # 640x360 이 1080 폭으로 커지면 높이 약 608 — 화면 가운데(y 960)의 띠 바로 안쪽은 원본이다
+                self.assertNotAlmostEqual(sum(pixel(out, 0.5, y=900)) / 3, level, delta=30)
 
     def test_output_plays_everywhere(self) -> None:
         """H.264 + yuv420p. 이걸 벗어나면 기기에 따라 재생되지 않는다."""
@@ -882,6 +899,24 @@ class AccentInputsContract(unittest.TestCase):
             self.assertLess(max(grid[-1]), 0.15)
             with self.assertRaises(accent_inputs.AccentInputError):
                 accent_inputs.luma_grid(os.path.join(work, "missing.mp4"), 0)
+
+    def test_luma_grid_sees_the_solid_bars_the_movie_will_have(self) -> None:
+        # 흰 띠 맞춤이면 글이 놓일 수 있는 위아래가 흰색으로 잰다 — 흰 글이 대비 규칙에 걸린다(MOV-8 · MOV-27)
+        from pipeline import accent_inputs
+
+        with tempfile.TemporaryDirectory() as work:
+            path = os.path.join(work, "landscape.mp4")
+            subprocess.run(
+                ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=black:s=1280x720:rate=30:duration=1",
+                 "-c:v", "libx264", "-pix_fmt", "yuv420p", path],
+                capture_output=True, check=True,
+            )
+            white = accent_inputs.luma_grid(path, 500, "pad_white")
+            self.assertGreater(min(white[0]), 0.9)
+            self.assertGreater(min(white[-1]), 0.9)
+            self.assertLess(max(white[accent_inputs.ROWS // 2]), 0.15)
+            # 블러 배경(기본)은 지금처럼 원본을 채워 잰다
+            self.assertLess(max(accent_inputs.luma_grid(path, 500)[0]), 0.15)
 
 
 @unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")

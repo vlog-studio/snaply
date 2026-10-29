@@ -13,7 +13,7 @@ from pipeline import cut_fx, editor, face, look, music, recipe, title_card, voca
 
 CONTENT = vocabulary.load("content-vocabulary.json")["concepts"]
 SECTIONS = {"label", "audio", "title", "accents", "stickers", "sfx", "continuity", "speed", "transitions", "split", "zoom", "look",
-            "frame", "match", "faceStickers", "format"}
+            "frame", "match", "faceStickers", "format", "decorations"}
 
 
 class RecipeTest(unittest.TestCase):
@@ -41,7 +41,7 @@ class RecipeTest(unittest.TestCase):
     def test_the_reference_recipes_cover_the_axes_the_corpus_missed(self):
         # 레퍼런스 10편에서 못 맞춘 축(휩팬 · 레터박스 + 박자 안 맞춤 · 원본 말소리)을 하나씩 겨냥한다(trend-recipes §15)
         whip, wide, talk = (recipe.RECIPES[n] for n in ("whip-montage", "letterbox-montage", "talk-vlog"))
-        self.assertGreaterEqual(whip["transitions"]["rate"], 0.2)  # 레퍼런스의 휩은 컷의 10~20% — 더 많으면 요란하다(§16)
+        self.assertGreaterEqual(whip["transitions"]["rate"], 0.2)  # 레퍼런스의 휩은 컷의 10~20% — 더 많으면 요란하다(§17)
         self.assertIn("whip", whip["transitions"]["palette"])
         self.assertEqual(wide["frame"], "letterbox")
         self.assertFalse(wide["continuity"]["beatSnap"])

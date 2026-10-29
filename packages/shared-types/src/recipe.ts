@@ -34,3 +34,17 @@ export const DEFAULT_MOVIE_RECIPE: MovieRecipe = 'classic';
 
 /** 사전에 적힌 레시피 이름들 — 테스트가 `MOVIE_RECIPES` 와 비교한다. */
 export const RECIPE_VOCABULARY_NAMES: readonly string[] = Object.keys(vocabulary.recipes);
+
+/** 무비의 꾸밈 — 글자(텍스트 액센트) · 이모지 스티커 · 얼굴 스티커를 각각 켜고 끈다(specs/movie.md MOV-27). */
+export const MOVIE_DECORATION_KEYS = ['text', 'emoji', 'face'] as const;
+export type MovieDecorationKey = (typeof MOVIE_DECORATION_KEYS)[number];
+export type MovieDecorationFlags = Record<MovieDecorationKey, boolean>;
+
+/**
+ * 레시피의 꾸밈 기본값 — 무비를 만들 때와 레시피를 바꿀 때 무비에 채운다(decisions/text-accent-stickers.md §9).
+ * 붙일지는 무비 설정이 정하고 레시피는 양만 정한다. 값은 사전의 `decorations`.
+ */
+export function recipeDecorations(recipe: MovieRecipe): MovieDecorationFlags {
+  const { text, emoji, face } = vocabulary.recipes[recipe].decorations;
+  return { text, emoji, face };
+}
