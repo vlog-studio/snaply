@@ -251,6 +251,9 @@ model VideoAnalysis {
   visualIssues       String[] @default([]) @map("visual_issues")
   usableForEdit      Boolean? @map("usable_for_edit")
   confidence         Float?
+  /// 프레임별 피사체 상자(프롬프트 v2, decisions/subject-boxes.md) — `[{ frame, items: [{ label, box: [x0, y0, x1, y1] }] }]`,
+  /// frame 은 frameTimestampsMs 의 순번. 워커가 쓸 수 있는 상자만 남긴다. v1 결과는 빈 배열이다.
+  subjects           Json     @default("[]")
 
   provider String  @default("openai") @db.VarChar(30)
   // 레코드는 워커가 모델을 고르기 전에 만들어지므로 완료 시점에 채워진다.

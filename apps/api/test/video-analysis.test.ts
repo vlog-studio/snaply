@@ -197,8 +197,9 @@ describe('GET /videos/:videoId/analysis', () => {
         visualIssues: ['shaky'],
         usableForEdit: true,
         confidence: 0.91,
+        subjects: [{ frame: 0, items: [{ label: '케이크', box: [0.2, 0.4, 0.6, 0.8] }] }, { frame: 1, items: [] }],
         modelVersion: 'gpt-5.6-luna',
-        promptVersion: 'v1',
+        promptVersion: 'v2',
         inputTokens: 800,
         outputTokens: 110,
         attempts: 1,
@@ -218,8 +219,24 @@ describe('GET /videos/:videoId/analysis', () => {
       issues: ['shaky'],
       usableForEdit: true,
     });
+    // 프레임별 피사체 상자(ANA-2, decisions/subject-boxes.md) — frame 은 frameTimestampsMs 의 순번
+    expect(data.result.subjects).toEqual([
+      { frame: 0, items: [{ label: '케이크', box: [0.2, 0.4, 0.6, 0.8] }] },
+      { frame: 1, items: [] },
+    ]);
     expect(data.modelVersion).toBe('gpt-5.6-luna');
     expect(data.attempts).toBe(1);
+  });
+
+  it('피사체 상자가 없는 예전 분석(프롬프트 v1)은 빈 배열이다', async () => {
+    const user = await createConsentedUser(h);
+    const videoId = await createSnap(user);
+    const analysisId = (await requestAnalysis(user, videoId)).json().data.analysisId;
+    await h.prisma.videoAnalysis.update({
+      where: { id: analysisId },
+      data: { status: 'done', summary: '바다', visualQualityScore: 0.5, usableForEdit: true, promptVersion: 'v1' },
+    });
+    expect((await getAnalysis(user, videoId)).json().data.result.subjects).toEqual([]);
   });
 
   it('진행 중이면 result가 null이다', async () => {

@@ -1,5 +1,6 @@
 """asyncpg 기반 edit_jobs / videos 상태 업데이트."""
 
+import json
 from datetime import datetime, timezone
 
 import asyncpg
@@ -70,7 +71,8 @@ async def fetch_accent_inputs(video_ids: list[str]) -> tuple[dict[str, dict], di
     """
     async with _pool_or_raise().acquire() as conn:
         analyses = await conn.fetch(
-            "SELECT DISTINCT ON (video_id) video_id, summary, topics, places, objects, actions, moods "
+            "SELECT DISTINCT ON (video_id) video_id, summary, topics, places, objects, actions, moods, "
+            "       frame_timestamps_ms, subjects "
             "FROM video_analyses WHERE video_id = ANY($1::uuid[]) AND status='done' "
             "ORDER BY video_id, analysis_version DESC",
             video_ids,
@@ -79,11 +81,25 @@ async def fetch_accent_inputs(video_ids: list[str]) -> tuple[dict[str, dict], di
             "SELECT video_id, motion FROM video_signals WHERE video_id = ANY($1::uuid[])", video_ids
         )
     by_video = {
-        str(row["video_id"]): {k: (list(row[k]) if k != "summary" else row[k]) for k in
-                               ("summary", "topics", "places", "objects", "actions", "moods")}
+        str(row["video_id"]): {
+            **{k: (list(row[k]) if k != "summary" else row[k]) for k in
+               ("summary", "topics", "places", "objects", "actions", "moods")},
+            # 프레임별 피사체 상자(decisions/subject-boxes.md) — 글 · 이모지를 피사체 옆에. JSONB 는 문자열로 온다
+            "frameTimestampsMs": list(row["frame_timestamps_ms"] or []),
+            "subjects": _json_list(row["subjects"]),
+        }
         for row in analyses
     }
     return by_video, {str(row["video_id"]): list(row["motion"] or []) for row in signals}
+
+
+def _json_list(value) -> list:
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except json.JSONDecodeError:
+            return []
+    return value if isinstance(value, list) else []
 
 
 async def fetch_captured_at(video_ids: list[str]) -> dict:

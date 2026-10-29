@@ -11,11 +11,14 @@
  *
  * 결과는 추천 입력이므로 `Video` 응답에는 아무 필드도 추가하지 않는다.
  */
-import type {
-  VideoAnalysis,
-  VideoAnalysisErrorCode,
-  VideoAnalysisStatus,
+import {
+  type VideoAnalysis,
+  type VideoAnalysisErrorCode,
+  type VideoAnalysisStatus,
+  type VideoSubjectFrame,
+  videoSubjectFrameSchema,
 } from '@vlog-studio/shared-types';
+import { z } from 'zod';
 import { getPrisma } from '../db/client.js';
 import { AppError } from '../lib/errors.js';
 import { captureException } from '../lib/sentry.js';
@@ -54,6 +57,7 @@ interface AnalysisRow {
   visualIssues: string[];
   usableForEdit: boolean | null;
   confidence: number | null;
+  subjects: unknown;
   modelVersion: string | null;
   promptVersion: string | null;
   attempts: number;
@@ -79,6 +83,7 @@ const SELECT = {
   visualIssues: true,
   usableForEdit: true,
   confidence: true,
+  subjects: true,
   modelVersion: true,
   promptVersion: true,
   attempts: true,
@@ -89,6 +94,11 @@ const SELECT = {
 
 export function isRetryableErrorCode(code: string | null): boolean {
   return code !== null && !TERMINAL_ERROR_CODES.has(code);
+}
+
+function parseSubjects(value: unknown): VideoSubjectFrame[] {
+  const parsed = z.array(videoSubjectFrameSchema).safeParse(value);
+  return parsed.success ? parsed.data : [];
 }
 
 function toDto(row: AnalysisRow): VideoAnalysis {
@@ -123,6 +133,8 @@ function toDto(row: AnalysisRow): VideoAnalysis {
               usableForEdit: row.usableForEdit ?? false,
             },
             confidence: row.confidence,
+            // 워커가 거른 값을 저장한다(apps/ai-worker/src/pipeline/video_analysis/schema.py) — 모양이 다르면 빈 배열로
+            subjects: parseSubjects(row.subjects),
           }
         : null,
     modelVersion: row.modelVersion,
