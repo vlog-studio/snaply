@@ -37,3 +37,34 @@ def get(name: str | None) -> Recipe:
     if key not in RECIPES:
         raise RecipeError(f"알 수 없는 레시피입니다: {key}")
     return Recipe(key, RECIPES[key])
+
+
+# 무비의 꾸밈(글자 · 이모지 · 얼굴 스티커) — 붙일지는 무비 설정이, 양은 레시피가 정한다(text-accent-stickers.md §9).
+DECORATION_KEYS = ("text", "emoji", "face")
+DECORATION_FALLBACK: dict = VOCABULARY["decorationFallback"]
+
+
+def decorations_of(name: str | None, raw: object) -> dict[str, bool]:
+    """editSpec 의 `decorations` — 없거나 빠진 키는 레시피 기본값(이 결정 전의 작업도 같은 결과)."""
+    out = dict(get(name).spec["decorations"])
+    if isinstance(raw, dict):
+        out.update({k: raw[k] for k in DECORATION_KEYS if isinstance(raw.get(k), bool)})
+    return out
+
+
+def decorated_spec(spec: dict, decorations: dict[str, bool] | None) -> dict:
+    """레시피의 양에 무비의 꾸밈을 입힌다 — 끈 것은 0, 레시피가 0 으로 둔 것을 켜면 decorationFallback 의 양.
+    글자를 끄고 이모지만 켜면 `stickerGate`(글이 쓰던 문턱 · 간격)로 이모지가 스스로 컷을 고른다. decorations 가 None 이면 그대로."""
+    if decorations is None:
+        return spec
+    text_cfg = spec["accents"] if spec["accents"].get("max") != 0 else DECORATION_FALLBACK["accents"]
+    stickers_off = spec["stickers"].get("perCut") == 0 or spec["stickers"].get("maxPerMovie") == 0
+    face_cfg = (spec.get("faceStickers") or {}) if (spec.get("faceStickers") or {}).get("enabled") else DECORATION_FALLBACK["faceStickers"]
+    return {
+        **spec,
+        "accents": text_cfg if decorations["text"] else {**text_cfg, "max": 0},
+        "stickers": (DECORATION_FALLBACK["stickers"] if stickers_off else spec["stickers"]) if decorations["emoji"]
+        else {"maxPerMovie": 0, "perCut": 0},
+        "stickerGate": None if decorations["text"] else text_cfg,
+        "faceStickers": face_cfg if decorations["face"] else {**face_cfg, "enabled": False},
+    }

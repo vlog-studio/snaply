@@ -445,7 +445,8 @@ def _overlay(base: str, contexts, analyses, beats, spec: dict, movie_id: str, wo
     with layout.safe_area(_band_box()) if spec["frame"] == "letterbox" else nullcontext():
         plan = ta.plan(contexts, beats, seed)
         accents = density.limit_accents(plan.accents, contexts, spec["accents"])
-        stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed), accents, spec["stickers"])
+        stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed), accents, spec["stickers"],
+                                          spec.get("stickerGate"))
     title = spec.get("title")
     overlay = fmt(spec).get("overlay") or {}
     styles = title_card.styles() if (title or overlay) else []
@@ -472,9 +473,10 @@ def _overlay(base: str, contexts, analyses, beats, spec: dict, movie_id: str, wo
 
 
 def render(snaps: list[Snap], recipe_name: str, track: str | None, movie_id: str, work: str, out: str,
-           spec: dict | None = None) -> Result:
-    """spec 을 주면 사전의 레시피 대신 그 설정으로 — 레퍼런스 따라 하기(reference.to_recipe)의 즉석 레시피."""
-    spec = spec or recipe.get(recipe_name).spec
+           spec: dict | None = None, decorations: dict[str, bool] | None = None) -> Result:
+    """spec 을 주면 사전의 레시피 대신 그 설정으로 — 레퍼런스 따라 하기(reference.to_recipe)의 즉석 레시피.
+    decorations 는 무비의 꾸밈(글자 · 이모지 · 얼굴, `recipe.decorations_of`) — 없으면 레시피 그대로."""
+    spec = recipe.decorated_spec(spec or recipe.get(recipe_name).spec, decorations)
     seed = stage_seed(movie_id)
     series = [continuity.read_series(s.path) for s in snaps]
     concepts = [content.concepts_of(s.analysis) for s in snaps]

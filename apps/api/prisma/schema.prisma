@@ -603,6 +603,10 @@ model Movie {
   captions    Boolean       @default(false)
   /// 비율이 다른 원본의 남는 자리를 채우는 방식(specs MOV-8) — `blur_background`(기본) · `pad_black` · `pad_white` 등. 값 검사는 계약(Zod)이 한다.
   fitMode     String        @default("blur_background") @map("fit_mode") @db.VarChar(20)
+  /// 꾸밈(specs MOV-27) — 글자 · 이모지 · 얼굴 스티커를 각각 켜고 끈다. 붙일지는 이 값만 정하고, 만들 때와 레시피를 바꿀 때 레시피 기본값으로 채운다.
+  decorText   Boolean       @default(false) @map("decor_text")
+  decorEmoji  Boolean       @default(false) @map("decor_emoji")
+  decorFace   Boolean       @default(false) @map("decor_face")
   /// 현재는 9:16 뿐이지만, 다른 비율이 생겨도 기존 무비가 자기 비율을 지키도록 저장한다.
   ratio       String        @default("9:16") @db.VarChar(10)
   arranger    MovieArranger @default(user)

@@ -103,6 +103,8 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     preset = get_preset(edit_spec["stylePreset"])
     render_spec = parse_render_spec(data.get("renderSpec"))
     recipe_name = _recipe_of(edit_spec)
+    # 무비의 꾸밈(글자 · 이모지 · 얼굴 스티커) — 붙일지는 이 값만 정한다(text-accent-stickers.md §9). 없으면 레시피 기본값.
+    decorations = recipe.decorations_of(recipe_name, edit_spec.get("decorations"))
 
     ctx = await db.fetch_job_context(job_id)
     if ctx is None:
@@ -138,7 +140,7 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     #     다시 고르고(매치컷 · 점수 위주 순서) 효과 · 음원 · 글 · 효과음까지 한 번에 굽는다. 실패하면 아래 보통 경로로 간다.
     if timeline is not None and recipe_name != recipe.CLASSIC and edit_spec.get("autoCuts"):
         trend = await _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir,
-                                    _variant_key(data.get("movieId") or job_id, edit_spec))
+                                    _variant_key(data.get("movieId") or job_id, edit_spec), decorations)
         if trend is not None:
             await _finish(job_id, user_id, output_video_id, trend, work_dir)
             return
@@ -161,10 +163,11 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     )
     await _progress(job_id, 60, "음악 매칭 중...")
 
-    # 3-1) 텍스트 액센트 · 이모지 스티커 — 켰을 때, 컷이 timeline 에 있는 v3 무비만(MOV-27). 실패하면 없이 간다.
-    if (config.TEXT_ACCENTS_ENABLED or recipe_name != recipe.CLASSIC) and timeline is not None:
+    # 3-1) 꾸밈(글자 · 이모지 · 얼굴 스티커)과 레시피의 고정 타이틀 · 효과음 — 컷이 timeline 에 있는 v3 무비만(MOV-27 · MOV-28).
+    #      붙일지는 무비의 꾸밈 설정만 정한다(text-accent-stickers.md §9). 실패하면 없이 간다.
+    if timeline is not None and (recipe_name != recipe.CLASSIC or any(decorations.values())):
         current = await _apply_accents(current, clips, clip_specs, preset, _bgm_ok, duration, data, job_id, work_dir,
-                                       recipe_name, render_spec.fit_mode)
+                                       recipe_name, render_spec.fit_mode, decorations)
 
     # 4) 자막 생성/삽입 — 요청 시에만 (쇼츠용이 기본이라 디폴트는 건너뜀 → whisper 추론 비용 절약)
     if data.get("subtitles", False):
@@ -217,13 +220,15 @@ async def _finish(job_id: str, user_id: str, output_video_id: str, current: str,
 
 def _variant_key(movie_key: str, edit_spec: dict) -> str:
     """레시피 편집의 시드 — 무비 + 구성(편집 스펙). 같은 구성으로 다시 만들면 같은 편집이고(MOV-14), 컷 · 레시피 · 스타일이 바뀌면 새로 고른다.
-    작업 id 를 넣던 때는 다시 만들 때마다 순서 · 효과가 바뀌어 MOV-14 와 어긋났다(backlog E-65, 2026-10-27)."""
-    digest = hashlib.sha256(json.dumps(edit_spec, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
+    작업 id 를 넣던 때는 다시 만들 때마다 순서 · 효과가 바뀌어 MOV-14 와 어긋났다(backlog E-65, 2026-10-27).
+    꾸밈(`decorations`)은 빼고 해시한다 — 글자만 꺼도 컷 · 순서 · 효과가 다시 섞이지 않게(text-accent-stickers.md §9)."""
+    edit = {k: v for k, v in edit_spec.items() if k != "decorations"}
+    digest = hashlib.sha256(json.dumps(edit, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
     return f"{movie_key}:{digest}"
 
 
 async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir,
-                        variant_key: str | None = None) -> str | None:
+                        variant_key: str | None = None, decorations: dict[str, bool] | None = None) -> str | None:
     """레시피로 스냅에서 컷을 다시 골라 한 편을 굽는다(trend_edit.render). 실패하면 None — 보통 경로로 간다.
     variant_key 는 순서 · 효과의 시드(`_variant_key`) — 없으면 무비 키."""
     movie_key = data.get("movieId") or job_id
@@ -235,7 +240,8 @@ async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job
         await _progress(job_id, 20, "레시피 편집 중...")
         out = os.path.join(work_dir, "trend.mp4")
         # 곡은 무비마다 같고(movie_key), 순서 · 효과의 시드는 무비 + 구성이다 — 같은 구성이면 같은 편집(MOV-14)
-        result = await asyncio.to_thread(trend_edit.render, snaps, recipe_name, track, variant_key or movie_key, work_dir, out)
+        result = await asyncio.to_thread(trend_edit.render, snaps, recipe_name, track, variant_key or movie_key, work_dir, out,
+                                         decorations=decorations)
         logger.info(
             "레시피 편집 job_id={} recipe={} duration={} cuts={} links={} accents={} sfx={} edl={}",
             job_id, recipe_name, result.duration_s, len(result.cuts), [l.get("score") for l in result.links],
@@ -287,7 +293,7 @@ def _recipe_of(edit_spec: dict) -> str:
 
 
 async def _apply_accents(current, clips, clip_specs, preset, bgm_ok, duration, data, job_id, work_dir,
-                         recipe_name: str, fit_mode: str) -> str:
+                         recipe_name: str, fit_mode: str, decorations: dict[str, bool] | None = None) -> str:
     movie_key = data.get("movieId") or job_id
     windows = await asyncio.to_thread(editor.cut_windows, clips)
     cuts = [
@@ -299,11 +305,11 @@ async def _apply_accents(current, clips, clip_specs, preset, bgm_ok, duration, d
     track = music.pick_track(preset.bgm_tag, movie_key) if bgm_ok else None
     result, outcome = await asyncio.to_thread(
         accent_stage.apply, current, cuts, analyses, motions, track, int(duration * 1000), movie_key,
-        work_dir, os.path.join(work_dir, "with_accents.mp4"), recipe_name, fit_mode,
+        work_dir, os.path.join(work_dir, "with_accents.mp4"), recipe_name, fit_mode, decorations,
     )
     logger.info(
-        "텍스트 액센트 job_id={} applied={} accents={} stickers={} bpm={} reason={}",
-        job_id, outcome.applied, outcome.accents, outcome.stickers, outcome.bpm, outcome.reason,
+        "꾸밈 job_id={} decorations={} applied={} accents={} stickers={} faces={} bpm={} reason={}",
+        job_id, decorations, outcome.applied, outcome.accents, outcome.stickers, outcome.faces, outcome.bpm, outcome.reason,
     )
     return result
 

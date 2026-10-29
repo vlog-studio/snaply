@@ -188,73 +188,89 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         self.accents = mock.patch.object(worker, "_apply_accents", new=mock.AsyncMock(return_value="with_accents.mp4")).start()
         self.addCleanup(mock.patch.stopall)
 
-    async def run_pipeline(self, spec: dict, enabled: bool) -> None:
-        with mock.patch.object(worker.config, "TEXT_ACCENTS_ENABLED", enabled):
-            await worker._run_pipeline(JOB_ID, {"userId": USER_ID, "movieId": "m1", "editSpec": spec}, "/tmp/w")
+    async def run_pipeline(self, spec: dict) -> None:
+        await worker._run_pipeline(JOB_ID, {"userId": USER_ID, "movieId": "m1", "editSpec": spec}, "/tmp/w")
 
-    async def test_enabled_v3_movie_gets_accents_after_the_music(self) -> None:
-        await self.run_pipeline(V3_SPEC, enabled=True)
+    async def test_a_classic_movie_with_decorations_on_gets_them_after_the_music(self) -> None:
+        on = {"text": True, "emoji": True, "face": False}
+        await self.run_pipeline({**V3_SPEC, "decorations": on})
         self.accents.assert_awaited_once()
         self.assertEqual(self.accents.await_args.args[0], "with_bgm.mp4")
+        self.assertEqual(self.accents.await_args.args[-1], on)
         worker.storage.upload.assert_any_call("with_accents.mp4", mock.ANY, "video/mp4")
 
-    async def test_switched_off_the_movie_is_as_before(self) -> None:
-        await self.run_pipeline(V3_SPEC, enabled=False)
+    async def test_a_classic_movie_without_decorations_is_as_before(self) -> None:
+        # 꾸밈이 없는 스펙(이 결정 전의 작업)은 레시피 기본값 — classic 은 셋 다 꺼짐(예전 TEXT_ACCENTS_ENABLED=false 와 같다)
+        await self.run_pipeline(V3_SPEC)
         self.accents.assert_not_awaited()
         worker.storage.upload.assert_any_call("with_bgm.mp4", mock.ANY, "video/mp4")
         self.assertEqual(self.bgm.call_args.args[-2:], CLASSIC_GAINS)
 
-    async def test_a_trend_recipe_drops_the_source_sound_and_runs_the_stage_while_switched_off(self) -> None:
-        await self.run_pipeline({**V3_SPEC, "recipe": "trend-routine"}, enabled=False)
+    async def test_a_trend_recipe_drops_the_source_sound_and_runs_the_stage(self) -> None:
+        await self.run_pipeline({**V3_SPEC, "recipe": "trend-routine"})
         self.assertEqual(self.bgm.call_args.args[-2:], (0.0, 1.0))
         self.accents.assert_awaited_once()
 
     async def test_the_movie_recipe_comes_from_the_spec(self) -> None:
-        await self.run_pipeline({**V3_SPEC, "recipe": "cinematic"}, enabled=False)
+        await self.run_pipeline({**V3_SPEC, "recipe": "cinematic"})
         self.assertEqual(self.bgm.call_args.args[-2:], (0.0, 1.0))
-        # 뒤의 것은 작업의 맞춤 방식 — 이 작업은 renderSpec 이 없어 예전 작업의 기본(contain)이다
-        self.assertEqual(self.accents.await_args.args[-2:], ("cinematic", "contain"))
+        # 뒤의 것은 작업의 맞춤 방식 — 이 작업은 renderSpec 이 없어 예전 작업의 기본(contain)이다. 꾸밈은 레시피 기본값
+        self.assertEqual(self.accents.await_args.args[-3:], ("cinematic", "contain", {"text": True, "emoji": True, "face": True}))
+
+    async def test_turning_off_every_decoration_still_runs_the_recipe_title(self) -> None:
+        # 레시피 무비는 꾸밈을 다 꺼도 고정 타이틀 · 효과음이 이 단계에 있다
+        await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "decorations": {"text": False, "emoji": False, "face": False}})
+        self.assertEqual(self.accents.await_args.args[-1], {"text": False, "emoji": False, "face": False})
 
     async def test_a_spec_without_a_recipe_is_classic_whatever_the_environment(self) -> None:
         # API 는 classic 무비에 recipe 를 싣지 않는다 — 사용자가 고른 '기본'을 워커 전체의 값이 덮으면 안 된다(backlog E-67)
         with mock.patch.dict("os.environ", {"MOVIE_RECIPE": "cinematic"}):
-            await self.run_pipeline(V3_SPEC, enabled=False)
+            await self.run_pipeline(V3_SPEC)
         self.assertEqual(self.bgm.call_args.args[-2:], CLASSIC_GAINS)
         self.accents.assert_not_awaited()
         self.assertFalse(hasattr(worker.config, "MOVIE_RECIPE"))
 
     async def test_an_unknown_recipe_falls_back_to_classic_instead_of_failing(self) -> None:
-        await self.run_pipeline({**V3_SPEC, "recipe": "tiktok-max"}, enabled=False)
+        await self.run_pipeline({**V3_SPEC, "recipe": "tiktok-max"})
         self.assertEqual(self.bgm.call_args.args[-2:], CLASSIC_GAINS)
         self.accents.assert_not_awaited()
 
     async def test_auto_cut_movies_are_re_cut_by_the_recipe(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
-            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True}, enabled=False)
+            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True})
         trend.assert_awaited_once()
         self.bgm.assert_not_called()  # 음원 · 글 · 효과음은 레시피 경로가 한 번에
         worker.storage.upload.assert_any_call("trend.mp4", mock.ANY, "video/mp4")
 
     async def test_the_recipe_seed_follows_the_composition_not_the_job(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
-            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True}, enabled=False)
-        key = trend.await_args.args[-1]
+            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True})
+        key = trend.await_args.args[-2]
         spec = {**V3_SPEC, "recipe": "cinematic", "autoCuts": True}
         self.assertEqual(key, worker._variant_key(key.split(":")[0], spec))
         # 같은 구성이면 같은 시드(MOV-14 — 다시 만들어도 같은 편집), 레시피나 컷이 바뀌면 다른 시드. 작업 id 는 들어가지 않는다
         self.assertEqual(worker._variant_key("m1", spec), worker._variant_key("m1", dict(reversed(list(spec.items())))))
         self.assertNotEqual(worker._variant_key("m1", spec), worker._variant_key("m1", {**spec, "recipe": "fast-cut"}))
         self.assertNotEqual(worker._variant_key("m1", spec), worker._variant_key("m2", spec))
+        # 꾸밈만 바꾸면 같은 시드 — 글자만 꺼도 컷 · 순서 · 효과가 다시 섞이지 않는다(text-accent-stickers.md §9)
+        off = {**spec, "decorations": {"text": False, "emoji": True, "face": True}}
+        self.assertEqual(worker._variant_key("m1", spec), worker._variant_key("m1", off))
+
+    async def test_the_recipe_path_gets_the_movie_decorations(self) -> None:
+        chosen = {"text": False, "emoji": True, "face": False}
+        with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
+            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True, "decorations": chosen})
+        self.assertEqual(trend.await_args.args[-1], chosen)
 
     async def test_user_trimmed_movies_keep_their_cuts(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
-            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": False}, enabled=False)
+            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": False})
         trend.assert_not_awaited()
         self.bgm.assert_called_once()
 
     async def test_a_failed_recipe_render_falls_back_to_the_usual_path(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value=None)):
-            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True}, enabled=False)
+            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True})
         self.bgm.assert_called_once()
         worker.storage.upload.assert_any_call("with_accents.mp4", mock.ANY, "video/mp4")
 
@@ -270,13 +286,13 @@ class ApplyAccentsInputTest(unittest.IsolatedAsyncioTestCase):
                 mock.patch.object(worker.accent_stage, "apply", return_value=("out.mp4", worker.accent_stage.Outcome(True))) as apply:
             db.fetch_accent_inputs = mock.AsyncMock(return_value=({VIDEO_ID: {"places": ["카페"]}}, {VIDEO_ID: [0.01]}))
             result = await worker._apply_accents("with_bgm.mp4", clips, specs, preset, True, 1.5, {"movieId": "m1"}, JOB_ID, "/w",
-                                                 "cinematic", "pad_white")
+                                                 "cinematic", "pad_white", {"text": False, "emoji": True, "face": True})
         self.assertEqual(result, "out.mp4")
         pick.assert_called_once_with(preset.bgm_tag, "m1")
         args = apply.call_args.args
         self.assertEqual(args[1], [worker.accent_stage.CutSource(VIDEO_ID, "/w/src_0.mp4", 0, 1500, 4000)])
         self.assertEqual((args[4], args[5], args[6]), ("/bgm/daily/a.mp3", 1500, "m1"))
-        self.assertEqual(args[-2:], ("cinematic", "pad_white"))
+        self.assertEqual(args[-3:], ("cinematic", "pad_white", {"text": False, "emoji": True, "face": True}))
 
     async def test_without_music_there_is_no_track_to_follow(self) -> None:
         with mock.patch.object(worker.editor, "cut_windows", return_value=[(0, 1500, 4000)]), \

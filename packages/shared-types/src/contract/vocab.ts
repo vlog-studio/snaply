@@ -47,6 +47,19 @@ export type StylePreset = z.infer<typeof stylePresetSchema>;
  */
 export const movieRecipeSchema = z.enum(MOVIE_RECIPES);
 
+/**
+ * 무비의 꾸밈 — 글자(텍스트 액센트) · 이모지 스티커 · 얼굴 스티커를 각각 켜고 끈다(specs/movie.md MOV-27). 붙일지는 이 값만 정하고
+ * 레시피는 양만 정한다. 무비를 만들 때와 레시피를 바꿀 때 레시피 기본값(`recipeDecorations`)으로 채운다.
+ */
+export const movieDecorationsSchema = z
+  .object({
+    text: z.boolean().describe('글자 효과(장면에 맞는 의성어 · 느낌 · 감탄).'),
+    emoji: z.boolean().describe('이모지 스티커. 글자를 끄고 이것만 켜면 장면이 잘 맞는 컷에 몰리지 않게 붙는다.'),
+    face: z.boolean().describe('얼굴을 따라다니는 스티커(왕관 · 하트 · 반짝이).'),
+  })
+  .describe('무비의 꾸밈(글자 · 이모지 · 얼굴 스티커). 바꾸면 다음 생성부터 적용된다 — 컷 · 순서 · 효과 · 곡은 그대로다.');
+export type MovieDecorations = z.infer<typeof movieDecorationsSchema>;
+
 /** 무비의 생애. `generating` 은 진행 중인 편집 작업이 있는 상태다. */
 export const MOVIE_STATUSES = ['draft', 'generating', 'ready', 'failed'] as const;
 export const movieStatusSchema = z.enum(MOVIE_STATUSES);

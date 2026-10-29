@@ -288,6 +288,8 @@ describe('생성(export)은 경계 전환을 editSpec v3 로 보낸다', () => {
     const expectedSpec = {
       version: 3,
       stylePreset: '감성',
+      // 기본 무비의 꾸밈(MOV-27) — 셋 다 꺼짐
+      decorations: { text: false, emoji: false, face: false },
       timeline: {
         cuts: [
           { cutId: 'c0', videoId: a, sourceInMs: 500, sourceOutMs: 2500 },

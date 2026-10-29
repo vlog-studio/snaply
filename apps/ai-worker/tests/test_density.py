@@ -1,4 +1,4 @@
-"""글 · 스티커 밀도의 계약 — 점수 문턱 · 키워드 · 상한 · 간격(gapMs) · 스티커는 글이 남은 컷에만.
+"""글 · 스티커 밀도의 계약 — 점수 문턱 · 키워드 · 상한 · 간격(gapMs) · 스티커는 글이 남은 컷에만(글자를 끄면 스스로), 무비의 꾸밈.
 
 ffmpeg·SDK 없이 도는 순수 검사다.
 """
@@ -68,6 +68,70 @@ class StickerLimitTest(unittest.TestCase):
     def test_no_limits_means_unchanged(self):
         stickers = sticker.plan(CUTS, [], BEAT, SEED)
         self.assertEqual(density.limit_stickers(stickers, [], {"perCut": None, "maxPerMovie": None}), stickers)
+
+
+def stk(cut_id, start, reason):
+    return sticker.Sticker(cut_id, "1f600", reason, "corner", (0.5, 0.5), 200, 0.0, "pop", start, start + 1000, ())
+
+
+class StickerAloneTest(unittest.TestCase):
+    """글자를 끄고 이모지만 켰을 때 — 글 대신 스티커 근거의 무게 · 간격으로 컷을 고른다(text-accent-stickers.md §9)."""
+
+    STICKERS = [stk("a", 0, "moods:calm"), stk("a", 250, "objects:coffee"),  # 컷에서 가장 센 근거 3점
+                stk("b", 1000, "places:sea"),                                 # 2점 — 문턱 아래
+                stk("d", 6000, "actions:take_photo"), stk("e", 7000, "objects:bread")]
+
+    def test_strong_cuts_spaced_apart_without_any_text(self):
+        gate = {"minScore": 3, "gapMs": 3000}
+        kept = density.limit_stickers(self.STICKERS, [], {"perCut": 1, "maxPerMovie": None}, gate)
+        # a(0초) · d(6초)가 남고 e(7초)는 d 와 3초 안이라 빠진다. 컷마다 하나
+        self.assertEqual([(s.cut_id, s.reason) for s in kept], [("a", "moods:calm"), ("d", "actions:take_photo")])
+
+    def test_a_low_gate_keeps_every_cut(self):
+        kept = density.limit_stickers(self.STICKERS, [], {"perCut": None, "maxPerMovie": None}, {"minScore": 1, "gapMs": None})
+        self.assertEqual(kept, self.STICKERS)
+
+    def test_no_emoji_means_none(self):
+        self.assertEqual(density.limit_stickers(self.STICKERS, [], {"perCut": 0, "maxPerMovie": 0}, {"minScore": 1}), [])
+
+
+class DecorationTest(unittest.TestCase):
+    """무비의 꾸밈 — 붙일지는 무비 설정, 양은 레시피(text-accent-stickers.md §9)."""
+
+    def test_defaults_come_from_the_recipe_and_the_spec_overrides_them(self):
+        self.assertEqual(recipe.decorations_of(None, None), {"text": False, "emoji": False, "face": False})
+        self.assertEqual(recipe.decorations_of("cinematic", None), {"text": True, "emoji": True, "face": True})
+        self.assertEqual(recipe.decorations_of("cinematic", {"text": False, "face": "yes"}),
+                         {"text": False, "emoji": True, "face": True})  # 불린이 아니면 기본값
+
+    def test_without_decorations_the_recipe_is_untouched(self):
+        spec = recipe.get("cinematic").spec
+        self.assertIs(recipe.decorated_spec(spec, None), spec)
+
+    def test_switching_off_zeroes_the_amount_and_hands_the_text_gate_to_the_emoji(self):
+        spec = recipe.get("cinematic").spec
+        out = recipe.decorated_spec(spec, {"text": False, "emoji": True, "face": False})
+        self.assertEqual(out["accents"]["max"], 0)
+        self.assertEqual(out["stickerGate"], spec["accents"])
+        self.assertEqual(out["stickers"], spec["stickers"])
+        self.assertFalse(out["faceStickers"]["enabled"])
+        self.assertEqual(out["match"], spec["match"])  # 꾸밈 밖의 값은 그대로
+        both = recipe.decorated_spec(spec, {"text": True, "emoji": True, "face": True})
+        self.assertIsNone(both["stickerGate"])  # 둘 다 켜면 지금처럼 글이 붙은 컷에
+
+    def test_turning_on_what_the_recipe_leaves_out_uses_the_fallback_amount(self):
+        on = {"text": True, "emoji": True, "face": True}
+        self.assertEqual(recipe.decorated_spec(recipe.get("asmr").spec, on)["accents"], recipe.DECORATION_FALLBACK["accents"])
+        self.assertEqual(recipe.decorated_spec(recipe.get("before-after").spec, on)["stickers"],
+                         recipe.DECORATION_FALLBACK["stickers"])
+        self.assertEqual(recipe.decorated_spec(recipe.get("classic").spec, on)["faceStickers"],
+                         recipe.DECORATION_FALLBACK["faceStickers"])
+        # classic 의 글 · 이모지 양은 레시피 그대로(제한 없음)
+        self.assertEqual(recipe.decorated_spec(recipe.get("classic").spec, on)["accents"], recipe.get("classic").spec["accents"])
+
+    def test_every_recipe_names_its_defaults(self):
+        for name, spec in recipe.RECIPES.items():
+            self.assertEqual(set(spec["decorations"]), set(recipe.DECORATION_KEYS), name)
 
 
 if __name__ == "__main__":

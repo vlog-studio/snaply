@@ -11,6 +11,7 @@ import {
   type EditSpec,
   FIT_MODES,
   type FitMode,
+  type MovieDecorations,
   type OutputProfile,
   type RenderSpec,
   type StylePreset,
@@ -144,6 +145,7 @@ function timelineSpec(
   transitions: Transition[],
   recipe?: MovieRecipe,
   autoCuts?: boolean,
+  decorations?: MovieDecorations,
 ): EditSpec {
   if (transitions.length !== clips.length - 1) {
     throw new Error('전환은 컷 사이마다 하나씩이어야 합니다.');
@@ -154,6 +156,8 @@ function timelineSpec(
     // 레시피(MOV-28) — 없으면 워커가 기본값(classic)으로 렌더한다. autoCuts 면 레시피가 컷 구간 · 순서까지 다시 고른다.
     ...(recipe !== undefined ? { recipe } : {}),
     ...(autoCuts !== undefined ? { autoCuts } : {}),
+    // 꾸밈(MOV-27) — 워커는 이 값만 보고 붙인다. 레시피 편집의 시드에는 넣지 않는다(worker._variant_key).
+    ...(decorations !== undefined ? { decorations } : {}),
     timeline: {
       cuts: clips.map((clip, index) => ({
         cutId: `c${index}`,
@@ -272,6 +276,8 @@ export async function createEditJob(params: {
   recipe?: MovieRecipe;
   /** 컷 구간 · 순서를 전부 AI 가 정한 무비 — 레시피가 컷을 다시 골라도 된다. */
   autoCuts?: boolean;
+  /** 무비의 꾸밈(MOV-27). v3 스펙에만 실린다 — 없으면 워커가 레시피 기본값을 쓴다. */
+  decorations?: MovieDecorations;
 }): Promise<{ jobId: string; videoId: string }> {
   const prisma = getPrisma();
   validateClips(params.clips);
@@ -283,7 +289,7 @@ export async function createEditJob(params: {
   const editSpec: EditSpec =
     params.transitions === undefined
       ? { version: 2, stylePreset: params.stylePreset, clips }
-      : timelineSpec(params.stylePreset, clips, params.transitions, params.recipe, params.autoCuts);
+      : timelineSpec(params.stylePreset, clips, params.transitions, params.recipe, params.autoCuts, params.decorations);
   const renderSpec = createRenderSpec(params.outputProfile, params.fitMode);
   const uniqueVideoIds = [...new Set(clips.map((clip) => clip.videoId))];
 

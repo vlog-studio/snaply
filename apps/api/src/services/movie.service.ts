@@ -7,6 +7,8 @@ import {
   DEFAULT_FIT_MODE,
   type FitMode,
   DEFAULT_OUTPUT_PROFILE,
+  type MovieDecorations,
+  recipeDecorations,
   MOVIE_CLIP_MAX,
   MOVIE_CLIP_MIN,
   TRANSITION_KINDS,
@@ -91,6 +93,9 @@ interface MovieRow {
   recipe: string;
   captions: boolean;
   fitMode: string;
+  decorText: boolean;
+  decorEmoji: boolean;
+  decorFace: boolean;
   ratio: string;
   arranger: string;
   /** 에이전트가 초안에서 정한 분위기(개념 사전 `moods` id) — 전환을 고르는 비중이다(MOV-25). */
@@ -119,6 +124,9 @@ const SELECT = {
   recipe: true,
   captions: true,
   fitMode: true,
+  decorText: true,
+  decorEmoji: true,
+  decorFace: true,
   ratio: true,
   arranger: true,
   mood: true,
@@ -171,6 +179,19 @@ function unavailableReason(video: ClipRow['video']): VideoRemovalReason | null {
   return video.removalReason ?? 'user';
 }
 
+/** 꾸밈(MOV-27)을 movies 의 세 열로. 키가 빠지면 넘기지 않는다. */
+function decorationColumns(decorations: Partial<MovieDecorations>): {
+  decorText?: boolean;
+  decorEmoji?: boolean;
+  decorFace?: boolean;
+} {
+  return {
+    ...(decorations.text !== undefined ? { decorText: decorations.text } : {}),
+    ...(decorations.emoji !== undefined ? { decorEmoji: decorations.emoji } : {}),
+    ...(decorations.face !== undefined ? { decorFace: decorations.face } : {}),
+  };
+}
+
 function toDto(row: MovieRowWithJob): Movie {
   return {
     id: row.id,
@@ -180,6 +201,7 @@ function toDto(row: MovieRowWithJob): Movie {
     recipe: row.recipe as MovieRecipe,
     captions: row.captions,
     fitMode: row.fitMode as FitMode,
+    decorations: { text: row.decorText, emoji: row.decorEmoji, face: row.decorFace },
     ratio: row.ratio,
     arranger: row.arranger as MovieArranger,
     clips: row.clips.map((clip, index) => ({
@@ -491,6 +513,7 @@ export async function createMovie(params: {
   recipe?: MovieRecipe;
   captions?: boolean;
   fitMode?: FitMode;
+  decorations?: Partial<MovieDecorations>;
   arranger?: MovieArranger;
 }): Promise<Movie> {
   if (params.id) {
@@ -531,6 +554,10 @@ export async function createMovie(params: {
       recipe: params.recipe ?? DEFAULT_MOVIE_RECIPE,
       captions: params.captions ?? false,
       fitMode: params.fitMode ?? DEFAULT_FIT_MODE,
+      ...decorationColumns({
+        ...recipeDecorations(params.recipe ?? DEFAULT_MOVIE_RECIPE),
+        ...params.decorations,
+      }),
       arranger,
       mood,
       clips: { create: clipCreateData(clips, aiTransitions) },
@@ -587,6 +614,7 @@ export async function updateMovie(params: {
   recipe?: MovieRecipe;
   captions?: boolean;
   fitMode?: FitMode;
+  decorations?: Partial<MovieDecorations>;
   arranger?: MovieArranger;
 }): Promise<Movie> {
   const current = await findOwned(params.userId, params.movieId);
@@ -598,6 +626,17 @@ export async function updateMovie(params: {
 
   const arranger = params.arranger ?? (current.arranger as MovieArranger);
   const stylePreset = params.stylePreset ?? (current.stylePreset as StylePreset);
+  // 꾸밈(MOV-27): 레시피를 바꾸면 새 레시피의 기본값으로 돌아가고, 같은 요청의 decorations 가 그 위에 얹힌다.
+  const recipeChanged = params.recipe !== undefined && params.recipe !== current.recipe;
+  const decorations =
+    recipeChanged || params.decorations !== undefined
+      ? {
+          ...(recipeChanged
+            ? recipeDecorations(params.recipe as MovieRecipe)
+            : { text: current.decorText, emoji: current.decorEmoji, face: current.decorFace }),
+          ...params.decorations,
+        }
+      : undefined;
   // 컷을 보내면 그것으로, 스타일만 바뀌면 지금 컷으로 다시 저장한다 — AI 가 고른 경계는
   // 스타일을 따라가야 한다(무효화 사전 transition-style-swap). 사용자가 고른 경계는 그대로다.
   const clips =
@@ -624,6 +663,7 @@ export async function updateMovie(params: {
       ...(params.recipe !== undefined ? { recipe: params.recipe } : {}),
       ...(params.captions !== undefined ? { captions: params.captions } : {}),
       ...(params.fitMode !== undefined ? { fitMode: params.fitMode } : {}),
+      ...(decorations !== undefined ? decorationColumns(decorations) : {}),
       ...(params.arranger !== undefined ? { arranger: params.arranger } : {}),
       // 컷은 통째로 교체한다. 부분 갱신은 순서를 다시 계산해야 해서 두 표현이 어긋나기 쉽다.
       ...(clips !== undefined
@@ -730,6 +770,8 @@ export async function exportMovie(params: {
     outputProfile: DEFAULT_OUTPUT_PROFILE,
     // 무비가 고른 맞춤 방식(MOV-8). 컷을 전부 AI 가 정한 레시피 무비는 워커가 레시피의 화면 틀로 렌더해 이 값을 쓰지 않는다.
     fitMode: movie.fitMode as FitMode,
+    // 꾸밈(MOV-27) — 워커는 이 값만 보고 글자 · 이모지 · 얼굴 스티커를 붙인다.
+    decorations: { text: movie.decorText, emoji: movie.decorEmoji, face: movie.decorFace },
     subtitles: movie.captions,
     // 경계마다 고른 전환(MOV-22). 빈 경계는 없어야 하지만, 있다면 아무 효과 없는 값으로 보낸다.
     transitions: movie.clips
