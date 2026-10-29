@@ -95,6 +95,17 @@ class PoseTest(unittest.TestCase):
         self.assertGreater(live.getpixel((540, 960))[3], 200)
         self.assertEqual(render.frame([self.STICKER], 1600).getbbox(), None)
 
+    def test_the_picture_is_drawn_as_is_without_an_outline_or_shadow(self):
+        # 2026-10-29 흰 칼선 · 그림자를 없앴다(text-accent-stickers.md §3) — 그려진 불투명 영역이 원본 그림을 넘지 않는다
+        render = _render_module()
+        at = 1000  # 등장 · 통통 · 사라짐이 끝난 정지 자세
+        scale, rotation, _dy, alpha = render.pose(self.STICKER, at)
+        self.assertEqual((rotation, alpha), (0.0, 1.0))
+        px = max(2, int(self.STICKER.size_px * scale))
+        original = sum(1 for a in render.raw(self.STICKER.emoji).resize((px, px)).getchannel("A").getdata() if a > 40)
+        drawn = sum(1 for a in render.frame([self.STICKER], at).getchannel("A").getdata() if a > 40)
+        self.assertLessEqual(drawn, original * 1.02)
+
 
 def _render_module():
     try:
