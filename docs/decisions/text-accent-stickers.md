@@ -67,7 +67,7 @@
 - **색은 분위기에서** 정한다(사전 `palettes`) — 컷의 첫 분위기 개념, 없으면 음식 · 음료가 보일 때 노랑, 그것도 아니면 흰 글자 검은 테두리.
 - **자리**: 종류의 자리 무리를 선호 순으로 보고, 세이프 에어리어 안이면서 피사체 · 아직 화면에 남은 앞 액센트와 겹치지 않는 첫 무리 안에서
   시드로 고른다. 어느 무리에도 없으면 **drop** — 얼굴을 가린 글은 없는 것보다 나쁘다([plans/trend-editing-pipeline.md](../plans/trend-editing-pipeline.md) §5.2).
-  자리 이름은 [`anchor-vocabulary.json`](../../packages/shared-types/src/anchor-vocabulary.json)의 `kind.ref` 다. 피사체 상자가 없으면 `object.*` 를 건너뛴다.
+  자리 이름은 [`anchor-vocabulary.json`](../../packages/shared-types/src/anchor-vocabulary.json)의 `kind.ref` 다. 피사체 상자는 스냅 분석이 프레임마다 준 것을 쓰고(2026-10-29, [subject-boxes.md](subject-boxes.md)), 없으면 `object.*` 를 건너뛴다.
 - **박자**: 컷 안의 첫 박자에 등장해 종류의 `holdBeats` 만큼 머물고(컷 끝 + 반 박자를 넘지 않음), 다음 박자마다 살짝 튄다. 박자는 **무비에 깔린
   BGM 의 실제 비트**다([`beat_grid.py`](../../apps/ai-worker/src/pipeline/beat_grid.py), 2026-10-21) — 곡마다 한 번 분석해 곡 옆 `<곡>.beats.json` 에 두고, 곡이 무비보다
   짧아 되풀이되면 박자도 되풀이한다. 곡이 없거나 박자를 못 찾으면 120 BPM 고정 간격.
@@ -124,11 +124,11 @@
 - 층 a + 영상 맞춤만 쓴다 — 생성(층 c)은 렌더 때 부르지 않는다. 시드는 무비 id 에서 만든다(editSpec v3 에 seed 가 들어오면 그 root)
 - 실패하면 이 단계 없이 간다(BGM · 자막과 같은 원칙). 붙일 것이 없으면 다시 인코딩하지 않는다
 - 아직: 고른 결과를 구성에 핀으로 남기지 않는다 — 같은 무비는 입력(분석 · 신호 · 곡 · 사전 버전)이 같으면 같은 결과지만, 분석을 다시 하거나 사전을 바꾸면
-  다시 만든 결과가 바뀐다(MOV-14). 피사체 상자가 없어 빈 모서리 · 위쪽 띠에만 놓인다
+  다시 만든 결과가 바뀐다(MOV-14). 피사체 상자는 2026-10-29 부터 분석에서 받는다([subject-boxes.md](subject-boxes.md)) — 그 전에는 빈 모서리 · 위쪽 띠에만 놓였다
 
 ## 8. 아직 아닌 것
 
-미결과 완료 조건은 [backlog.md](../backlog.md) A-19 에만 둔다 — 고른 결과를 구성에 핀으로(editSpec v3 `overlays`), 운영에서 켜기, 스냅 분석의 피사체 상자,
+미결과 완료 조건은 [backlog.md](../backlog.md) A-19 에만 둔다 — 고른 결과를 구성에 핀으로(editSpec v3 `overlays`), 운영에서 켜기,
 에이전트 툴(b) · 생성 호출(c), 내용 개념 사전에 없는 장면(점프 · 강아지 · 달리기 등), 실제 BGM 의 비트(A-7), 에셋 라이선스 확인,
 앱 미리보기.
 

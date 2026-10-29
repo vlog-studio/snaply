@@ -268,7 +268,7 @@ export const ENV_VARS = [
     key: 'VIDEO_ANALYSIS_PROMPT_VERSION',
     required: false,
     origin: 'shared',
-    description: '결과에 기록되는 프롬프트 버전 태그. 기본 v1. 프롬프트를 바꾸면 올린다',
+    description: '결과에 기록되는 프롬프트 버전 태그. 기본 v2(2026-10-29 프레임별 피사체 상자). 프롬프트를 바꾸면 올린다 — 운영 시크릿에 값이 있으면 그것도',
   },
 
   // ── 템플릿 스냅 추천 ─────────────────────────────────

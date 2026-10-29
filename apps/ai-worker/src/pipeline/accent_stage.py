@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from loguru import logger
 
 from pipeline import (accent_inputs, accent_render, ass, beat_grid, content, density, face, ffmpeg_error, recipe, seed, sfx,
-                      sticker, sticker_render, title_card)
+                      sticker, sticker_render, subject, title_card)
 from pipeline import text_accent as ta
 
 # 곡이 없거나 분석하지 못했을 때의 박자 간격(120 BPM)
@@ -59,14 +59,17 @@ def stage_seed(movie_id: str) -> int:
 
 def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]],
                fit_mode: str = "blur_background") -> list[ta.CutContext]:
-    """결과물 시간축의 컷 — 경계는 컷 길이의 누적이다(겹침 전환은 경계 양쪽에 반씩 걸쳐 경계가 그대로다)."""
+    """결과물 시간축의 컷 — 경계는 컷 길이의 누적이다(겹침 전환은 경계 양쪽에 반씩 걸쳐 경계가 그대로다).
+    피사체는 스냅 분석의 프레임별 상자를 결과물과 같은 맞춤으로 화면에 옮긴 것(`subject.for_cut`), 없으면 None."""
     contexts, t = [], 0
     for i, cut in enumerate(cuts):
         length = max(0, cut.end_ms - cut.start_ms)
+        analysis = analyses.get(cut.video_id) or {}
+        middle = accent_inputs.representative_ms(cut.start_ms, cut.end_ms, cut.source_ms)
         contexts.append(ta.CutContext(
             f"c{i}", t, t + length,
-            content.concepts_of(analyses.get(cut.video_id) or {}),
-            None,
+            content.concepts_of(analysis),
+            subject.for_cut(analysis, cut.path, middle, fit_mode),
             motion=accent_inputs.cut_motion(motions.get(cut.video_id) or (), cut.start_ms, cut.end_ms),
             luma=_luma(cut, fit_mode),
         ))

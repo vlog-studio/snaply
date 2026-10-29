@@ -105,6 +105,9 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
   - `error.code` 는 계약에 **문자열로 열려 있다**(알려진 값은 `vocab.ts` 의 `VIDEO_ANALYSIS_ERROR_CODES`). `retryable: false` 면 다시 요청해도 같은 결과다.
   - `result.durationMs` 는 워커가 FFprobe 로 **실측한** 길이다. `Video.durationSeconds` 도 이 값으로 교정된다.
   - `frameTimestampsMs` 는 실제로 모델에 보낸 프레임 시점이다. 거의 같은 화면은 제거하므로 최대 4장보다 적을 수 있다.
+  - `subjects` 는 그 프레임마다(`frame` = `frameTimestampsMs` 의 순번) 눈에 띄는 피사체의 이름과 0~1 상자 `[x0, y0, x1, y1]`이다
+    (최대 3개, 2026-10-29 프롬프트 v2). 화면을 거의 다 덮거나 끝까지 걸친 상자는 워커가 버려 빠져 있다. 서버가 글 · 이모지를 피사체 옆에
+    놓는 데 쓰는 내부 값이며(ANA-2), 그 전의 분석은 빈 배열이다.
   - `visualQuality.usableForEdit` 가 추천이 1차로 보는 값이다. `issues` 는 자유 텍스트가 아니라 고정 코드다(원천은 워커의 [`VISUAL_ISSUE_CODES`](../apps/ai-worker/src/pipeline/video_analysis/prompt.py) — 계약은 문자열로 열어 둔다).
 - **분석 실패는 원본 영상에 영향을 주지 않는다** — `Video.status` 는 `ready` 로 남는다.
 

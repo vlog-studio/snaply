@@ -22,7 +22,7 @@ from datetime import datetime
 import numpy as np
 
 from pipeline import (accent_inputs, accent_render, beat_grid, continuity, content, cut_fx, density, editor, face, fast_cut,
-                      layout, look as lk, match_cut, music, recipe, sfx, sticker, sticker_render, text_accent as ta,
+                      layout, look as lk, match_cut, music, recipe, sfx, sticker, sticker_render, subject, text_accent as ta,
                       title_card)
 from pipeline import transition as tr
 from pipeline.accent_stage import FALLBACK_BEAT_MS, composite, stage_seed
@@ -75,8 +75,9 @@ def _plan(snaps: list[Snap], series: list[continuity.Series], concepts: list[dic
     return [continuity.PlannedCut(i, 0, s.length_ms, 1.0, None) for i, s in enumerate(series)]
 
 
-def _contexts(snaps, series, concepts, planned, subjects=None) -> list[ta.CutContext]:
-    """결과물 시간축의 컷 — 배속 컷의 움직임 곡선은 그 배수만큼 솎는다."""
+def _contexts(snaps, series, concepts, planned, subjects=None, spec: dict | None = None) -> list[ta.CutContext]:
+    """결과물 시간축의 컷 — 배속 컷의 움직임 곡선은 그 배수만큼 솎는다. 피사체는 매치컷이 찾은 것이 먼저(결과물 프레임에서 잰 값),
+    없으면 스냅 분석의 프레임별 상자를 컷의 화면 틀(꽉 채움 · 레터박스 띠)로 옮긴 것."""
     contexts, t = [], 0
     for k, cut in enumerate(planned):
         motion = series[cut.index].motion[cut.start_ms // continuity.STEP_MS: cut.end_ms // continuity.STEP_MS]
@@ -85,8 +86,9 @@ def _contexts(snaps, series, concepts, planned, subjects=None) -> list[ta.CutCon
             luma = accent_inputs.luma_grid(snaps[cut.index].path, (cut.start_ms + cut.end_ms) // 2)
         except accent_inputs.AccentInputError:
             luma = None
-        subject = subjects[k] if subjects else None
-        contexts.append(ta.CutContext(f"c{k}", t, t + cut.out_ms, concepts[cut.index], subject, motion=motion, luma=luma))
+        found = (subjects[k] if subjects else None) or subject.for_cut(
+            snaps[cut.index].analysis, snaps[cut.index].path, (cut.start_ms + cut.end_ms) // 2, "cover", _frame_area(spec))
+        contexts.append(ta.CutContext(f"c{k}", t, t + cut.out_ms, concepts[cut.index], found, motion=motion, luma=luma))
         t += cut.out_ms
     return contexts
 
@@ -123,6 +125,15 @@ def _flash_at_drop(fx: cut_fx.Plan, planned, track: str) -> None:
     fx.boundaries[b] = "flash"
     fx.cuts[b] = replace(fx.cuts[b], outro="flash")
     fx.cuts[b + 1] = replace(fx.cuts[b + 1], intro="flash")
+
+
+def _frame_area(spec: dict | None) -> tuple[float, float, float, float] | None:
+    """컷이 화면에 놓이는 자리(px) — 레터박스면 가운데 띠, 아니면 화면 전체(None)."""
+    if not spec or spec.get("frame") != "letterbox":
+        return None
+    w, h = DEFAULT_RENDER_SPEC.width, DEFAULT_RENDER_SPEC.height
+    band = cut_fx.band_height(w)
+    return (0.0, (h - band) / 2, float(w), float(band))
 
 
 def _seg_spec(spec: dict):
@@ -503,7 +514,7 @@ def render(snaps: list[Snap], recipe_name: str, track: str | None, movie_id: str
         with_bgm = base  # 곡이 없으면 원본 소리를 그대로 둔다 — 음원만 레시피여도 무음 무비를 만들지 않는다
     else:
         music.mix(base, track, with_bgm, duration, spec["audio"]["sourceGain"], spec["audio"]["bgmGain"], END_AUDIO_FADE_S)
-    contexts = _contexts(snaps, series, concepts, planned, subjects)
+    contexts = _contexts(snaps, series, concepts, planned, subjects, spec)
     result = Result(out, round(duration, 1), bpm, transitions=fx.boundaries, splits=fx.splits, look=look, order=order, links=parts)
     faces = _faces(base, spec, seed)
     stamps = [snaps[c.index].captured_at for c in planned]

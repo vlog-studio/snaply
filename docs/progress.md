@@ -2951,3 +2951,27 @@ API 통합 테스트가 테스트는 모두 통과한 채 처리되지 않은 �
 - 검증: 워커 `test_recipe` · `test_formats` · `test_fast_cut`(점프컷 · 나눈 후보 — 새 테스트) · `test_title_card`(개념으로 묶기 · 공유 없으면 기본값 — 새 테스트),
   모바일 verify 1,771개, typecheck · lint. API 전체는 두 번 돌려 각각 다른 테스트 1개가 실패했고(`edit-jobs-read` · `ad-reward`) 단독 실행은 통과 — E-69 의
   간헐 실패로 보고 이 변경과 무관하다고 판단했다(레시피 이름 계약 테스트 `movie-recipe.test.ts` 는 통과). 워커 전체(Docker ffmpeg 7.1) 615개 통과.
+
+## 2026-10-29 — 분석의 피사체 상자로 꾸밈을 피사체 옆에(MOV-27 · ANA-2, backlog A-19)
+
+사용자 요청("이모지 위치가 네 모서리에 고정돼 있다"). 글 · 이모지는 피사체 옆에 놓도록 설계됐지만 피사체 위치를 주는 곳이 없어 사용자가 컷을 고른 무비는 늘
+안전 영역의 네 모서리였다. 결정과 실측은 [decisions/subject-boxes.md](./decisions/subject-boxes.md)(같은 날 결정 — 분석 응답에 프레임별 상자). 스펙 MOV-27 · ANA-2 를 먼저 고쳤다.
+
+- **실측 두 번** — 루나(`gpt-5.6-luna`)에 프레임 12장을 한 장씩: 9장 맞음 · 확신도는 구분력 없음(모두 0.87~0.99). 운영 형태(스냅 14편, 스냅당 최대 4장 한 요청,
+  지금 프롬프트 대 `subjects` 를 더한 프롬프트): 하류가 쓰는 개념의 일치가 같은 프롬프트끼리 0.56 · 기준↔신규 0.57 로 기존 분석이 나빠지지 않았고,
+  거르는 규칙을 지난 상자가 36장 중 29장에 남았다(위치는 눈으로 모두 맞음). 스냅당 출력 +386 토큰(약 $0.0005) · 지연 +1.5초.
+- **분석(프롬프트 v2)** — 시스템 프롬프트에 규칙 한 줄, 스키마에 `subjects`(프레임별 최대 3개 · 이름 · 0~1 상자). 저장 전에 `schema.subject_box` 가 거른다 —
+  면적 60% 초과 · 가로나 세로 90% 이상(선반 · 모래언덕 띠) · 면적 0.5% 미만 · 거꾸로. 모양이 틀린 `subjects` 는 분석을 실패시키지 않고 버린다.
+  `VIDEO_ANALYSIS_PROMPT_VERSION` 기본값 v1 → v2(env-spec · `.env.example`), `MAX_OUTPUT_TOKENS` 700 → 1400(실측 최대 886).
+- **저장 · 계약** — `video_analyses.subjects`(JSONB, 기본 빈 배열 — 마이그레이션 `20261029020000_video_analysis_subjects`), 계약 `videoAnalysisResultSchema.subjects` ·
+  `openapi.json` · api-spec. 이 전의 분석은 빈 배열이라 꾸밈은 모서리로 간다.
+- **렌더** — 새 `pipeline/subject.py`: 컷 구간 가운데에 가장 가까운 분석 프레임의 첫 상자를 골라(그 프레임이 비면 없음) 원본 크기 · 회전과 맞춤 방식
+  (흐린 배경 · 단색 띠 · cover · contain, 레터박스 띠)대로 화면 좌표로 옮긴다. 보통 경로(`accent_stage.build_cuts`)와 AI 컷 경로(`trend_edit._contexts` —
+  매치컷이 찾은 피사체가 먼저)에 연결. 얼굴 스티커는 그대로 YuNet.
+- **확인** — 실측 분석(스냅 14편의 상자)을 미리보기에 넣어 같은 컷을 상자 있음 · 없음으로 구웠다: 텐트 안 강아지 · 맥주잔 · 후지산 · 승합차 컷에서 이모지가
+  모서리 대신 피사체 곁으로 옮겨 갔고, 상자가 걸러진 컷(기념품 가게 · 노을)은 모서리 그대로. 염소 컷은 뒤쪽의 작은 동물 상자가 남아 그 곁으로 옮겨 갔다(첫 상자를 쓰는 규칙의 한계). 워커 새 테스트 `test_subject`(가까운 프레임 · 빈 프레임은
+  빌리지 않음 · 맞춤 방식별 옮기기 · 잘림 · `build_cuts`) · `test_video_analysis`(거르는 규칙 · 틀린 모양 버림), API `video-analysis.test.ts`(상자 · 예전 분석은 빈 배열).
+  `npm test -w apps/api` 54 파일 · 867개 통과, 워커 전체 650개 중 실패 9건은 로컬 ffmpeg 에 libass 가 없는 ASS 렌더 테스트(전과 같음),
+  `npm run typecheck -w apps/mobile` 통과.
+- **운영에 반영할 것** — 운영 시크릿에 `VIDEO_ANALYSIS_PROMPT_VERSION` 이 있으면 v2 로 올린다(없으면 기본값 v2). 회전 정보가 잘못 붙어 워커가 바로 세운 원본은
+  분석 프레임과 방향이 달라 상자가 어긋날 수 있다(드물다 — `subject.py` 머리말).

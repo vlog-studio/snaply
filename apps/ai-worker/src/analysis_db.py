@@ -7,6 +7,7 @@
 호출자가 중단하게 만든다.
 """
 
+import json
 from datetime import datetime, timezone
 
 import db
@@ -89,7 +90,7 @@ async def save_result(
                 "       visual_quality_score=$10, visual_issues=$11, usable_for_edit=$12, "
                 "       confidence=$13, model_version=$14, prompt_version=$15, "
                 "       input_tokens=$16, output_tokens=$17, error_code=NULL, "
-                "       error_message=NULL, completed_at=$18, updated_at=$18 "
+                "       error_message=NULL, completed_at=$18, updated_at=$18, subjects=$19::jsonb "
                 "  FROM videos v "
                 " WHERE a.id=$1 AND a.status='processing' "
                 "   AND v.id = a.video_id AND v.deleted_at IS NULL "
@@ -112,6 +113,7 @@ async def save_result(
                 input_tokens,
                 output_tokens,
                 now,
+                json.dumps(result.get("subjects") or [], ensure_ascii=False),
             )
             if row is None:
                 return False
