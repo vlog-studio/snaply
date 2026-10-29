@@ -45,6 +45,12 @@ export function movieFromRemote(remote: RemoteMovie, local: Movie | undefined): 
     snapRefs: remote.snapRefs,
     style: remote.style,
     recipe: remote.recipe,
+    // A server older than decorations sends none; what this device holds stays.
+    ...(remote.decorations
+      ? { decorations: remote.decorations }
+      : local?.decorations
+        ? { decorations: local.decorations }
+        : null),
     // The server has no track field (the pipeline scores from the preset), so
     // the stored choice is this device's and is simply kept.
     bgm: local?.bgm ?? DefaultMovieBgm,

@@ -1,4 +1,7 @@
-import type { MovieRecipe as ContractMovieRecipe } from '@vlog-studio/shared-types';
+import type {
+  MovieDecorationFlags,
+  MovieRecipe as ContractMovieRecipe,
+} from '@vlog-studio/shared-types';
 
 /**
  * How many snaps one movie may hold. The single hard constraint of the product
@@ -47,6 +50,15 @@ export type MovieStyle = 'emotional' | 'travel' | 'daily';
  * (`lib/movie-recipe.ts`) describes it.
  */
 export type MovieRecipe = ContractMovieRecipe;
+
+/**
+ * The movie's decorations, each switched on or off (root docs/specs/movie.md
+ * MOV-27): 글자 (`text` — the scene's onomatopoeia and exclamations), 이모지
+ * (`emoji` — emoji and picture stickers) and 얼굴 스티커 (`face` — a sticker
+ * that follows a face). The run follows only these; the recipe decides how
+ * many. The keys are the contract's own (type-only here).
+ */
+export type MovieDecorations = MovieDecorationFlags;
 
 /**
  * A movie's lifecycle.
@@ -294,6 +306,14 @@ export type Movie = {
    * re-cut by the recipe is decided by those, not by the pick.
    */
   recipe?: MovieRecipe;
+  /**
+   * The decorations the next run puts on. Optional because movies stored
+   * before the field existed have none — read it through `movieDecorations`,
+   * so a missing value reads as the recipe's defaults, which is also what the
+   * server filled such a movie with. Picking another recipe resets it to that
+   * recipe's defaults, as the server does.
+   */
+  decorations?: MovieDecorations;
   /**
    * Track identifier from the BGM catalog. Stored and defaulted, but **read by
    * nothing** since 2026-08-13: the pipeline scores a run from the style preset

@@ -1,4 +1,11 @@
-import type { MovieArranger, MovieRecipe, MovieStatus, MovieStyle, SnapRef } from './movie';
+import type {
+  MovieArranger,
+  MovieDecorations,
+  MovieRecipe,
+  MovieStatus,
+  MovieStyle,
+  SnapRef,
+} from './movie';
 
 /**
  * A movie as the server holds it, already in the app's own terms.
@@ -18,6 +25,8 @@ export type RemoteMovie = {
   status: MovieStatus;
   style: MovieStyle;
   recipe: MovieRecipe;
+  /** `undefined` from a server older than decorations. */
+  decorations?: MovieDecorations;
   captions: boolean;
   ratio: '9:16';
   arranger: MovieArranger;

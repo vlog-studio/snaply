@@ -107,6 +107,7 @@ function toFields(body: MovieBody) {
     title: body.title,
     stylePreset: body.stylePreset,
     recipe: body.recipe,
+    ...(body.decorations ? { decorations: body.decorations } : null),
     captions: body.captions,
     arranger: body.arranger,
     clips: body.clips.map(({ transition, ...clip }, index) => ({

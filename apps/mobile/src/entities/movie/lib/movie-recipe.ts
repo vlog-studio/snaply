@@ -1,6 +1,6 @@
 import type { MOVIE_RECIPES } from '@vlog-studio/shared-types';
 
-import type { Movie, MovieRecipe } from '../model/movie';
+import type { Movie, MovieDecorations, MovieRecipe } from '../model/movie';
 
 /** One entry of the recipe catalog, as the recipe sheet draws it. */
 export type MovieRecipeOption = {
@@ -150,4 +150,60 @@ export function cutsAreAllAi(movie: Pick<Movie, 'arranger' | 'snapRefs'>): boole
  */
 export function recipePicksCuts(movie: Pick<Movie, 'recipe' | 'arranger' | 'snapRefs'>): boolean {
   return movieRecipeOrDefault(movie.recipe) !== DefaultMovieRecipe && cutsAreAllAi(movie);
+}
+
+const AllOn: MovieDecorations = { text: true, emoji: true, face: true };
+const AllOff: MovieDecorations = { text: false, emoji: false, face: false };
+
+/**
+ * Each recipe's decoration defaults — what a movie is filled with when it is
+ * made and when its recipe changes (root docs/specs/movie.md MOV-27). A copy of
+ * the server's recipe dictionary (`recipe-vocabulary.json`, each recipe's
+ * `decorations`), for the same reason {@link RecipeOrder} is one: the contract
+ * package is type-only in the app. Keyed by `MovieRecipe`, so a new recipe fails
+ * to compile until it has defaults; the values are checked against the
+ * dictionary by `movie-recipe.test.ts`.
+ */
+export const RecipeDecorationDefaults: Record<MovieRecipe, MovieDecorations> = {
+  classic: AllOff,
+  'trend-routine': AllOn,
+  'trend-montage': AllOn,
+  cinematic: AllOn,
+  'fast-cut': AllOn,
+  'beat-sync': AllOn,
+  'speed-ramp': { text: true, emoji: true, face: false },
+  'day-stamp': AllOff,
+  'before-after': { text: true, emoji: false, face: false },
+  asmr: AllOff,
+  'freeze-text': { text: true, emoji: false, face: false },
+  'whip-montage': AllOn,
+  'letterbox-montage': AllOn,
+  'talk-vlog': { text: true, emoji: true, face: false },
+  daylog: { text: true, emoji: false, face: false },
+};
+
+/**
+ * The decorations a movie's next run puts on: its own, or — for a movie stored
+ * before the field existed — its recipe's defaults, which is what the server
+ * filled it with.
+ */
+export function movieDecorations(movie: Pick<Movie, 'recipe' | 'decorations'>): MovieDecorations {
+  return movie.decorations ?? RecipeDecorationDefaults[movieRecipeOrDefault(movie.recipe)];
+}
+
+/** The switches in the order the sheet draws them, with their names on screen. */
+export const MovieDecorationOptions: readonly { key: keyof MovieDecorations; label: string }[] = [
+  { key: 'text', label: '글자' },
+  { key: 'emoji', label: '이모지' },
+  { key: 'face', label: '얼굴 스티커' },
+];
+
+/** What the 꾸밈 chip reads out: the switches that are on, or 없음. */
+export function movieDecorationsLabel(decorations: MovieDecorations): string {
+  const on = MovieDecorationOptions.filter((option) => decorations[option.key]);
+  return on.length === 0 ? '없음' : on.map((option) => option.label).join('·');
+}
+
+export function sameDecorations(left: MovieDecorations, right: MovieDecorations): boolean {
+  return left.text === right.text && left.emoji === right.emoji && left.face === right.face;
 }
