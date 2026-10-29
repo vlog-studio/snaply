@@ -449,9 +449,10 @@ def _overlay(base: str, contexts, analyses, beats, spec: dict, movie_id: str, wo
     title = spec.get("title")
     overlay = fmt(spec).get("overlay") or {}
     styles = title_card.styles() if (title or overlay) else []
-    events = title_card.events(title["style"], analyses, total_ms, title.get("holdMs")) if title else []
+    cuts = [(c.start_ms, c.end_ms) for c in contexts]
+    events = title_card.events(title["style"], analyses, total_ms, title.get("holdMs"), cuts) if title else []
     if overlay.get("timestamp") and stamps:
-        events += title_card.timestamps([(c.start_ms, c.end_ms) for c in contexts], stamps)
+        events += title_card.timestamps(cuts, stamps)
     if overlay.get("freezeLabel") and holds:
         labels = {a.cut_id: a.choice.text for a in accents}
         events += title_card.freeze_labels([(at, ms, labels.get(cut_id, "!")) for cut_id, at, ms in holds])

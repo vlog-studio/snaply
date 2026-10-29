@@ -62,5 +62,48 @@ class CinematicTest(unittest.TestCase):
         self.assertIn("@음식 !", title_card.events("cinematic", [{"places": ["실내"], "topics": ["음식"]}], 9000, None)[1])
 
 
+class CutCommentTest(unittest.TestCase):
+    """시네마틱 오른쪽 글을 컷마다(trend-recipes.md §15)."""
+
+    CUTS = [(0, 1000), (1000, 2000), (2000, 3000), (3000, 4000), (4000, 5000), (5000, 6000)]
+
+    def test_starts_with_the_tag_then_each_cut_says_something_new(self):
+        analyses = [{"places": ["한강"]}, {"actions": ["산책"]}, {"objects": ["라떼"]},
+                    {"objects": ["노트북"]}, {"places": ["실내"], "topics": ["작업"]}, {}]
+        spans = title_card.cut_comments("@한강 !", analyses, self.CUTS, 8000)
+        # 1.5초가 지나야 바뀐다 — 1초 컷의 '산책' 은 건너뛰고 2초의 '라떼', 그다음 4초의 '작업'(흔한 장소 '실내' 는 안 쓴다)
+        self.assertEqual(spans, [(0, 2000, "@한강 !"), (2000, 4000, "라떼"), (4000, 8000, "작업")])
+
+    def test_order_is_action_object_place_topic_and_a_said_word_is_not_repeated(self):
+        cut = {"topics": ["주제"], "places": ["카페"], "objects": ["라떼"], "actions": ["마시기"]}
+        self.assertEqual(title_card._candidates(cut), ["마시기", "라떼", "@카페 !", "주제"])
+        spans = title_card.cut_comments("@카페 !", [{}, cut, cut, cut], [(0, 2000), (2000, 4000), (4000, 6000), (6000, 8000)], 10000)
+        self.assertEqual([t for _, _, t in spans], ["@카페 !", "마시기", "라떼", "주제"])
+
+    def test_nothing_new_keeps_the_previous_comment(self):
+        spans = title_card.cut_comments("@카페 !", [{"places": ["카페"]}] * 3, [(0, 2000), (2000, 4000), (4000, 6000)], 6000)
+        self.assertEqual(spans, [(0, 6000, "@카페 !")])
+
+    def test_no_short_flash_right_before_the_outro(self):
+        spans = title_card.cut_comments("@카페 !", [{}, {"objects": ["케이크"]}], [(0, 2000), (2000, 3000)], 3000)
+        self.assertEqual(spans, [(0, 3000, "@카페 !")])
+
+    def test_events_with_cuts_change_the_right_text_and_keep_the_outro(self):
+        analyses = [{"places": ["대전"]}, {"objects": ["빵"]}]
+        lines = title_card.events("cinematic", analyses, 6000, None, [(0, 2000), (2000, 6000)])
+        self.assertEqual(len(lines), 4)
+        self.assertIn("Vlog", lines[0])
+        self.assertIn("@대전 !", lines[1])
+        self.assertIn("0:00:02.00", lines[1])
+        self.assertIn("빵", lines[2])
+        self.assertIn("\\fad(150,0)", lines[2])
+        self.assertIn("See ya !<3", lines[3])
+        self.assertIn("0:00:04.50", lines[3])
+
+    def test_other_styles_ignore_cuts(self):
+        self.assertEqual(title_card.events("typewriter", ANALYSES, 20000, None, [(0, 9000), (9000, 20000)]),
+                         title_card.events("typewriter", ANALYSES, 20000, None))
+
+
 if __name__ == "__main__":
     unittest.main()

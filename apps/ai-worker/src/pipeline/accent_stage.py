@@ -105,7 +105,8 @@ def render(video_in: str, contexts: list[ta.CutContext], beats, movie_id: str, w
     stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed_value), accents, spec["stickers"])
     total_ms = max(c.end_ms for c in contexts)
     title = spec.get("title")
-    events = title_card.events(title["style"], analyses, total_ms, title.get("holdMs")) if title else []
+    cuts = [(c.start_ms, c.end_ms) for c in contexts]
+    events = title_card.events(title["style"], analyses, total_ms, title.get("holdMs"), cuts) if title else []
     sounds = sfx.plan(contexts, analyses, [], spec["sfx"])
     if not accents and not stickers and not events and not sounds:
         return Outcome(reason="붙일 것이 없다(분석 · 장소 개념 없음)")
