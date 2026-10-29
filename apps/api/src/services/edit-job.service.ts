@@ -9,6 +9,7 @@ import {
   type EditJobStatus,
   type EditProgressEvent,
   type EditSpec,
+  FIT_MODES,
   type FitMode,
   type OutputProfile,
   type RenderSpec,
@@ -222,7 +223,7 @@ function parseRenderSpec(value: unknown): RenderSpec {
     ['short_vertical', 'youtube_landscape', 'instagram_portrait', 'square'].includes(
       String(value.outputProfile),
     ) &&
-    ['contain', 'cover', 'blur_background'].includes(String(value.fitMode)) &&
+    (FIT_MODES as readonly string[]).includes(String(value.fitMode)) &&
     Number.isInteger(value.width) &&
     Number(value.width) > 0 &&
     Number.isInteger(value.height) &&

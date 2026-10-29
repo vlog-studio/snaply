@@ -19,7 +19,9 @@ PROFILE_V1: dict[str, tuple[int, int, int]] = {
     "instagram_portrait": (1080, 1350, 30),
     "square": (1080, 1080, 30),
 }
-FIT_MODES = {"contain", "cover", "blur_background"}
+FIT_MODES = {"contain", "cover", "blur_background", "pad_black", "pad_white"}
+# 남는 자리를 단색 띠로 채우는 맞춤(MOV-8). contain 과 달리 작은 원본도 화면 폭이나 높이까지 키운다 — blur_background 의 앞 화면과 같은 크기다.
+PAD_COLORS: dict[str, str] = {"pad_black": "black", "pad_white": "white"}
 
 DEFAULT_RENDER_SPEC = RenderSpec(1, "short_vertical", 1080, 1920, 30, "blur_background")
 LEGACY_RENDER_SPEC = RenderSpec(1, "youtube_landscape", 1920, 1080, 30, "contain")
@@ -69,7 +71,7 @@ def build_video_filter(spec: RenderSpec, eq: str, *, input_label: str = "[0:v:0]
 
     ``eq`` (the colour match and the style, both per-pixel) runs on the scaled picture, not the source: a phone's
     4K frame is four times the output's pixels, and ``colorchannelmixer`` adds an RGB round trip on every one of them
-    (backlog E-49). It still comes before ``pad`` so the bars stay black.
+    (backlog E-49). It still comes before ``pad`` so the bars keep their colour.
     """
     prefix = f"{input_label}setpts=PTS-STARTPTS"
     grade = f",{eq}" if eq else ""
@@ -79,6 +81,11 @@ def build_video_filter(spec: RenderSpec, eq: str, *, input_label: str = "[0:v:0]
         return (
             f"{prefix},{_contain_scale(spec)}{grade},"
             f"pad={spec.width}:{spec.height}:(ow-iw)/2:(oh-ih)/2:color=black,{finish}"
+        )
+    if spec.fit_mode in PAD_COLORS:
+        return (
+            f"{prefix},{_fit_scale(spec)}{grade},"
+            f"pad={spec.width}:{spec.height}:(ow-iw)/2:(oh-ih)/2:color={PAD_COLORS[spec.fit_mode]},{finish}"
         )
 
     cover = (

@@ -5,6 +5,7 @@ import {
   type MovieRecipe,
   contentConcept,
   DEFAULT_FIT_MODE,
+  type FitMode,
   DEFAULT_OUTPUT_PROFILE,
   MOVIE_CLIP_MAX,
   MOVIE_CLIP_MIN,
@@ -89,6 +90,7 @@ interface MovieRow {
   stylePreset: string;
   recipe: string;
   captions: boolean;
+  fitMode: string;
   ratio: string;
   arranger: string;
   /** 에이전트가 초안에서 정한 분위기(개념 사전 `moods` id) — 전환을 고르는 비중이다(MOV-25). */
@@ -116,6 +118,7 @@ const SELECT = {
   stylePreset: true,
   recipe: true,
   captions: true,
+  fitMode: true,
   ratio: true,
   arranger: true,
   mood: true,
@@ -176,6 +179,7 @@ function toDto(row: MovieRowWithJob): Movie {
     stylePreset: row.stylePreset as StylePreset,
     recipe: row.recipe as MovieRecipe,
     captions: row.captions,
+    fitMode: row.fitMode as FitMode,
     ratio: row.ratio,
     arranger: row.arranger as MovieArranger,
     clips: row.clips.map((clip, index) => ({
@@ -486,6 +490,7 @@ export async function createMovie(params: {
   stylePreset?: StylePreset;
   recipe?: MovieRecipe;
   captions?: boolean;
+  fitMode?: FitMode;
   arranger?: MovieArranger;
 }): Promise<Movie> {
   if (params.id) {
@@ -525,6 +530,7 @@ export async function createMovie(params: {
       stylePreset,
       recipe: params.recipe ?? DEFAULT_MOVIE_RECIPE,
       captions: params.captions ?? false,
+      fitMode: params.fitMode ?? DEFAULT_FIT_MODE,
       arranger,
       mood,
       clips: { create: clipCreateData(clips, aiTransitions) },
@@ -580,6 +586,7 @@ export async function updateMovie(params: {
   stylePreset?: StylePreset;
   recipe?: MovieRecipe;
   captions?: boolean;
+  fitMode?: FitMode;
   arranger?: MovieArranger;
 }): Promise<Movie> {
   const current = await findOwned(params.userId, params.movieId);
@@ -616,6 +623,7 @@ export async function updateMovie(params: {
       ...(params.stylePreset !== undefined ? { stylePreset: params.stylePreset } : {}),
       ...(params.recipe !== undefined ? { recipe: params.recipe } : {}),
       ...(params.captions !== undefined ? { captions: params.captions } : {}),
+      ...(params.fitMode !== undefined ? { fitMode: params.fitMode } : {}),
       ...(params.arranger !== undefined ? { arranger: params.arranger } : {}),
       // 컷은 통째로 교체한다. 부분 갱신은 순서를 다시 계산해야 해서 두 표현이 어긋나기 쉽다.
       ...(clips !== undefined
@@ -720,7 +728,8 @@ export async function exportMovie(params: {
         }
       : {}),
     outputProfile: DEFAULT_OUTPUT_PROFILE,
-    fitMode: DEFAULT_FIT_MODE,
+    // 무비가 고른 맞춤 방식(MOV-8). 컷을 전부 AI 가 정한 레시피 무비는 워커가 레시피의 화면 틀로 렌더해 이 값을 쓰지 않는다.
+    fitMode: movie.fitMode as FitMode,
     subtitles: movie.captions,
     // 경계마다 고른 전환(MOV-22). 빈 경계는 없어야 하지만, 있다면 아무 효과 없는 값으로 보낸다.
     transitions: movie.clips

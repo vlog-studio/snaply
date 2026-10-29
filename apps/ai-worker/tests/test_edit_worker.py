@@ -212,7 +212,8 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
     async def test_the_movie_recipe_comes_from_the_spec(self) -> None:
         await self.run_pipeline({**V3_SPEC, "recipe": "cinematic"}, enabled=False)
         self.assertEqual(self.bgm.call_args.args[-2:], (0.0, 1.0))
-        self.assertEqual(self.accents.await_args.args[-1], "cinematic")
+        # 뒤의 것은 작업의 맞춤 방식 — 이 작업은 renderSpec 이 없어 예전 작업의 기본(contain)이다
+        self.assertEqual(self.accents.await_args.args[-2:], ("cinematic", "contain"))
 
     async def test_a_spec_without_a_recipe_is_classic_whatever_the_environment(self) -> None:
         # API 는 classic 무비에 recipe 를 싣지 않는다 — 사용자가 고른 '기본'을 워커 전체의 값이 덮으면 안 된다(backlog E-67)
@@ -269,13 +270,13 @@ class ApplyAccentsInputTest(unittest.IsolatedAsyncioTestCase):
                 mock.patch.object(worker.accent_stage, "apply", return_value=("out.mp4", worker.accent_stage.Outcome(True))) as apply:
             db.fetch_accent_inputs = mock.AsyncMock(return_value=({VIDEO_ID: {"places": ["카페"]}}, {VIDEO_ID: [0.01]}))
             result = await worker._apply_accents("with_bgm.mp4", clips, specs, preset, True, 1.5, {"movieId": "m1"}, JOB_ID, "/w",
-                                                 "cinematic")
+                                                 "cinematic", "pad_white")
         self.assertEqual(result, "out.mp4")
         pick.assert_called_once_with(preset.bgm_tag, "m1")
         args = apply.call_args.args
         self.assertEqual(args[1], [worker.accent_stage.CutSource(VIDEO_ID, "/w/src_0.mp4", 0, 1500, 4000)])
         self.assertEqual((args[4], args[5], args[6]), ("/bgm/daily/a.mp3", 1500, "m1"))
-        self.assertEqual(args[-1], "cinematic")
+        self.assertEqual(args[-2:], ("cinematic", "pad_white"))
 
     async def test_without_music_there_is_no_track_to_follow(self) -> None:
         with mock.patch.object(worker.editor, "cut_windows", return_value=[(0, 1500, 4000)]), \
@@ -284,7 +285,8 @@ class ApplyAccentsInputTest(unittest.IsolatedAsyncioTestCase):
                 mock.patch.object(worker.accent_stage, "apply", return_value=("in.mp4", worker.accent_stage.Outcome())) as apply:
             db.fetch_accent_inputs = mock.AsyncMock(return_value=({}, {}))
             await worker._apply_accents("in.mp4", [worker.editor.ClipSource("/w/s.mp4")], [mock.Mock(video_id=VIDEO_ID)],
-                                        worker.get_preset("일상"), False, 1.5, {}, JOB_ID, "/w", "classic")
+                                        worker.get_preset("일상"), False, 1.5, {}, JOB_ID, "/w", "classic",
+                                        "blur_background")
         pick.assert_not_called()
         self.assertIsNone(apply.call_args.args[4])
 

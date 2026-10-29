@@ -82,7 +82,12 @@ export const OUTPUT_PROFILES = [
 export const outputProfileSchema = z.enum(OUTPUT_PROFILES);
 export type OutputProfile = z.infer<typeof outputProfileSchema>;
 
-export const FIT_MODES = ['contain', 'cover', 'blur_background'] as const;
+/**
+ * 비율이 다른 원본을 출력 화면에 맞추는 방식. `blur_background` 는 남는 자리를 흐린 원본으로, `pad_black` · `pad_white` 는
+ * 단색 띠로 채운다(셋 다 원본을 화면 폭이나 높이까지 키운다 — specs/movie.md MOV-8). `contain` 은 작은 원본을 키우지 않고 검정
+ * 띠를 두는 예전 작업의 기본, `cover` 는 잘라서 꽉 채운다.
+ */
+export const FIT_MODES = ['contain', 'cover', 'blur_background', 'pad_black', 'pad_white'] as const;
 export const fitModeSchema = z.enum(FIT_MODES);
 export type FitMode = z.infer<typeof fitModeSchema>;
 

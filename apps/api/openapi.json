@@ -817,7 +817,9 @@
                 "enum": [
                   "contain",
                   "cover",
-                  "blur_background"
+                  "blur_background",
+                  "pad_black",
+                  "pad_white"
                 ]
               }
             },
@@ -1160,6 +1162,17 @@
             "type": "boolean",
             "description": "생성 시 소프트 자막을 만들지 여부."
           },
+          "fitMode": {
+            "type": "string",
+            "enum": [
+              "contain",
+              "cover",
+              "blur_background",
+              "pad_black",
+              "pad_white"
+            ],
+            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
+          },
           "ratio": {
             "type": "string",
             "description": "출력 비율. 현재는 `9:16` 뿐이다."
@@ -1218,6 +1231,7 @@
           "stylePreset",
           "recipe",
           "captions",
+          "fitMode",
           "ratio",
           "arranger",
           "clips",
@@ -2422,7 +2436,9 @@
                 "enum": [
                   "contain",
                   "cover",
-                  "blur_background"
+                  "blur_background",
+                  "pad_black",
+                  "pad_white"
                 ]
               }
             },
@@ -2772,6 +2788,17 @@
             "type": "boolean",
             "description": "생성 시 소프트 자막을 만들지 여부."
           },
+          "fitMode": {
+            "type": "string",
+            "enum": [
+              "contain",
+              "cover",
+              "blur_background",
+              "pad_black",
+              "pad_white"
+            ],
+            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
+          },
           "ratio": {
             "type": "string",
             "description": "출력 비율. 현재는 `9:16` 뿐이다."
@@ -2830,6 +2857,7 @@
           "stylePreset",
           "recipe",
           "captions",
+          "fitMode",
           "ratio",
           "arranger",
           "clips",
@@ -6515,6 +6543,17 @@
                     "description": "소프트 자막 생성 여부. 생략하면 `false`(쇼츠용).",
                     "type": "boolean"
                   },
+                  "fitMode": {
+                    "description": "남는 자리를 채우는 방식. 생략하면 `blur_background`.",
+                    "type": "string",
+                    "enum": [
+                      "contain",
+                      "cover",
+                      "blur_background",
+                      "pad_black",
+                      "pad_white"
+                    ]
+                  },
                   "arranger": {
                     "description": "컷 순서의 주인. `ai` 면 서버가 촬영 시각 순으로 정렬하고, 사용자가 순서를 바꾸면 `user` 로 굳는다. 생략하면 `user`.",
                     "type": "string",
@@ -7065,6 +7104,16 @@
                   },
                   "captions": {
                     "type": "boolean"
+                  },
+                  "fitMode": {
+                    "type": "string",
+                    "enum": [
+                      "contain",
+                      "cover",
+                      "blur_background",
+                      "pad_black",
+                      "pad_white"
+                    ]
                   },
                   "arranger": {
                     "type": "string",

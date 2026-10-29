@@ -102,3 +102,24 @@ class RenderSpecTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    # 단색 띠 맞춤(MOV-8) — 앞 화면은 blur_background 처럼 화면까지 키우고, 남는 자리는 고른 색이다. 색보정은 띠보다 앞이라 띠 색이 그대로다.
+    def test_pad_modes_upscale_to_fit_and_fill_with_their_colour(self) -> None:
+        grade = "eq=saturation=0.8"
+        for fit_mode, colour in (("pad_black", "black"), ("pad_white", "white")):
+            spec = parse_render_spec(
+                {
+                    "profileVersion": 1,
+                    "outputProfile": "short_vertical",
+                    "width": 1080,
+                    "height": 1920,
+                    "fps": 30,
+                    "fitMode": fit_mode,
+                }
+            )
+            graph = build_video_filter(spec, grade)
+            self.assertIn("scale=1080:1920:force_original_aspect_ratio=decrease", graph)
+            self.assertNotIn("min(1080,iw)", graph)
+            self.assertIn(f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color={colour}", graph)
+            self.assertLess(graph.index(grade), graph.index("pad="))
+            self.assertNotIn("gblur", graph)

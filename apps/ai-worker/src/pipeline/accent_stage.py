@@ -56,7 +56,8 @@ def stage_seed(movie_id: str) -> int:
     return seed.derive_stage_seed(root, "style-director", 0)
 
 
-def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]]) -> list[ta.CutContext]:
+def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]],
+               fit_mode: str = "blur_background") -> list[ta.CutContext]:
     """결과물 시간축의 컷 — 경계는 컷 길이의 누적이다(겹침 전환은 경계 양쪽에 반씩 걸쳐 경계가 그대로다)."""
     contexts, t = [], 0
     for i, cut in enumerate(cuts):
@@ -66,15 +67,16 @@ def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[s
             content.concepts_of(analyses.get(cut.video_id) or {}),
             None,
             motion=accent_inputs.cut_motion(motions.get(cut.video_id) or (), cut.start_ms, cut.end_ms),
-            luma=_luma(cut),
+            luma=_luma(cut, fit_mode),
         ))
         t += length
     return contexts
 
 
-def _luma(cut: CutSource):
+def _luma(cut: CutSource, fit_mode: str):
     try:
-        return accent_inputs.luma_grid(cut.path, accent_inputs.representative_ms(cut.start_ms, cut.end_ms, cut.source_ms))
+        return accent_inputs.luma_grid(cut.path, accent_inputs.representative_ms(cut.start_ms, cut.end_ms, cut.source_ms),
+                                       fit_mode)
     except accent_inputs.AccentInputError as exc:
         logger.warning("대표 프레임을 읽지 못해 대비 규칙 없이 간다 ({}): {}", cut.video_id, exc)
         return None
@@ -137,12 +139,12 @@ def composite(video_in: str, track: str, document: str, out: str) -> None:
 
 def apply(video_in: str, cuts: list[CutSource], analyses: dict[str, dict], motions: dict[str, list[float]],
           track_path: str | None, movie_ms: int, movie_id: str, work_dir: str, out: str,
-          recipe_name: str | None = None) -> tuple[str, Outcome]:
+          recipe_name: str | None = None, fit_mode: str = "blur_background") -> tuple[str, Outcome]:
     """굽기를 시도한다. 반환: (결과 경로, 무엇을 붙였나). 실패하면 입력 그대로."""
     try:
         beats, bpm = beats_for(track_path, movie_ms)
         per_cut = [analyses.get(c.video_id) or {} for c in cuts]
-        outcome = render(video_in, build_cuts(cuts, analyses, motions), beats, movie_id, work_dir, out,
+        outcome = render(video_in, build_cuts(cuts, analyses, motions, fit_mode), beats, movie_id, work_dir, out,
                          recipe.get(recipe_name).spec, per_cut)
         outcome.bpm = bpm
     except Exception as exc:  # noqa: BLE001 — 꾸밈이 없다고 무비를 실패시키지 않는다

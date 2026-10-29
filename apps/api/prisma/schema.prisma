@@ -601,6 +601,8 @@ model Movie {
   recipe      String        @default("classic") @db.VarChar(30)
   /// 소프트 자막 생성 여부. 기본 꺼짐(쇼츠용).
   captions    Boolean       @default(false)
+  /// 비율이 다른 원본의 남는 자리를 채우는 방식(specs MOV-8) — `blur_background`(기본) · `pad_black` · `pad_white` 등. 값 검사는 계약(Zod)이 한다.
+  fitMode     String        @default("blur_background") @map("fit_mode") @db.VarChar(20)
   /// 현재는 9:16 뿐이지만, 다른 비율이 생겨도 기존 무비가 자기 비율을 지키도록 저장한다.
   ratio       String        @default("9:16") @db.VarChar(10)
   arranger    MovieArranger @default(user)

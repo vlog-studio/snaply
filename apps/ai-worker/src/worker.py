@@ -164,7 +164,7 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     # 3-1) 텍스트 액센트 · 이모지 스티커 — 켰을 때, 컷이 timeline 에 있는 v3 무비만(MOV-27). 실패하면 없이 간다.
     if (config.TEXT_ACCENTS_ENABLED or recipe_name != recipe.CLASSIC) and timeline is not None:
         current = await _apply_accents(current, clips, clip_specs, preset, _bgm_ok, duration, data, job_id, work_dir,
-                                       recipe_name)
+                                       recipe_name, render_spec.fit_mode)
 
     # 4) 자막 생성/삽입 — 요청 시에만 (쇼츠용이 기본이라 디폴트는 건너뜀 → whisper 추론 비용 절약)
     if data.get("subtitles", False):
@@ -287,7 +287,7 @@ def _recipe_of(edit_spec: dict) -> str:
 
 
 async def _apply_accents(current, clips, clip_specs, preset, bgm_ok, duration, data, job_id, work_dir,
-                         recipe_name: str) -> str:
+                         recipe_name: str, fit_mode: str) -> str:
     movie_key = data.get("movieId") or job_id
     windows = await asyncio.to_thread(editor.cut_windows, clips)
     cuts = [
@@ -299,7 +299,7 @@ async def _apply_accents(current, clips, clip_specs, preset, bgm_ok, duration, d
     track = music.pick_track(preset.bgm_tag, movie_key) if bgm_ok else None
     result, outcome = await asyncio.to_thread(
         accent_stage.apply, current, cuts, analyses, motions, track, int(duration * 1000), movie_key,
-        work_dir, os.path.join(work_dir, "with_accents.mp4"), recipe_name,
+        work_dir, os.path.join(work_dir, "with_accents.mp4"), recipe_name, fit_mode,
     )
     logger.info(
         "텍스트 액센트 job_id={} applied={} accents={} stickers={} bpm={} reason={}",
