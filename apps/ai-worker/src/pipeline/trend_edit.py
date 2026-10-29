@@ -167,24 +167,17 @@ def _match(snaps: list[Snap], series, concepts, beats, spec: dict, seed: int = 0
 
 
 def _match_motion(snaps: list[Snap], series, spec: dict, size, tags, seed: int = 0):
-    """원본에 찍힌 줌으로 잇는다 — 스냅마다 '줌 아웃 한 번 → 줌 인 한 번' 구간을 고르고(한 스냅에서 최대 2개, 최소 길이를 채울 만큼),
-    움직임이 이어지는지를 가장 무겁게 쳐서 순서를 정한다(같은 스냅의 컷끼리는 붙이지 않는다).
+    """원본에 찍힌 줌으로 잇는다 — 스냅마다 '줌 아웃 한 번 → 줌 인 한 번' 구간 하나를 고르고(같은 스냅은 한 번만 — 최소 길이가 모자라면
+    구간을 늘린다), 움직임이 이어지는지를 가장 무겁게 쳐서 순서를 정한다.
     A 가 줌 인으로 끝나고 B 가 줌 아웃으로 시작하는 경계는 원본 움직임으로 이어지므로 디지털 줌을 얹지 않는다({"real": True}).
-    그렇지 않은 경계는 점수가 문턱 이상이면 디지털 매치 줌으로 대신한다. 반환의 순서는 컷마다의 스냅 번호(같은 스냅이 두 번 나올 수 있다)."""
+    그렇지 않은 경계는 점수가 문턱 이상이면 디지털 매치 줌으로 대신한다. 반환의 순서는 컷마다의 스냅 번호."""
     cfg, cont = spec["match"], spec["continuity"]
     lo, hi = cont["shotMs"]
     share = round((cont.get("minMovieMs") or 0) / max(1, len(series)))  # 스냅마다 최소 길이의 몫 — 줌 쌍이 없는 스냅의 길이
     per_snap = [match_cut.motion_windows(s, match_cut.zoom_runs(match_cut.zoom_track(s)), lo, hi, target=share or None)
                 for s in series]
-    # 스냅마다 첫 구간 → 최소 길이에 모자라면 남은 구간을 길이 순으로
+    # 스냅마다 첫 구간 하나 — 한 스냅의 두 번째 구간(같은 장면의 다른 줌)을 붙였더니 같은 장면이 되풀이돼 보였다(2026-10-29 사용자)
     items = [(i, ws[0]) for i, ws in enumerate(per_snap)]
-    total = sum(w.end_ms - w.start_ms for _, w in items)
-    extra = sorted(((i, w) for i, ws in enumerate(per_snap) for w in ws[1:]), key=lambda iw: -(iw[1].end_ms - iw[1].start_ms))
-    for i, w in extra:
-        if total >= (cont.get("minMovieMs") or 0):
-            break
-        items.append((i, w))
-        total += w.end_ms - w.start_ms
     ends = []
     for i, w in items:
         start, end = match_cut.ends_of(snaps[i].path, w.start_ms, w.end_ms, size)
@@ -198,7 +191,9 @@ def _match_motion(snaps: list[Snap], series, spec: dict, size, tags, seed: int =
     seq = match_cut.order(scores, cfg.get("temperature", 0.0), cfg.get("explore", 0.0), seed) if cfg.get("order") else list(range(m))
     order = [items[x][0] for x in seq]
     subjects = [_subject_box(ends[x][1], spec) for x in seq]  # 줌 인이 끝난 순간의 피사체 — 글 · 이모지는 이것을 피해 옆에
-    planned = [continuity.PlannedCut(k, items[x][1].start_ms, items[x][1].end_ms, 1.0, None) for k, x in enumerate(seq)]
+    planned = fill_without_repeats([continuity.PlannedCut(k, items[x][1].start_ms, items[x][1].end_ms, 1.0, None) for k, x in enumerate(seq)],
+                                   [series[items[x][0]].length_ms for x in seq], cont.get("minMovieMs") or 0,
+                                   keep_end=[items[x][1].ends_in for x in seq])
     links, parts = [], []
     for k in range(m - 1):
         x, y = seq[k], seq[k + 1]
@@ -214,6 +209,39 @@ def _match_motion(snaps: list[Snap], series, spec: dict, size, tags, seed: int =
         else:
             links.append(None)
     return order, planned, links, parts, subjects
+
+
+def fill_without_repeats(planned: list[continuity.PlannedCut], source_ms: list[int], min_ms: int,
+                         keep_end: list[bool] | None = None) -> list[continuity.PlannedCut]:
+    """최소 길이를 같은 장면을 되풀이하지 않고 채운다 — 컷마다 자기 스냅 안에서 늘린다(모자란 만큼을 늘릴 여지가 남은 컷에 고르게). 원본이
+    다 떨어지면 짧은 채로 둔다 — 같은 스냅을 두 번 쓰지 않는 것이 최소 길이보다 먼저다(2026-10-29 사용자 '같은 부분은 반복하지 말라').
+    keep_end[k] 면 끝(줌 인이 끝난 순간)은 두고 앞으로 늘린다. 멈춤(프리즈)이 있는 컷은 늘리지 않는다."""
+    need = min_ms - sum(c.out_ms for c in planned)
+    if need <= 0:
+        return planned
+    room = [0 if c.hold_ms else max(0, source_ms[k] - (c.end_ms - c.start_ms)) for k, c in enumerate(planned)]
+    grow = [0] * len(planned)
+    while need > 0 and any(r > g for r, g in zip(room, grow)):
+        open_ = [k for k in range(len(planned)) if room[k] > grow[k]]
+        share = max(1, -(-need // len(open_)))
+        for k in open_:
+            add = min(share, room[k] - grow[k], need)
+            grow[k] += add
+            need -= add
+            if need <= 0:
+                break
+    out = []
+    for k, c in enumerate(planned):
+        start, end = c.start_ms, c.end_ms
+        if grow[k]:
+            if keep_end and keep_end[k]:
+                start -= min(grow[k], start)
+                end = min(source_ms[k], end + (grow[k] - (c.start_ms - start)))
+            else:
+                end = min(source_ms[k], end + grow[k])
+                start -= min(start, grow[k] - (end - c.end_ms))
+        out.append(continuity.PlannedCut(c.index, start, end, c.speed, c.seam, ramp=c.ramp, hold_ms=c.hold_ms, hold_at_ms=c.hold_at_ms))
+    return out
 
 
 def _link_of(a_end, b_start, a_real_in: bool, b_real_out: bool, part: dict, cfg: dict):
@@ -264,7 +292,7 @@ def _match_beam(snaps: list[Snap], series, spec: dict, size, tags, seed: int, be
     st = _strategy(f["cuts"], beats, lo, hi, f)
     frames = [fast_cut.SnapFrames.read(s.path, size) for s in snaps]
     cands = [c for i, s in enumerate(series) for c in fast_cut.candidates(
-        i, s, frames[i], lo, hi, st["lengths"], st["peak_pos"], st["zoom_pairs"], st["steady"], bool(f.get("jumpCuts")))]
+        i, s, frames[i], lo, hi, st["lengths"], st["peak_pos"], st["zoom_pairs"], st["steady"])]
     ends = [fast_cut.ends(c, frames[c.snap]) for c in cands]
     weights = match_cut.MOTION_WEIGHTS
     cache: dict[tuple[int, int], dict] = {}
@@ -290,9 +318,9 @@ def _match_beam(snaps: list[Snap], series, spec: dict, size, tags, seed: int, be
     a, b = continuity.RAMP_SPAN
     scale = (a + (b - a) / ramp + (1 - b)) if ramp else 1.0
     seq = fast_cut.beam(cands, lambda i, j: part(i, j)["score"], cont.get("minMovieMs") or 15000,
-                        width=cfg.get("beamWidth", 8), per_snap=cfg.get("perSnap", 3),
+                        width=cfg.get("beamWidth", 8), per_snap=1,  # 같은 스냅은 한 번만(ONE_CUT_PER_SNAP)
                         temperature=cfg.get("temperature", 0.0), seed=seed, allowed=allowed,
-                        length_of=lambda k: cands[k].length_ms * scale, first=first, jump_cuts=bool(f.get("jumpCuts")))
+                        length_of=lambda k: cands[k].length_ms * scale, first=first)
     freeze = prims.get("freeze") or None
     frozen = set()
     if freeze:
@@ -306,6 +334,7 @@ def _match_beam(snaps: list[Snap], series, spec: dict, size, tags, seed: int, be
         hold = freeze.get("holdMs", 500) if k in frozen else 0
         planned.append(continuity.PlannedCut(k, c.start_ms, c.end_ms, 1.0, None, ramp=ramp, hold_ms=hold,
                                              hold_at_ms=(c.peak_ms or 0) if hold else 0))
+    planned = fill_without_repeats(planned, [series[s].length_ms for s in order], cont.get("minMovieMs") or 0)
     links, parts = [], []
     for k in range(len(seq) - 1):
         x, y = seq[k], seq[k + 1]

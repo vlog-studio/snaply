@@ -78,8 +78,10 @@ def _representative(analyses: list[dict], field: str) -> str | None:
 
 
 def words(analyses: list[dict]) -> tuple[str, str]:
-    """(부제, 장소) — 분석에서, 무비 전체를 대표하는 값."""
-    return _representative(analyses, "topics") or "daily", _representative(analyses, "places") or ""
+    """(부제, 장소) — 분석에서, 무비 전체를 대표하는 값. '실내' · '야외 공간' 처럼 흔한 장소는 장소로 쓰지 않는다(어느 타이틀 모양이든 —
+    손글씨 "in 야외 공간!!" 이 밋밋했다, 2026-10-29)."""
+    place = _representative(analyses, "places") or ""
+    return _representative(analyses, "topics") or "daily", "" if place in GENERIC_PLACES else place
 
 
 def styles() -> list[ass.Style]:

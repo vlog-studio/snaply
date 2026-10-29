@@ -99,23 +99,19 @@ class PlanTest(unittest.TestCase):
     def test_a_moving_camera_without_walking_is_not_sped_up(self):
         self.assertEqual(ct.speed_for(ct.series_of(panning(40, 3, step=2)), {"actions": ("eat",)}, ROUTINE["speed"]), 1.0)
 
-    def test_a_short_movie_takes_more_cuts_from_each_snap(self):
+    def test_a_short_movie_uses_each_snap_once_with_longer_cuts_instead_of_jump_cuts(self):
+        # 2026-10-29 사용자 '같은 부분은 반복하지 말라' — 예전엔 같은 스냅을 건너뛰어 한 컷 더(점프컷) 이어 채웠다
         snaps = [ct.series_of(textured(30, 20 + i)) for i in range(4)]  # 3초 × 4 = 12초 — 15초를 못 채운다
         planned = ct.plan_cuts(snaps, [{}] * 4, (), TREND)
-        self.assertGreater(len(planned), 4)
-        self.assertIn("jump", [c.seam for c in planned])
-        self.assertGreaterEqual(sum(c.out_ms for c in planned), 9000)
-        for a, b in zip(planned, planned[1:]):
-            if a.index == b.index:
-                self.assertGreaterEqual(b.start_ms, a.end_ms)  # 같은 스냅이면 앞으로만 — 원본이 빠듯해 건너뛰지 않는다
-        self.assertGreaterEqual(sum(c.out_ms for c in planned), 11000)  # 12초 원본을 거의 다 쓴다
+        self.assertEqual([c.index for c in planned], list(range(4)))
+        self.assertNotIn("jump", [c.seam for c in planned])
+        self.assertGreaterEqual(sum(c.out_ms for c in planned), 11000)  # 12초 원본을 거의 다 쓴다 — 모자라면 짧은 채로
 
-    def test_jump_cuts_skip_a_little_when_the_source_has_room(self):
+    def test_snaps_with_room_still_appear_once(self):
         snaps = [ct.series_of(textured(80, 50 + i)) for i in range(3)]  # 8초 × 3 — 15초를 채우고도 남는다
         planned = ct.plan_cuts(snaps, [{}] * 3, (), TREND)
-        jumps = [(a, b) for a, b in zip(planned, planned[1:]) if a.index == b.index]
-        self.assertTrue(jumps)
-        self.assertTrue(all(b.start_ms >= a.end_ms + ct.JUMP_GAP_MS for a, b in jumps))
+        self.assertEqual([c.index for c in planned], [0, 1, 2])
+        self.assertGreaterEqual(sum(c.out_ms for c in planned), 15000)
 
     def test_long_enough_snaps_reach_the_minimum(self):
         snaps = [ct.series_of(textured(60, 30 + i)) for i in range(4)]  # 6초 × 4

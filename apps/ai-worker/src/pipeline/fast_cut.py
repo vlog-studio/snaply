@@ -23,7 +23,6 @@ LENGTHS_MS = (500, 700, 1000)
 PEAK_MIN_GAP_MS = 400
 SHAKE_RATIO, SHAKE_SHARE, SHARP_MIN = 4.0, 0.7, 0.4  # 흔들림 판정(중간값 배수 · 프레임 몫), 선명도 하한(그 스냅 중간값 대비)
 REPEAT_PENALTY, QUALITY_WEIGHT = 0.15, 0.25
-SKIP_PENALTY = 0.5  # 점프컷 경로가 스냅을 하나 건너뛸 때마다 — 앞 재료부터 차례로(beam)
 
 
 @dataclass(frozen=True)
@@ -86,10 +85,9 @@ def peaks(motion: tuple[float, ...]) -> list[tuple[int, float]]:
 
 def candidates(snap: int, s: continuity.Series, frames: SnapFrames, lo: int, hi: int,
                lengths: tuple[int, ...] = LENGTHS_MS, peak_pos: float = PEAK_POS, zoom_pairs: bool = True,
-               steady: bool = False, tile: bool = False) -> list[Candidate]:
+               steady: bool = False) -> list[Candidate]:
     """후보 구간들. lengths · peak_pos 는 포맷의 컷 선택 전략이 정한다(모션 피크 0.5~1초 · 비트 배수 · 동작 전체). steady 면 피크 대신
-    길이마다 가장 덜 흔들리는 구간(ASMR · 하루 타임스탬프 · before/after). tile 이면 가운데 길이로 스냅을 겹치지 않게 나눈 구간도 더한다 —
-    점프컷 포맷(말소리 브이로그)이 한 스냅에서 여러 구간을 이어 쓰게(가장 안정된 구간들은 거의 같은 자리라 서로 겹친다)."""
+    길이마다 가장 덜 흔들리는 구간(ASMR · 하루 타임스탬프 · before/after)."""
     length = s.length_ms
     motion = np.asarray(s.motion, dtype=float)
     # 흔들림: 구간 프레임의 SHAKE_SHARE 이상이 그 스냅 움직임 중간값의 SHAKE_RATIO 배를 넘을 때 — 계속 흔들리는 구간만 뺀다.
@@ -116,12 +114,6 @@ def candidates(snap: int, s: continuity.Series, frames: SnapFrames, lo: int, hi:
             if lo <= L <= min(hi, length):
                 start = continuity.steady_start(s, L)
                 if ok(start, start + L):
-                    out.append(Candidate(snap, start, start + L, quality=0.4 + 0.6 * sharp_of(start, start + L)))
-        fitting = [L for L in lengths if lo <= L <= min(hi, length)]
-        if tile and fitting:
-            L = fitting[len(fitting) // 2]
-            for start in range(0, length - L + 1, L):
-                if ok(start, start + L) and not any(c.start_ms == start and c.end_ms == start + L for c in out):
                     out.append(Candidate(snap, start, start + L, quality=0.4 + 0.6 * sharp_of(start, start + L)))
     else:
         for at, strength in peaks(s.motion):
@@ -164,17 +156,10 @@ def _overlaps(a: Candidate, b: Candidate) -> bool:
 
 
 def beam(cands: list[Candidate], link_score, target_ms: int, *, width: int = 8, per_snap: int = 3,
-         temperature: float = 0.0, seed: int = 0, allowed=None, length_of=None, first=None,
-         jump_cuts: bool = False) -> list[int]:
+         temperature: float = 0.0, seed: int = 0, allowed=None, length_of=None, first=None) -> list[int]:
     """후보 번호의 순서. link_score(i, j) = i 다음 j 의 연결 점수. 목표 길이를 채우면 끝난 경로가 된다.
     allowed(i, j) 가 거짓이면 i 다음에 j 를 두지 않는다(예: 촬영 순서만 앞으로). length_of(i) 는 결과물에서의 길이(스피드램프 · 프리즈).
-    first 를 주면 그 후보들로만 시작한다(촬영 순서 포맷은 가장 이른 스냅에서 — 아니면 앞 스냅을 건너뛴 채 짧게 끝났다).
-    jump_cuts 면 같은 스냅의 다른(겹치지 않는) 구간을 바로 이어도 된다 — 한 영상 안의 점프컷(말소리 브이로그). 촬영 순서로만 잇는 포맷에서는
-    같은 스냅의 구간이 늘 붙어 있어, 이것 없이는 스냅마다 하나씩밖에 못 써 최소 길이를 못 채웠다. 이때는 반복 벌점을 빼고 경로를 평균이 아닌 합으로
-    견준다 — 평균으로 견주면 구간을 건너뛴 짧은 경로가 이겨 목표를 채울 경로가 잘려 나갔다. 스냅을 건너뛰면 SKIP_PENALTY 를 빼서 가까운 구간부터
-    차례로 쓴다(앞으로만 가는 경로가 품질 좋은 뒤 스냅으로 먼저 건너뛰면 앞 재료를 못 쓰고 짧게 끝났다)."""
-    rank = (lambda st: st[1]) if jump_cuts else (lambda st: st[1] / len(st[0]))  # noqa: E731
-    penalty = 0.0 if jump_cuts else REPEAT_PENALTY
+    first 를 주면 그 후보들로만 시작한다(촬영 순서 포맷은 가장 이른 스냅에서 — 아니면 앞 스냅을 건너뛴 채 짧게 끝났다)."""
     length_of = length_of or (lambda k: cands[k].length_ms)
     if not cands:
         return []
@@ -198,24 +183,22 @@ def beam(cands: list[Candidate], link_score, target_ms: int, *, width: int = 8, 
             last = cands[seq[-1]]
             used = [cands[k] for k in seq]
             for j, c in enumerate(cands):
-                if j in seq or (c.snap == last.snap and not jump_cuts) or (allowed is not None and not allowed(seq[-1], j)):
+                if j in seq or c.snap == last.snap or (allowed is not None and not allowed(seq[-1], j)):
                     continue
                 same = [u for u in used if u.snap == c.snap]
                 if len(same) >= per_snap or any(_overlaps(u, c) for u in same):
                     continue
-                step = link_score(seq[-1], j) + QUALITY_WEIGHT * c.quality - penalty * len(same)
-                if jump_cuts:
-                    step -= SKIP_PENALTY * max(0, abs(c.snap - last.snap) - 1)
+                step = link_score(seq[-1], j) + QUALITY_WEIGHT * c.quality - REPEAT_PENALTY * len(same)
                 grown.append((seq + (j,), score + step, total + length_of(j)))
         if not grown:
             break
-        states = sorted(grown, key=lambda st: -noisy(rank(st)))[:width]
+        states = sorted(grown, key=lambda st: -noisy(st[1] / len(st[0])))[:width]
         finished += [st for st in states if st[2] >= target_ms]
         if len(finished) >= width:
             break
     pool = finished or states
     if temperature <= 0:
-        return list(max(pool, key=rank)[0])
-    scores = np.array([rank(st) for st in pool])
+        return list(max(pool, key=lambda st: st[1] / len(st[0]))[0])
+    scores = np.array([st[1] / len(st[0]) for st in pool])
     weights = np.exp((scores - scores.max()) / max(temperature, 1e-3))
     return list(rng.choices(pool, weights=weights.tolist())[0][0])

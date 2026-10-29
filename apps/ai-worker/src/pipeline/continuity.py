@@ -6,10 +6,11 @@
 바로 넘김(hardcut)이다 — 이음은 영상 속 동작이 만든다(이음이 없는 경계의 전환 효과는 `cut_fx` 가 정한다).
 
 배속도 여기서 정한다 — 분석이 레시피의 행동(걷기 · 이동)을 본 긴 스냅을 factor 배로.
-무비가 레시피의 minMovieMs 보다 짧으면 스냅에서 컷을 더 뽑는다 — 같은 스냅을 조금 건너뛰어 잇는 점프컷(jump). 원본이 모자라면 배속을 푼다.
+**같은 스냅은 한 무비에서 한 번만 쓴다** — 무비가 레시피의 minMovieMs 보다 짧으면 컷을 그 스냅 안에서 늘려 채우고(원본이 모자라면 배속을 푼다),
+그래도 모자라면 짧은 채로 둔다. 예전엔 같은 스냅을 조금 건너뛰어 한 컷 더 잇는 점프컷으로 채웠는데, 같은 장면이 되풀이돼 보였다
+(2026-10-29 사용자 '같은 부분은 반복하지 말라').
 
-레시피가 oneCutPerSnap 이면(시네마틱 — 레퍼런스 ⑤) 스냅마다 **한 번만**, 그 스냅에서 가장 덜 흔들리는 구간을 골라 쓴다(`plan_single`).
-같은 장면을 잘라 되풀이하지 않고, 최소 길이는 컷 길이를 늘려 채운다.
+레시피가 oneCutPerSnap 이면(시네마틱 — 레퍼런스 ⑤) 이음 지점 대신 그 스냅에서 가장 덜 흔들리는 구간을 골라 쓴다(`plan_single`).
 
 컷 구간을 정하는 일이라 사용자가 직접 자른 컷에는 쓰지 않는다(trimOwner — AI 초안 단계의 일, backlog).
 """
@@ -29,8 +30,6 @@ WHIP_MOTION, WHIP_RATIO, WHIP_SHIFT = 0.06, 2.5, 3.0
 MATCH_SPAN, MATCH_MIN = 0.4, 0.80
 # 스피드램프: 구간의 이 몫(가운데)만 빠르게
 RAMP_SPAN = (0.3, 0.7)
-# 점프컷: 같은 스냅에서 다음 컷을 뽑을 때 건너뛰는 원본 길이(원본에 여유가 있을 때)
-JUMP_GAP_MS = 200
 # 한 스냅 한 컷: 앞뒤 이만큼은 쓰지 않는다(찍기 시작 · 끝의 흔들림), 끝을 박자에 맞출 때 길이를 이만큼까지 바꾼다
 EDGE_MS, BEAT_SLACK_MS = 300, 250
 
@@ -53,7 +52,7 @@ class PlannedCut:
     start_ms: int
     end_ms: int
     speed: float
-    seam: str | None  # 이 컷 끝의 이음: cover · whip · match · jump(같은 스냅이 이어짐) · None(박자)
+    seam: str | None  # 이 컷 끝의 이음: cover · whip · match · None(박자)
     ramp: float = 0.0  # 스피드램프의 가운데 배속(0 이면 없음) — 구간의 RAMP_SPAN 가운데만 그 배속, 앞뒤는 1배
     hold_ms: int = 0  # 프리즈 — 동작 피크에서 이만큼 멈춘다
     hold_at_ms: int = 0  # 프리즈 자리(구간 시작 기준, 결과물 시각)
@@ -235,23 +234,13 @@ def plan_cuts(series: list[Series], concepts: list[dict], beats: tuple[int, ...]
         if prev is not None and how == "match" and prev.seam is None:
             planned[-1] = PlannedCut(prev.index, prev.start_ms, prev.end_ms, prev.speed, "match")
         planned.append(PlannedCut(i, start, max(end, start + 100), speed, seam))
-        t += planned[-1].out_ms
-        made = planned[-1].out_ms
-        # 목표에 모자라면 같은 스냅에서 조금 건너뛰어 한 컷 더(점프컷). 건너뛰는 길이는 목표를 채우고 남는 원본 안에서만 —
-        # 원본이 빠듯하면 0 이다(박자 하나짜리 컷에 200ms 씩 버리면 원본의 30% 가 사라졌다)
-        gap = min(round(JUMP_GAP_MS * speed), max(0, s.length_ms - round(targets[i] * speed)) // 4)
-        while made < targets[i]:
-            last = planned[-1]
-            nxt = last.end_ms + gap
-            if s.length_ms - nxt < shot[0] * speed:
-                break
-            end, seam = _end(s, nxt, speed, t, beats, shot, snap)
-            if last.seam is None:
-                planned[-1] = PlannedCut(last.index, last.start_ms, last.end_ms, last.speed, "jump")
-            planned.append(PlannedCut(i, nxt, max(end, nxt + 100), speed, seam))
-            t += planned[-1].out_ms
-            made += planned[-1].out_ms
-        prev_seam = planned[-1].seam
+        cut = planned[-1]
+        if cut.out_ms < targets[i]:
+            # 목표에 모자라면 같은 스냅에서 한 컷 더 뽑지 않고 이 컷을 늘린다 — 끝의 이음은 늘린 자리에선 맞지 않으므로 박자 경계(None)로
+            cut = PlannedCut(i, cut.start_ms, min(s.length_ms, cut.start_ms + round(targets[i] * cut.speed)), cut.speed, None)
+            planned[-1] = cut
+        t += cut.out_ms
+        prev_seam = cut.seam
     return planned
 
 

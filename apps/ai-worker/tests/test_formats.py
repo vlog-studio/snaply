@@ -61,6 +61,31 @@ class StrategyTest(unittest.TestCase):
         self.assertGreater(mc.link_contrast(a, changed, tags, tags)["score"], mc.link_contrast(a, moved, tags, tags)["score"])
 
 
+class NoRepeatTest(unittest.TestCase):
+    """같은 장면을 되풀이하지 않고 최소 길이를 채운다(2026-10-29 사용자 '같은 부분은 반복하지 말라')."""
+
+    def test_short_cuts_grow_inside_their_own_snap(self):
+        planned = [ct.PlannedCut(k, 1000, 2000, 1.0, None) for k in range(4)]  # 1초 × 4
+        out = te.fill_without_repeats(planned, [6000] * 4, 15000)
+        self.assertEqual([c.index for c in out], [0, 1, 2, 3])  # 컷을 더하지 않는다
+        self.assertGreaterEqual(sum(c.out_ms for c in out), 15000)
+        self.assertTrue(all(0 <= c.start_ms < c.end_ms <= 6000 for c in out))
+
+    def test_it_stops_short_rather_than_repeating_when_the_source_runs_out(self):
+        planned = [ct.PlannedCut(k, 0, 1000, 1.0, None) for k in range(3)]
+        out = te.fill_without_repeats(planned, [2000, 2000, 2000], 15000)
+        self.assertEqual(sum(c.out_ms for c in out), 6000)  # 원본 6초가 전부 — 15초를 위해 같은 장면을 다시 쓰지 않는다
+        self.assertEqual(len(out), 3)
+
+    def test_a_zoom_in_end_stays_and_the_cut_grows_backwards(self):
+        out = te.fill_without_repeats([ct.PlannedCut(0, 3000, 4000, 1.0, None)], [5000], 2500, keep_end=[True])
+        self.assertEqual((out[0].start_ms, out[0].end_ms), (1500, 4000))
+
+    def test_beam_and_zoom_pair_formats_use_each_snap_once(self):
+        # 빔 서치는 per_snap 1 로, 원본 줌 쌍은 스냅마다 첫 구간만 — 레시피의 perSnap 값은 없다
+        self.assertFalse(any("perSnap" in r["match"] for r in recipe.RECIPES.values()))
+
+
 class PrimitiveTest(unittest.TestCase):
     def test_ramp_and_freeze_change_the_output_length(self):
         plain = ct.PlannedCut(0, 0, 3000, 1.0, None)

@@ -40,6 +40,10 @@ class WordsTest(unittest.TestCase):
     def test_nothing_shared_falls_back_instead_of_naming_the_first_cut(self):
         self.assertEqual(title_card.words([{"topics": ["가"], "places": ["ㄱ"]}, {"topics": ["나"], "places": ["ㄴ"]}]), ("daily", ""))
 
+    def test_a_generic_place_is_no_place_in_any_style(self):
+        self.assertEqual(title_card.words([{"places": ["야외 공간"]}, {"places": ["야외 공간"]}])[1], "")
+        self.assertEqual(len(title_card.events("script", [{"places": ["야외 공간"]}], 9000, 3000)), 1)  # "in 야외 공간!!" 없이 "Mini VLog" 만
+
     def test_without_analysis(self):
         self.assertEqual(title_card.words([{}, {}]), ("daily", ""))
 
