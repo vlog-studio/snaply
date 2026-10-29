@@ -62,7 +62,8 @@ class PlanTest(unittest.TestCase):
         self.assertTrue(all(s.anchor.startswith("freezone.") for s in without))
 
     def test_nothing_to_say_means_no_stickers(self):
-        self.assertEqual(sticker.plan_cut(cut(objects=["wall"]), None, BEAT, SEED), [])
+        # 직접 받은 스티커가 모든 개념을 덮어 이제 개념이 없는 컷만 비는다 — 되돌리면 cut(objects=["wall"]) 로
+        self.assertEqual(sticker.plan_cut(cut(), None, BEAT, SEED), [])
 
     def test_the_next_cut_prefers_emoji_it_did_not_just_see(self):
         # 바다 → 친구들과 바다: 같은 장소라도 바로 앞 컷의 🌊 💦 🫧 를 그대로 되풀이하지 않는다
