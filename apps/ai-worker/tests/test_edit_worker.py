@@ -275,6 +275,27 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         worker.storage.upload.assert_any_call("with_accents.mp4", mock.ANY, "video/mp4")
 
 
+class RenderTrendTrackTest(unittest.IsolatedAsyncioTestCase):
+    """AI 컷 레시피 경로도 곡을 고르기 전에 라이브러리를 맞춘다 — 배포로 새로 뜬 워커는 곡이 비어 있다(2026-10-29 운영에서 BGM 이 빠졌다)."""
+
+    async def test_the_library_is_synced_before_the_track_is_picked(self) -> None:
+        order = []
+        trend_result = mock.Mock(duration_s=10.0, cuts=[], links=[], accents=[], sfx=[], edl={})
+        with mock.patch.object(worker, "db") as db, \
+                mock.patch.object(worker, "_progress", new=mock.AsyncMock()), \
+                mock.patch.object(worker.music, "sync_library", side_effect=lambda: order.append("sync")) as sync, \
+                mock.patch.object(worker.music, "pick_track", side_effect=lambda *_: order.append("pick") or "/bgm/calm/a.mp3"), \
+                mock.patch.object(worker.trend_edit, "render", return_value=trend_result) as render:
+            db.fetch_accent_inputs = mock.AsyncMock(return_value=({}, {}))
+            db.fetch_captured_at = mock.AsyncMock(return_value={})
+            out = await worker._render_trend([VIDEO_ID], {VIDEO_ID: "/w/src_0.mp4"}, worker.get_preset("감성"), "cinematic",
+                                             {"movieId": "m1"}, JOB_ID, USER_ID, "/w", "m1:abc")
+        self.assertEqual(out, "/w/trend.mp4")
+        sync.assert_called_once()
+        self.assertEqual(order, ["sync", "pick"])
+        self.assertEqual(render.call_args.args[2], "/bgm/calm/a.mp3")
+
+
 class ApplyAccentsInputTest(unittest.IsolatedAsyncioTestCase):
     async def test_cuts_inputs_and_the_chosen_track_reach_the_stage(self) -> None:
         clips = [worker.editor.ClipSource("/w/src_0.mp4", 0, 1500)]
