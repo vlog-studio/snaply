@@ -161,6 +161,9 @@ V3_SPEC = {
 }
 
 
+BLUR_RENDER_SPEC = {"profileVersion": 1, "outputProfile": "short_vertical", "width": 1080, "height": 1920, "fps": 30,
+                    "fitMode": "blur_background"}
+
 # classic 의 (원본 소리, BGM) — 2026-10-26 사용자: 모든 무비는 원본 소리를 빼고 음원만(ASMR 만 예외). 되돌리면 (1.0, 0.25)
 CLASSIC_GAINS = (0.0, 1.0)
 
@@ -214,8 +217,8 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
     async def test_the_movie_recipe_comes_from_the_spec(self) -> None:
         await self.run_pipeline({**V3_SPEC, "recipe": "cinematic"})
         self.assertEqual(self.bgm.call_args.args[-2:], (0.0, 1.0))
-        # 뒤의 것은 작업의 맞춤 방식 — 이 작업은 renderSpec 이 없어 예전 작업의 기본(contain)이다. 꾸밈은 레시피 기본값
-        self.assertEqual(self.accents.await_args.args[-3:], ("cinematic", "contain", {"text": True, "emoji": True, "face": True}))
+        # 뒤의 것은 맞춤 방식 — 레터박스 레시피라 검정(renderSpec 이 없는 예전 작업의 기본 contain 대신). 꾸밈은 레시피 기본값
+        self.assertEqual(self.accents.await_args.args[-3:], ("cinematic", "pad_black", {"text": True, "emoji": True, "face": True}))
 
     async def test_turning_off_every_decoration_still_runs_the_recipe_title(self) -> None:
         # 레시피 무비는 꾸밈을 다 꺼도 고정 타이틀 · 효과음이 이 단계에 있다
@@ -267,6 +270,18 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
             await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": False})
         trend.assert_not_awaited()
         self.bgm.assert_called_once()
+
+    async def test_a_letterbox_recipe_fills_spare_space_with_black_whatever_the_movie_chose(self) -> None:
+        # 컷을 손본 시네마틱 무비 — 무비의 맞춤 방식(블러)이 아니라 AI 컷 경로의 검은 띠와 같은 검정(MOV-8 · MOV-28, 2026-10-30)
+        await worker._run_pipeline(JOB_ID, {"userId": USER_ID, "movieId": "m1", "editSpec": {**V3_SPEC, "recipe": "cinematic"},
+                                            "renderSpec": BLUR_RENDER_SPEC}, "/tmp/w")
+        self.assertEqual(worker.editor.edit_timeline.call_args.args[3].fit_mode, "pad_black")
+        self.assertEqual(self.accents.await_args.args[-2], "pad_black")
+
+    async def test_other_recipes_keep_the_movie_fit_mode(self) -> None:
+        await worker._run_pipeline(JOB_ID, {"userId": USER_ID, "movieId": "m1", "editSpec": {**V3_SPEC, "recipe": "trend-routine"},
+                                            "renderSpec": BLUR_RENDER_SPEC}, "/tmp/w")
+        self.assertEqual(worker.editor.edit_timeline.call_args.args[3].fit_mode, "blur_background")
 
     async def test_a_failed_recipe_render_falls_back_to_the_usual_path(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value=None)):
