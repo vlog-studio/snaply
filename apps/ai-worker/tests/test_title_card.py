@@ -71,8 +71,16 @@ class CutCommentTest(unittest.TestCase):
         analyses = [{"places": ["한강"]}, {"actions": ["산책"]}, {"objects": ["라떼"]},
                     {"objects": ["노트북"]}, {"places": ["실내"], "topics": ["작업"]}, {}]
         spans = title_card.cut_comments("@한강 !", analyses, self.CUTS, 8000)
-        # 1.5초가 지나야 바뀐다 — 1초 컷의 '산책' 은 건너뛰고 2초의 '라떼', 그다음 4초의 '작업'(흔한 장소 '실내' 는 안 쓴다)
-        self.assertEqual(spans, [(0, 2000, "@한강 !"), (2000, 4000, "라떼"), (4000, 8000, "작업")])
+        # 1초 컷마다 바뀐다 — 4초 컷은 흔한 장소 '실내' 대신 '작업', 분석이 빈 5초 컷에서는 앞 멘트가 이어진다
+        self.assertEqual(spans, [(0, 1000, "@한강 !"), (1000, 2000, "산책"), (2000, 3000, "라떼"),
+                                 (3000, 4000, "노트북"), (4000, 8000, "작업")])
+
+    def test_a_cut_shorter_than_the_minimum_keeps_the_previous_comment(self):
+        cuts = [(0, 1000), (1000, 1500), (1500, 2500), (2500, 3500)]
+        analyses = [{}, {"objects": ["라떼"]}, {"objects": ["케이크"]}, {"objects": ["노트북"]}]
+        # 0.5초 컷은 0.9초(CUT_COMMENT_MIN_MS)보다 짧아 앞 멘트가 이어진다 — 그 컷의 '라떼' 가 다음 컷 위에 남지 않게
+        self.assertEqual(title_card.cut_comments("@카페 !", analyses, cuts, 5000),
+                         [(0, 1500, "@카페 !"), (1500, 2500, "케이크"), (2500, 5000, "노트북")])
 
     def test_order_is_action_object_place_topic_and_a_said_word_is_not_repeated(self):
         cut = {"topics": ["주제"], "places": ["카페"], "objects": ["라떼"], "actions": ["마시기"]}
@@ -85,8 +93,9 @@ class CutCommentTest(unittest.TestCase):
         self.assertEqual(spans, [(0, 6000, "@카페 !")])
 
     def test_no_short_flash_right_before_the_outro(self):
-        spans = title_card.cut_comments("@카페 !", [{}, {"objects": ["케이크"]}], [(0, 2000), (2000, 3000)], 3000)
-        self.assertEqual(spans, [(0, 3000, "@카페 !")])
+        # 엔딩까지 0.6초 — 0.9초가 안 되니 바꾸지 않는다
+        spans = title_card.cut_comments("@카페 !", [{}, {"objects": ["케이크"]}], [(0, 2000), (2000, 2600)], 2600)
+        self.assertEqual(spans, [(0, 2600, "@카페 !")])
 
     def test_events_with_cuts_change_the_right_text_and_keep_the_outro(self):
         analyses = [{"places": ["대전"]}, {"objects": ["빵"]}]

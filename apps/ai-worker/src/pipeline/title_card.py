@@ -23,7 +23,7 @@ OUTRO_MS = 1500
 GENERIC_PLACES = ("실내", "야외", "실외", "거리", "도로", "집", "방", "건물", "실내 공간", "야외 공간")
 MAX_CHARS = 14
 FADE_MS = 300
-CUT_COMMENT_MIN_MS = 1500  # 한 멘트가 머무는 최소 시간 — 시네마틱 컷(중앙값 0.94초)마다 바꾸면 읽기 전에 사라진다
+CUT_COMMENT_MIN_MS = 900  # 한 멘트가 머무는 최소 시간 — 시네마틱 컷(중앙값 0.94초)마다 바뀌되 더 짧은 컷에서는 앞 멘트가 이어진다(§15)
 CUT_COMMENT_FADE_MS = 150
 
 
@@ -59,14 +59,14 @@ def _candidates(analysis: dict) -> list[str]:
 
 def cut_comments(tag: str, analyses: list[dict], cuts: list[tuple[int, int]], until: int) -> list[tuple[int, int, str]]:
     """(시작, 끝, 멘트) — 첫 멘트는 무비 태그, 다음 컷부터 그 컷에서 아직 안 나온 말. 한 멘트는 CUT_COMMENT_MIN_MS 이상 머물고,
-    새 말이 없으면 앞 멘트가 이어진다. 구간은 until(엔딩 시작)에서 끊는다."""
+    그보다 짧은 컷이나 새 말이 없는 컷에서는 앞 멘트가 이어진다. 구간은 until(엔딩 시작)에서 끊는다."""
     spans = [[0, until, tag]]
     used = {tag}
-    for (start, _end), analysis in zip(cuts, analyses):
+    for (start, stop), analysis in zip(cuts, analyses):
         if start <= 0 or start >= until or start - spans[-1][0] < CUT_COMMENT_MIN_MS:
             continue
-        if until - start < CUT_COMMENT_MIN_MS:
-            break  # 엔딩 앞에 잠깐 비치고 말 멘트는 넣지 않는다
+        if min(stop, until) - start < CUT_COMMENT_MIN_MS:
+            continue  # 짧은 컷의 말은 다음 컷 위에 남아 화면과 어긋나고, 엔딩 앞에서는 잠깐 비치고 만다
         word = next((w for w in _candidates(analysis) if w not in used), None)
         if word is None:
             continue
