@@ -596,7 +596,8 @@ BGM 컷편집 무비에 컷의 내용에 맞는 의성어 · 감탄 · 키워드
 2026-10-20 에 사전과 워커 엔진, 2026-10-21 에 BGM 비트 그리드와 결과물 연결이 들어갔다(progress 2026-10-21 "BGM 비트 그리드 · 액센트를 결과물에 굽는다").
 **붙일지는 무비 설정 `decorations`(글자 · 이모지 · 얼굴)가 정한다**(2026-10-29, 결정 문서 §9) — classic 무비의 기본값은 셋 다 꺼짐이다. 앱에서 고르는 화면은 A-22.
 
-- [ ] **피사체 상자** — 스냅 분석(vision)의 결과에 대표 피사체 bbox(정규화 x0 y0 x1 y1 + confidence)를 더한다. 프롬프트 · 스키마
+- [ ] **피사체 상자** — 결정 요청 [decisions/subject-boxes.md](./decisions/subject-boxes.md)(미결 — 분석 응답에 **프레임별** 상자, 확신도 없이, 면적 60% 넘는 상자는 버림을 권장).
+      결정 전에 운영 형태(스냅당 4장 한 요청)로 실측한다(그 문서 §6). 결정되면 스냅 분석(vision)의 결과에 피사체 상자(정규화 x0 y0 x1 y1)를 더한다. 프롬프트 · 스키마
       (`pipeline/video_analysis/schema.py`) · 계약 [`contract/video-analyses.ts`](../packages/shared-types/src/contract/video-analyses.ts) · `openapi.json` ·
       [api-spec.md](./api-spec.md)를 같은 변경에서 고치고 `VIDEO_ANALYSIS_PROMPT_VERSION` 을 올린다(운영 시크릿 값도). 없으면 엔진은 빈 모서리만 쓴다 —
       동작은 하지만 "피사체 위 꿀꺽"이 안 된다. MediaPipe 얼굴 검출(앵커 `face`)은 그 뒤 선택
