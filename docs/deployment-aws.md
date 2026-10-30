@@ -39,7 +39,7 @@
 
    ```bash
    sudo dnf install -y git
-   git clone --depth 1 https://github.com/vlog-studio/snaply-backend.git /tmp/snaply
+   git clone --depth 1 https://github.com/vlog-studio/snaply.git /tmp/snaply
    sudo bash /tmp/snaply/deploy/aws/install.sh
    ```
 
@@ -54,6 +54,13 @@
 돈 작업은 Docker 와 인스턴스 역할(영상 버킷 · 시크릿)을 그대로 갖는다. 작업 전에 도는
 [`runner-job-started.sh`](../deploy/aws/runner-job-started.sh)(`/etc/snaply/`, root 소유)가 다른 작업을 거부하고,
 사유는 그 작업 로그의 **Set up runner** 에 남는다. 지우거나 느슨하게 하지 않는다.
+
+> **레포 이름 변경(2026-10-30, `snaply-backend` → `snaply`)** — 이 검사가 허용하는 워크플로 참조(`ALLOWED_WORKFLOW_REF`)는 레포 이름을 담는다.
+> 저장소의 사본만 바꾸면 서버의 `/etc/snaply/runner-job-started.sh` 는 옛 이름이라 **다음 배포를 거절한다.** 서버에서 새 저장소를 받아 그 파일만
+> root 소유 · 755 로 다시 깐다 — `install.sh` 를 다시 돌려도 된다(위 — 배포 중에는 피한다). runner 재시작은 필요 없다(작업마다 이 파일을 읽는다).
+> 배포 이미지는 `ghcr.io/${{ github.repository }}` 라 새 이름(`ghcr.io/vlog-studio/snaply/…`)으로 저절로 옮겨 간다. MinIO 이미지
+> (`ghcr.io/vlog-studio/snaply-backend/minio`)는 옛 이름의 패키지가 그대로 있어 compose 가 계속 받는다 — 새 이름으로 옮기려면 `minio-image`
+> 워크플로를 한 번 돌린 뒤 compose 의 주소를 바꾼다.
 
 ## 2. 시크릿
 

@@ -32,7 +32,7 @@ RUN GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -tags kqueue -trimpath \
 
 FROM alpine:3.22
 ARG MINIO_TAG
-LABEL org.opencontainers.image.source="https://github.com/vlog-studio/snaply-backend" \
+LABEL org.opencontainers.image.source="https://github.com/vlog-studio/snaply" \
       org.opencontainers.image.description="MinIO ${MINIO_TAG} built from the archived upstream source" \
       org.opencontainers.image.version="${MINIO_TAG}" \
       org.opencontainers.image.licenses="AGPL-3.0-only"

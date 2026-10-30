@@ -70,8 +70,8 @@ Firebase·Instagram·TikTok·RevenueCat·Sentry 키는 첫 실행에는 없어�
 모든 Node 의존성과 lockfile은 저장소 루트에서 한 번만 관리한다.
 
 ```bash
-git clone https://github.com/vlog-studio/snaply-backend.git
-cd snaply-backend
+git clone https://github.com/vlog-studio/snaply.git
+cd snaply
 nvm install
 nvm use
 npm ci
