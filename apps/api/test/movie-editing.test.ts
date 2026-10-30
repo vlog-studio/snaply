@@ -107,7 +107,7 @@ describe('생성 작업에 싣기', () => {
       })
     ).json().data.id as string;
     const cuts = ((await exportEditSpec(user, id)).timeline as { cuts: Record<string, unknown>[] }).cuts;
-    expect(cuts[0].trimOwner).toBe('ai');
+    expect(cuts[0]?.trimOwner).toBe('ai');
     expect(cuts[1]).not.toHaveProperty('trimOwner');
   });
 });
