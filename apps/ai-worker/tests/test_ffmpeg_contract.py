@@ -44,7 +44,7 @@ from pipeline.editor import (  # noqa: E402
     measure_loudness,
 )
 from pipeline.transition import Transition  # noqa: E402
-from pipeline.render_spec import DEFAULT_RENDER_SPEC  # noqa: E402
+from pipeline.render_spec import DEFAULT_RENDER_SPEC, LETTERBOX  # noqa: E402
 
 
 def _has(tool: str) -> bool:
@@ -123,6 +123,20 @@ class EditOutputContract(unittest.TestCase):
                     self.assertAlmostEqual(channel, level, delta=12)
                 # 640x360 이 1080 폭으로 커지면 높이 약 608 — 화면 가운데(y 960)의 띠 바로 안쪽은 원본이다
                 self.assertNotAlmostEqual(sum(pixel(out, 0.5, y=900)) / 3, level, delta=30)
+
+    def test_letterbox_puts_a_portrait_source_in_the_band(self) -> None:
+        # 레터박스 레시피(MOV-8) — 세로 원본도 가운데 16:9 띠에 꽉 차고 위아래는 검다(처음엔 pad_black 이라 세로 원본은 화면을 다 채웠다)
+        with tempfile.TemporaryDirectory() as work:
+            src = os.path.join(work, "portrait.mp4")
+            make_clip(src, width=540, height=960)
+            out = edit([ClipSource(src)], get_preset("일상"), replace(DEFAULT_RENDER_SPEC, fit_mode=LETTERBOX), work)
+
+            self.assertEqual((probe(out)["video"]["width"], probe(out)["video"]["height"]), (1080, 1920))
+            for y in (200, 1720):
+                for channel in pixel(out, 0.5, y=y):
+                    self.assertAlmostEqual(channel, 0, delta=12)
+            # 띠는 y 656 ~ 1264 — 가운데는 원본이다
+            self.assertNotAlmostEqual(sum(pixel(out, 0.5, y=960)) / 3, 0, delta=30)
 
     def test_output_plays_everywhere(self) -> None:
         """H.264 + yuv420p. 이걸 벗어나면 기기에 따라 재생되지 않는다."""

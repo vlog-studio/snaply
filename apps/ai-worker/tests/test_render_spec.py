@@ -1,5 +1,6 @@
 import sys
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -7,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from pipeline.render_spec import (  # noqa: E402
     DEFAULT_RENDER_SPEC,
     LEGACY_RENDER_SPEC,
+    LETTERBOX,
     build_video_filter,
     parse_render_spec,
 )
@@ -123,3 +125,18 @@ if __name__ == "__main__":
             self.assertIn(f"pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color={colour}", graph)
             self.assertLess(graph.index(grade), graph.index("pad="))
             self.assertNotIn("gblur", graph)
+
+    # 레터박스 레시피의 맞춤(MOV-8) — 원본을 가운데 16:9 띠(1080x608)에 꽉 채우고 위아래를 검게. 세로 원본도 띠가 생긴다
+    def test_letterbox_fills_the_band_and_pads_black(self) -> None:
+        grade = "eq=saturation=0.8"
+        graph = build_video_filter(replace(DEFAULT_RENDER_SPEC, fit_mode=LETTERBOX), grade)
+        self.assertIn("scale=1080:608:force_original_aspect_ratio=increase", graph)
+        self.assertIn("crop=1080:608", graph)
+        self.assertIn("pad=1080:1920:0:(oh-ih)/2:color=black", graph)
+        self.assertLess(graph.index(grade), graph.index("pad="))
+
+    def test_letterbox_is_not_a_fit_mode_the_api_can_send(self) -> None:
+        # 워커가 레시피로 정한다 — 무비의 fitMode 로는 받지 않는다
+        with self.assertRaises(ValueError):
+            parse_render_spec({"profileVersion": 1, "outputProfile": "short_vertical", "width": 1080, "height": 1920,
+                               "fps": 30, "fitMode": LETTERBOX})

@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { movieRecipeLabel, movieStyleLabel, type Movie } from '@/entities/movie';
 import { useSnapFiles, type Snap } from '@/entities/snap';
 import type { RenderSource } from '@/features/compose-movie';
-import { shareBlockMessage, type MovieSharing } from '@/features/share-movie';
+import { AlbumSaveMessages, shareBlockMessage, type MovieSharing } from '@/features/share-movie';
 import { formatDateTime, formatSeconds } from '@/shared/lib/datetime';
 import { SnaplyButton } from '@/shared/ui/snaply-button';
 import { DoodleIcon } from '@/shared/ui/doodle-icon';
@@ -66,10 +66,14 @@ export type MovieWatchProps = {
  * the style preset, so a movie's stored `bgm` was never a fact about the file
  * being played.
  *
- * 공유 and, while the render has a file on the server, Instagram에 게시 are the
- * mode's standing actions (editing, renaming, and deleting live in the ⋯
- * sheet). 공유 is visible but disabled until a render produces a real file,
- * the same idiom as the studio footer — with the reason written under it,
+ * 앨범에 저장 is the mode's primary action, with 공유 and — while the render has
+ * a file on the server — Instagram에 게시 side by side under it (MOV-15;
+ * editing, renaming, and deleting live in the ⋯ sheet). Saving leads because
+ * keeping the movie is what every finished movie needs, and Android's share
+ * sheet offers no save target. Not in the ⋯ sheet: that holds the rare and
+ * the irreversible, and a save hidden there reads as no save at all. All
+ * three are visible but disabled until a render produces a real file, the
+ * same idiom as the studio footer — with the reason written under them,
  * because a lone disabled primary action explains nothing by itself.
  *
  * The stage plays the finished movie, in whichever form the run left it:
@@ -128,6 +132,17 @@ export function MovieWatch({
   const [now] = useState(Date.now);
   const expiry = movie.render ? resultExpiry(movie.render.renderedAt, now) : undefined;
   const blockReason = shareBlockMessage(sharing.blocked);
+  // Why the last 앨범에 저장 did not happen; cleared by the next try.
+  const [saveProblem, setSaveProblem] = useState<string>();
+  const saveToAlbum = () => {
+    setSaveProblem(undefined);
+    void sharing.saveToAlbum().then((outcome) => {
+      // `busy` and `resolving` are ignored taps; `saved` speaks through the notice below.
+      if (outcome !== 'saved' && outcome !== 'busy' && outcome !== 'resolving')
+        setSaveProblem(AlbumSaveMessages[outcome]);
+    });
+  };
+  const unavailable = sharing.blocked !== undefined;
   const printStyle = {
     backgroundColor: theme.backgroundElement,
     borderColor: theme.border,
@@ -219,16 +234,44 @@ export function MovieWatch({
           />
         ) : null}
         <SnaplyButton
-          // The file downloads to the cache before the sheet can open, so the
-          // button says what the wait is instead of looking ignored.
-          title={sharing.busy ? '공유 준비 중…' : '공유'}
-          leading={<DoodleIcon name="share" size={20} color={theme.onPrimary} />}
-          disabled={sharing.blocked !== undefined || sharing.busy}
-          onPress={sharing.share}
+          // The file downloads before it can be saved; the label says what the wait is.
+          title={sharing.savingToAlbum ? '앨범에 저장하는 중…' : '앨범에 저장'}
+          accessibilityLabel="앨범에 저장"
+          leading={<DoodleIcon name="gallery" size={20} color={theme.onPrimary} />}
+          disabled={unavailable}
+          busy={sharing.savingToAlbum}
+          onPress={saveToAlbum}
         />
-        {onPostToInstagram ? (
-          <SnaplyButton title="Instagram에 게시" variant="secondary" onPress={onPostToInstagram} />
-        ) : null}
+        <View style={styles.sendRow}>
+          <SnaplyButton
+            // The file downloads to the cache before the sheet can open, so the
+            // button says what the wait is instead of looking ignored.
+            title={sharing.busy ? '공유 준비 중…' : '공유'}
+            accessibilityLabel="공유"
+            variant="secondary"
+            leading={
+              <DoodleIcon
+                name="share"
+                size={20}
+                color={unavailable || sharing.busy ? theme.textSecondary : theme.navy}
+              />
+            }
+            disabled={unavailable || sharing.busy}
+            onPress={sharing.share}
+            style={styles.sendAction}
+          />
+          {onPostToInstagram ? (
+            <SnaplyButton
+              // Half a row cannot hold Instagram에 게시 on one line on a phone (it
+              // wrapped on the emulator); the verb stays in what a reader hears.
+              title="Instagram"
+              accessibilityLabel="Instagram에 게시"
+              variant="secondary"
+              onPress={onPostToInstagram}
+              style={styles.sendAction}
+            />
+          ) : null}
+        </View>
         {/* Off with its reason under it — and off without a word while the
             file's address is still on its way, when there is no reason yet. */}
         {sharing.blocked !== undefined ? (
@@ -237,6 +280,10 @@ export function MovieWatch({
               {blockReason}
             </ThemedText>
           ) : null
+        ) : saveProblem !== undefined ? (
+          <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
+            {saveProblem}
+          </ThemedText>
         ) : sharing.failed ? (
           <ThemedText type="small" themeColor="textSecondary" style={styles.centerText}>
             완성된 무비를 내려받지 못했어요. 연결을 확인하고 다시 시도해 주세요.
@@ -246,8 +293,14 @@ export function MovieWatch({
           // worth offering — and offering is all this does. The sheet never
           // says whether the file was saved (MOV-18), so nothing here decides
           // for the user; the confirm asks them.
+          // After 앨범에 저장 the app knows the file landed and says so; the
+          // confirm still asks before anything is removed.
           <NoticeBand
-            message="기기에 저장했다면 무비를 정리할 수 있어요."
+            message={
+              sharing.savedToAlbum
+                ? '앨범에 저장했어요. 이제 무비를 정리할 수 있어요.'
+                : '기기에 저장했다면 무비를 정리할 수 있어요.'
+            }
             action={{ label: '정리하기', accessibilityLabel: '무비 정리하기', onPress: onFinish }}
           />
         ) : null}
@@ -304,4 +357,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   centerText: { textAlign: 'center' },
+  sendRow: { flexDirection: 'row', gap: Spacing.two },
+  sendAction: { flex: 1 },
 });

@@ -138,6 +138,20 @@ describe('movieFromRemote', () => {
     expect(movie.settledJobId).toBe('job-1');
   });
 
+  // A device that failed a run the server finished (a fresh install once judged
+  // every adopted run against a library that had not arrived yet) follows the
+  // run again rather than keeping a failure that hides a real result.
+  it('follows again a run it failed that the server finished', () => {
+    const movie = movieFromRemote(
+      remote({ status: 'ready', resultVideoId: 'r1', jobId: 'job-1' }),
+      local({ status: 'failed', settledJobId: 'job-1', error: '실패' }),
+    );
+
+    expect(movie.status).toBe('generating');
+    expect(movie.job).toMatchObject({ id: 'job-1', adopted: true });
+    expect(movie.error).toBeUndefined();
+  });
+
   it('keeps the words a failure was given here', () => {
     const movie = movieFromRemote(
       remote({ status: 'failed', jobId: 'job-1' }),

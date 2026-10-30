@@ -25,7 +25,7 @@ from pipeline import (accent_stage, anchor, editor, invalidation, match_cut, mus
                       transition, trend_edit, vocabulary)
 from pipeline.edit_spec import parse_job_clips, parse_timeline
 from pipeline.editor import get_preset
-from pipeline.render_spec import RenderSpec, parse_render_spec
+from pipeline.render_spec import LETTERBOX, RenderSpec, parse_render_spec
 from queue_connection import worker_connection
 
 _publisher: aioredis.Redis | None = None
@@ -291,10 +291,11 @@ def _local_time(at):
 
 
 def _framed(render_spec: RenderSpec, recipe_name: str) -> RenderSpec:
-    """레터박스 레시피(시네마틱 등)는 보통 경로(컷을 손본 무비 · 레시피 렌더 실패)에서도 남는 자리를 검게 — 무비의 맞춤 방식(블러 · 흰색)을
-    쓰지 않는다. AI 컷 경로의 검은 띠와 같은 바탕이다(specs/movie.md MOV-8 · MOV-28, 2026-10-30 사용자)."""
+    """레터박스 레시피(시네마틱 등)는 보통 경로(컷을 손본 무비 · 레시피 렌더 실패)에서도 AI 컷 경로와 같은 띠로 — 원본을 가운데 16:9 띠에
+    꽉 채우고 위아래를 검게 둔다. 무비의 맞춤 방식(블러 · 단색)은 쓰지 않는다(specs/movie.md MOV-8 · MOV-28, 2026-10-30 사용자).
+    처음엔 남는 자리만 검게(pad_black) 채워 세로 원본에는 띠가 생기지 않았다."""
     if recipe.get(recipe_name).spec.get("frame") == "letterbox":
-        return replace(render_spec, fit_mode="pad_black")
+        return replace(render_spec, fit_mode=LETTERBOX)
     return render_spec
 
 
