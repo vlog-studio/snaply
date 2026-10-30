@@ -176,8 +176,8 @@ export const RecipeDecorationDefaults: Record<MovieRecipe, MovieDecorations> = {
   'before-after': { text: true, emoji: false, face: false },
   asmr: AllOff,
   'freeze-text': { text: true, emoji: false, face: false },
-  'whip-montage': AllOn,
-  'letterbox-montage': AllOn,
+  'whip-montage': { text: true, emoji: false, face: false },
+  'letterbox-montage': { text: true, emoji: false, face: false },
   'talk-vlog': { text: true, emoji: true, face: false },
   daylog: { text: true, emoji: false, face: false },
 };

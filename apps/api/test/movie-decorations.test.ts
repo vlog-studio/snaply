@@ -130,8 +130,18 @@ describe('생성은 무비의 꾸밈을 스펙에 싣는다', () => {
   });
 });
 
+/**
+ * 마이그레이션 뒤에 사전의 기본값이 바뀐 레시피. 마이그레이션은 그때 붙던 꾸밈으로 기존 무비를 채웠으므로(다시 만들어도 같은
+ * 결과 — MOV-14) 고치지 않는다. 휩 · 가로 몽타주는 그 뒤 이모지 · 얼굴을 뺐다(13e60d9) — 다시 켜면 이 예외를 지운다.
+ */
+const CHANGED_SINCE_BACKFILL: Record<'text' | 'emoji' | 'face', readonly string[]> = {
+  text: [],
+  emoji: ['whip-montage', 'letterbox-montage'],
+  face: ['whip-montage', 'letterbox-montage'],
+};
+
 describe('기존 무비 채우기', () => {
-  it('마이그레이션이 켜는 레시피 목록이 사전의 기본값과 같다', () => {
+  it('마이그레이션이 켜는 레시피 목록이 사전의 기본값과 같다(그 뒤 바뀐 레시피만 빼고)', () => {
     const sql = readFileSync(
       new URL('../prisma/migrations/20261029010000_movie_decorations/migration.sql', import.meta.url),
       'utf8',
@@ -143,7 +153,10 @@ describe('기존 무비 채우기', () => {
     ] as const) {
       const match = new RegExp(`SET "${column}" = true\\s+WHERE "recipe" IN \\(([^)]*)\\)`).exec(sql);
       const listed = (match?.[1] ?? '').split(',').map((name) => name.trim().replace(/'/g, '')).filter(Boolean);
-      expect(listed.sort(), column).toEqual(MOVIE_RECIPES.filter((name) => recipeDecorations(name)[key]).sort());
+      const expected = MOVIE_RECIPES.filter(
+        (name) => recipeDecorations(name)[key] || CHANGED_SINCE_BACKFILL[key].includes(name),
+      );
+      expect(listed.sort(), column).toEqual(expected.sort());
     }
   });
 });
