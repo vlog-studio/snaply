@@ -173,6 +173,9 @@ model Video {
   /// 앱이 붙인 이 스냅의 이름(로컬 스냅 id). 찍은 기기가 서버 목록에서 자기 스냅을 알아보는 데만
   /// 쓴다. **유일하지 않다** — 기기마다 이름 규칙이 같아 계정 안에서도 겹칠 수 있다.
   clientId        String?   @map("client_id") @db.VarChar(128)
+  /// 촬영 가이드로 겹쳐 보며 이어 찍은 앞 컷(짝)의 앱 id — 그 스냅의 `clientId` 나 영상 id(SNAP-24). 해석하지 않고 그대로 두며,
+  /// 편집기가 무비에 든 스냅 안에서만 찾아 둘을 붙일 후보로 우대한다(decisions/capture-coach.md §4.2).
+  linedUpWithClientId String? @map("lined_up_with_client_id") @db.VarChar(128)
   /// 왜 사라졌는가. 행은 툼스톤으로 남으므로(SNAP-12) 사용자는 무엇을 잃었는지 알 수 있다.
   removalReason   VideoRemovalReason? @map("removal_reason")
   /// 파일을 실제로 지운 시각. 만료 "예정"이 아니라 일어난 사실이다 — 만료 판정 자체는
@@ -604,12 +607,15 @@ model Movie {
   recipe      String        @default("classic") @db.VarChar(30)
   /// 소프트 자막 생성 여부. 기본 꺼짐(쇼츠용).
   captions    Boolean       @default(false)
-  /// 비율이 다른 원본의 남는 자리를 채우는 방식(specs MOV-8) — `blur_background`(기본) · `pad_black` · `pad_white` 등. 값 검사는 계약(Zod)이 한다.
-  fitMode     String        @default("blur_background") @map("fit_mode") @db.VarChar(20)
+  /// 비율이 다른 원본의 남는 자리를 채우는 방식(specs MOV-8) — `pad_black`(기본, 2026-10-30) · `blur_background` · `pad_white` 등. 값 검사는 계약(Zod)이 한다.
+  fitMode     String        @default("pad_black") @map("fit_mode") @db.VarChar(20)
   /// 꾸밈(specs MOV-27) — 글자 · 이모지 · 얼굴 스티커를 각각 켜고 끈다. 붙일지는 이 값만 정하고, 만들 때와 레시피를 바꿀 때 레시피 기본값으로 채운다.
   decorText   Boolean       @default(false) @map("decor_text")
   decorEmoji  Boolean       @default(false) @map("decor_emoji")
   decorFace   Boolean       @default(false) @map("decor_face")
+  /// 편집 선택(specs MOV-29) — 말하는 구간의 말소리 살리기 · 장면 단위 순서와 첫 컷 훅. 기본 꺼짐, 레시피를 바꿔도 그대로다.
+  editSpeech     Boolean    @default(false) @map("edit_speech")
+  editSceneOrder Boolean    @default(false) @map("edit_scene_order")
   /// 현재는 9:16 뿐이지만, 다른 비율이 생겨도 기존 무비가 자기 비율을 지키도록 저장한다.
   ratio       String        @default("9:16") @db.VarChar(10)
   arranger    MovieArranger @default(user)

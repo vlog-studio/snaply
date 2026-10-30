@@ -25,6 +25,7 @@ import { VideoPreview } from '@/shared/ui/video-preview';
 
 import { useCaptureRecorder } from '../model/use-capture-recorder';
 import { CaptureFlight } from './capture-flight';
+import { CaptureGuide } from './capture-guide';
 import { HoldRing } from './hold-ring';
 import { RecordingLibrary } from './recording-library';
 
@@ -74,6 +75,7 @@ function CaptureRecordScreen() {
     camera,
     session,
     library,
+    guide,
   } = useCaptureRecorder();
   // Read out once rather than through `camera.x`: the device group holds the
   // camera handle, and the compiler treats a member read on it during render as
@@ -246,6 +248,14 @@ function CaptureRecordScreen() {
 
         <View style={styles.cameraShade} pointerEvents="none" />
 
+        {guide.isOn && showCamera ? (
+          <CaptureGuide
+            ghostUri={guide.ghostUri}
+            subject={guide.read?.subject}
+            frameSize={guide.previousCut?.snap}
+          />
+        ) : null}
+
         {flight ? (
           <CaptureFlight key={flight.key} uri={flight.uri} onArrive={handleFlightArrive} />
         ) : null}
@@ -257,16 +267,35 @@ function CaptureRecordScreen() {
               {`스냅${displayedCount > 0 ? ` ${displayedCount}개` : ''}`}
             </TapeLabel>
           </Animated.View>
-          <StickerButton
-            icon={soundEnabled ? 'note' : 'noteOff'}
-            accessibilityLabel={soundEnabled ? '녹음 소리 끄기' : '녹음 소리 켜기'}
-            disabled={session.isBusy}
-            onPress={toggleSound}
-          />
+          <View style={styles.topBarEnd}>
+            <StickerButton
+              icon="grid"
+              accessibilityLabel={guide.isOn ? '촬영 가이드 끄기' : '촬영 가이드 켜기'}
+              accessibilityState={{ selected: guide.isOn }}
+              selected={guide.isOn}
+              onPress={guide.toggle}
+            />
+            <StickerButton
+              icon={soundEnabled ? 'note' : 'noteOff'}
+              accessibilityLabel={soundEnabled ? '녹음 소리 끄기' : '녹음 소리 켜기'}
+              disabled={session.isBusy}
+              onPress={toggleSound}
+            />
+          </View>
         </View>
 
         <View style={styles.focusArea} pointerEvents="box-none">
-          {stage === 'idle' && !showCollectedBadge ? (
+          {/* With the guide on, its lines take the focus frame's place and the
+              line under them says what to line up with. */}
+          {stage === 'idle' && !showCollectedBadge && guide.isOn ? (
+            <TapeLabel fill={TapeSmoke} tilt={-0.5}>
+              {guide.read?.advice ??
+                (guide.previousCut
+                  ? '앞 컷에 겹쳐 같은 자리에서 찍어 보세요'
+                  : '격자 선에 맞춰 찍어 보세요')}
+            </TapeLabel>
+          ) : null}
+          {stage === 'idle' && !showCollectedBadge && !guide.isOn ? (
             <View style={styles.focusFrame} pointerEvents="none">
               <ThemedText selectable={false} type="data" themeColor="textSecondary">
                 꾹 눌러 찍기
@@ -460,6 +489,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: Spacing.three,
   },
+  topBarEnd: { flexDirection: 'row', gap: Spacing.two },
   focusArea: {
     flex: 1,
     alignItems: 'center',

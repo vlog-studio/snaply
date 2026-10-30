@@ -58,6 +58,13 @@
 `sudo install -o root -g root -m 755 deploy/aws/runner-job-started.sh /etc/snaply/runner-job-started.sh`
 (2026-10-30 `snaply-backend` → `snaply`).
 
+> **레포 이름 변경(2026-10-30, `snaply-backend` → `snaply`)** — 이 검사가 허용하는 워크플로 참조(`ALLOWED_WORKFLOW_REF`)는 레포 이름을 담는다.
+> 저장소의 사본만 바꾸면 서버의 `/etc/snaply/runner-job-started.sh` 는 옛 이름이라 **다음 배포를 거절한다.** 서버에서 새 저장소를 받아 그 파일만
+> root 소유 · 755 로 다시 깐다 — `install.sh` 를 다시 돌려도 된다(위 — 배포 중에는 피한다). runner 재시작은 필요 없다(작업마다 이 파일을 읽는다).
+> 배포 이미지는 `ghcr.io/${{ github.repository }}` 라 새 이름(`ghcr.io/vlog-studio/snaply/…`)으로 저절로 옮겨 간다. MinIO 이미지
+> (`ghcr.io/vlog-studio/snaply-backend/minio`)는 옛 이름의 패키지가 그대로 있어 compose 가 계속 받는다 — 새 이름으로 옮기려면 `minio-image`
+> 워크플로를 한 번 돌린 뒤 compose 의 주소를 바꾼다.
+
 ## 2. 시크릿
 
 값은 Secrets Manager `dweax/service/snaply/env` 하나(키-값 JSON)에 둔다. 넣고 바꾸는 법은 인프라 문서 5-5 —

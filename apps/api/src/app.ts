@@ -22,6 +22,7 @@ import { legalRoutes } from './routes/legal.js';
 import { authRoutes } from './routes/auth.js';
 import { videoRoutes } from './routes/videos.js';
 import { videoAnalysisRoutes } from './routes/video-analyses.js';
+import { captureCoachRoutes } from './routes/capture-coach.js';
 import { editJobRoutes } from './routes/edit-jobs.js';
 import { movieRoutes } from './routes/movies.js';
 import { movieTemplateRoutes } from './routes/movie-templates.js';
@@ -180,6 +181,7 @@ export async function buildApp(
   await app.register(authRoutes);
   await app.register(videoRoutes);
   await app.register(videoAnalysisRoutes);
+  await app.register(captureCoachRoutes);
   await app.register(editJobRoutes);
   await app.register(movieRoutes);
   await app.register(movieTemplateRoutes);

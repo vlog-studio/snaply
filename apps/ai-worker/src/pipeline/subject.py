@@ -75,6 +75,16 @@ def to_screen(box: Box, size: tuple[int, int], fit_mode: str, area: tuple[float,
     return (x0 / sw, y0 / sh, x1 / sw, y1 / sh)
 
 
+def frame_box(path: str, fit_mode: str, area: tuple[float, float, float, float] | None = None,
+              screen: tuple[int, int] = (layout.W, layout.H)) -> Box | None:
+    """컷 영상이 화면에서 차지하는 자리(0~1) — 가로 영상이 띠 사이에 놓이면 그 띠 사이, 꽉 채우면 화면 전체. 원본 크기를 못 읽으면 None."""
+    try:
+        size = display_size(path)
+    except SubjectError:
+        return None
+    return to_screen((0.0, 0.0, 1.0, 1.0), size, fit_mode, area, screen)
+
+
 def for_cut(analysis: dict | None, path: str, at_ms: int, fit_mode: str,
             area: tuple[float, float, float, float] | None = None) -> Box | None:
     """컷 하나의 화면 피사체 상자 — 분석 상자를 고르고 화면으로 옮긴다. 상자나 원본 크기가 없으면 None."""

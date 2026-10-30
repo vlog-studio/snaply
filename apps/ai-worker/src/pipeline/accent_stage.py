@@ -81,9 +81,17 @@ def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[s
             _subject(analysis, cut.path, middle, fit_mode),
             motion=accent_inputs.cut_motion(motions.get(cut.video_id) or (), cut.start_ms, cut.end_ms),
             luma=_luma(cut, fit_mode),
+            frame=_frame(cut.path, fit_mode),
         ))
         t += length
     return contexts
+
+
+def _frame(path: str, fit_mode: str):
+    """컷 영상이 화면에서 차지하는 자리 — 레터박스는 띠에 꽉 채운 것(cover)이라 띠 자체다."""
+    if fit_mode == render_spec.LETTERBOX:
+        return subject.frame_box(path, "cover", render_spec.band_area(render_spec.DEFAULT_RENDER_SPEC))
+    return subject.frame_box(path, fit_mode)
 
 
 def _subject(analysis: dict, path: str, at_ms: int, fit_mode: str):

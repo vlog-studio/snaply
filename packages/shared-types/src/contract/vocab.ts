@@ -60,6 +60,20 @@ export const movieDecorationsSchema = z
   .describe('무비의 꾸밈(글자 · 이모지 · 얼굴 스티커). 바꾸면 다음 생성부터 적용된다 — 컷 · 순서 · 효과 · 곡은 그대로다.');
 export type MovieDecorations = z.infer<typeof movieDecorationsSchema>;
 
+/**
+ * 무비의 편집 선택 — 말소리 살리기 · 장면 단위 순서(specs/movie.md MOV-29). 레시피와 무관하게 기본은 둘 다 꺼짐이고, 레시피를 바꿔도 그대로다.
+ * 앱은 꾸밈과 같은 시트에서 켜고 끈다.
+ */
+export const movieEditingSchema = z
+  .object({
+    speech: z.boolean().describe('사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다.'),
+    sceneOrder: z
+      .boolean()
+      .describe('순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다.'),
+  })
+  .describe('무비의 편집 선택(말소리 · 장면 순서). 바꾸면 다음 생성부터 적용된다.');
+export type MovieEditing = z.infer<typeof movieEditingSchema>;
+
 /** 무비의 생애. `generating` 은 진행 중인 편집 작업이 있는 상태다. */
 export const MOVIE_STATUSES = ['draft', 'generating', 'ready', 'failed'] as const;
 export const movieStatusSchema = z.enum(MOVIE_STATUSES);
@@ -96,8 +110,8 @@ export const outputProfileSchema = z.enum(OUTPUT_PROFILES);
 export type OutputProfile = z.infer<typeof outputProfileSchema>;
 
 /**
- * 비율이 다른 원본을 출력 화면에 맞추는 방식. `blur_background` 는 남는 자리를 흐린 원본으로, `pad_black` · `pad_white` 는
- * 단색 띠로 채운다(셋 다 원본을 화면 폭이나 높이까지 키운다 — specs/movie.md MOV-8). `contain` 은 작은 원본을 키우지 않고 검정
+ * 비율이 다른 원본을 출력 화면에 맞추는 방식. `pad_black`(기본, 2026-10-30) · `pad_white` 는 남는 자리를 단색 띠로,
+ * `blur_background` 는 흐린 원본으로 채운다(셋 다 원본을 화면 폭이나 높이까지 키운다 — specs/movie.md MOV-8). `contain` 은 작은 원본을 키우지 않고 검정
  * 띠를 두는 예전 작업의 기본, `cover` 는 잘라서 꽉 채운다.
  */
 export const FIT_MODES = ['contain', 'cover', 'blur_background', 'pad_black', 'pad_white'] as const;
@@ -115,7 +129,7 @@ export const OUTPUT_PROFILE_CONFIGS: Record<
 };
 
 export const DEFAULT_OUTPUT_PROFILE: OutputProfile = 'short_vertical';
-export const DEFAULT_FIT_MODE: FitMode = 'blur_background';
+export const DEFAULT_FIT_MODE: FitMode = 'pad_black';
 
 export const VIDEO_ANALYSIS_STATUSES = ['queued', 'processing', 'done', 'failed'] as const;
 export const videoAnalysisStatusSchema = z.enum(VIDEO_ANALYSIS_STATUSES);

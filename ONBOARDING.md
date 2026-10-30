@@ -301,6 +301,7 @@ cd ../..
 | `npm run media:e2e` / `media:cleanup` | 업로드→편집→결과 e2e / 테스트 데이터 정리 (§5) |
 | `npm run auth:stub -w apps/api` | 로컬 Supabase Auth 스텁 — 수동 테스트용 JWT 발급 |
 | `npm run analysis:run` | 앱으로 올린 스냅 1건을 분석 요청·대기·결과 출력 (분석 워커가 떠 있어야 한다) |
+| `npm run studio` | 로컬 레시피 스튜디오 — http://127.0.0.1:8765 에서 `sample/` 아래 스냅 묶음을 고르고, 앱의 무비 화면처럼 스타일 · 편집(레시피) · 꾸밈(글자 · 이모지 · 얼굴 스티커, 말소리 · 장면 순서) · 세부(순서 고정 — 켜면 누른 순서대로 잇고 꾸밈만 얹는 보통 경로)를 골라 렌더하고, 결과 영상과 지표(박자 맞춤 · 샷 길이 · 훅 · 빈 화면 · 음량)를 나란히 비교한다. Docker 가 필요하다 — 렌더는 워커 이미지(`snaply-ai-worker:studio`, 처음 한 번 `apps/ai-worker/Dockerfile` 로 빌드)에 저장소를 읽기 전용으로 붙여 돌므로 워커 코드를 고치면 다음 렌더에 바로 반영된다. 화면의 '손떨림 보정' 스위치는 운영에 없는 실험 기능이다(렌더가 느려진다). 곡은 `BGM_DIR` → `~/snaply-bgm` → `apps/ai-worker/assets/bgm` 순으로 찾고, 내용 분석은 `apps/api/.env` 의 `OPENAI_API_KEY` 로 스냅마다 한 번 부른 뒤 캐시한다(화면에서 끌 수 있다). 결과는 `apps/ai-worker/.studio/`(커밋하지 않는다). `npm run studio -- --media <폴더>` 로 다른 폴더를 쓴다(그 폴더 자신에 든 영상도 묶음 하나가 된다) |
 | `npm run <이름> -w apps/api` — `<이름>`은 `media:purge-expired` · `media:notify-expiring` · `accounts:purge` · `videos:purge-pending` | 정리·만료 예고 배치를 로컬 DB에 한 번 실행. 기본은 dry-run(대상만 보여 준다)이고 `npm run <이름> -w apps/api -- --yes`여야 지우거나 보낸다. 서버의 정기 실행은 [docs/deployment-aws.md](docs/deployment-aws.md#4-배치) §4 |
 | `npm run ig:probe -w apps/api` 등 · `npm run dev:public-bucket -w apps/api` | SNS 연동 점검·개발 버킷 공개 — [docs/sns-setup.md](docs/sns-setup.md) |
 

@@ -37,6 +37,8 @@ EDGE_S = 0.6  # 컷 끝 · 시작에서 특징을 재는 길이
 WEIGHTS = {"tags": 0.4, "layout": 0.25, "color": 0.25, "motion": 0.1}
 # 원본 줌으로 잇는 레시피 — 움직임이 이어지는지가 먼저
 MOTION_WEIGHTS = {"tags": 0.3, "layout": 0.15, "color": 0.15, "motion": 0.4}
+# 촬영 가이드로 겹쳐 보며 이어 찍은 짝(앞 컷 → 그 스냅)에 순서를 고를 때만 더하는 점수 — 연결 점수는 0~1(capture-coach §4.2)
+PAIR_BONUS = 0.3
 # 원본 줌 구간: 이웃 프레임 발산(옵티컬 플로우)이 그 영상의 상위 10% 의 이 몫(최소 ZOOM_FLOOR)을 넘는 곳이 ZOOM_MIN_STEPS 이상 이어질 때
 ZOOM_SHARE, ZOOM_FLOOR, ZOOM_MIN_STEPS = 0.3, 0.3, 4
 ZOOM_RANGE = (1.15, 1.8)
@@ -331,6 +333,25 @@ def link_contrast(a_end: ShotEnd, b_start: ShotEnd, a_tags: set[str], b_tags: se
     parts = {"tags": base["tags"], "layout": base["layout"], "color": base["color"], "motion": base["motion"], "change": change}
     parts["score"] = 0.45 * base["layout"] + 0.25 * base["tags"] + 0.3 * change
     return parts
+
+
+def pairs_of(ids: list[str], client_ids: list[str | None], lined_up_with: list[str | None]) -> list[int | None]:
+    """스냅마다 겹쳐 보며 이어 찍은 앞 컷(짝)의 입력 번호, 없으면 None(SNAP-24).
+
+    짝은 앱이 아는 id(그 스냅의 client_id, 서버에서 받은 스냅이면 영상 id)로만 남아 있어 같은 무비의 스냅 안에서만 찾는다 —
+    무비에 없는 스냅을 가리키면 짝이 없다. client_id 는 유일하지 않으므로 같은 값이 여럿이면 앞의 것을 쓴다."""
+    out: list[int | None] = []
+    for k, want in enumerate(lined_up_with):
+        found = None
+        if want:
+            found = next((j for j in range(len(ids)) if j != k and want in (ids[j], client_ids[j])), None)
+        out.append(found)
+    return out
+
+
+def pair_bonus(a: int, b: int, pairs: list[int | None] | None) -> float:
+    """스냅 a 다음에 b 를 둘 때 더할 짝 점수 — b 가 a 에 맞춰 찍은 스냅이면 PAIR_BONUS. 순서 고르기에만 쓴다."""
+    return PAIR_BONUS if pairs and 0 <= b < len(pairs) and pairs[b] == a else 0.0
 
 
 def order(scores, temperature: float = 0.0, explore: float = 0.0, seed: int = 0, samples: int = 24) -> list[int]:

@@ -21,9 +21,9 @@ import config
 import db
 import notify
 import storage
-from pipeline import (accent_stage, anchor, editor, invalidation, music, orient, recipe, seed, subtitle, transition,
-                      trend_edit, vocabulary)
-from pipeline.edit_spec import parse_job_clips, parse_timeline
+from pipeline import (accent_stage, ai_cuts, anchor, editor, invalidation, match_cut, music, orient, recipe, seed, subtitle,
+                      transition, trend_edit, vocabulary)
+from pipeline.edit_spec import editing_of, parse_job_clips, parse_timeline
 from pipeline.editor import get_preset
 from pipeline.render_spec import LETTERBOX, RenderSpec, parse_render_spec
 from queue_connection import worker_connection
@@ -142,15 +142,25 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     #     다시 고르고(매치컷 · 점수 위주 순서) 효과 · 음원 · 글 · 효과음까지 한 번에 굽는다. 실패하면 아래 보통 경로로 간다.
     if timeline is not None and recipe_name != recipe.CLASSIC and edit_spec.get("autoCuts"):
         trend = await _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir,
-                                    _variant_key(data.get("movieId") or job_id, edit_spec), decorations)
+                                    _variant_key(data.get("movieId") or job_id, edit_spec), decorations, editing_of(edit_spec))
         if trend is not None:
             await _finish(job_id, user_id, output_video_id, trend, work_dir)
             return
 
+    # 2-1) AI 몫 다듬기(MOV-29) — AI 가 자른 컷만 흔들림 · 박자에 맞추고, 켰으면 장면 순서(가장 강한 컷을 맨 앞) · 말소리 구간
+    editing = editing_of(edit_spec)
+    talking: list[tuple[int, int]] = []
+    transitions = timeline.transitions if timeline is not None else []
+    if timeline is not None and (any(timeline.ai_cuts) or any(editing.values())):
+        refined = await _refine_ai_cuts(clips, timeline, editing, preset, data.get("movieId") or job_id, render_spec.fps, job_id)
+        if refined is not None:
+            clips, transitions, talking = refined.clips, refined.transitions, refined.talking
+            clip_specs = [clip_specs[i] for i in refined.order]
+
     # 2) 컷편집
     if timeline is not None:
         base = await asyncio.to_thread(
-            editor.edit_timeline, clips, timeline.transitions, preset, render_spec, work_dir
+            editor.edit_timeline, clips, transitions, preset, render_spec, work_dir
         )
     else:
         base = await asyncio.to_thread(editor.edit, clips, preset, render_spec, work_dir)
@@ -161,7 +171,7 @@ async def _run_pipeline(job_id: str, data: dict, work_dir: str) -> None:
     with_bgm_path = os.path.join(work_dir, "with_bgm.mp4")
     current, _bgm_ok = await asyncio.to_thread(
         music.apply_bgm, base, preset.bgm_tag, with_bgm_path, duration, data.get("movieId") or job_id,
-        *_audio_gains(recipe_name),
+        *_audio_gains(recipe_name), speech=[(a / 1000, b / 1000) for a, b in talking] or None,
     )
     await _progress(job_id, 60, "음악 매칭 중...")
 
@@ -223,21 +233,27 @@ async def _finish(job_id: str, user_id: str, output_video_id: str, current: str,
 def _variant_key(movie_key: str, edit_spec: dict) -> str:
     """레시피 편집의 시드 — 무비 + 구성(편집 스펙). 같은 구성으로 다시 만들면 같은 편집이고(MOV-14), 컷 · 레시피 · 스타일이 바뀌면 새로 고른다.
     작업 id 를 넣던 때는 다시 만들 때마다 순서 · 효과가 바뀌어 MOV-14 와 어긋났다(backlog E-65, 2026-10-27).
-    꾸밈(`decorations`)은 빼고 해시한다 — 글자만 꺼도 컷 · 순서 · 효과가 다시 섞이지 않게(text-accent-stickers.md §9)."""
-    edit = {k: v for k, v in edit_spec.items() if k != "decorations"}
+    꾸밈(`decorations`)과 편집 선택(`editing`, MOV-29)은 빼고 해시한다 — 글자만 꺼도, 말소리만 켜도 컷 · 순서 · 효과가 다시 섞이지 않게
+    (text-accent-stickers.md §9). 장면 순서는 계획이 순서를 정해 시드가 필요 없다."""
+    edit = {k: v for k, v in edit_spec.items() if k not in ("decorations", "editing")}
     digest = hashlib.sha256(json.dumps(edit, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
     return f"{movie_key}:{digest}"
 
 
 async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job_id, user_id, work_dir,
-                        variant_key: str | None = None, decorations: dict[str, bool] | None = None) -> str | None:
+                        variant_key: str | None = None, decorations: dict[str, bool] | None = None,
+                        editing: dict[str, bool] | None = None) -> str | None:
     """레시피로 스냅에서 컷을 다시 골라 한 편을 굽는다(trend_edit.render). 실패하면 None — 보통 경로로 간다.
     variant_key 는 순서 · 효과의 시드(`_variant_key`) — 없으면 무비 키."""
     movie_key = data.get("movieId") or job_id
     try:
         analyses, _motions = await db.fetch_accent_inputs(video_ids)
         captured = await db.fetch_captured_at(video_ids)
-        snaps = [trend_edit.Snap(local_sources[v], analyses.get(v) or {}, _local_time(captured.get(v))) for v in video_ids]
+        client_ids, lined = await db.fetch_lined_up_with(video_ids)
+        pairs = match_cut.pairs_of(video_ids, [client_ids.get(v) for v in video_ids], [lined.get(v) for v in video_ids])
+        snaps = [trend_edit.Snap(local_sources[v], analyses.get(v) or {}, _local_time(captured.get(v)),
+                                 local_sources[video_ids[pairs[k]]] if pairs[k] is not None else None)
+                 for k, v in enumerate(video_ids)]
         # 곡 라이브러리는 컨테이너 안에 받아 둔다(볼륨 없음) — 배포로 새로 뜬 워커는 비어 있으므로 고르기 전에 맞춘다. 보통 경로는
         # music.apply_bgm 이 맞추지만 이 경로는 곡을 직접 고른다(빠뜨려 배포 직후 AI 컷 무비에 BGM 이 없었다, 2026-10-29)
         await asyncio.to_thread(music.sync_library)
@@ -246,7 +262,7 @@ async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job
         out = os.path.join(work_dir, "trend.mp4")
         # 곡은 무비마다 같고(movie_key), 순서 · 효과의 시드는 무비 + 구성이다 — 같은 구성이면 같은 편집(MOV-14)
         result = await asyncio.to_thread(trend_edit.render, snaps, recipe_name, track, variant_key or movie_key, work_dir, out,
-                                         decorations=decorations)
+                                         decorations=decorations, editing=editing)
         logger.info(
             "레시피 편집 job_id={} recipe={} duration={} cuts={} links={} accents={} sfx={} edl={}",
             job_id, recipe_name, result.duration_s, len(result.cuts), [l.get("score") for l in result.links],
@@ -260,6 +276,20 @@ async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job
         logger.warning("레시피 편집 실패 — 보통 경로로 job_id={} recipe={}: {}", job_id, recipe_name, exc)
         _capture(exc)
         return None
+
+
+async def _refine_ai_cuts(clips, timeline, editing: dict[str, bool], preset, music_key: str, fps: int, job_id: str):
+    """`ai_cuts.apply` — 곡은 BGM 과 같은 곡(무비마다 고정)의 박자. 실패하면 None — 컷 목록 그대로 간다(무비를 실패시키지 않는다)."""
+    try:
+        await asyncio.to_thread(music.sync_library)
+        track = music.pick_track(preset.bgm_tag, music_key)
+        refined = await asyncio.to_thread(ai_cuts.apply, clips, timeline.ai_cuts, timeline.transitions, editing, track, fps)
+    except Exception as exc:  # noqa: BLE001 — 다듬기 없이 간다
+        logger.warning("AI 몫 다듬기 실패 — 컷 그대로 job_id={}: {}", job_id, exc)
+        _capture(exc)
+        return None
+    logger.info("AI 몫 다듬기 job_id={} ai_cuts={} order={} talking={}", job_id, sum(timeline.ai_cuts), refined.order, refined.talking)
+    return refined
 
 
 async def _upright_sources(local_sources: dict[str, str], work_dir: str) -> dict[str, str]:

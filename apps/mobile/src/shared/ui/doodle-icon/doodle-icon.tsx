@@ -54,6 +54,8 @@ const Paths = {
   redo: 'M16 6.8l3.5 3.2-3.5 3.3 M19.2 10H9.8a5 5 0 0 0 0 10H14',
   pencil: 'M4.5 19.5l1-4.6L15.6 4.8l3.6 3.6L9.1 18.5z M13.6 6.8l3.6 3.6',
   more: 'M5.6 12h.8 M11.6 12h.8 M17.6 12h.8',
+  // A frame cut in thirds — the framing guide.
+  grid: 'M4.6 4.5h14.9v15H4.5z M9.6 4.6v14.8 M14.5 4.5v15 M4.6 9.5h14.8 M4.5 14.6h15',
 } as const;
 
 export type DoodleIconName = keyof typeof Paths;

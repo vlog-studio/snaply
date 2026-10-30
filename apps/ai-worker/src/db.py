@@ -111,6 +111,16 @@ async def fetch_captured_at(video_ids: list[str]) -> dict:
     return {str(row["id"]): row["captured_at"] for row in rows}
 
 
+async def fetch_lined_up_with(video_ids: list[str]) -> tuple[dict[str, str | None], dict[str, str | None]]:
+    """스냅마다 앱 id(client_id)와 겹쳐 보며 이어 찍은 앞 컷의 앱 id — 짝은 편집기가 무비 안에서 찾는다(SNAP-24)."""
+    async with _pool_or_raise().acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, client_id, lined_up_with_client_id FROM videos WHERE id = ANY($1::uuid[])", video_ids
+        )
+    return ({str(row["id"]): row["client_id"] for row in rows},
+            {str(row["id"]): row["lined_up_with_client_id"] for row in rows})
+
+
 async def set_video_result(
     video_id: str,
     edited_url: str,

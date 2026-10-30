@@ -53,14 +53,18 @@ function createDevice(overrides: Partial<RecordingDevice> = {}): jest.Mocked<Rec
   } as jest.Mocked<RecordingDevice>;
 }
 
-function renderSession(device: RecordingDevice, isMicrophoneGranted = true) {
+function renderSession(
+  device: RecordingDevice,
+  isMicrophoneGranted = true,
+  linedUpWith?: () => string | undefined,
+) {
   const ensureMicrophonePermission = jest.fn().mockResolvedValue(isMicrophoneGranted);
   const onCaptureCollected = jest.fn();
   return {
     ensureMicrophonePermission,
     onCaptureCollected,
     rendered: renderHook(() =>
-      useCaptureSession({ device, ensureMicrophonePermission, onCaptureCollected }),
+      useCaptureSession({ device, ensureMicrophonePermission, onCaptureCollected, linedUpWith }),
     ),
   };
 }
@@ -120,6 +124,46 @@ describe('useCaptureSession', () => {
     expect(onCaptureCollected).toHaveBeenCalledTimes(1);
     expect(result.current.stage).toBe('idle');
     expect(result.current.errorMessage).toBeUndefined();
+  });
+
+  it('files the snap with the previous cut it was framed against, read when recording began', async () => {
+    const { record, finish } = pendingRecording();
+    let previousCut: string | undefined = 'snaply-1.mp4';
+    const { rendered } = renderSession(createDevice({ record }), true, () => previousCut);
+    const { result } = await rendered;
+
+    await act(async () => result.current.beginHold());
+    // The guide moves on while the file lands; the pair is the one on screen at the start.
+    previousCut = 'snaply-2.mp4';
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    await act(async () => {
+      result.current.endHold();
+      finish('file:///tmp/clip.mov');
+    });
+
+    expect(mockCaptureMoment).toHaveBeenCalledWith('file:///tmp/clip.mov', {
+      durationSec: 3,
+      linedUpWith: 'snaply-1.mp4',
+    });
+  });
+
+  it('files no pair when the guide showed no previous cut', async () => {
+    const { record, finish } = pendingRecording();
+    const { rendered } = renderSession(createDevice({ record }), true, () => undefined);
+    const { result } = await rendered;
+
+    await act(async () => result.current.beginHold());
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    await act(async () => {
+      result.current.endHold();
+      finish('file:///tmp/clip.mov');
+    });
+
+    expect(mockCaptureMoment).toHaveBeenCalledWith('file:///tmp/clip.mov', { durationSec: 3 });
   });
 
   it('hands the saved snap to the automatic album save, without waiting on it', async () => {

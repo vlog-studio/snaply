@@ -8,12 +8,19 @@ async function registerFromApi(
   durationSeconds: number,
   capturedAt: string,
   clientId: string,
+  linedUpWith: string | undefined,
   signal?: AbortSignal,
 ): Promise<void> {
   // The response body is not needed — success of the envelope is the signal.
   await apiRequest('/videos', {
     method: 'POST',
-    body: { videoId, durationSeconds, capturedAt, clientId },
+    body: {
+      videoId,
+      durationSeconds,
+      capturedAt,
+      clientId,
+      ...(linedUpWith ? { linedUpWithClientId: linedUpWith } : {}),
+    },
     schema: z.unknown(),
     signal,
   });
@@ -40,6 +47,11 @@ function registerMock(videoId: string): Promise<void> {
  * sync store's file lost. Without it, that snap would come back as a second
  * one "from another device".
  *
+ * `linedUpWith` is the id of the snap this one was framed against
+ * (`Snap.linedUpWith`, SNAP-24). The server keeps it as given and the editor
+ * looks for it among a movie's own snaps, so it may name a snap that is not
+ * uploaded yet.
+ *
  * Routes to the mock until an API origin is configured.
  */
 export function registerVideo(
@@ -47,6 +59,7 @@ export function registerVideo(
   durationSeconds: number,
   capturedAt: number,
   clientId: string,
+  linedUpWith?: string,
   signal?: AbortSignal,
 ): Promise<void> {
   return USE_MOCK_API
@@ -56,6 +69,7 @@ export function registerVideo(
         durationSeconds,
         new Date(capturedAt).toISOString(),
         clientId,
+        linedUpWith,
         signal,
       );
 }

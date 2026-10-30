@@ -207,6 +207,11 @@ def _speech(path: str) -> tuple[tuple[int, int], ...]:
     return speech_spans_ms(get_speech_timestamps(audio, options, sampling_rate=VAD_SAMPLE_RATE))
 
 
+def speech_spans(path: str) -> tuple[tuple[int, int], ...]:
+    """발화 구간(ms) — 소리가 없으면 빈 목록. 레시피 무비가 말하는 컷의 말소리를 살릴 때 쓴다(trend-recipes §24)."""
+    return _speech(path) if has_audio(path) else ()
+
+
 def read_signals(path: str, duration_ms: int | None = None) -> SnapSignals:
     """원본 파일 하나의 신호. 읽을 수 없는 파일은 `SignalsError`."""
     duration = duration_ms if duration_ms else probe_duration_ms(path)

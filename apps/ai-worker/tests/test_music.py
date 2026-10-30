@@ -91,6 +91,18 @@ class MixGraphTest(unittest.TestCase):
     def test_partial_source_is_turned_down(self) -> None:
         self.assertIn("[0:a]volume=0.35[src]", self.graph(0.35, 0.7))
 
+    def test_speech_keeps_the_source_only_where_someone_talks(self) -> None:
+        # 음원만 레시피여도 말하는 구간은 원본을 살리고 음원을 낮춘다(trend-recipes §24)
+        with mock.patch.object(music.subprocess, "run") as run:
+            music.mix("in.mp4", "bgm.mp3", "out.mp4", 10.0, 0.0, 1.0, speech=[(2.0, 4.0)])
+        cmd = run.call_args.args[0]
+        graph = cmd[cmd.index("-filter_complex") + 1]
+        self.assertIn("[0:a]volume='", graph)
+        self.assertIn(":eval=frame[src]", graph)
+        self.assertIn("amix=inputs=2", graph)
+        self.assertIn("normalize=0", graph)  # 섞을 때 두 소리를 반씩 깎지 않는다 — 크기는 곡선이 정한다
+        self.assertEqual(self.graph(0.0, 1.0), self.graph(0.0, 1.0, 0.0))  # 말소리가 없으면 지금과 같다
+
     def test_end_fade_closes_the_whole_mix(self) -> None:
         for gains in [(1.0, 0.25), (0.35, 0.7), (0.0, 1.0)]:
             self.assertTrue(self.graph(*gains, 1.0).endswith(",afade=t=out:st=9.00:d=1[a]"), gains)

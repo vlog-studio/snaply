@@ -145,6 +145,68 @@
           "grantedAt"
         ]
       },
+      "PreviousCutReadInput": {
+        "type": "object",
+        "properties": {
+          "scene": {
+            "type": "string",
+            "enum": [
+              "food",
+              "person",
+              "person_landscape",
+              "landscape",
+              "other"
+            ],
+            "description": "장면 종류 — 음식 · 인물 · 인물과 풍경 · 풍경 · 그 밖"
+          },
+          "subject": {
+            "nullable": true,
+            "description": "뚜렷한 피사체가 없으면 null",
+            "type": "object",
+            "properties": {
+              "cx": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "피사체 중심의 가로 위치(장면 너비 몫, 왼쪽 0)"
+              },
+              "cy": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "피사체 중심의 세로 위치(장면 높이 몫, 위 0)"
+              },
+              "size": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "피사체 크기(장면 너비 몫)"
+              }
+            },
+            "required": [
+              "cx",
+              "cy",
+              "size"
+            ]
+          },
+          "advice": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "다음 컷을 어떻게 이어 찍을지 한 줄(해요체). 사용자에게 그대로 보인다"
+          },
+          "model": {
+            "type": "string",
+            "description": "해석한 모델"
+          }
+        },
+        "required": [
+          "scene",
+          "subject",
+          "advice",
+          "model"
+        ]
+      },
       "VideoInput": {
         "type": "object",
         "properties": {
@@ -756,6 +818,24 @@
                       "face"
                     ]
                   },
+                  "editing": {
+                    "description": "편집 선택(MOV-29). 생략하면 둘 다 꺼짐 — 이 필드가 생기기 전의 작업도 같은 결과다. `sceneOrder` 는 API 가 순서의 주인이 AI 인 무비에만 켜서 보낸다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+                      }
+                    },
+                    "required": [
+                      "speech",
+                      "sceneOrder"
+                    ]
+                  },
                   "autoCuts": {
                     "description": "`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).",
                     "type": "boolean"
@@ -789,6 +869,14 @@
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 9007199254740991
+                            },
+                            "trimOwner": {
+                              "description": "구간의 주인(MOV-22). `ai` 면 워커가 경계를 박자에 맞추고 흔들리는 구간을 같은 스냅의 안정된 구간으로 옮겨도 된다(MOV-29). 생략하면 `user`.",
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "ai"
+                              ]
                             }
                           },
                           "required": [
@@ -1247,7 +1335,7 @@
               "pad_black",
               "pad_white"
             ],
-            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
+            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `pad_black`(검정 띠, 기본) · `blur_background`(흐린 원본) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
           },
           "decorations": {
             "type": "object",
@@ -1271,6 +1359,24 @@
               "face"
             ],
             "description": "무비의 꾸밈(글자 · 이모지 · 얼굴 스티커). 바꾸면 다음 생성부터 적용된다 — 컷 · 순서 · 효과 · 곡은 그대로다."
+          },
+          "editing": {
+            "type": "object",
+            "properties": {
+              "speech": {
+                "type": "boolean",
+                "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+              },
+              "sceneOrder": {
+                "type": "boolean",
+                "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+              }
+            },
+            "required": [
+              "speech",
+              "sceneOrder"
+            ],
+            "description": "무비의 편집 선택(말소리 · 장면 순서). 바꾸면 다음 생성부터 적용된다."
           },
           "ratio": {
             "type": "string",
@@ -1332,6 +1438,7 @@
           "captions",
           "fitMode",
           "decorations",
+          "editing",
           "ratio",
           "arranger",
           "clips",
@@ -1847,6 +1954,70 @@
           "currentVersion",
           "granted",
           "grantedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PreviousCutRead": {
+        "type": "object",
+        "properties": {
+          "scene": {
+            "type": "string",
+            "enum": [
+              "food",
+              "person",
+              "person_landscape",
+              "landscape",
+              "other"
+            ],
+            "description": "장면 종류 — 음식 · 인물 · 인물과 풍경 · 풍경 · 그 밖"
+          },
+          "subject": {
+            "nullable": true,
+            "description": "뚜렷한 피사체가 없으면 null",
+            "type": "object",
+            "properties": {
+              "cx": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "피사체 중심의 가로 위치(장면 너비 몫, 왼쪽 0)"
+              },
+              "cy": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "피사체 중심의 세로 위치(장면 높이 몫, 위 0)"
+              },
+              "size": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "피사체 크기(장면 너비 몫)"
+              }
+            },
+            "required": [
+              "cx",
+              "cy",
+              "size"
+            ],
+            "additionalProperties": false
+          },
+          "advice": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "다음 컷을 어떻게 이어 찍을지 한 줄(해요체). 사용자에게 그대로 보인다"
+          },
+          "model": {
+            "type": "string",
+            "description": "해석한 모델"
+          }
+        },
+        "required": [
+          "scene",
+          "subject",
+          "advice",
+          "model"
         ],
         "additionalProperties": false
       },
@@ -2474,6 +2645,25 @@
                     ],
                     "additionalProperties": false
                   },
+                  "editing": {
+                    "description": "편집 선택(MOV-29). 생략하면 둘 다 꺼짐 — 이 필드가 생기기 전의 작업도 같은 결과다. `sceneOrder` 는 API 가 순서의 주인이 AI 인 무비에만 켜서 보낸다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+                      }
+                    },
+                    "required": [
+                      "speech",
+                      "sceneOrder"
+                    ],
+                    "additionalProperties": false
+                  },
                   "autoCuts": {
                     "description": "`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).",
                     "type": "boolean"
@@ -2507,6 +2697,14 @@
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 9007199254740991
+                            },
+                            "trimOwner": {
+                              "description": "구간의 주인(MOV-22). `ai` 면 워커가 경계를 박자에 맞추고 흔들리는 구간을 같은 스냅의 안정된 구간으로 옮겨도 된다(MOV-29). 생략하면 `user`.",
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "ai"
+                              ]
                             }
                           },
                           "required": [
@@ -2976,7 +3174,7 @@
               "pad_black",
               "pad_white"
             ],
-            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
+            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `pad_black`(검정 띠, 기본) · `blur_background`(흐린 원본) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
           },
           "decorations": {
             "type": "object",
@@ -3001,6 +3199,25 @@
             ],
             "additionalProperties": false,
             "description": "무비의 꾸밈(글자 · 이모지 · 얼굴 스티커). 바꾸면 다음 생성부터 적용된다 — 컷 · 순서 · 효과 · 곡은 그대로다."
+          },
+          "editing": {
+            "type": "object",
+            "properties": {
+              "speech": {
+                "type": "boolean",
+                "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+              },
+              "sceneOrder": {
+                "type": "boolean",
+                "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+              }
+            },
+            "required": [
+              "speech",
+              "sceneOrder"
+            ],
+            "additionalProperties": false,
+            "description": "무비의 편집 선택(말소리 · 장면 순서). 바꾸면 다음 생성부터 적용된다."
           },
           "ratio": {
             "type": "string",
@@ -3062,6 +3279,7 @@
           "captions",
           "fitMode",
           "decorations",
+          "editing",
           "ratio",
           "arranger",
           "clips",
@@ -4958,6 +5176,13 @@
                     "minLength": 1,
                     "maxLength": 128,
                     "example": "snaply-1727400000000.mp4"
+                  },
+                  "linedUpWithClientId": {
+                    "description": "촬영 가이드로 겹쳐 보며 이어 찍은 앞 스냅의 앱 id(그 스냅의 `clientId`, 서버에서 받은 스냅이면 영상 id). 선택값 — 서버는 해석하지 않고 저장만 하며, AI 편집이 같은 무비 안에서 그 스냅을 찾아 둘을 붙일 후보로 우대한다(SNAP-24). 생략하면 짝이 없다.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "example": "snaply-1727399990000.mp4"
                   }
                 },
                 "required": [
@@ -6344,6 +6569,170 @@
         }
       }
     },
+    "/capture-coach/previous-cut": {
+      "post": {
+        "summary": "앞 컷 마지막 장면 해석 (촬영 코치)",
+        "tags": [
+          "capture"
+        ],
+        "description": "촬영 가이드가 켜져 있을 때 앱이 **앞 컷의 마지막 장면 한 장**을 보내면, AI 가 장면 종류 · 피사체 자리 ·\n다음 컷 안내 한 줄을 돌려준다(SNAP-25). 앱은 안내를 그대로 보여 주고 피사체 자리를 점선 상자로 그린다.\n\n**동기**다 — 응답이 곧 결과이고 보통 1~2초, 길어야 8초다. 모델은 `CAPTURE_COACH_MODEL`(기본 `gpt-6-luna`).\n**저장하지 않는다** — 해석은 응답으로만 돌려준다.\n\n스냅 분석과 같은 스위치 · 같은 동의를 따른다 — 꺼져 있으면 503 `ANALYSIS_DISABLED`, 동의가 없으면\n403 `ANALYSIS_CONSENT_REQUIRED`, 서버에 모델 키가 없으면 503 `CAPTURE_COACH_UNAVAILABLE`, 모델이 실패하면\n502 `CAPTURE_COACH_FAILED`. 앱은 어느 실패든 모델 없는 안내(SNAP-23)로 돌아간다.\n\n```json\n{ \"success\": true, \"data\": { \"scene\": \"food\", \"subject\": { \"cx\": 0.33, \"cy\": 0.4, \"size\": 0.35 },\n  \"advice\": \"다음 메뉴도 같은 자리에 두고 찍어 보세요\", \"model\": \"gpt-6-luna\" } }\n```",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1500000,
+                    "pattern": "^[A-Za-z0-9+/]+=*$",
+                    "description": "앞 컷 마지막 장면의 JPEG, base64(데이터 URL 접두어 없이)"
+                  }
+                },
+                "required": [
+                  "image"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PreviousCutRead"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "purgeAfter": {
+                          "description": "ACCOUNT_PENDING_DELETION — 이 시각 이전에는 POST /auth/me/restore 로 복구 가능",
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "message"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/edit-jobs/{id}": {
       "get": {
         "summary": "편집 작업 상태 조회",
@@ -6751,7 +7140,7 @@
                     "type": "boolean"
                   },
                   "fitMode": {
-                    "description": "남는 자리를 채우는 방식. 생략하면 `blur_background`.",
+                    "description": "남는 자리를 채우는 방식. 생략하면 `pad_black`.",
                     "type": "string",
                     "enum": [
                       "contain",
@@ -6776,6 +7165,20 @@
                       "face": {
                         "type": "boolean",
                         "description": "얼굴을 따라다니는 스티커(왕관 · 하트 · 반짝이)."
+                      }
+                    }
+                  },
+                  "editing": {
+                    "description": "편집 선택(말소리 · 장면 순서). 생략한 키는 꺼짐이다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
                       }
                     }
                   },
@@ -7358,6 +7761,20 @@
                       "face": {
                         "type": "boolean",
                         "description": "얼굴을 따라다니는 스티커(왕관 · 하트 · 반짝이)."
+                      }
+                    }
+                  },
+                  "editing": {
+                    "description": "보낸 키만 바꾼다. 레시피를 바꿔도 그대로다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
                       }
                     }
                   },
@@ -11313,6 +11730,10 @@
     {
       "name": "movie-templates",
       "description": "무비 템플릿 카탈로그. \"템플릿으로 시작\"이 고르는 무비의 형태이며, 앱은 응답을 캐시하고 실패하면 내장 카탈로그로 폴백한다."
+    },
+    {
+      "name": "capture",
+      "description": "촬영 코치"
     },
     {
       "name": "locations",

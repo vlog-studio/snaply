@@ -11,7 +11,9 @@ import {
   type EditSpec,
   FIT_MODES,
   type FitMode,
+  type MovieArranger,
   type MovieDecorations,
+  type MovieEditing,
   type OutputProfile,
   type RenderSpec,
   type StylePreset,
@@ -146,6 +148,8 @@ function timelineSpec(
   recipe?: MovieRecipe,
   autoCuts?: boolean,
   decorations?: MovieDecorations,
+  editing?: MovieEditing,
+  trimOwners?: MovieArranger[],
 ): EditSpec {
   if (transitions.length !== clips.length - 1) {
     throw new Error('전환은 컷 사이마다 하나씩이어야 합니다.');
@@ -158,12 +162,16 @@ function timelineSpec(
     ...(autoCuts !== undefined ? { autoCuts } : {}),
     // 꾸밈(MOV-27) — 워커는 이 값만 보고 붙인다. 레시피 편집의 시드에는 넣지 않는다(worker._variant_key).
     ...(decorations !== undefined ? { decorations } : {}),
+    // 편집 선택(MOV-29) — 하나라도 켜졌을 때만 싣는다(꺼진 무비의 스펙은 지금과 같다)
+    ...(editing !== undefined && (editing.speech || editing.sceneOrder) ? { editing } : {}),
     timeline: {
       cuts: clips.map((clip, index) => ({
         cutId: `c${index}`,
         videoId: clip.videoId,
         sourceInMs: clip.startMs,
         ...(clip.endMs !== undefined ? { sourceOutMs: clip.endMs } : {}),
+        // AI 가 자른 컷만 표시한다 — 워커가 그 컷의 경계를 박자 · 흔들림에 맞춰 옮겨도 된다(MOV-29). 생략은 사용자 구간이다
+        ...(trimOwners?.[index] === 'ai' ? { trimOwner: 'ai' as const } : {}),
       })),
       transitions: transitions.map((transition, index) => ({
         fromCutId: `c${index}`,
@@ -278,6 +286,10 @@ export async function createEditJob(params: {
   autoCuts?: boolean;
   /** 무비의 꾸밈(MOV-27). v3 스펙에만 실린다 — 없으면 워커가 레시피 기본값을 쓴다. */
   decorations?: MovieDecorations;
+  /** 무비의 편집 선택(MOV-29). v3 스펙에만, 하나라도 켜졌을 때 실린다. */
+  editing?: MovieEditing;
+  /** 컷마다 구간의 주인(MOV-22) — clips 와 같은 순서. v3 스펙의 컷에 AI 것만 표시한다. */
+  trimOwners?: MovieArranger[];
 }): Promise<{ jobId: string; videoId: string }> {
   const prisma = getPrisma();
   validateClips(params.clips);
@@ -289,7 +301,8 @@ export async function createEditJob(params: {
   const editSpec: EditSpec =
     params.transitions === undefined
       ? { version: 2, stylePreset: params.stylePreset, clips }
-      : timelineSpec(params.stylePreset, clips, params.transitions, params.recipe, params.autoCuts, params.decorations);
+      : timelineSpec(params.stylePreset, clips, params.transitions, params.recipe, params.autoCuts, params.decorations,
+          params.editing, params.trimOwners);
   const renderSpec = createRenderSpec(params.outputProfile, params.fitMode);
   const uniqueVideoIds = [...new Set(clips.map((clip) => clip.videoId))];
 

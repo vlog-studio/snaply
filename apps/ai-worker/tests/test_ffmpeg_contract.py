@@ -876,7 +876,7 @@ class StickerOverlayContract(unittest.TestCase):
     def test_overlay_track_keeps_alpha_and_draws_the_sticker(self) -> None:
         from pipeline import sticker, sticker_render
 
-        placed = sticker.Sticker("a", "1f525", "", "freezone.topLeft", (0.3, 0.3), 240, 0.0, "popBob", 0, 1500, (0, 500, 1000))
+        placed = sticker.Sticker("a", "sk-3013", "", "freezone.topLeft", (0.3, 0.3), 240, 0.0, "popBob", 0, 1500, (0, 500, 1000))
         with tempfile.TemporaryDirectory() as work:
             track = sticker_render.bake_overlay([placed], 1500, os.path.join(work, "stickers.mov"))
             base = os.path.join(work, "base.mp4")
@@ -994,6 +994,28 @@ def audio_level(path: str, start: float, seconds: float) -> float:
 @unittest.skipUnless(FFMPEG_AVAILABLE, "ffmpeg/ffprobe 없음")
 class TrendRecipeContract(unittest.TestCase):
     """트렌드 레시피의 렌더 능력 — 배속, 효과음 자리, 타이틀 한글, 이음 재기, 그리고 한 편 전체."""
+
+    def test_speech_windows_bring_the_voice_up_and_the_music_down(self) -> None:
+        # 음원만 레시피여도 말하는 구간(2~4초)만 원본을 살리고 음원을 낮춘다(trend-recipes §24)
+        from pipeline import music
+
+        with tempfile.TemporaryDirectory() as work:
+            voice, quiet = os.path.join(work, "voice.mp4"), os.path.join(work, "quiet.mp4")
+            make_tone_clip(voice, volume=0.3, seconds=6.0)
+            make_tone_clip(quiet, volume=0.0, seconds=6.0)
+            tone, silence = os.path.join(work, "tone.m4a"), os.path.join(work, "silence.m4a")
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=330:duration=8", "-af", "volume=0.3",
+                            tone], check=True)
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", "8", silence],
+                           check=True)
+            src_only = os.path.join(work, "src_only.mp4")
+            music.mix(voice, silence, src_only, 6.0, 0.0, 1.0, speech=[(2.0, 4.0)])
+            self.assertGreater(audio_level(src_only, 2.5, 1.0), 0.02)  # 말하는 구간 — 원본이 들린다(사인파 진폭 1/8 × 0.3 → RMS 0.026)
+            self.assertLess(audio_level(src_only, 0.3, 1.0), 0.005)  # 밖 — 음원만 레시피 그대로 원본 0
+            bgm_only = os.path.join(work, "bgm_only.mp4")
+            music.mix(quiet, tone, bgm_only, 6.0, 0.0, 1.0, speech=[(2.0, 4.0)])
+            inside, outside = audio_level(bgm_only, 2.5, 1.0), audio_level(bgm_only, 0.3, 1.0)
+            self.assertLess(inside, outside * 0.5)  # 말하는 동안 음원이 0.3 배로
 
     def test_retime_halves_the_cut_and_keeps_sound(self) -> None:
         with tempfile.TemporaryDirectory() as work:
@@ -1136,11 +1158,15 @@ class CutFxContract(unittest.TestCase):
             self.assertAlmostEqual(duration_of(out), 1.8, delta=0.1)
             top, middle = pixel(out, 0.2, y=320), pixel(out, 0.2, y=960)
             self.assertGreater(top[0], 150)
-            self.assertGreater(min(middle), 200)  # 둘째 칸은 0.3초에 들어온다 — 아직 흰 바탕
+            # 둘째 칸은 0.3초에 들어온다 — 그 자리는 흰 바탕이 아니라 첫 칸(빨강)을 흐리고 어둡게 깐 바탕(trend-recipes §19)
+            self.assertLess(min(middle), 120)  # 흰색(세 채널 모두 높음)이 아니다
+            self.assertGreater(middle[0], middle[1] + 60)  # 첫 칸의 빨강
             late = [pixel(out, 1.6, y=y) for y in (320, 960, 1600)]
             self.assertGreater(late[0][0], 150)  # 첫 칸은 마지막 프레임에 멈춰 남는다
             self.assertGreater(late[1][1], 90)
             self.assertGreater(late[2][2], 150)
+            for y in (638, 641, 1278, 1281):  # 칸 경계에 흰 줄(틈)이 없다
+                self.assertLess(min(pixel(out, 1.6, y=y)), 200, y)
 
     def test_many_prepared_segments_join_by_copy_without_the_sound_drifting(self) -> None:
         with tempfile.TemporaryDirectory() as work:
@@ -1153,6 +1179,8 @@ class CutFxContract(unittest.TestCase):
             out = editor.join_prepared(prepared, [Transition("hardcut")] * 11, DEFAULT_RENDER_SPEC, work)
             self.assertFalse(os.path.exists(os.path.join(work, "group_0.mp4")))  # 다시 인코딩하는 결합을 타지 않았다
             self.assertAlmostEqual(duration_of(out), 6.0, delta=0.1)
+            # 영상도 소리와 같은 0 에서 시작한다 — concat 이 소리의 앞 패딩(AAC −21ms)에 맞춰 영상을 밀어, 무비 전체가 음악보다 1프레임 늦었다(2026-10-29)
+            self.assertLess(float(probe(out)["video"]["start_time"]), 0.005)
             # 끝쪽 구간들(짝수 번째는 무음) — 경계 앞뒤 100ms 를 비우고 잰다. 100ms 넘게 밀렸다면 소리 있는 구간과 없는 구간이 섞인다
             # (Debian ffmpeg 7.1 에서 경계 몇 곳이 25~50ms 밀린다 — 9.0 은 0. 음원만 레시피는 원본 소리를 빼므로 영향이 없다)
             self.assertLess(audio_level(out, 5.1, 0.3), 0.005)
@@ -1160,6 +1188,52 @@ class CutFxContract(unittest.TestCase):
             self.assertGreater(audio_level(out, 4.6, 0.3), 0.015)
             self.assertLess(audio_level(out, 4.1, 0.3), 0.005)
             self.assertGreater(abs(pixel(out, 5.25)[0] - pixel(out, 5.75)[0]), 30)  # 영상도 제자리
+
+    def test_sources_with_different_colour_tags_join_without_dropping_frames(self) -> None:
+        # 앱 스냅(yuvj 풀 레인지 · bt470bg)과 가져온 영상(bt709)이 섞인 무비 — 이어 붙인 파일을 겹치기(overlay)에 넣으면 속성이 바뀌는 자리에서
+        # 필터가 다시 초기화되며 프레임을 버렸다(2026-10-29, 8.07초에서 267ms 멈춤). 구간마다 같은 형식이어야 프레임 수가 그대로다
+        with tempfile.TemporaryDirectory() as work:
+            clips = []
+            for i, tags in enumerate((["-pix_fmt", "yuvj420p", "-colorspace", "bt470bg", "-color_primaries", "bt470bg"],
+                                      ["-pix_fmt", "yuv420p", "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709"],
+                                      ["-pix_fmt", "yuvj420p", "-colorspace", "bt470bg", "-color_primaries", "bt470bg"])):
+                path = os.path.join(work, f"c{i}.mp4")
+                subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "testsrc2=s=720x1280:rate=30:duration=1",
+                                "-f", "lavfi", "-i", "sine=duration=1", "-c:v", "libx264", *tags, "-c:a", "aac", "-shortest", path],
+                               capture_output=True, check=True)
+                clips.append(ClipSource(path))
+            prepared = editor.prepare_segments(clips, get_preset("일상"), DEFAULT_RENDER_SPEC, work, level_audio=False, fast=True)
+            formats = {tuple(probe(p)["video"].get(k) for k in ("pix_fmt", "color_space", "color_primaries", "color_range"))
+                       for p in prepared}
+            self.assertEqual(formats, {("yuv420p", "bt709", "bt709", "tv")})
+            joined = editor.join_prepared(prepared, [Transition("hardcut")] * 2, DEFAULT_RENDER_SPEC, work)
+            out = os.path.join(work, "overlaid.mp4")
+            subprocess.run(["ffmpeg", "-y", "-i", joined, "-f", "lavfi", "-i", "color=c=red@0.0:s=1080x1920:rate=30:d=3,format=rgba",
+                            "-filter_complex", "[0:v][1:v]overlay=0:0:eof_action=pass[v]", "-map", "[v]", "-c:v", "libx264",
+                            "-preset", "ultrafast", out], capture_output=True, check=True)
+            frames = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries",
+                                     "stream=nb_read_packets", "-of", "csv=p=0", out], capture_output=True, text=True).stdout.strip()
+            self.assertEqual(int(frames), 90)
+
+    def test_a_shaky_clip_is_stabilized_and_a_steady_one_is_left_alone(self) -> None:
+        # 손떨림 보정(trend-recipes §21) — 고친 뒤 다시 재서 확실히 나아질 때만 보정본을 쓴다
+        from pipeline import steadiness
+
+        with tempfile.TemporaryDirectory() as work:
+            # 움직이지 않는 무늬 한 장을 프레임마다 무작위로 흔든다 — testsrc2 는 화면 안의 막대 · 숫자가 움직여 보정이 그것을 따라갔다
+            texture, shaky, steady = (os.path.join(work, n) for n in ("t.png", "shaky.mp4", "steady.mp4"))
+            subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", "nullsrc=s=800x1400,geq=lum=random(1)*255:cb=128:cr=128",
+                            "-frames:v", "1", "-vf", "gblur=sigma=4,eq=contrast=3", texture], capture_output=True, check=True)
+            for path, x, y in ((shaky, "40+16*random(1)", "40+16*random(2)"), (steady, "40", "40")):
+                subprocess.run(["ffmpeg", "-y", "-loop", "1", "-i", texture, "-f", "lavfi", "-i", "sine=duration=2", "-t", "2",
+                                "-r", "30", "-vf", f"crop=720:1280:'{x}':'{y}'", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                                "-c:a", "aac", "-shortest", path], capture_output=True, check=True)
+            fixed = steadiness.stabilize(shaky, 0, 2000, os.path.join(work, "s"))
+            self.assertIsNotNone(fixed)
+            before, after = steadiness.read(shaky), steadiness.read(fixed)
+            self.assertLess(steadiness.cost(after, 0, 2000), steadiness.cost(before, 0, 2000) * 0.8)
+            self.assertAlmostEqual(duration_of(fixed), 2.0, delta=0.1)
+            self.assertIsNone(steadiness.stabilize(steady, 0, 2000, os.path.join(work, "t")))
 
     def test_speed_and_effects_go_in_the_one_normalize_pass(self) -> None:
         from pipeline import cut_fx

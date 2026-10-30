@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snaply 레시피 스튜디오</title>
+<style>
+  :root { --bg:#111214; --panel:#1b1d21; --line:#2c2f35; --text:#e8e8ea; --dim:#9a9ca3; --accent:#ff6b8a; --good:#4cc38a; --bad:#ff6b6b; --warn:#f0b54a; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  header { padding:12px 20px; border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:baseline; }
+  header h1 { font-size:17px; margin:0; } header span { color:var(--dim); font-size:12px; }
+  main { display:grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 50px); }
+  aside { border-right:1px solid var(--line); padding:16px; overflow:auto; max-height: calc(100vh - 50px); }
+  section { padding:16px; overflow:auto; max-height: calc(100vh - 50px); }
+  label { display:block; color:var(--dim); font-size:12px; margin:12px 0 4px; }
+  select, input[type=text] { width:100%; background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:7px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:6px; padding:9px 14px; font-weight:600; cursor:pointer; }
+  button.ghost { background:var(--panel); color:var(--text); border:1px solid var(--line); font-weight:400; padding:5px 9px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .hint { color:var(--dim); font-size:12px; }
+  .snaps { display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; }
+  .snap { position:relative; border:2px solid transparent; border-radius:6px; overflow:hidden; cursor:pointer; background:#000; aspect-ratio: 9/16; }
+  .snap.on { border-color: var(--accent); } .snap video, .snap img { width:100%; height:100%; object-fit:cover; display:block; }
+  .snap:not(.on) { opacity:.45; }
+  .snap i { position:absolute; left:3px; bottom:2px; font-size:10px; font-style:normal; background:#0009; padding:0 3px; border-radius:3px; }
+  .jobs { width:100%; border-collapse:collapse; margin-bottom:16px; }
+  .jobs td, .jobs th { border-bottom:1px solid var(--line); padding:6px; text-align:left; font-size:13px; }
+  .jobs tr.sel { background:#ff6b8a1a; } .jobs tr { cursor:pointer; }
+  .bar { height:6px; background:var(--line); border-radius:3px; overflow:hidden; width:120px; } .bar b { display:block; height:100%; background:var(--accent); }
+  .st-done { color:var(--good); } .st-failed { color:var(--bad); } .st-running, .st-queued { color:var(--warn); }
+  .views { display:grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap:16px; }
+  .view { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px; }
+  .view h3 { margin:0 0 8px; font-size:14px; } .view video { width:100%; max-height:70vh; background:#000; border-radius:6px; }
+  .metrics { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+  .metrics td { padding:3px 4px; border-bottom:1px solid var(--line); } .metrics td:last-child { text-align:right; font-variant-numeric: tabular-nums; }
+  .good { color:var(--good); } .bad { color:var(--bad); }
+  details { margin-top:8px; font-size:12px; } pre { white-space:pre-wrap; color:var(--dim); max-height:240px; overflow:auto; }
+  .edl { font-size:11px; color:var(--dim); }
+  aside h2 { font-size:13px; margin:20px 0 6px; padding-top:12px; border-top:1px solid var(--line); }
+  .sub { font-size:12px; font-weight:600; margin:10px 0 2px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:5px 12px; cursor:pointer; }
+  .chip.on, .recipe.on { border-color:var(--accent); background:#ff6b8a22; }
+  .recipes { display:grid; grid-template-columns: 1fr 1fr; gap:6px; }
+  .recipe { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px 8px; cursor:pointer; }
+  .recipe b { display:block; font-size:13px; } .recipe span { color:var(--dim); font-size:11px; line-height:1.35; display:block; }
+  .rows .row { display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px dashed var(--line); }
+  .rows .row:last-child { border-bottom:0; } .row i { font-style:normal; margin-left:6px; }
+  .sw { appearance:none; width:34px; height:20px; border-radius:10px; background:var(--line); position:relative; cursor:pointer; margin:0; }
+  .sw::after { content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:left .12s; }
+  .sw:checked { background:var(--accent); } .sw:checked::after { left:16px; } .sw:disabled { opacity:.35; cursor:default; }
+  .snap b { position:absolute; right:3px; top:3px; background:var(--accent); color:#fff; font-size:11px; border-radius:9px; min-width:18px; text-align:center; padding:0 4px; }
+  details summary { cursor:pointer; margin-top:14px; }
+</style>
+</head>
+<body>
+<header><h1>Snaply 레시피 스튜디오</h1><span>스냅을 고르고 레시피로 렌더 — 결과 영상과 지표를 나란히 비교한다</span></header>
+<main>
+<aside>
+  <label>스냅 묶음</label>
+  <select id="set"></select>
+  <label>스냅 <span class="hint" id="count"></span> <button class="ghost" id="all">전체</button> <button class="ghost" id="none">해제</button></label>
+  <div class="hint">누른 순서가 번호 — '순서 고정'을 켜면 이 순서대로 잇는다.</div>
+  <div class="snaps" id="snaps"></div>
+
+  <h2>만드는 방법</h2>
+  <div class="chips" id="mode">
+    <span class="chip" data-v="new">스냅 골라 새 무비</span>
+    <span class="chip" data-v="auto">스냅 골라 자동 편집</span>
+  </div>
+  <div class="hint" id="modeHint"></div>
+
+  <h2>스타일</h2>
+  <div class="chips" id="style"></div>
+
+  <h2>편집</h2>
+  <div class="recipes" id="recipe"></div>
+
+  <h2>꾸밈</h2>
+  <div class="rows" id="decorations"></div>
+  <div class="rows">
+    <div class="row"><span>새 스티커만 <i class="hint">다연 님 그림 스티커 · 왕관 같은 예전 이모지 빼기</i></span><input type="checkbox" class="sw" id="newStickers" checked></div>
+    <div class="row"><span>가로 영상은 검은 띠 <i class="hint">블러 · 잘림 대신</i></span><input type="checkbox" class="sw" id="black" checked></div>
+  </div>
+  <div class="sub">편집</div>
+  <div class="rows">
+    <div class="row"><span>말소리</span><input type="checkbox" class="sw" id="speech"></div>
+    <div class="row"><span>장면 순서</span><input type="checkbox" class="sw" id="sceneOrder"></div>
+  </div>
+  <div class="hint">말소리는 말하는 부분의 목소리를 살리고 음악을 줄여요. 장면 순서는 AI가 순서를 정한 무비에서 장소별로 묶고 가장 생생한 장면을 맨 앞에 둬요.
+    편집 스타일을 바꾸면 꾸밈은 그 스타일의 기본값으로 돌아가요.</div>
+
+  <h2>세부</h2>
+  <div class="rows">
+    <div class="row"><span>순서 고정 <i class="hint" id="lockedSub"></i></span><input type="checkbox" class="sw" id="locked"></div>
+  </div>
+  <div class="rows">
+    <div class="row"><span>새 무비처럼 곡 다시 뽑기</span><input type="checkbox" class="sw" id="freshTrack"></div>
+  </div>
+  <div class="hint">곡은 스타일이 고른 폴더(일상 · 여행 · 감성)에서 무비마다 하나로 정해져요. 끄면 이 묶음 · 스타일에선 늘 같은 곡(레시피끼리 비교용), 켜면 렌더마다 새 무비처럼 다시 뽑아요 — 레시피의 무작위 선택도 함께 바뀌어요.</div>
+  <div class="hint">순서 고정을 켜면 누른 순서대로, 끄면 찍은 시각 순으로 이어요.</div>
+
+  <details><summary class="hint">스튜디오 전용</summary>
+    <label><input type="checkbox" id="analysis" checked> 내용 분석 사용 (OpenAI vision, 스냅마다 한 번 · 캐시)</label>
+    <label><input type="checkbox" id="sing"> 노래 살리기 (실험 — 반주 위 노래는 말소리 감지가 못 잡는다. 분석상 노래 · 마이크 동작이 있는 컷은 통째로 원본 소리를 살리고 음원을 낮춘다)</label>
+    <label><input type="checkbox" id="stabilize"> 손떨림 보정 (실험 — 운영에는 없음, 자동 편집 · 순서 고정을 끈 레시피만 · 렌더가 느려진다)</label>
+    <label>메모</label>
+    <input type="text" id="note" maxlength="80">
+  </details>
+  <p><button id="render">무비 만들기</button> <span class="hint" id="msg"></span></p>
+</aside>
+<section>
+  <table class="jobs"><thead><tr><th>비교</th><th>작업</th><th>묶음</th><th>레시피</th><th>메모</th><th>상태</th><th></th></tr></thead><tbody id="jobs"></tbody></table>
+  <div class="hint">행을 누르면 결과를 본다. '비교'를 두 개 고르면 나란히 놓는다.</div>
+  <div class="views" id="views"></div>
+</section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let sets = [], recipes = [], selected = [], compare = [], current = null, style = '일상', recipe = 'classic', mode = 'new';
+const MODE_HINT = {
+  new: '앱의 "스냅 골라 새 무비"와 같아요 — 스냅을 통째로 이어서 길이 제한이 없고(스냅 길이의 합), 편집 스타일은 음악 · 꾸밈 · 효과만 얹어요.',
+  auto: '앱의 "스냅 골라 자동 편집"과 같아요 — AI가 컷을 잘라요. 순서 고정을 끄면 편집 스타일이 컷 · 순서 · 길이까지 골라요(재료에 맞춰 최소 길이 ~ 60초).',
+};
+const DECORATIONS = [['text', '글자'], ['emoji', '이모지'], ['face', '얼굴 스티커']];
+const recipeOf = (id) => recipes.find((x) => x.id === id) || {};
+const decoLabel = (d) => DECORATIONS.filter(([k]) => d && d[k]).map(([, l]) => l).join('·') || '없음';
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const api = (p, body) => fetch(p, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : {}).then((r) => r.json());
+
+async function init() {
+  sets = await api('/api/sets');
+  $('set').innerHTML = sets.map((s) => `<option value="${esc(s.id)}">${esc(s.id === '.' ? s.name : s.id)} (${s.files.length})</option>`).join('');
+  const r = await api('/api/recipes'); recipes = r.recipes;
+  $('style').innerHTML = r.styles.map((x) => `<span class="chip" data-v="${esc(x)}">${esc(x)}</span>`).join('');
+  $('style').querySelectorAll('.chip').forEach((el) => el.onclick = () => { style = el.dataset.v; showChoices(); });
+  $('recipe').innerHTML = recipes.map((x) => `<div class="recipe" data-v="${esc(x.id)}"><b>${esc(x.label)}</b><span>${esc(x.description)}</span></div>`).join('');
+  $('recipe').querySelectorAll('.recipe').forEach((el) => el.onclick = () => { recipe = el.dataset.v; resetDecorations(); showChoices(); });
+  $('decorations').innerHTML = DECORATIONS.map(([k, l]) => `<div class="row"><span>${l}</span><input type="checkbox" class="sw" id="deco-${k}"></div>`).join('');
+  $('locked').onchange = showChoices;
+  // 새 무비는 사용자가 고른 순서가 기본(앱의 새 무비는 순서의 주인이 사용자), 자동 편집은 AI 순서가 기본
+  $('mode').querySelectorAll('.chip').forEach((el) => el.onclick = () => { mode = el.dataset.v; $('locked').checked = mode === 'new'; showChoices(); });
+  $('locked').checked = true;
+  resetDecorations(); showChoices(); showSet(); refresh(); setInterval(refresh, 2000);
+}
+// 앱처럼 — 편집 스타일(레시피)을 바꾸면 꾸밈은 그 레시피의 기본값으로
+function resetDecorations() { const d = recipeOf(recipe).decorations || {}; DECORATIONS.forEach(([k]) => { $('deco-' + k).checked = !!d[k]; }); }
+function showChoices() {
+  $('mode').querySelectorAll('.chip').forEach((el) => el.classList.toggle('on', el.dataset.v === mode));
+  $('modeHint').textContent = MODE_HINT[mode];
+  $('style').querySelectorAll('.chip').forEach((el) => el.classList.toggle('on', el.dataset.v === style));
+  $('recipe').querySelectorAll('.recipe').forEach((el) => el.classList.toggle('on', el.dataset.v === recipe));
+  const locked = $('locked').checked;
+  $('lockedSub').textContent = locked ? '지금 순서' : '찍은 시각 순';
+  // 장면 순서는 순서의 주인이 AI 인 무비만(앱 · API 와 같다)
+  $('sceneOrder').disabled = locked; if (locked) $('sceneOrder').checked = false;
+}
+function showSet() {
+  const s = sets.find((x) => x.id === $('set').value); if (!s) return;
+  selected = [...s.files];
+  $('snaps').innerHTML = s.files.map((f) => `<div class="snap" data-f="${esc(f)}"><img loading="lazy" src="/thumb/${encodeURI(s.id)}/${encodeURIComponent(f)}" data-src="/media/${encodeURI(s.id)}/${encodeURIComponent(f)}"><i>${esc(f.slice(-12))}</i><b></b></div>`).join('');
+  $('snaps').querySelectorAll('.snap').forEach((el) => {
+    el.onclick = () => { const f = el.dataset.f; selected = selected.includes(f) ? selected.filter((x) => x !== f) : [...selected, f]; count(); };
+    // 마우스를 올리면 그 자리에서 영상을 재생한다(썸네일 → 영상)
+    el.onmouseenter = () => { const img = el.querySelector('img'); if (!img) return; const v = document.createElement('video');
+      v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true; v.src = img.dataset.src; el.replaceChild(v, img); el._img = img; };
+    el.onmouseleave = () => { const v = el.querySelector('video'); if (v && el._img) el.replaceChild(el._img, v); };
+  });
+  count();
+}
+function count() {
+  $('count').textContent = `${selected.length}개 선택`;
+  $('snaps').querySelectorAll('.snap').forEach((el) => { const n = selected.indexOf(el.dataset.f);
+    el.classList.toggle('on', n >= 0); el.querySelector('b').textContent = n >= 0 ? n + 1 : ''; el.querySelector('b').style.display = n >= 0 ? '' : 'none'; });
+}
+$('set').onchange = showSet;
+$('all').onclick = () => { selected = [...sets.find((x) => x.id === $('set').value).files]; count(); };
+$('none').onclick = () => { selected = []; count(); };
+$('render').onclick = async () => {
+  const s = sets.find((x) => x.id === $('set').value);
+  const decorations = Object.fromEntries(DECORATIONS.map(([k]) => [k, $('deco-' + k).checked]));
+  const job = await api('/api/render', {set: s.id, files: selected, recipe, style, decorations, locked: $('locked').checked, freshTrack: $('freshTrack').checked, sing: $('sing').checked, auto: mode === 'auto', black: $('black').checked, newStickers: $('newStickers').checked,
+    analysis: $('analysis').checked, stabilize: $('stabilize').checked, speech: $('speech').checked, sceneOrder: $('sceneOrder').checked, note: $('note').value});
+  if (job.error) { $('msg').textContent = job.error; return; }
+  $('msg').textContent = `시작 — ${job.id}`; current = job.id; compare = []; refresh();
+};
+
+async function refresh() {
+  const jobs = await api('/api/jobs');
+  $('jobs').innerHTML = jobs.map((j) => `<tr data-id="${j.id}" class="${j.id === current ? 'sel' : ''}">
+    <td><input type="checkbox" data-cmp="${j.id}" ${compare.includes(j.id) ? 'checked' : ''}></td>
+    <td>${esc(j.id)}</td><td>${esc(j.set === '.' ? '' : j.set)} · ${j.files.length}</td><td>${choices(j)}</td><td>${esc(j.note)}</td>
+    <td class="st-${j.status}">${esc(j.status === 'failed' ? (j.error || '실패') : j.step)}</td><td><div class="bar"><b style="width:${j.progress}%"></b></div></td></tr>`).join('');
+  $('jobs').querySelectorAll('tr').forEach((tr) => tr.onclick = (e) => {
+    if (e.target.dataset.cmp) { const id = e.target.dataset.cmp; compare = compare.includes(id) ? compare.filter((x) => x !== id) : [...compare, id].slice(-2); }
+    else { current = tr.dataset.id; compare = []; }
+    refresh();
+  });
+  const ids = compare.length ? compare : (current ? [current] : []);
+  const key = ids.join(',') + ':' + jobs.filter((j) => ids.includes(j.id)).map((j) => j.status + j.progress).join();
+  if (key !== $('views').dataset.key) { $('views').dataset.key = key; renderViews(ids); }
+}
+
+// 앱의 칩처럼 — 스타일 · 편집 · 꾸밈 · 세부
+function choices(j) {
+  const edits = [j.speech && '말소리', j.sceneOrder && '장면 순서'].filter(Boolean);
+  return esc(`${j.auto === undefined ? '' : j.auto ? '자동 편집 · ' : '새 무비 · '}스타일 ${j.style} · 편집 ${recipeOf(j.recipe).label || j.recipe} · 꾸밈 ${j.decorations ? decoLabel(j.decorations) : '기본'}`
+    + `${edits.length ? '·' + edits.join('·') : ''} · ${j.locked ? '지금 순서' : '찍은 시각 순'}${j.freshTrack ? ' · 새 곡' : ''}${j.sing ? ' · 노래 살림' : ''}${j.black ? ' · 검은 띠' : ''}${j.newStickers ? ' · 새 스티커' : ''}${j.stabilize ? ' · 보정' : ''}`
+    + (j.track ? ` · ♪ ${j.track}` : ''));
+}
+const fmt = (v, d = 2) => v == null ? '–' : (typeof v === 'number' ? +v.toFixed(d) : v);
+function metricRows(m) {
+  const b = m.beat || {};
+  const rows = [
+    ['길이(초)', fmt(m.duration)], ['컷 수', m.cuts], ['평균 샷(초)', fmt(m.meanShot)],
+    ['샷 길이 변동계수 (높을수록 변주)', fmt(m.shotCv), m.shotCv >= 0.3],
+    ['박자 80ms 안 컷 비율', fmt(b.onBeat), b.onBeat >= 0.85],
+    ['박자 오차 중앙값 ms (무작위 기대)', `${fmt(b.medianMs, 0)} (${fmt(b.randomMs, 0)})`, b.medianMs != null && b.medianMs < b.randomMs / 2],
+    ['계획 대비 실제 컷 밀림 최대 ms', fmt(m.driftMs && m.driftMs.max, 0), m.driftMs && m.driftMs.max <= 34],
+    ['훅 (첫 2초 움직임 ÷ 평균)', fmt(m.hook), m.hook >= 1.3], ['빈 화면 몫', fmt(m.blankShare, 3), m.blankShare === 0],
+    ['손떨림 중앙값 / p90 px (낮을수록 안정)', `${fmt((m.shake||{}).median)} / ${fmt((m.shake||{}).p90)}`, m.shake && m.shake.median <= 1.5],
+    ['흔들리는 구간 몫 (2.5px 초과)', fmt((m.shake||{}).over), m.shake && m.shake.over <= 0.1],
+    ['장면 전환 / 최소 (같으면 핑퐁 없음)', m.scenes ? `${m.scenes.switches} / ${m.scenes.minimum} (장면 ${m.scenes.count})` : '–', m.scenes ? m.scenes.switches <= m.scenes.minimum : undefined],
+    ['프레임 구멍(멈춤) 수', (m.frameGaps || []).length + ((m.frameGaps || []).length ? ` @ ${m.frameGaps.join(', ')}s` : ''), (m.frameGaps || []).length === 0],
+    ['영상 시작 지연 ms (소리 기준)', fmt(m.videoStartMs, 0), m.videoStartMs != null && m.videoStartMs <= 5],
+    ['음량 LUFS / 트루피크', `${fmt(m.lufs, 1)} / ${fmt(m.truePeak, 1)}`, m.lufs > -15 && m.lufs < -13 && m.truePeak <= -1],
+  ];
+  return rows.map(([k, v, ok]) => `<tr><td>${k}</td><td class="${ok === undefined ? '' : ok ? 'good' : 'bad'}">${esc(v)}</td></tr>`).join('');
+}
+async function renderViews(ids) {
+  const views = await Promise.all(ids.map((id) => api(`/api/jobs/${id}`)));
+  $('views').innerHTML = views.map((j) => {
+    const r = j.result;
+    const head = `<h3>${choices(j)} ${j.note ? '— ' + esc(j.note) : ''}</h3>`;
+    if (!r) return `<div class="view">${head}<div class="hint">${esc(j.status === 'failed' ? j.error : `${j.step} (${j.progress}%)`)}</div><details open><summary>로그</summary><pre>${esc((j.log || []).slice(-40).join('\n'))}</pre></details></div>`;
+    const clips = ((r.edl || {}).clips || []).map((c) => `${fmt(c.at)}s  ${esc(r.snaps[c.snap] || c.snap)} [${fmt(c.in)}–${fmt(c.out)}] ${esc(c.transition || '')}${c.stabilized ? ' (보정)' : ''}`).join('\n');
+    const extra = {'말소리 살린 구간(ms)': (r.edl || {}).speech || [], '뺀 스냅(흔들림)': (r.dropped || []).map((i) => r.snaps[i] || i), '손떨림 보정한 컷(결과물 순서)': r.stabilized || [], 곡: (r.track || '').split('/').pop(), '꾸밈 결과(순서 고정 · 기본)': r.decorated, 타이틀: r.title, 글: r.accents, 이모지: r.stickers, 얼굴: r.faces, 효과음: (r.sfx || []).length, 룩: r.look, 분할: r.splits, '렌더(초)': r.seconds};
+    return `<div class="view">${head}<video controls playsinline src="/out/${j.id}/movie.mp4?v=${j.created}"></video>
+      <table class="metrics">${metricRows(r.metrics || {})}</table>
+      <details><summary>꾸밈 · 곡</summary><pre>${esc(JSON.stringify(extra, null, 1))}</pre></details>
+      <details><summary>컷 목록 (EDL)</summary><pre class="edl">${clips}</pre></details>
+      <details><summary>로그</summary><pre>${esc((j.log || []).slice(-60).join('\n'))}</pre></details></div>`;
+  }).join('');
+}
+init();
+</script>
+</body>
+</html>

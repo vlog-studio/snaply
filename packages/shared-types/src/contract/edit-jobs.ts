@@ -10,7 +10,9 @@ import {
   editJobErrorCodeSchema,
   editJobStatusSchema,
   fitModeSchema,
+  movieArrangerSchema,
   movieDecorationsSchema,
+  movieEditingSchema,
   movieRecipeSchema,
   outputProfileSchema,
   stylePresetSchema,
@@ -51,6 +53,9 @@ export const timelineCutSchema = z.object({
   videoId: z.uuid(),
   sourceInMs: z.int().min(0),
   sourceOutMs: z.int().min(1).optional().describe('생략하면 원본 끝까지.'),
+  trimOwner: movieArrangerSchema
+    .optional()
+    .describe('구간의 주인(MOV-22). `ai` 면 워커가 경계를 박자에 맞추고 흔들리는 구간을 같은 스냅의 안정된 구간으로 옮겨도 된다(MOV-29). 생략하면 `user`.'),
 });
 export type TimelineCut = z.infer<typeof timelineCutSchema>;
 
@@ -72,6 +77,11 @@ export const editSpecV3Schema = z.object({
     .optional()
     .describe(
       '무비의 꾸밈(MOV-27). 생략하면 레시피의 기본값 — 이 필드가 생기기 전의 작업도 같은 결과다. 레시피 편집의 시드(컷 · 순서 · 효과)에는 들어가지 않는다.',
+    ),
+  editing: movieEditingSchema
+    .optional()
+    .describe(
+      '편집 선택(MOV-29). 생략하면 둘 다 꺼짐 — 이 필드가 생기기 전의 작업도 같은 결과다. `sceneOrder` 는 API 가 순서의 주인이 AI 인 무비에만 켜서 보낸다.',
     ),
   autoCuts: z
     .boolean()

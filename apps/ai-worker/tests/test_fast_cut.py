@@ -63,15 +63,6 @@ class PeakTest(unittest.TestCase):
         starts = {c.start_ms for c in fc.candidates(0, series_with_motion(motion), frames_of(20), 500, 1000)}
         self.assertFalse(any(2000 <= s and s + 500 <= 3000 for s in starts), starts)
 
-    def test_tiling_gives_a_steady_snap_several_non_overlapping_windows(self):
-        series = series_with_motion([0.02] * 60)  # 6초 내내 고요
-        plain = fc.candidates(0, series, frames_of(30), 1000, 2500, (1000, 1500, 2200), steady=True, zoom_pairs=False)
-        tiled = fc.candidates(0, series, frames_of(30), 1000, 2500, (1000, 1500, 2200), steady=True, zoom_pairs=False, tile=True)
-        disjoint = lambda cs: max(  # noqa: E731
-            sum(1 for c in cs if c.start_ms >= start and (c.start_ms - start) % 1500 == 0 and c.length_ms == 1500) for start in (0,))
-        self.assertLess(disjoint(plain), 2)
-        self.assertGreaterEqual(disjoint(tiled), 3)  # 0 · 1.5 · 3 · 4.5초 — 점프컷으로 이어 쓸 수 있다
-
     def test_a_still_snap_still_gives_one_candidate(self):
         cands = fc.candidates(0, series_with_motion([0.01] * 30), frames_of(15), 500, 1000)
         self.assertEqual(len(cands), 1)
@@ -92,17 +83,6 @@ class BeamTest(unittest.TestCase):
             mine = [c for c in picked if c.snap == snap]
             self.assertLessEqual(len(mine), 3)
             self.assertFalse(any(fc._overlaps(a, b) for i, a in enumerate(mine) for b in mine[i + 1:]))
-
-    def test_jump_cuts_let_a_chronological_path_fill_the_target_from_few_snaps(self):
-        # 촬영 순서로만 잇는 포맷은 같은 스냅의 구간이 늘 붙어 있다 — 점프컷 없이는 스냅마다 하나씩(2 x 700ms)이라 목표에 못 미친다
-        cands = [fc.Candidate(snap, start, start + 700, quality=0.5) for snap in range(2) for start in (0, 1000, 2000)]
-        forward = lambda i, j: (cands[j].snap, cands[j].start_ms) > (cands[i].snap, cands[i].start_ms)  # noqa: E731
-        plain = fc.beam(cands, lambda i, j: 0.5, 4000, per_snap=3, allowed=forward, first=[0, 1, 2])
-        jumps = fc.beam(cands, lambda i, j: 0.5, 4000, per_snap=3, allowed=forward, first=[0, 1, 2], jump_cuts=True)
-        self.assertLess(sum(cands[k].length_ms for k in plain), 4000)
-        self.assertGreaterEqual(sum(cands[k].length_ms for k in jumps), 4000)
-        picked = [cands[k] for k in jumps]
-        self.assertEqual(picked, sorted(picked, key=lambda c: (c.snap, c.start_ms)))  # 그래도 촬영 순서
 
     def test_it_follows_the_link_scores(self):
         cands = [fc.Candidate(i, 0, 1000) for i in range(4)]

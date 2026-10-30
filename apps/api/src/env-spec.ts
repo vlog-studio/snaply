@@ -241,6 +241,13 @@ export const ENV_VARS = [
       'AI 편집 에이전트 모델(MOV-25, decisions/ai-edit-agent.md). 편집 워커도 텍스트 액센트의 생성 글(MOV-27, decisions/text-accent-stickers.md)에 같은 모델을 쓴다. 기본 gpt-5.6-luna — 잠정값, 실측 뒤 고정한다(backlog A-12)',
   },
   {
+    key: 'CAPTURE_COACH_MODEL',
+    required: false,
+    origin: 'shared',
+    description:
+      '촬영 코치의 앞 컷 해석 모델(SNAP-25, decisions/capture-coach.md §6). API 서버가 읽는다. 기본 gpt-6-luna — 잠정값, 지연 · 단가 실측 뒤 고정한다(backlog A-23). 키(OPENAI_API_KEY)가 없으면 503 으로 꺼진다',
+  },
+  {
     key: 'OPENAI_VISION_MODEL',
     required: false,
     origin: 'shared',

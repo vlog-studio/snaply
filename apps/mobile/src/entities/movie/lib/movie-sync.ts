@@ -51,6 +51,12 @@ export function movieFromRemote(remote: RemoteMovie, local: Movie | undefined): 
       : local?.decorations
         ? { decorations: local.decorations }
         : null),
+    // Likewise for the editing choices (MOV-29).
+    ...(remote.editing
+      ? { editing: remote.editing }
+      : local?.editing
+        ? { editing: local.editing }
+        : null),
     // The server has no track field (the pipeline scores from the preset), so
     // the stored choice is this device's and is simply kept.
     bgm: local?.bgm ?? DefaultMovieBgm,

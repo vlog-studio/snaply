@@ -196,5 +196,49 @@ class MatchFxTest(unittest.TestCase):
         self.assertIn("*(1+0.500*", vf)
 
 
+class PairTest(unittest.TestCase):
+    """겹쳐 보며 이어 찍은 짝(SNAP-24) — 무비 안에서 찾고, 순서를 고를 때만 우대한다(capture-coach §4.2)."""
+
+    def test_pairs_are_found_by_client_id_or_video_id_inside_the_movie(self):
+        ids = ["v1", "v2", "v3", "v4"]
+        client_ids = ["snaply-1.mp4", "snaply-2.mp4", None, "snaply-4.mp4"]
+        lined = [None, "snaply-1.mp4", "v2", "snaply-9.mp4"]  # 9 는 이 무비에 없다
+        self.assertEqual(mc.pairs_of(ids, client_ids, lined), [None, 0, 1, None])
+
+    def test_a_snap_is_never_its_own_pair(self):
+        self.assertEqual(mc.pairs_of(["v1"], ["snaply-1.mp4"], ["snaply-1.mp4"]), [None])
+
+    def test_the_bonus_goes_only_from_the_previous_cut_to_its_pair(self):
+        pairs = [None, 0]
+        self.assertEqual(mc.pair_bonus(0, 1, pairs), mc.PAIR_BONUS)
+        self.assertEqual(mc.pair_bonus(1, 0, pairs), 0.0)  # 거꾸로는 아니다
+        self.assertEqual(mc.pair_bonus(0, 1, None), 0.0)
+
+    def test_close_scores_put_the_pair_next_to_each_other(self):
+        s = np.full((4, 4), 0.5)
+        s[0][1], s[1][2], s[2][3] = 0.6, 0.6, 0.6  # 짝이 없으면 0 → 1 → 2 → 3
+        self.assertEqual(mc.order(s), [0, 1, 2, 3])
+        pairs = [None, None, None, 0]  # 3 은 0 에 맞춰 찍었다
+        boosted = [[s[i][j] + mc.pair_bonus(i, j, pairs) for j in range(4)] for i in range(4)]
+        path = mc.order(boosted)
+        self.assertEqual(path[path.index(0) + 1], 3)
+
+    def test_pairs_follow_the_snap_when_others_are_dropped(self):
+        from pipeline import trend_edit
+        a, b, c = (trend_edit.Snap(f"/w/{n}.mp4", {}) for n in "abc")
+        c = trend_edit.Snap(c.path, {}, lined_up_with=a.path)
+        self.assertEqual(trend_edit._pairs([a, b, c]), [None, None, 0])
+        self.assertEqual(trend_edit._pairs([a, c]), [None, 0])  # b 를 빼도 c 의 짝은 a 그대로
+        self.assertEqual(trend_edit._pairs([b, c]), [None, None])  # 짝이 빠지면 우대도 없다
+
+    def test_a_pair_that_does_not_fit_at_all_stays_apart(self):
+        s = np.full((3, 3), 0.9)
+        s[0][2] = 0.0  # 맞춰 찍었어도 이어지지 않는다 — 힌트일 뿐
+        pairs = [None, None, 0]
+        boosted = [[s[i][j] + mc.pair_bonus(i, j, pairs) for j in range(3)] for i in range(3)]
+        path = mc.order(boosted)
+        self.assertFalse(path.index(2) == path.index(0) + 1)
+
+
 if __name__ == "__main__":
     unittest.main()

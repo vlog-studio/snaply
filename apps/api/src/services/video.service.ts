@@ -151,6 +151,8 @@ export async function confirmUpload(params: {
   capturedAt?: string;
   /** 앱이 붙인 스냅 이름. 해석하지 않고 그대로 돌려준다. */
   clientId?: string;
+  /** 겹쳐 보며 이어 찍은 앞 스냅의 앱 id(SNAP-24). 해석하지 않고 저장만 한다 — 편집기가 무비 안에서 찾는다. */
+  linedUpWithClientId?: string;
 }): Promise<Video> {
   const prisma = getPrisma();
   const video = await prisma.video.findFirst({
@@ -180,6 +182,7 @@ export async function confirmUpload(params: {
       ...(params.durationSeconds !== undefined ? { durationSeconds: params.durationSeconds } : {}),
       ...(params.capturedAt !== undefined ? { capturedAt: new Date(params.capturedAt) } : {}),
       ...(params.clientId !== undefined ? { clientId: params.clientId } : {}),
+      ...(params.linedUpWithClientId !== undefined ? { linedUpWithClientId: params.linedUpWithClientId } : {}),
     },
     select: SELECT,
   });

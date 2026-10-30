@@ -24,6 +24,11 @@ type CaptureSessionInput = {
   onCaptureStart?: () => void;
   /** A snap was saved: anything listing saved recordings must pick it up. */
   onCaptureCollected?: () => void;
+  /**
+   * The snap the next capture is framed against, read when recording starts —
+   * the guide's previous cut moves on to the new snap as soon as it is saved.
+   */
+  linedUpWith?: () => string | undefined;
 };
 
 /**
@@ -41,6 +46,7 @@ export function useCaptureSession({
   ensureMicrophonePermission,
   onCaptureStart,
   onCaptureCollected,
+  linedUpWith,
 }: CaptureSessionInput) {
   const { captureMoment, error: momentError, clearError: clearMomentError } = useCaptureMoment();
 
@@ -107,6 +113,7 @@ export function useCaptureSession({
       setStage('recording');
       impactFeedback('medium');
 
+      const framedAgainst = linedUpWith?.();
       const uri = await device.record(duration);
       if (isAborted.current) return;
 
@@ -131,7 +138,10 @@ export function useCaptureSession({
       setStage('saving');
       // Persist the snap. It is filed into nothing — the user picks material
       // later in the snap tab — so there is no review step here.
-      const snap = await captureMoment(uri, { durationSec: duration });
+      const snap = await captureMoment(uri, {
+        durationSec: duration,
+        ...(framedAgainst ? { linedUpWith: framedAgainst } : {}),
+      });
       if (!snap) {
         setStage('idle');
         return;

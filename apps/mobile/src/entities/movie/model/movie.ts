@@ -1,5 +1,6 @@
 import type {
   MovieDecorationFlags,
+  MovieEditing as ContractMovieEditing,
   MovieRecipe as ContractMovieRecipe,
 } from '@vlog-studio/shared-types';
 
@@ -59,6 +60,15 @@ export type MovieRecipe = ContractMovieRecipe;
  * many. The keys are the contract's own (type-only here).
  */
 export type MovieDecorations = MovieDecorationFlags;
+
+/**
+ * The movie's editing choices (root docs/specs/movie.md MOV-29): 말소리
+ * (`speech` — where someone talks, their voice stays and the music dips) and
+ * 장면 순서 (`sceneOrder` — scene-by-scene order with the strongest moment
+ * first, for a movie whose order is the AI's). Both start off and do not follow
+ * the recipe. The keys are the contract's own (type-only here).
+ */
+export type MovieEditing = ContractMovieEditing;
 
 /**
  * A movie's lifecycle.
@@ -314,6 +324,13 @@ export type Movie = {
    * recipe's defaults, as the server does.
    */
   decorations?: MovieDecorations;
+  /**
+   * The editing choices the next run follows. Optional because movies stored
+   * before the field existed have none — read it through `movieEditing`, so a
+   * missing value reads as both off, which is also what the server holds for
+   * them. A recipe change leaves it as it is.
+   */
+  editing?: MovieEditing;
   /**
    * Track identifier from the BGM catalog. Stored and defaulted, but **read by
    * nothing** since 2026-08-13: the pipeline scores a run from the style preset

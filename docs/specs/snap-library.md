@@ -2,7 +2,7 @@
 
 **작성일**: 2026-09-02
 **상태**: 현행 — 스냅 촬영·보관 요구사항의 원천
-**관련 문서**: [decisions/snap-source-of-truth.md](../decisions/snap-source-of-truth.md) · [decisions/snap-sync-across-devices.md](../decisions/snap-sync-across-devices.md) · [decisions/snap-album-save-and-device-delete.md](../decisions/snap-album-save-and-device-delete.md) · [decisions/storage-and-subscription-policy.md](../decisions/storage-and-subscription-policy.md) · [apps/mobile/docs/features/snaps.md](../../apps/mobile/docs/features/snaps.md) · 표기 규칙은 [README.md](README.md)
+**관련 문서**: [decisions/snap-source-of-truth.md](../decisions/snap-source-of-truth.md) · [decisions/snap-sync-across-devices.md](../decisions/snap-sync-across-devices.md) · [decisions/snap-album-save-and-device-delete.md](../decisions/snap-album-save-and-device-delete.md) · [decisions/storage-and-subscription-policy.md](../decisions/storage-and-subscription-policy.md) · [decisions/capture-coach.md](../decisions/capture-coach.md) · [apps/mobile/docs/features/snaps.md](../../apps/mobile/docs/features/snaps.md) · 표기 규칙은 [README.md](README.md)
 
 ## 스냅 만들기
 
@@ -15,6 +15,39 @@
 - **SNAP-3** `구현됨`(iOS 는 빌드한 적이 없다 — backlog A-4 "iOS 출시 전") —
   갤러리 영상에서 필름스트립 위 드래그 창(0.5~5초)으로 구간을 골라 스냅으로 잘라낸다.
   잘라낸 스냅은 촬영 스냅과 동일하게 라이브러리에 들어간다.
+
+## 촬영 코치
+
+목표는 **편집하기 좋은 스냅을 찍게 돕는 것**이다. 안내는 품질 · 다양성(기본)과 스타일 동작(고를 때만)으로 나뉘고, 모두가 같은
+모양으로 찍게 만들지 않는다 — [decisions/capture-coach.md](../decisions/capture-coach.md)(2026-10-28 결정(잠정)).
+
+- **SNAP-21** `결정·미구현`(backlog A-23) — 뷰파인더는 **편집에서 잘 쓰이는 스냅을 찍는 법**을 짧게 안내한다. 기본 안내는
+  품질(밝기 · 초점 · 동작을 처음부터 끝까지 · 앞뒤의 여유)과 다양성(방금과 다른 앵글 · 거리)만 다루고, 특정 촬영 동작
+  (줌 인 · 휩팬 등)을 지시하지 않는다. 안내는 녹화를 막지 않고, 사용자가 끌 수 있다.
+- **SNAP-22** `결정·미구현`(backlog A-23) — 찍은 스냅이 **AI 편집에서 빠질 만하면 사용자가 알 수 있다** — 너무 어둡거나
+  흐리거나, 10분 안에 찍은 스냅과 거의 같을 때. 판단 기준은 편집기의 기준([edit-director.md](../decisions/edit-director.md)
+  §2)과 같다 — 촬영 화면만의 기준을 두지 않는다. 모델을 부르지 않으므로 분석 동의와 상관없이 알린다. 알림만 하고 스냅은
+  그대로 저장된다.
+- **SNAP-23** `부분`(빠진 것: 편집 스타일 고르기 · 스타일 동작 안내, 실기기 미검증 — backlog A-23) — 사용자는 뷰파인더에서
+  **촬영 가이드**를 켤 수 있다(기본은 꺼짐). 켜면 삼분할 격자와 함께 직전 스냅의 마지막 장면을 반투명하게 겹쳐 같은 구도로
+  이어 찍게 돕는다. 겹쳐 볼 **직전 스냅은 이 기기에 저장된 스냅 중 가장 최근 것**이고, 저장된 스냅이 없으면 격자만 보인다
+  ([decisions/capture-coach.md](../decisions/capture-coach.md) §4.1). 사용자는 **편집 스타일을 골라 찍을 수도 있다**(선택
+  사항) — 고르면 그 스타일의 이음에 맞는 동작(예: 피사체에 다가가며 찍기, 컷 끝에 휙 돌리기)을 안내한다. 고르지 않으면
+  SNAP-21 의 안내만 보인다.
+- **SNAP-24** `부분`(빠진 것: 고른 편집 스타일 · 안내한 동작, 기기 미검증 — backlog A-23) — 촬영 의도(고른 편집 스타일 ·
+  안내한 동작 · 겹쳐 보며 이어 찍은 직전 스냅)는 스냅과 함께 남고, AI 편집은 그 의도대로 찍은 스냅을 **우대한다** — 예를 들어
+  이어 찍은 두 스냅을 이을 후보로 먼저 본다. 지금 남는 것은 **이어 찍은 직전 스냅**뿐이다: 촬영 가이드에 앞 컷이 보이는 채로
+  찍은 스냅은 그 앞 컷을 짝으로 기억하고, 두 스냅이 같은 무비에 들어가면 레시피 편집(MOV-28)이 둘을 붙여 놓을 쪽으로 순서를
+  고른다. 의도는 힌트일 뿐이라 편집은 따르지 않을 수 있고(레시피가 정한다), 의도 없이 찍은 스냅도 같은 품질로 편집된다.
+- **SNAP-25** `구현됨`(실기기 미검증 — backlog A-23) — 촬영 가이드를 켜고 앞 컷이 있으면, **스냅 분석에 동의한 사용자**에게는
+  앞 컷의 마지막 장면을 AI(`gpt-6-luna`, 서버 경유)가 읽어 **다음 컷 안내 한 줄**과 **앞 컷의 피사체 자리**(점선 상자)를
+  보여 준다. 해석은 앞 컷마다 한 번이고, 보내는 것은 마지막 장면 한 장뿐이다. 동의하지 않았거나 서버가 분석을 꺼 두었거나
+  해석이 실패하면 SNAP-23 의 안내만 보이고, 촬영은 막지 않는다
+  ([decisions/capture-coach.md](../decisions/capture-coach.md) §6).
+- **SNAP-26** `결정·미구현`(backlog A-23) — 촬영 가이드는 **지금 화면의 장면**(음식 · 인물 · 인물 + 풍경 · 풍경)을 AI 가 몇 초에
+  한 번 판단해 그 장면의 구도 규칙(예: 수평선을 위 · 아래 삼분선에)을 고르고, **지금 화면의 피사체 상자**를 기기 안의 모델이
+  실시간으로 따라가며 앞 컷 자리와 얼마나 맞는지 보여 준다. 장면 판단은 SNAP-25 와 같은 동의 · 같은 모델을 따르고, 실시간
+  추적은 기기 밖으로 화면을 보내지 않는다([decisions/capture-coach.md](../decisions/capture-coach.md) §6).
 
 ## 라이브러리
 

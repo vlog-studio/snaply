@@ -68,7 +68,7 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 
 업로드는 2단계다. ① `GET /videos/upload-url` 🔒 로 presigned URL(기본 15분 유효, `S3_PRESIGN_EXPIRY_SECONDS`)과 `pending` 레코드를 받고 ② 그 URL 에 파일을 **PUT**(헤더 `Content-Type` 은 ①에서 보낸 `contentType` 과 동일해야 서명이 유효) ③ `POST /videos` 🔒 로 등록하면 `ready` 가 된다. 단일 클립 최대 500MB(SNAP-7, `S3_MAX_UPLOAD_BYTES`) — 초과하면 ③에서 객체와 레코드를 지우고 400(presigned PUT 은 발급할 때 크기를 제한할 수 없어 등록 단계에서 검사한다). S3 에 객체가 없어도 400. ①에서 24시간 안에 ③까지 가지 않은 `pending` 레코드는 정리 배치(`npm run videos:purge-pending -w apps/api`)가 지울 수 있고, 그 뒤의 ③은 404 다 — ①부터 다시 한다.
 
-- `POST /videos` 본문의 `clientId`(선택) — 앱이 붙인 스냅 이름(로컬 스냅 id). 목록의 `clientId` 로 그대로 돌아와, 찍은 기기가 자기 스냅을 알아본다. 서버는 해석하지 않고 **유일성도 보장하지 않는다.** 등록이 끝나면 서버가 배포 렌디션(`playbackUrl`)을 만들기 시작한다 — 렌디션이 실패해도 등록은 성공이다.
+- `POST /videos` 본문의 `clientId`(선택) — 앱이 붙인 스냅 이름(로컬 스냅 id). 목록의 `clientId` 로 그대로 돌아와, 찍은 기기가 자기 스냅을 알아본다. 서버는 해석하지 않고 **유일성도 보장하지 않는다.** 같은 본문의 `linedUpWithClientId`(선택)는 촬영 가이드로 겹쳐 보며 이어 찍은 앞 스냅의 앱 id(그 스냅의 `clientId`, 서버에서 받은 스냅이면 영상 id)다 — 서버는 저장만 하고 응답에는 돌려주지 않으며, AI 편집이 같은 무비 안에서 그 스냅을 찾아 둘을 붙일 후보로 우대한다(SNAP-24). 앞 스냅이 아직 올라가지 않았어도 보낸다. 등록이 끝나면 서버가 배포 렌디션(`playbackUrl`)을 만들기 시작한다 — 렌디션이 실패해도 등록은 성공이다.
 - `GET /videos` 🔒 — 업로드 최신순(같은 시각이면 `id` 역순) 커서 페이지네이션. `nextCursor` 가 `null` 이 아니면 다음 페이지가 있다. 삭제·만료된 영상은 제외, 편집 결과물(`kind: result`)도 같은 목록에 온다 — 스냅만 보려면 `kind=source`. `pending` 항목은 아직 등록되지 않은 것이다.
 - `POST /videos/lookup` 🔒 — 넘긴 id 가 아직 있는지(`live`), 지워졌다면 왜인지(`removed` + `removalReason`) 알려 준다. 목록에서 사라진 스냅의 이유를 앱이 구분할 때 쓴다. 응답 순서는 요청 순서와 다르니 `id` 로 맞춘다. 남의 id 와 없는 id 는 똑같이 응답에서 빠진다.
 - `originalUrls`·`editedUrl`·`thumbnailUrl`·`playbackUrl` 은 **presigned GET URL**(기본 1시간 유효, `S3_DOWNLOAD_URL_EXPIRY_SECONDS`). 만료되면 목록이나 상세(`GET /videos/{id}`)를 다시 호출해 갱신한다.
@@ -110,6 +110,21 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
     놓는 데 쓰는 내부 값이며(ANA-2), 그 전의 분석은 빈 배열이다.
   - `visualQuality.usableForEdit` 가 추천이 1차로 보는 값이다. `issues` 는 자유 텍스트가 아니라 고정 코드다(원천은 워커의 [`VISUAL_ISSUE_CODES`](../apps/ai-worker/src/pipeline/video_analysis/prompt.py) — 계약은 문자열로 열어 둔다).
 - **분석 실패는 원본 영상에 영향을 주지 않는다** — `Video.status` 는 `ready` 로 남는다.
+
+---
+
+## 촬영 코치 (`contract/capture-coach.ts`)
+
+촬영 가이드를 켠 사용자에게 **앞 컷의 마지막 장면 한 장**을 AI 가 읽어 다음 컷 안내 한 줄과 피사체 자리를 돌려준다.
+결과는 **사용자에게 그대로 보인다**(스냅 분석과 다르다). **저장하지 않는다.**
+요구: [specs/snap-library.md](./specs/snap-library.md) SNAP-25 · 배경: [decisions/capture-coach.md](./decisions/capture-coach.md) §6
+
+- `POST /capture-coach/previous-cut` 🔒 — **동기**. body `{ image }`(JPEG base64, 데이터 URL 접두어 없이, 1.5M 자 이하) →
+  `{ scene, subject: { cx, cy, size } | null, advice, model }`. `scene` 은 `food | person | person_landscape | landscape | other`,
+  `subject` 는 장면 너비 · 높이의 몫(0~1, 왼쪽 위가 0)이고 크기는 너비의 몫이다(편집기의 피사체 정의와 같은 단위). 보통 1~2초, 길어야 8초.
+  모델은 `CAPTURE_COACH_MODEL`(기본 `gpt-6-luna`). 유저당 분당 20회.
+  에러: 동의 없음 `403 ANALYSIS_CONSENT_REQUIRED` · 서버 스위치 꺼짐 `503 ANALYSIS_DISABLED` · 모델 키 없음 `503 CAPTURE_COACH_UNAVAILABLE` ·
+  모델 실패 · 시간 초과 · 형식이 맞지 않는 답 `502 CAPTURE_COACH_FAILED` · base64 가 아님 400. **앱은 어느 실패든 모델 없는 안내로 돌아간다.**
 
 ---
 
@@ -222,6 +237,11 @@ FE 가 알아야 할 동작:
     기본값으로 돌아가고** 같은 요청의 `decorations` 가 그 위에 얹힌다 — 앱은 레시피를 바꾼 뒤 응답의 값을 다시 그린다. 불린이 아니면 400.
   - 생성(`export`)은 editSpec v3 에 `decorations` 를 싣는다(기본 무비 포함). 꾸밈만 바꿔 다시 만들어도 컷 · 순서 · 효과 · 곡은 그대로이고,
     다른 생성과 같이 크레딧 100 을 예약한다.
+- **`editing`** 은 무비의 편집 선택이다 — `{ speech, sceneOrder }`(말하는 구간의 말소리 살리기 · 장면 단위 순서와 첫 컷 훅, 2026-10-30 · MOV-29).
+  기본은 **둘 다 `false`** 이고 레시피와 무관하다 — `recipe` 를 바꿔도 그대로다. `POST` · `PATCH` 는 보낸 키만 쓴다.
+  - 생성(`export`)은 하나라도 켜졌을 때만 editSpec v3 에 `editing` 을 싣는다. **`sceneOrder` 는 순서의 주인이 AI(`arranger: ai`)인 무비에서만 켜서**
+    보낸다 — 사용자가 정한 순서는 바꾸지 않는다. 컷은 AI 가 자른 것(`trimOwner: ai`)에만 `timeline.cuts[].trimOwner: "ai"` 를 싣는다 — 워커가 그 컷만
+    경계를 박자에 맞추고 흔들리는 구간을 같은 스냅의 안정된 구간으로 옮긴다.
 - **컷의 `unavailable: true`** 는 참조하던 스냅이 만료·삭제됐다는 뜻이다. 그런 컷이 있어도
   무비는 열리고 목록에서 사라지지 않는다 — 사용자가 무엇을 잃었는지 알아야 하기 때문이다.
   다만 그 상태로 `export` 하면 400 이다(빼고 다시 시도). 어느 쪽인지는 `unavailableReason` 이 알린다 —
@@ -238,7 +258,7 @@ FE 가 알아야 할 동작:
 - 큐 적재가 실패하면 `export` 는 500 이고, 이미 만든 작업은 `failed`(`errorCode: QUEUE_FAILED`)로 남으며 예약은 환급된다.
   편집 워커(`npm run worker`)가 떠 있지 않으면 작업은 `queued` 에 머문다.
 - 출력은 늘 세로 9:16 숏폼이다. 출력 프로필은 고르지 않는다. 비율이 다른 원본의 남는 자리는 무비의 `fitMode` 가 정한다 —
-  `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠). `POST /movies` · `PATCH /movies/{id}` 로 고르고
+  `pad_black`(검정 띠, 기본 — 2026-10-30 전에 만든 무비도 옮겼다) · `blur_background`(흐린 원본) · `pad_white`(흰 띠). `POST /movies` · `PATCH /movies/{id}` 로 고르고
   다시 만들어도 유지된다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따르고 이 값을 쓰지 않는다. 레터박스 레시피
   (`cinematic` · `letterbox-montage`)는 컷을 손본 무비에서도 이 값 대신 가운데 16:9 띠에 꽉 채우고 위아래를 검게 렌더한다(MOV-8). 저장된 값은 그대로다.
 - 진행률은 `GET /edit-jobs/{id}` 와

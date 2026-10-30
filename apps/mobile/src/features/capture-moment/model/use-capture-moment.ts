@@ -13,6 +13,8 @@ const CAPTURE_MOMENT_FAILED = '스냅을 저장하지 못했어요. 다시 시�
 
 type CaptureMomentInput = {
   durationSec: CaptureDuration;
+  /** The previous cut this one was framed against, when the guide showed one. */
+  linedUpWith?: string;
 };
 
 /**

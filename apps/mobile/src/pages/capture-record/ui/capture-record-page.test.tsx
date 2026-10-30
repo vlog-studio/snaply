@@ -31,10 +31,13 @@ function recorder({
   stage = 'idle',
   cameraGranted = true,
   libraryError,
+  guide = 'off',
 }: {
   stage?: 'idle' | 'recording';
   cameraGranted?: boolean;
   libraryError?: string;
+  /** The framing guide: off, on before any snap, or on with a previous cut to line up with. */
+  guide?: 'off' | 'on' | 'onWithPreviousCut' | 'onWithRead';
 } = {}): Recorder {
   return {
     stage,
@@ -84,6 +87,25 @@ function recorder({
       errorMessage: libraryError,
       close: jest.fn(),
       canRemoveFromDevice: () => false,
+    },
+    guide: {
+      isOn: guide !== 'off',
+      previousCut:
+        guide === 'onWithPreviousCut' || guide === 'onWithRead'
+          ? { snap: { width: 1080, height: 1920 }, rule: 'latest' }
+          : undefined,
+      ghostUri:
+        guide === 'onWithPreviousCut' || guide === 'onWithRead'
+          ? 'file:///cache/ghost.jpg'
+          : undefined,
+      read:
+        guide === 'onWithRead'
+          ? {
+              advice: '다음 메뉴도 같은 자리에 두고 찍어 보세요',
+              subject: { cx: 0.33, cy: 0.4, size: 0.35 },
+            }
+          : undefined,
+      toggle: jest.fn(),
     },
   } as unknown as Recorder;
 }
@@ -219,5 +241,39 @@ describe('CaptureRecordPage', () => {
 
     const announced = announce.mock.calls.some(([spoken]) => spoken === message);
     expect(announced || isLiveRegion(message)).toBe(true);
+  });
+
+  // Lining every snap up the same way is a style the user picks (capture-coach §3).
+  it('keeps the framing guide off until the user turns it on', async () => {
+    await renderPage({});
+
+    expect(screen.getByRole('button', { name: '촬영 가이드 켜기' })).not.toBeSelected();
+    expect(screen.queryByTestId('capture-guide')).toBeNull();
+    expect(screen.getByText('꾹 눌러 찍기')).toBeOnTheScreen();
+  });
+
+  it('lays the previous cut over the feed and says to line up with it', async () => {
+    await renderPage({ guide: 'onWithPreviousCut' });
+
+    expect(screen.getByRole('button', { name: '촬영 가이드 끄기' })).toBeSelected();
+    expect(screen.getByTestId('capture-guide-ghost')).toBeOnTheScreen();
+    expect(screen.getByText('앞 컷에 겹쳐 같은 자리에서 찍어 보세요')).toBeOnTheScreen();
+    expect(screen.queryByText('꾹 눌러 찍기')).toBeNull();
+  });
+
+  it('draws only the grid when there is no previous cut yet', async () => {
+    await renderPage({ guide: 'on' });
+
+    expect(screen.getByTestId('capture-guide')).toBeOnTheScreen();
+    expect(screen.queryByTestId('capture-guide-ghost')).toBeNull();
+    expect(screen.getByText('격자 선에 맞춰 찍어 보세요')).toBeOnTheScreen();
+  });
+
+  // SNAP-25: the AI's line replaces the guide's own, and its subject spot is drawn.
+  it("shows the AI's line for the previous cut in place of the guide's own", async () => {
+    await renderPage({ guide: 'onWithRead' });
+
+    expect(screen.getByText('다음 메뉴도 같은 자리에 두고 찍어 보세요')).toBeOnTheScreen();
+    expect(screen.queryByText('앞 컷에 겹쳐 같은 자리에서 찍어 보세요')).toBeNull();
   });
 });

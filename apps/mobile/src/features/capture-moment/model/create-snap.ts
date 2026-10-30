@@ -19,6 +19,8 @@ export type CreateSnapInput = {
   measured?: SnapMeasurement;
   /** Where the capture happened, when a fix was available (see `readCapturePlace`). */
   place?: SnapPlace;
+  /** The previous cut the guide showed while this one was framed (`Snap.linedUpWith`). */
+  linedUpWith?: string;
 };
 
 /**
@@ -58,5 +60,6 @@ export function createSnap(recording: LocalRecording, input: CreateSnapInput): S
     // Spread rather than assign, so a snap with no fix carries no `place` key at
     // all instead of an explicit `undefined` the store would persist as null.
     ...(input.place ? { place: input.place } : {}),
+    ...(input.linedUpWith ? { linedUpWith: input.linedUpWith } : {}),
   };
 }

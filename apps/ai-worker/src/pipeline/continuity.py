@@ -6,10 +6,11 @@
 바로 넘김(hardcut)이다 — 이음은 영상 속 동작이 만든다(이음이 없는 경계의 전환 효과는 `cut_fx` 가 정한다).
 
 배속도 여기서 정한다 — 분석이 레시피의 행동(걷기 · 이동)을 본 긴 스냅을 factor 배로.
-무비가 레시피의 minMovieMs 보다 짧으면 스냅에서 컷을 더 뽑는다 — 같은 스냅을 조금 건너뛰어 잇는 점프컷(jump). 원본이 모자라면 배속을 푼다.
+**같은 스냅은 한 무비에서 한 번만 쓴다** — 무비가 레시피의 minMovieMs 보다 짧으면 컷을 그 스냅 안에서 늘려 채우고(원본이 모자라면 배속을 푼다),
+그래도 모자라면 짧은 채로 둔다. 예전엔 같은 스냅을 조금 건너뛰어 한 컷 더 잇는 점프컷으로 채웠는데, 같은 장면이 되풀이돼 보였다
+(2026-10-29 사용자 '같은 부분은 반복하지 말라').
 
-레시피가 oneCutPerSnap 이면(시네마틱 — 레퍼런스 ⑤) 스냅마다 **한 번만**, 그 스냅에서 가장 덜 흔들리는 구간을 골라 쓴다(`plan_single`).
-같은 장면을 잘라 되풀이하지 않고, 최소 길이는 컷 길이를 늘려 채운다.
+레시피가 oneCutPerSnap 이면(시네마틱 — 레퍼런스 ⑤) 이음 지점 대신 그 스냅에서 가장 덜 흔들리는 구간을 골라 쓴다(`plan_single`).
 
 컷 구간을 정하는 일이라 사용자가 직접 자른 컷에는 쓰지 않는다(trimOwner — AI 초안 단계의 일, backlog).
 """
@@ -29,8 +30,6 @@ WHIP_MOTION, WHIP_RATIO, WHIP_SHIFT = 0.06, 2.5, 3.0
 MATCH_SPAN, MATCH_MIN = 0.4, 0.80
 # 스피드램프: 구간의 이 몫(가운데)만 빠르게
 RAMP_SPAN = (0.3, 0.7)
-# 점프컷: 같은 스냅에서 다음 컷을 뽑을 때 건너뛰는 원본 길이(원본에 여유가 있을 때)
-JUMP_GAP_MS = 200
 # 한 스냅 한 컷: 앞뒤 이만큼은 쓰지 않는다(찍기 시작 · 끝의 흔들림), 끝을 박자에 맞출 때 길이를 이만큼까지 바꾼다
 EDGE_MS, BEAT_SLACK_MS = 300, 250
 
@@ -53,7 +52,7 @@ class PlannedCut:
     start_ms: int
     end_ms: int
     speed: float
-    seam: str | None  # 이 컷 끝의 이음: cover · whip · match · jump(같은 스냅이 이어짐) · None(박자)
+    seam: str | None  # 이 컷 끝의 이음: cover · whip · match · None(박자)
     ramp: float = 0.0  # 스피드램프의 가운데 배속(0 이면 없음) — 구간의 RAMP_SPAN 가운데만 그 배속, 앞뒤는 1배
     hold_ms: int = 0  # 프리즈 — 동작 피크에서 이만큼 멈춘다
     hold_at_ms: int = 0  # 프리즈 자리(구간 시작 기준, 결과물 시각)
@@ -162,6 +161,22 @@ def _start(s: Series, previous: Series | None, prev_end: int | None, prev_seam: 
     return (best * STEP_MS, "match") if scores[best] >= MATCH_MIN else (0, None)
 
 
+MAX_TARGET_MS = 60_000  # 레시피 무비가 스스로 정하는 길이의 상한 — 숏폼에서 흔한 길이(잠정, trend-recipes §23)
+PHRASE_BEATS = 16  # 악구 — 4/4 의 4마디(다운비트를 모르므로 곡 처음부터 센 근사)
+# 목표에서 이만큼 안의 악구에만 맞춘다 — 하한(15초)인 무비를 다음 악구(20.1초)로 끌어올렸더니 같은 스냅을 늘려 채워 비트싱크 컷이 2초가 됐다(2026-10-30)
+PHRASE_TOLERANCE = 0.2  # 15% 로 두면 재료 20.8초 → 악구 24초(15.4%)도 빠진다
+
+
+def movie_target(source_ms: list[int], shot: tuple[int, int], low: int, beats: tuple[int, ...]) -> int:
+    """무비 목표 길이(ms) — 재료가 정한다(trend-recipes §23). 스냅마다 보통 컷 길이(shot 가운데, 원본이 짧으면 원본)를 더해 low ~ MAX_TARGET_MS 로
+    자르고, 박자를 알면 PHRASE_TOLERANCE 안의 가장 가까운 악구 끝(PHRASE_BEATS 박마다)에 맞춘다. 전에는 low(15초)가 곧 목표라 재료와 상관없이 15초 안팎이었다."""
+    typical = (shot[0] + shot[1]) // 2
+    target = max(low, min(MAX_TARGET_MS, sum(min(s, typical) for s in source_ms)))
+    phrases = [beats[i] for i in range(PHRASE_BEATS, len(beats), PHRASE_BEATS)
+               if low <= beats[i] <= MAX_TARGET_MS and abs(beats[i] - target) <= target * PHRASE_TOLERANCE]
+    return min(phrases, key=lambda p: abs(p - target)) if phrases else target
+
+
 def budgets(caps: list[int], min_ms: int | None) -> list[int]:
     """스냅마다 결과물에서 쓸 길이 목표 — 합이 min_ms 가 되도록 고르게(스냅이 내줄 수 있는 caps 를 넘지 않게). 모자라면 caps 전부."""
     if not min_ms or sum(caps) <= min_ms:
@@ -235,24 +250,66 @@ def plan_cuts(series: list[Series], concepts: list[dict], beats: tuple[int, ...]
         if prev is not None and how == "match" and prev.seam is None:
             planned[-1] = PlannedCut(prev.index, prev.start_ms, prev.end_ms, prev.speed, "match")
         planned.append(PlannedCut(i, start, max(end, start + 100), speed, seam))
-        t += planned[-1].out_ms
-        made = planned[-1].out_ms
-        # 목표에 모자라면 같은 스냅에서 조금 건너뛰어 한 컷 더(점프컷). 건너뛰는 길이는 목표를 채우고 남는 원본 안에서만 —
-        # 원본이 빠듯하면 0 이다(박자 하나짜리 컷에 200ms 씩 버리면 원본의 30% 가 사라졌다)
-        gap = min(round(JUMP_GAP_MS * speed), max(0, s.length_ms - round(targets[i] * speed)) // 4)
-        while made < targets[i]:
-            last = planned[-1]
-            nxt = last.end_ms + gap
-            if s.length_ms - nxt < shot[0] * speed:
-                break
-            end, seam = _end(s, nxt, speed, t, beats, shot, snap)
-            if last.seam is None:
-                planned[-1] = PlannedCut(last.index, last.start_ms, last.end_ms, last.speed, "jump")
-            planned.append(PlannedCut(i, nxt, max(end, nxt + 100), speed, seam))
-            t += planned[-1].out_ms
-            made += planned[-1].out_ms
-        prev_seam = planned[-1].seam
+        cut = planned[-1]
+        if cut.out_ms < targets[i]:
+            # 목표에 모자라면 같은 스냅에서 한 컷 더 뽑지 않고 이 컷을 늘린다 — 끝의 이음은 늘린 자리에선 맞지 않으므로 박자 경계(None)로
+            cut = PlannedCut(i, cut.start_ms, min(s.length_ms, cut.start_ms + round(targets[i] * cut.speed)), cut.speed, None)
+            planned[-1] = cut
+        t += cut.out_ms
+        prev_seam = cut.seam
     return planned
+
+
+def _resized(cut: PlannedCut, out_ms: float, source_ms: int, keep_end: bool, keep_start: bool) -> PlannedCut | None:
+    """결과물 길이가 out_ms 가 되게 원본 구간을 늘리거나 줄인 컷 — 끝을 지켜야 하면 시작을, 아니면 끝을(원본 끝에 닿으면 남은 만큼 시작을)
+    옮긴다. 원본 안에서 맞출 수 없으면 None."""
+    delta = round(out_ms * cut.speed) - (cut.end_ms - cut.start_ms)
+    start, end = cut.start_ms, cut.end_ms
+    if keep_end:
+        start -= delta
+    else:
+        end = min(source_ms, end + delta)
+        if not keep_start:
+            start -= delta - (end - cut.end_ms)
+    if start < 0 or end > source_ms or end - start != cut.end_ms - cut.start_ms + delta:
+        return None
+    return PlannedCut(cut.index, start, end, cut.speed, cut.seam, ramp=cut.ramp, hold_ms=cut.hold_ms, hold_at_ms=cut.hold_at_ms)
+
+
+def snap_to_beats(planned: list[PlannedCut], source_ms: list[int], beats: tuple[int, ...], shot: tuple[int, int], fps: int,
+                  keep_end: list[bool] | None = None, keep_start: list[bool] | None = None,
+                  movable: list[bool] | None = None) -> list[PlannedCut]:
+    """컷 경계를 곡의 박자 프레임에 둔다 — 컷 고르기(이음 계획 · 원본 줌 쌍 · 빔 서치)가 정한 길이를 shot 범위 안의 가장 가까운 박자로
+    옮긴다(MOV-28). 무비 시간축은 프레임으로 센다: 컷 길이는 프레임 정수(`editor.frame_cut_seconds` 가 그만큼만 남긴다)라 이어 붙여도
+    경계가 밀리지 않는다. 경계가 박자를 벗어나도 뒤 컷은 다시 박자에 맞춘다(시각은 절대값).
+    keep_end[k] — 원본 줌 인이 끝나는 순간으로 이어지는 컷은 끝 대신 시작을, keep_start[k] — 줌 아웃이 시작하는 컷은 끝만 옮긴다.
+    movable[k] 가 거짓인 컷(사용자가 자른 구간 — MOV-22)은 옮기지 않는다. 배속 곡선 · 멈춤이 있는 컷은 그 길이가 계획의 일부라 옮기지 않는다. 원본이 모자라 맞출 수 없는 컷, 반 박자보다 멀리 옮겨야 하는 컷
+    (박자 맞춤이 장면을 깎아 먹지 않게 — 원본을 다 쓴 짧은 무비), 마지막 컷(무비의 끝 — 끝맺음 페이드가 닫는다)도 그대로 둔다."""
+    if len(beats) < 2:
+        return planned
+    frame_ms = 1000 / fps
+    reach = float(np.median(np.diff(beats))) / 2
+    out, t_frames = [], 0
+    for k, cut in enumerate(planned):
+        snapped = None
+        if not cut.ramp and not cut.hold_ms and k < len(planned) - 1 and (movable is None or movable[k]):
+            t = t_frames * frame_ms
+            want = t + cut.out_ms
+            fits = []
+            # 최소 길이를 채우느라 이미 shot 범위를 넘은 컷은 지금 길이 근처(반 박자 안)까지 허용한다 — 범위 안 박자가 없어 건너뛰었다(2026-10-30)
+            longest = shot[1] if cut.out_ms <= shot[1] else cut.out_ms + reach
+            for b in beats:
+                frames = round(b / frame_ms) - t_frames
+                if frames > 0 and abs(b - want) <= reach and shot[0] <= frames * frame_ms <= longest:
+                    resized = _resized(cut, frames * frame_ms, source_ms[k], bool(keep_end and keep_end[k]),
+                                       bool(keep_start and keep_start[k]))
+                    if resized is not None:
+                        fits.append((abs(b - want), resized))
+            snapped = min(fits, key=lambda f: f[0])[1] if fits else None
+        cut = snapped or cut
+        out.append(cut)
+        t_frames += round(cut.out_ms / frame_ms)
+    return out
 
 
 def seams(planned: list[PlannedCut]) -> list[tuple[int, str]]:

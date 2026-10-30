@@ -36,6 +36,7 @@
     "db:seed": "npm run seed:locations -w apps/api",
     "db:studio": "npm run prisma:studio -w apps/api",
     "analysis:run": "node scripts/analysis-run.mjs",
+    "studio": "python3 apps/ai-worker/scripts/studio/server.py",
     "media:e2e": "node scripts/media-e2e.mjs",
     "media:cleanup": "node scripts/media-cleanup.mjs",
     "ontology:export": "npm run build -w @vlog-studio/shared-types && node scripts/ontology-export.mjs",

@@ -215,6 +215,23 @@ def _resolve_clip_window(
     return start, end, duration
 
 
+#: 이어 붙일 구간의 프레임 형식 — 원본마다 색 태그(bt470bg · bt709 · 없음)와 범위(앱 스냅은 yuvj 풀 레인지)가 달라, 그대로 이으면 결합 파일
+#: 중간에서 속성이 바뀌고 뒤 단계(글 · 스티커 합성)의 필터가 다시 초기화되며 프레임을 버렸다(2026-10-29 — 267ms 멈춤, 영상이 1프레임 늦게 시작).
+#: 태그만 바꾸지 않고 행렬 · 범위를 실제로 변환한 뒤(scale) 태그를 적는다(setparams — muxer 가 입력 태그를 되쓰지 않게, hdr.py 와 같은 이유).
+UNIFORM_FRAMES = ("scale=out_color_matrix=bt709:out_range=tv,format=yuv420p,"
+                  "setparams=range=tv:color_primaries=bt709:color_trc=bt709:colorspace=bt709")
+
+
+def frame_cut_seconds(seconds: float, fps: int) -> float:
+    """`-t` 에 넘길 길이 — `seconds` 를 가장 가까운 프레임 수 n 으로 반올림해 정확히 n 프레임만 남긴다.
+
+    ffmpeg 의 `-t T` 는 **끝나는 시각(pts + 1프레임)이 T 이하인 프레임**만 남긴다(2026-10-29 실측 — `-t 0.4833` 은 14프레임). 컷 길이를
+    그대로 넘기면 프레임 수가 버려져(1490ms = 44.7프레임 → 44) 컷마다 짧아졌고, 이어 붙인 경계가 계획에서 밀렸다(10컷에서 최대 184ms).
+    n 프레임에 1/4 프레임을 더해 넘기면 n 번째 프레임까지 남고, 끝에 덧댄 프레임(tpad)은 빠진다.
+    """
+    return (max(1, round(seconds * fps)) + 0.25) / fps
+
+
 def normalize_clip(
     src: str,
     dst: str,
@@ -290,6 +307,7 @@ def normalize_clip(
     video_graph = build_video_filter(render_spec, eq, input_label='[trimmed_v]')
     if extra_video:
         video_graph = f"{video_graph[:-len('[v]')]}[base_v];[base_v]{extra_video}[v]"
+    video_graph = f"{video_graph[:-len('[v]')]},{UNIFORM_FRAMES}[v]"
     filter_graph = (
         f"{video_trim};"
         f"{video_graph};"
@@ -309,7 +327,7 @@ def normalize_clip(
         # 이어 붙이면 구간마다 한 프레임씩 영상이 짧아졌다(12구간 6초 → 5.6초). 7.1 · 9 는 15프레임이다
         cmd[cmd.index("-filter_complex") + 1] = filter_graph.replace(
             f"{video_graph};", f"{video_graph[:-len('[v]')]},tpad=stop_mode=clone:stop_duration={1 / render_spec.fps:.4f}[v];", 1)
-        cmd += ["-video_track_timescale", str(TIMESCALE), "-t", f"{out_duration:.3f}"]
+        cmd += ["-video_track_timescale", str(TIMESCALE), "-t", f"{frame_cut_seconds(out_duration, render_spec.fps):.4f}"]
     cmd.append(dst)
     _run(cmd)
 
@@ -418,6 +436,11 @@ def extract_thumbnail(video: str, out: str, at_seconds: float = 1.0) -> None:
         "ffmpeg", "-y", "-ss", str(at_seconds), "-i", video,
         "-frames:v", "1", "-q:v", "3", out,
     ])
+
+
+def color_filters(clips: list[ClipSource]) -> list[str]:
+    """컷마다 걸 색 맞춤 필터(무비 전체의 중간값 쪽으로) — prepare_segments(colors=) 에 넘긴다."""
+    return _color_matches(clips)
 
 
 def _color_matches(clips: list[ClipSource]) -> list[str]:
@@ -678,13 +701,15 @@ def prepare_segments(
     fast: bool = False,
     ramps: list[float] | None = None,
     holds: list[tuple[int, int] | None] | None = None,
+    colors: list[str] | None = None,
 ) -> list[str]:
     """컷마다 정규화(트림 · 회전 · HDR · 출력 크기 · 컷 음량 · 색 맞춤 + 스타일)한 구간 경로 — 트렌드 레시피(`pipeline/trend_edit.py`).
+    colors 는 미리 잰 색 맞춤 필터(`color_filters`) — 주면 다시 재지 않는다(무비 전체로 잰 값을 구간 일부에 쓸 때).
 
     배속(`speeds`)과 컷 효과 · 색 필터(`extras` — `cut_fx.video_filter`)를 **같은 인코딩 한 번에** 굽는다(따로 구우면 컷마다 두 번 —
     2026-10-22 측정에서 한 편 렌더의 19%). `fast` 는 중간 파일용 가장 빠른 설정 — 마지막 합성에서 다시 인코딩한다.
     겹침 전환용 여분 프레임은 남기지 않는다."""
-    matches = _color_matches(clips)
+    matches = colors if colors is not None else _color_matches(clips)
     paths = []
     for i, clip in enumerate(clips):
         start_ms, end_ms, _ = _ms_window(clip)
@@ -710,13 +735,21 @@ def _frames_duration(path: str, fps: int) -> float:
 def concat_copy(paths: list[str], fps: int, out: str, work_dir: str) -> str:
     """같은 설정으로 인코딩한 구간들을 영상은 다시 인코딩하지 않고(copy) 잇는다. 각 구간이 시작하는 자리는 영상 프레임 수로
     정하고(concat 의 duration), 소리는 그 자리에 맞춰 다시 맞춘다(aresample async — AAC 마지막 프레임만큼 소리가 길어 구간마다
-    조금씩 밀리는 것을 막는다). 소리만 다시 인코딩하므로 싸다."""
+    조금씩 밀리는 것을 막는다). 소리만 다시 인코딩하므로 싸다.
+
+    영상은 영상 트랙만 고른 목록(`exact_stream_id`)에서 가져온다 — 두 트랙을 함께 읽으면 concat 이 소리의 앞 패딩(AAC 1024샘플 = −21ms)을
+    시작으로 잡아 영상을 그만큼 뒤로 밀었고, 다음 인코딩이 프레임 격자로 올려 무비 전체가 음악보다 1프레임 늦었다(2026-10-29 실측).
+    구간은 모두 이 워커가 만든 파일이라 트랙 id 는 영상 1 · 소리 2 다."""
+    entries = "".join(f"file '{p}'\nduration {_frames_duration(p, fps):.6f}\n" for p in paths)
     listing = f"{work_dir}/concat_{os.path.basename(out)}.txt"
+    video_listing = f"{work_dir}/concat_{os.path.basename(out)}.video.txt"
     with open(listing, "w") as f:
-        for p in paths:
-            f.write(f"file '{p}'\nduration {_frames_duration(p, fps):.6f}\n")
-    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", listing, "-map", "0:v:0", "-map", "0:a:0",
-          "-c:v", "copy", "-af", "aresample=async=1:first_pts=0", "-c:a", "aac", "-ar", "48000", "-ac", "2", out])
+        f.write(entries)
+    with open(video_listing, "w") as f:
+        f.write("ffconcat version 1.0\nstream\nexact_stream_id 0x1\n" + entries)
+    _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", video_listing, "-f", "concat", "-safe", "0", "-i", listing,
+          "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-af", "aresample=async=1:first_pts=0",
+          "-c:a", "aac", "-ar", "48000", "-ac", "2", out])
     return out
 
 

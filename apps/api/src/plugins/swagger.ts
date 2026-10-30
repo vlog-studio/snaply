@@ -206,6 +206,7 @@ export async function registerDocs(app: FastifyInstance, config: DocsConfig): Pr
           description:
             '무비 템플릿 카탈로그. "템플릿으로 시작"이 고르는 무비의 형태이며, 앱은 응답을 캐시하고 실패하면 내장 카탈로그로 폴백한다.',
         },
+        { name: 'capture', description: '촬영 코치' },
         { name: 'locations', description: '위치 알림' },
         { name: 'sns', description: 'SNS 연동' },
         { name: 'billing', description: '결제' },
