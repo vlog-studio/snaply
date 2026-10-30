@@ -3,6 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react-native';
 import type { Movie } from '@/entities/movie';
 
 import {
+  AlbumSaveMessages,
   InstagramHandoffMessages,
   ShareBlockMessages,
   shareBlockMessage,
@@ -333,6 +334,100 @@ describe('useShareMovie', () => {
     const { result } = await renderHook(() => useShareMovie(undefined, resolved(undefined)));
 
     expect(result.current.blocked).toBe('no-render');
+  });
+});
+
+describe('saveToAlbum', () => {
+  it('saves the render to the album and says so for this render', async () => {
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.saveToAlbum();
+    });
+
+    expect(outcome).toBe('saved');
+    expect(mockDownload).toHaveBeenCalledWith('https://cdn/e.mp4', 'm1-42');
+    expect(mockSaveToAlbum).toHaveBeenCalledWith('https://cdn/e.mp4');
+    expect(mockOpenInstagram).not.toHaveBeenCalled();
+    expect(result.current.savedToAlbum).toBe(true);
+    // The file is the user's now, so 정리하기 is offered — never called.
+    expect(result.current.offered).toBe(true);
+    expect(result.current.savingToAlbum).toBe(false);
+  });
+
+  it('asks for the photo permission and saves nothing without it', async () => {
+    mockRequestAlbum.mockResolvedValue({ granted: false });
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.saveToAlbum();
+    });
+
+    expect(outcome).toBe('blocked');
+    expect(mockSaveToAlbum).not.toHaveBeenCalled();
+    expect(result.current.savedToAlbum).toBe(false);
+    expect(AlbumSaveMessages.blocked).toContain('사진 권한');
+  });
+
+  it('reports a save that failed', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSaveToAlbum.mockRejectedValue(new Error('disk full'));
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.saveToAlbum();
+    });
+
+    expect(outcome).toBe('failed');
+    expect(result.current.savedToAlbum).toBe(false);
+    expect(result.current.savingToAlbum).toBe(false);
+  });
+
+  it.each([
+    ['the address is on its way', resolving, 'resolving'],
+    ['the address could not be fetched', unresolved, 'unresolved'],
+    ['no file was made', resolved(undefined), 'unavailable'],
+  ] as const)('saves nothing when %s', async (_, source, expected) => {
+    const { result } = await renderHook(() => useShareMovie(makeMovie(), source));
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.saveToAlbum();
+    });
+
+    expect(outcome).toBe(expected);
+    expect(mockRequestAlbum).not.toHaveBeenCalled();
+  });
+
+  it('ignores a second tap while one save runs', async () => {
+    let finish: () => void = () => {};
+    mockSaveToAlbum.mockImplementation(() => new Promise<void>((resolve) => (finish = resolve)));
+    const { result } = await renderHook(() =>
+      useShareMovie(makeMovie(), resolved('https://cdn/e.mp4')),
+    );
+
+    let first: Promise<unknown> = Promise.resolve();
+    let second;
+    await act(async () => {
+      first = result.current.saveToAlbum();
+      second = await result.current.saveToAlbum();
+    });
+    await act(async () => {
+      finish();
+      await first;
+    });
+
+    expect(second).toBe('busy');
+    expect(mockSaveToAlbum).toHaveBeenCalledTimes(1);
   });
 });
 
