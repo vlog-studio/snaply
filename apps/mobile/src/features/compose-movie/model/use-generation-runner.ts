@@ -200,8 +200,11 @@ export function useGenerationRunner({ announce = false }: GenerationRunnerOption
 
       // Checked before the network: a job that lost its last original can no
       // longer produce anything, and making the user wait out a remote render for
-      // that answer would be a pointless wait.
-      if (cutsSec(movie) <= 0) {
+      // that answer would be a pointless wait. Only for a run started here: an
+      // adopted run is judged by the server alone. On a fresh install or a new
+      // sign-in the library is still empty when the server's movies arrive, so
+      // every adopted run would look as if its snaps were gone (2026-10-30).
+      if (!movie.job?.adopted && cutsSec(movie) <= 0) {
         fail(movie, LostMaterialError);
         return;
       }

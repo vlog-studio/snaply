@@ -392,6 +392,27 @@ describe('useGenerationRunner', () => {
     expect(mockGetEditJob).not.toHaveBeenCalled();
   });
 
+  // A fresh install or a new sign-in adopts the account's finished runs before
+  // the server's snaps reach the library — every cut looks deleted then.
+  it('asks the backend about an adopted job even when its snaps are not here yet', async () => {
+    mockSnapIndex.mockReturnValue(new Map());
+    mockMovies.mockReturnValue([
+      generatingMovie({ job: { id: 'job-1', progress: 0, startedAt, adopted: true } }),
+    ]);
+    mockGetEditJob.mockResolvedValue({ status: 'done', progress: 100, videoId: 'result-9' });
+    mockGetEditedVideo.mockResolvedValue({ editedUrl: 'https://x/e.mp4', durationSeconds: 11 });
+
+    await act(async () => {
+      await renderHook(() => useGenerationRunner());
+    });
+
+    expect(mockFail).not.toHaveBeenCalled();
+    expect(mockFinish).toHaveBeenCalledWith(
+      'm1',
+      expect.objectContaining({ videoId: 'result-9', durationSec: 11 }),
+    );
+  });
+
   it('waits for the snap library before judging whether a job lost its material', async () => {
     // Pre-hydration every cut looks deleted; failing here would kill every job
     // in flight on the first pass of an app start.
@@ -460,10 +481,10 @@ describe('useGenerationRunner', () => {
   // A job learned from the server on a read-back ended long before this device
   // looked; telling the user now would be news about a run they never watched.
   it('does not announce the failure of a job it only adopted', async () => {
-    mockSnapIndex.mockReturnValue(new Map());
     mockMovies.mockReturnValue([
       generatingMovie({ job: { id: 'job-1', progress: 0, startedAt, adopted: true } }),
     ]);
+    mockGetEditJob.mockResolvedValue({ status: 'failed', progress: 40, errorCode: 'INTERNAL' });
 
     await act(async () => {
       await renderHook(() => useGenerationRunner({ announce: true }));
