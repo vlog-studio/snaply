@@ -39,7 +39,7 @@
 
    ```bash
    sudo dnf install -y git
-   git clone --depth 1 https://github.com/vlog-studio/snaply-backend.git /tmp/snaply
+   git clone --depth 1 https://github.com/vlog-studio/snaply.git /tmp/snaply
    sudo bash /tmp/snaply/deploy/aws/install.sh
    ```
 
@@ -53,7 +53,10 @@
 **runner 는 main 의 `deploy.yml`(push)만 받는다.** 저장소가 public 이라 누구나 포크해 PR 을 열 수 있고, 이 호스트에서
 돈 작업은 Docker 와 인스턴스 역할(영상 버킷 · 시크릿)을 그대로 갖는다. 작업 전에 도는
 [`runner-job-started.sh`](../deploy/aws/runner-job-started.sh)(`/etc/snaply/`, root 소유)가 다른 작업을 거부하고,
-사유는 그 작업 로그의 **Set up runner** 에 남는다. 지우거나 느슨하게 하지 않는다.
+사유는 그 작업 로그의 **Set up runner** 에 남는다. 지우거나 느슨하게 하지 않는다. 허용하는 워크플로 경로에 저장소 이름이 들어 있어(`vlog-studio/snaply/...`),
+저장소 이름을 바꾸면 스크립트를 고친 뒤 인스턴스의 사본도 다시 깔아야 배포가 돈다 — `install.sh` 를 다시 돌리거나
+`sudo install -o root -g root -m 755 deploy/aws/runner-job-started.sh /etc/snaply/runner-job-started.sh`
+(2026-10-30 `snaply-backend` → `snaply`).
 
 ## 2. 시크릿
 

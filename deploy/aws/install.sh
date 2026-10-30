@@ -3,7 +3,7 @@
 # AWS 서버(EC2 dweax-snaply) 준비 — 인스턴스를 새로 만들 때마다 한 번 돌린다. 다시 돌려도 된다(멱등).
 #
 #   sudo dnf install -y git
-#   git clone --depth 1 https://github.com/vlog-studio/snaply-backend.git /tmp/snaply
+#   git clone --depth 1 https://github.com/vlog-studio/snaply.git /tmp/snaply
 #   sudo bash /tmp/snaply/deploy/aws/install.sh
 #
 # 루트 볼륨에 있는 것(runner · Docker 설정 · cron)은 인스턴스를 교체하면 사라진다 — /data 만 다시 붙는다.
@@ -13,7 +13,7 @@
 # New self-hosted runner 화면의 토큰(1시간 유효, 한 번 쓰면 끝). 절차와 이유: docs/deployment-aws.md
 set -euo pipefail
 
-REPO_URL="https://github.com/vlog-studio/snaply-backend"
+REPO_URL="https://github.com/vlog-studio/snaply"
 # runner 는 새 버전이 나오면 스스로 업데이트한다. 여기 버전은 처음 받을 파일이고, 해시로 검증한다.
 RUNNER_VERSION="2.338.0"
 RUNNER_SHA256="af4b794c1bc41d73d40535e3fe092a39f9679cd8d965954c2aca25a05ca41d32"
