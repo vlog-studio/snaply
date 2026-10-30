@@ -34,6 +34,9 @@ apps/ai-worker/assets/bgm/**/*.wav
 apps/ai-worker/assets/bgm/**/*.ogg
 apps/ai-worker/assets/bgm/**/*.flac
 
+# 로컬 레시피 스튜디오의 렌더 결과 · 분석 캐시 (npm run studio)
+apps/ai-worker/.studio/
+
 # misc
 .DS_Store
 *.log
