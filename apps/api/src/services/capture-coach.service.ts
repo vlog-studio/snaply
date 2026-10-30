@@ -92,6 +92,9 @@ function openAiCoachModel(params: { apiKey: string; model: string }): CaptureCoa
             },
           ],
           text: { format: OUTPUT_FORMAT },
+          // 추론을 끄면 약 2초다(켜면 3~6초 — 출력의 대부분이 추론 토큰이었다, 2026-10-30 측정). 안내 한 줄과 피사체 자리는
+          // 추론 없이도 같은 수준이었다. 이 값을 받지 않는 모델로 바꾸면 400 으로 실패해 앱은 모델 없는 안내로 돌아간다.
+          reasoning: { effort: 'none' },
           store: false,
         },
         { signal },
