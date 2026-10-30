@@ -119,4 +119,12 @@ export type Snap = {
    * than treat a missing place as an error.
    */
   place?: SnapPlace;
+  /**
+   * The snap this one was framed against: the previous cut the capture guide
+   * showed when recording began (root docs/decisions/capture-coach.md §4.2,
+   * SNAP-24). Its `id` as this device knew it — the server matches it inside a
+   * movie's own snaps, so the two can be cut next to each other. Absent when
+   * the guide was off or had no previous cut, and on every earlier snap.
+   */
+  linedUpWith?: string;
 };

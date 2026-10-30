@@ -82,4 +82,11 @@ describe('createSnap', () => {
   it('omits the key entirely when no place was resolved', () => {
     expect(createSnap(recording, { durationSec: 3 })).not.toHaveProperty('place');
   });
+
+  it('remembers the previous cut it was framed against, and nothing when there was none', () => {
+    expect(createSnap(recording, { durationSec: 3, linedUpWith: 'snaply-1.mp4' }).linedUpWith).toBe(
+      'snaply-1.mp4',
+    );
+    expect(createSnap(recording, { durationSec: 3 })).not.toHaveProperty('linedUpWith');
+  });
 });

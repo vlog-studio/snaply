@@ -153,6 +153,15 @@ export const createVideoBodySchema = z.object({
       '앱이 이 스냅에 붙인 이름(로컬 스냅 id). 선택값 — 목록의 `clientId` 로 그대로 돌아와, 등록 직후 앱이 기록을 잃어도 자기 스냅을 알아볼 수 있다. 서버는 해석하지 않고 유일성도 보장하지 않는다.',
     )
     .meta({ examples: ['snaply-1727400000000.mp4'] }),
+  linedUpWithClientId: z
+    .string()
+    .min(1)
+    .max(VIDEO_CLIENT_ID_MAX_LENGTH)
+    .optional()
+    .describe(
+      '촬영 가이드로 겹쳐 보며 이어 찍은 앞 스냅의 앱 id(그 스냅의 `clientId`, 서버에서 받은 스냅이면 영상 id). 선택값 — 서버는 해석하지 않고 저장만 하며, AI 편집이 같은 무비 안에서 그 스냅을 찾아 둘을 붙일 후보로 우대한다(SNAP-24). 생략하면 짝이 없다.',
+    )
+    .meta({ examples: ['snaply-1727399990000.mp4'] }),
 });
 export type CreateVideoBody = z.infer<typeof createVideoBodySchema>;
 

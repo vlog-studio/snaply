@@ -68,7 +68,7 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 
 업로드는 2단계다. ① `GET /videos/upload-url` 🔒 로 presigned URL(기본 15분 유효, `S3_PRESIGN_EXPIRY_SECONDS`)과 `pending` 레코드를 받고 ② 그 URL 에 파일을 **PUT**(헤더 `Content-Type` 은 ①에서 보낸 `contentType` 과 동일해야 서명이 유효) ③ `POST /videos` 🔒 로 등록하면 `ready` 가 된다. 단일 클립 최대 500MB(SNAP-7, `S3_MAX_UPLOAD_BYTES`) — 초과하면 ③에서 객체와 레코드를 지우고 400(presigned PUT 은 발급할 때 크기를 제한할 수 없어 등록 단계에서 검사한다). S3 에 객체가 없어도 400. ①에서 24시간 안에 ③까지 가지 않은 `pending` 레코드는 정리 배치(`npm run videos:purge-pending -w apps/api`)가 지울 수 있고, 그 뒤의 ③은 404 다 — ①부터 다시 한다.
 
-- `POST /videos` 본문의 `clientId`(선택) — 앱이 붙인 스냅 이름(로컬 스냅 id). 목록의 `clientId` 로 그대로 돌아와, 찍은 기기가 자기 스냅을 알아본다. 서버는 해석하지 않고 **유일성도 보장하지 않는다.** 등록이 끝나면 서버가 배포 렌디션(`playbackUrl`)을 만들기 시작한다 — 렌디션이 실패해도 등록은 성공이다.
+- `POST /videos` 본문의 `clientId`(선택) — 앱이 붙인 스냅 이름(로컬 스냅 id). 목록의 `clientId` 로 그대로 돌아와, 찍은 기기가 자기 스냅을 알아본다. 서버는 해석하지 않고 **유일성도 보장하지 않는다.** 같은 본문의 `linedUpWithClientId`(선택)는 촬영 가이드로 겹쳐 보며 이어 찍은 앞 스냅의 앱 id(그 스냅의 `clientId`, 서버에서 받은 스냅이면 영상 id)다 — 서버는 저장만 하고 응답에는 돌려주지 않으며, AI 편집이 같은 무비 안에서 그 스냅을 찾아 둘을 붙일 후보로 우대한다(SNAP-24). 앞 스냅이 아직 올라가지 않았어도 보낸다. 등록이 끝나면 서버가 배포 렌디션(`playbackUrl`)을 만들기 시작한다 — 렌디션이 실패해도 등록은 성공이다.
 - `GET /videos` 🔒 — 업로드 최신순(같은 시각이면 `id` 역순) 커서 페이지네이션. `nextCursor` 가 `null` 이 아니면 다음 페이지가 있다. 삭제·만료된 영상은 제외, 편집 결과물(`kind: result`)도 같은 목록에 온다 — 스냅만 보려면 `kind=source`. `pending` 항목은 아직 등록되지 않은 것이다.
 - `POST /videos/lookup` 🔒 — 넘긴 id 가 아직 있는지(`live`), 지워졌다면 왜인지(`removed` + `removalReason`) 알려 준다. 목록에서 사라진 스냅의 이유를 앱이 구분할 때 쓴다. 응답 순서는 요청 순서와 다르니 `id` 로 맞춘다. 남의 id 와 없는 id 는 똑같이 응답에서 빠진다.
 - `originalUrls`·`editedUrl`·`thumbnailUrl`·`playbackUrl` 은 **presigned GET URL**(기본 1시간 유효, `S3_DOWNLOAD_URL_EXPIRY_SECONDS`). 만료되면 목록이나 상세(`GET /videos/{id}`)를 다시 호출해 갱신한다.

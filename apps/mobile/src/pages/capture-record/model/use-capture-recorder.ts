@@ -43,6 +43,8 @@ export function useCaptureRecorder() {
     // The library lists files on disk and is read once on mount, so a capture
     // that lands while the screen is open must refresh it.
     onCaptureCollected: () => void library.reload(),
+    // The guide's previous cut is what this capture is framed against (SNAP-24).
+    linedUpWith: () => guide.previousCut?.snap.id,
   });
 
   // Reviewing is "a saved recording is selected"; capture never enters it.

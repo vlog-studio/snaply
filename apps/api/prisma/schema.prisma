@@ -173,6 +173,9 @@ model Video {
   /// 앱이 붙인 이 스냅의 이름(로컬 스냅 id). 찍은 기기가 서버 목록에서 자기 스냅을 알아보는 데만
   /// 쓴다. **유일하지 않다** — 기기마다 이름 규칙이 같아 계정 안에서도 겹칠 수 있다.
   clientId        String?   @map("client_id") @db.VarChar(128)
+  /// 촬영 가이드로 겹쳐 보며 이어 찍은 앞 컷(짝)의 앱 id — 그 스냅의 `clientId` 나 영상 id(SNAP-24). 해석하지 않고 그대로 두며,
+  /// 편집기가 무비에 든 스냅 안에서만 찾아 둘을 붙일 후보로 우대한다(decisions/capture-coach.md §4.2).
+  linedUpWithClientId String? @map("lined_up_with_client_id") @db.VarChar(128)
   /// 왜 사라졌는가. 행은 툼스톤으로 남으므로(SNAP-12) 사용자는 무엇을 잃었는지 알 수 있다.
   removalReason   VideoRemovalReason? @map("removal_reason")
   /// 파일을 실제로 지운 시각. 만료 "예정"이 아니라 일어난 사실이다 — 만료 판정 자체는

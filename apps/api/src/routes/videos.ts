@@ -110,6 +110,7 @@ export async function videoRoutes(app: FastifyInstance): Promise<void> {
         durationSeconds: request.body.durationSeconds,
         capturedAt: request.body.capturedAt,
         clientId: request.body.clientId,
+        linedUpWithClientId: request.body.linedUpWithClientId,
       });
       reply.status(201);
       return ok(data);

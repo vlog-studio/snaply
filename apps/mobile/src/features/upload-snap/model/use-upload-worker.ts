@@ -156,6 +156,7 @@ export function useUploadWorker(): void {
           toDurationSeconds(snap.durationSec),
           snap.capturedAt,
           snap.id,
+          snap.linedUpWith,
         );
         if (isSnapGone(snap.id)) {
           // Registered ready, then deleted mid-transfer: the remote copy is an

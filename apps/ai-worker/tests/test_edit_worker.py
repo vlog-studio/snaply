@@ -303,12 +303,31 @@ class RenderTrendTrackTest(unittest.IsolatedAsyncioTestCase):
                 mock.patch.object(worker.trend_edit, "render", return_value=trend_result) as render:
             db.fetch_accent_inputs = mock.AsyncMock(return_value=({}, {}))
             db.fetch_captured_at = mock.AsyncMock(return_value={})
+            db.fetch_lined_up_with = mock.AsyncMock(return_value=({}, {}))
             out = await worker._render_trend([VIDEO_ID], {VIDEO_ID: "/w/src_0.mp4"}, worker.get_preset("감성"), "cinematic",
                                              {"movieId": "m1"}, JOB_ID, USER_ID, "/w", "m1:abc")
         self.assertEqual(out, "/w/trend.mp4")
         sync.assert_called_once()
         self.assertEqual(order, ["sync", "pick"])
         self.assertEqual(render.call_args.args[2], "/bgm/calm/a.mp3")
+
+    async def test_a_snap_framed_against_another_in_the_movie_reaches_the_editor_as_its_pair(self) -> None:
+        """겹쳐 보며 이어 찍은 짝(SNAP-24) — 앱 id 로 남은 짝을 무비 안의 입력 번호로 바꿔 넘긴다."""
+        other = "33333333-3333-3333-3333-333333333333"
+        trend_result = mock.Mock(duration_s=10.0, cuts=[], links=[], accents=[], sfx=[], edl={})
+        with mock.patch.object(worker, "db") as db, \
+                mock.patch.object(worker, "_progress", new=mock.AsyncMock()), \
+                mock.patch.object(worker.music, "sync_library"), \
+                mock.patch.object(worker.music, "pick_track", return_value=None), \
+                mock.patch.object(worker.trend_edit, "render", return_value=trend_result) as render:
+            db.fetch_accent_inputs = mock.AsyncMock(return_value=({}, {}))
+            db.fetch_captured_at = mock.AsyncMock(return_value={})
+            db.fetch_lined_up_with = mock.AsyncMock(return_value=(
+                {VIDEO_ID: "snaply-1.mp4", other: "snaply-2.mp4"}, {VIDEO_ID: None, other: "snaply-1.mp4"}))
+            await worker._render_trend([VIDEO_ID, other], {VIDEO_ID: "/w/src_0.mp4", other: "/w/src_1.mp4"},
+                                       worker.get_preset("감성"), "cinematic", {"movieId": "m1"}, JOB_ID, USER_ID, "/w", "m1:abc")
+        snaps = render.call_args.args[0]
+        self.assertEqual([s.lined_up_with for s in snaps], [None, 0])
 
 
 class ApplyAccentsInputTest(unittest.IsolatedAsyncioTestCase):

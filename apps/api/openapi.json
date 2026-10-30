@@ -5084,6 +5084,13 @@
                     "minLength": 1,
                     "maxLength": 128,
                     "example": "snaply-1727400000000.mp4"
+                  },
+                  "linedUpWithClientId": {
+                    "description": "촬영 가이드로 겹쳐 보며 이어 찍은 앞 스냅의 앱 id(그 스냅의 `clientId`, 서버에서 받은 스냅이면 영상 id). 선택값 — 서버는 해석하지 않고 저장만 하며, AI 편집이 같은 무비 안에서 그 스냅을 찾아 둘을 붙일 후보로 우대한다(SNAP-24). 생략하면 짝이 없다.",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128,
+                    "example": "snaply-1727399990000.mp4"
                   }
                 },
                 "required": [

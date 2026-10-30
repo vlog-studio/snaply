@@ -145,7 +145,28 @@ describe('useUploadWorker', () => {
     // it afterwards, so a snap registered without it keeps `null` forever. So
     // does the snap's own id, which lets this device recognise the row in the
     // server's list after losing the record of this upload.
-    expect(mockRegisterVideo).toHaveBeenCalledWith('video-1', 3, 1_753_200_000_000, 'snap-1');
+    expect(mockRegisterVideo).toHaveBeenCalledWith(
+      'video-1',
+      3,
+      1_753_200_000_000,
+      'snap-1',
+      undefined,
+    );
+  });
+
+  it('registers the snap with the previous cut it was framed against (SNAP-24)', async () => {
+    fakeStore.setState({ snaps: [makeSnap({ linedUpWith: 'snap-0' })] });
+
+    await renderHook(() => useUploadWorker());
+
+    await waitFor(() => expect(mockRegisterVideo).toHaveBeenCalled());
+    expect(mockRegisterVideo).toHaveBeenCalledWith(
+      'video-1',
+      3,
+      1_753_200_000_000,
+      'snap-1',
+      'snap-0',
+    );
   });
 
   it('uploads the oldest snap first', async () => {
