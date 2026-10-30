@@ -37,7 +37,7 @@ def representative_ms(source_in_ms: int, source_out_ms: int | None, duration_ms:
 def luma_grid(path: str, at_ms: int, fit_mode: str = "blur_background") -> tuple[tuple[float, ...], ...]:
     """대표 프레임의 휘도(0~1) 격자, 위 행부터."""
     grid = f"scale={COLS}:{ROWS}:flags=area,format=gray"
-    if fit_mode in render_spec.PAD_COLORS:
+    if fit_mode in render_spec.PAD_COLORS or fit_mode == render_spec.LETTERBOX:
         canvas = replace(render_spec.DEFAULT_RENDER_SPEC, width=layout.W, height=layout.H, fit_mode=fit_mode)
         frame = ["-filter_complex", f"{render_spec.build_video_filter(canvas, '')};[v]{grid}[g]", "-map", "[g]"]
     else:

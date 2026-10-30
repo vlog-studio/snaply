@@ -80,6 +80,15 @@ class ForCutTest(unittest.TestCase):
             context = accent_stage.build_cuts([cut], {"v1": ANALYSIS}, {})[0]
         self.assertTrue(close(context.subject, (0.1, 0.2, 0.3, 0.4)), context.subject)
 
+    def test_a_letterbox_movie_puts_the_subject_in_the_band(self):
+        # 컷을 손본 레터박스 무비(MOV-8) — 세로 원본을 띠(1080x608, y 656~1264)에 꽉 채우므로 원본 세로 가운데만 띠에 든다
+        cut = accent_stage.CutSource("v1", "/w/a.mp4", 0, 600, 3000)
+        with mock.patch.object(subject, "display_size", return_value=(1080, 1920)), \
+                mock.patch.object(accent_inputs, "luma_grid", return_value=None):
+            context = accent_stage.build_cuts([cut], {"v1": ANALYSIS}, {}, "letterbox")[0]
+        # 상자 y 0.2~0.4(384~768px)는 띠 위쪽이 잘려 656~768px 만 남는다
+        self.assertTrue(close(context.subject, (0.1, 656 / 1920, 0.3, 768 / 1920)), context.subject)
+
 
 if __name__ == "__main__":
     unittest.main()

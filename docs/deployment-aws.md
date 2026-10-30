@@ -53,7 +53,10 @@
 **runner 는 main 의 `deploy.yml`(push)만 받는다.** 저장소가 public 이라 누구나 포크해 PR 을 열 수 있고, 이 호스트에서
 돈 작업은 Docker 와 인스턴스 역할(영상 버킷 · 시크릿)을 그대로 갖는다. 작업 전에 도는
 [`runner-job-started.sh`](../deploy/aws/runner-job-started.sh)(`/etc/snaply/`, root 소유)가 다른 작업을 거부하고,
-사유는 그 작업 로그의 **Set up runner** 에 남는다. 지우거나 느슨하게 하지 않는다.
+사유는 그 작업 로그의 **Set up runner** 에 남는다. 지우거나 느슨하게 하지 않는다. 허용하는 워크플로 경로에 저장소 이름이 들어 있어(`vlog-studio/snaply/...`),
+저장소 이름을 바꾸면 스크립트를 고친 뒤 인스턴스의 사본도 다시 깔아야 배포가 돈다 — `install.sh` 를 다시 돌리거나
+`sudo install -o root -g root -m 755 deploy/aws/runner-job-started.sh /etc/snaply/runner-job-started.sh`
+(2026-10-30 `snaply-backend` → `snaply`).
 
 > **레포 이름 변경(2026-10-30, `snaply-backend` → `snaply`)** — 이 검사가 허용하는 워크플로 참조(`ALLOWED_WORKFLOW_REF`)는 레포 이름을 담는다.
 > 저장소의 사본만 바꾸면 서버의 `/etc/snaply/runner-job-started.sh` 는 옛 이름이라 **다음 배포를 거절한다.** 서버에서 새 저장소를 받아 그 파일만

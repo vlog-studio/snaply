@@ -78,7 +78,16 @@ export function movieFromRemote(remote: RemoteMovie, local: Movie | undefined): 
 
   // The server still describes a run this device has already settled — the
   // read raced the server's own catch-up. The outcome applied here stands.
-  if (local && remote.jobId !== undefined && local.settledJobId === remote.jobId) {
+  // Except a failure this device wrote over a run the server finished: the
+  // result exists, so it is followed again rather than hidden behind the local
+  // verdict (a fresh install once failed every movie this way, 2026-10-30).
+  const failedHereButFinished = local?.status === 'failed' && remote.status === 'ready';
+  if (
+    local &&
+    remote.jobId !== undefined &&
+    local.settledJobId === remote.jobId &&
+    !failedHereButFinished
+  ) {
     return {
       ...base,
       status: local.status === 'generating' ? 'draft' : local.status,

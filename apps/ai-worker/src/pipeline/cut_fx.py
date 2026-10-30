@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 
 from pipeline import editor, look as lk
 from pipeline import transition as tr
-from pipeline.render_spec import RenderSpec
+from pipeline.render_spec import RenderSpec, band_height
 
 JOIN_KINDS = ("flash", "dip", "zoompunch")
 # 컷 전환의 한쪽 길이(ms) — 컷 길이의 1/3 을 넘지 않게 줄인다
@@ -49,7 +49,7 @@ SPLIT_BACKDROP = "boxblur=40:2,eq=brightness=-0.12"
 
 FRAMES = (None, "letterbox")
 # 레터박스: 띠 높이는 너비의 9/16, 띠에 담을 원본 자리는 세로 가운데보다 조금 위(얼굴 · 물건이 위쪽에 많다)
-LETTERBOX_RATIO, LETTERBOX_FOCUS = 9 / 16, 0.42
+LETTERBOX_FOCUS = 0.42
 
 
 class CutFxError(ValueError):
@@ -255,10 +255,6 @@ def _match_terms(fx: CutFx, d: float) -> tuple[str, str, str]:
         cx += f"+{fx_ - 0.5:.3f}*{e}"
         cy += f"+{fy_ - 0.5:.3f}*{e}"
     return zoom, cx, cy
-
-
-def band_height(width: int) -> int:
-    return round(width * LETTERBOX_RATIO / 2) * 2
 
 
 def band_spec(render_spec: RenderSpec) -> RenderSpec:

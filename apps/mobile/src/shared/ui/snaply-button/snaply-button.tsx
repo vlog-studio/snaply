@@ -124,7 +124,10 @@ export function SnaplyButton({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={title}
-      accessibilityState={busy ? { ...accessibilityState, busy: true } : accessibilityState}
+      // `busy` is always stated, false included: Android keeps the last state it
+      // was told, so dropping the key left a finished button announced as busy
+      // (seen on 앨범에 저장, 2026-10-30).
+      accessibilityState={{ ...accessibilityState, busy }}
       disabled={disabled || busy}
       onLayout={onLayout}
       style={(state) => [styles.ticket, typeof style === 'function' ? style(state) : style]}

@@ -11,7 +11,6 @@
 # 설치는 deploy/aws/install.sh 가 한다(/etc/snaply/runner-job-started.sh).
 set -euo pipefail
 
-# 2026-10-30 레포 이름이 snaply-backend → snaply 로 바뀌었다 — 서버에 설치된 사본(/etc/snaply/runner-job-started.sh)도 같이 바꿔야 배포를 받는다
 ALLOWED_WORKFLOW_REF="vlog-studio/snaply/.github/workflows/deploy.yml@refs/heads/main"
 
 if [ "${GITHUB_WORKFLOW_REF:-}" != "$ALLOWED_WORKFLOW_REF" ] || [ "${GITHUB_EVENT_NAME:-}" != "push" ]; then

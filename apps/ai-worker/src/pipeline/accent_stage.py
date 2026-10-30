@@ -15,17 +15,26 @@
 import hashlib
 import os
 import subprocess
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 from loguru import logger
 
-from pipeline import (accent_inputs, accent_render, ass, beat_grid, content, density, face, ffmpeg_error, recipe, seed, sfx,
-                      sticker, sticker_render, subject, title_card)
+from pipeline import (accent_inputs, accent_render, ass, beat_grid, content, density, face, ffmpeg_error, layout, recipe,
+                      render_spec, seed, sfx, sticker, sticker_render, subject, title_card)
 from pipeline import text_accent as ta
 
 # 곡이 없거나 분석하지 못했을 때의 박자 간격(120 BPM)
 FALLBACK_BEAT_MS = 500
 FINAL_CRF = "20"
+
+
+def letterbox_safe_box() -> tuple[float, float, float, float]:
+    """레터박스 띠의 세이프 에어리어(정규화) — 띠 안, 가장자리에서 조금 들여서, 왼쪽의 "Vlog" 타이틀 자리(너비 30%)는 비운다
+    (처음엔 '찰칵!' 이 타이틀에 겹쳤다 — 2026-10-22). AI 컷 경로와 보통 경로(컷을 손본 레터박스 무비)가 같이 쓴다."""
+    _x, top, _w, band = render_spec.band_area(render_spec.DEFAULT_RENDER_SPEC)
+    h = render_spec.DEFAULT_RENDER_SPEC.height
+    return 0.32, top / h + 0.02, 0.96, (top + band) / h - 0.02
 
 
 @dataclass(frozen=True)
@@ -69,13 +78,27 @@ def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[s
         contexts.append(ta.CutContext(
             f"c{i}", t, t + length,
             content.concepts_of(analysis),
-            subject.for_cut(analysis, cut.path, middle, fit_mode),
+            _subject(analysis, cut.path, middle, fit_mode),
             motion=accent_inputs.cut_motion(motions.get(cut.video_id) or (), cut.start_ms, cut.end_ms),
             luma=_luma(cut, fit_mode),
-            frame=subject.frame_box(cut.path, fit_mode),
+            frame=_frame(cut.path, fit_mode),
         ))
         t += length
     return contexts
+
+
+def _frame(path: str, fit_mode: str):
+    """컷 영상이 화면에서 차지하는 자리 — 레터박스는 띠에 꽉 채운 것(cover)이라 띠 자체다."""
+    if fit_mode == render_spec.LETTERBOX:
+        return subject.frame_box(path, "cover", render_spec.band_area(render_spec.DEFAULT_RENDER_SPEC))
+    return subject.frame_box(path, fit_mode)
+
+
+def _subject(analysis: dict, path: str, at_ms: int, fit_mode: str):
+    """레터박스는 원본을 띠에 꽉 채운 것(cover) — 띠 밖의 상자는 잘린다."""
+    if fit_mode == render_spec.LETTERBOX:
+        return subject.for_cut(analysis, path, at_ms, "cover", render_spec.band_area(render_spec.DEFAULT_RENDER_SPEC))
+    return subject.for_cut(analysis, path, at_ms, fit_mode)
 
 
 def _luma(cut: CutSource, fit_mode: str):
@@ -106,9 +129,11 @@ def render(video_in: str, contexts: list[ta.CutContext], beats, movie_id: str, w
     spec = spec or recipe.get(recipe.CLASSIC).spec
     analyses = analyses or [{} for _ in contexts]
     seed_value = stage_seed(movie_id)
-    accents = density.limit_accents(ta.plan(contexts, beats, seed_value).accents, contexts, spec["accents"])
-    stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed_value), accents, spec["stickers"],
-                                      spec.get("stickerGate"))
+    # 레터박스 레시피는 글 · 스티커를 띠 안에만 둔다(AI 컷 경로와 같다 — `trend_edit._overlay`)
+    with layout.safe_area(letterbox_safe_box()) if spec.get("frame") == "letterbox" else nullcontext():
+        accents = density.limit_accents(ta.plan(contexts, beats, seed_value).accents, contexts, spec["accents"])
+        stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed_value), accents, spec["stickers"],
+                                          spec.get("stickerGate"))
     faces = _faces(video_in, spec, seed_value)
     total_ms = max(c.end_ms for c in contexts)
     title = spec.get("title")

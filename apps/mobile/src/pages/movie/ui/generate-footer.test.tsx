@@ -29,6 +29,9 @@ function sharing(state: Partial<MovieSharing> = {}): MovieSharing {
     share: jest.fn(),
     openInInstagram: jest.fn(),
     handingOff: false,
+    saveToAlbum: jest.fn(),
+    savingToAlbum: false,
+    savedToAlbum: false,
     ...state,
   };
 }
