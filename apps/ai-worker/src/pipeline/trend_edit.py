@@ -25,8 +25,8 @@ from pipeline import (accent_inputs, accent_render, beat_grid, continuity, conte
                       layout, look as lk, match_cut, music, recipe, sfx, sticker, sticker_render, subject, text_accent as ta,
                       title_card)
 from pipeline import transition as tr
-from pipeline.accent_stage import FALLBACK_BEAT_MS, composite, stage_seed
-from pipeline.render_spec import DEFAULT_RENDER_SPEC
+from pipeline.accent_stage import FALLBACK_BEAT_MS, composite, letterbox_safe_box, stage_seed
+from pipeline.render_spec import DEFAULT_RENDER_SPEC, band_area
 
 # 끝맺음 — 마지막 단위의 화면을 검게, 소리를 길게 닫는다(마지막 컷에서 뚝 끊겨 영상이 중간에 잘린 듯 보였다 — 2026-10-22)
 END_FADE_S, END_AUDIO_FADE_S = 0.5, 1.0
@@ -131,9 +131,7 @@ def _frame_area(spec: dict | None) -> tuple[float, float, float, float] | None:
     """컷이 화면에 놓이는 자리(px) — 레터박스면 가운데 띠, 아니면 화면 전체(None)."""
     if not spec or spec.get("frame") != "letterbox":
         return None
-    w, h = DEFAULT_RENDER_SPEC.width, DEFAULT_RENDER_SPEC.height
-    band = cut_fx.band_height(w)
-    return (0.0, (h - band) / 2, float(w), float(band))
+    return band_area(DEFAULT_RENDER_SPEC)
 
 
 def _seg_spec(spec: dict):
@@ -441,19 +439,11 @@ def _moments(planned, fx: cut_fx.Plan, faces: list[face.FaceSticker], parts: lis
     return out
 
 
-def _band_box() -> tuple[float, float, float, float]:
-    """레터박스 띠의 세이프 에어리어(정규화) — 띠 안, 가장자리에서 조금 들여서, 왼쪽의 "Vlog" 타이틀 자리(너비 30%)는 비운다
-    (처음엔 '찰칵!' 이 타이틀에 겹쳤다 — 2026-10-22)."""
-    h, band = DEFAULT_RENDER_SPEC.height, cut_fx.band_height(DEFAULT_RENDER_SPEC.width)
-    top = (h - band) / 2 / h
-    return 0.32, top + 0.02, 0.96, top + band / h - 0.02
-
-
 def _overlay(base: str, contexts, analyses, beats, spec: dict, movie_id: str, work: str, total_ms: int, result: Result,
              faces: list[face.FaceSticker], stamps: list[datetime | None] | None = None,
              holds: list[tuple[str, int, int]] | None = None) -> str:
     seed = stage_seed(movie_id)
-    with layout.safe_area(_band_box()) if spec["frame"] == "letterbox" else nullcontext():
+    with layout.safe_area(letterbox_safe_box()) if spec["frame"] == "letterbox" else nullcontext():
         plan = ta.plan(contexts, beats, seed)
         accents = density.limit_accents(plan.accents, contexts, spec["accents"])
         stickers = density.limit_stickers(sticker.plan(contexts, accents, beats, seed), accents, spec["stickers"],
