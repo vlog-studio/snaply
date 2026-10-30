@@ -26,6 +26,27 @@ describe('SnaplyButton', () => {
     expect(onPress).not.toHaveBeenCalled();
   });
 
+  // Android keeps the last accessibility state it was told: a button that only
+  // dropped `busy` when its wait ended was still announced as busy after it.
+  it('stops announcing busy once the wait ends', async () => {
+    const { rerender } = await render(
+      <SnaplyButton busy title={buttonTitle} onPress={jest.fn()} />,
+    );
+    expect(
+      screen.getByRole('button', { name: buttonTitle }).props.accessibilityState,
+    ).toMatchObject({
+      busy: true,
+    });
+
+    await rerender(<SnaplyButton title={buttonTitle} onPress={jest.fn()} />);
+
+    expect(
+      screen.getByRole('button', { name: buttonTitle }).props.accessibilityState,
+    ).toMatchObject({
+      busy: false,
+    });
+  });
+
   // The VOID stamp is a drawing on the kraft face, not a word of the label: a
   // danger ticket with no label of its own was read as "삭제 VOID".
   it('names a danger ticket by its title alone, without the VOID stamp', async () => {

@@ -262,7 +262,10 @@ export function MovieWatch({
           />
           {onPostToInstagram ? (
             <SnaplyButton
-              title="Instagram에 게시"
+              // Half a row cannot hold Instagram에 게시 on one line on a phone (it
+              // wrapped on the emulator); the verb stays in what a reader hears.
+              title="Instagram"
+              accessibilityLabel="Instagram에 게시"
               variant="secondary"
               onPress={onPostToInstagram}
               style={styles.sendAction}
