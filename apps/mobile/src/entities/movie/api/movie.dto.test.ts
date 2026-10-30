@@ -238,4 +238,16 @@ describe('decorations', () => {
     expect(toMovieBody({ ...base, decorations }, videoIdOf)?.decorations).toEqual(decorations);
     expect(toMovieBody(base, videoIdOf)).not.toHaveProperty('decorations');
   });
+
+  // MOV-29 — the editing choices travel the same way.
+  it('reads and sends the editing choices, and none for a movie that never had them', () => {
+    const editing = { speech: true, sceneOrder: false };
+
+    expect(mapRemoteMovie(movieDtoSchema.parse({ ...dto([]), editing }), snapIdOf).editing).toEqual(
+      editing,
+    );
+    expect(mapRemoteMovie(dto([]), snapIdOf).editing).toBeUndefined();
+    expect(toMovieBody({ ...base, editing }, videoIdOf)?.editing).toEqual(editing);
+    expect(toMovieBody(base, videoIdOf)).not.toHaveProperty('editing');
+  });
 });

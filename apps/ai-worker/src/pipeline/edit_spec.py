@@ -1,6 +1,6 @@
 """Versioned edit specifications consumed from BullMQ jobs."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pipeline.transition import Transition, TransitionError, validate_transition
 
@@ -65,6 +65,8 @@ class Timeline:
 
     cuts: list[ClipSpec]
     transitions: list[Transition]
+    # 컷마다 AI 가 자른 구간인가(`trimOwner: ai`, MOV-22) — 워커는 이 컷만 박자 · 흔들림에 맞춰 옮긴다(MOV-29). 생략은 사용자 구간
+    ai_cuts: list[bool] = field(default_factory=list)
 
 
 def _parse_v3_cut(raw: object) -> tuple[str, ClipSpec]:
@@ -114,4 +116,11 @@ def parse_timeline(edit_spec: object) -> Timeline:
             transitions.append(validate_transition(str(raw.get("kind")), raw.get("durationMs")))
         except TransitionError as exc:
             raise ValueError(str(exc)) from exc
-    return Timeline([clip for _, clip in cuts], transitions)
+    return Timeline([clip for _, clip in cuts], transitions, [isinstance(raw, dict) and raw.get("trimOwner") == "ai" for raw in raw_cuts])
+
+
+def editing_of(edit_spec: dict) -> dict[str, bool]:
+    """무비의 편집 선택(MOV-29) — `{speech, sceneOrder}`. 없거나 불린이 아닌 값은 꺼짐(이 필드가 생기기 전의 작업도 같은 결과)."""
+    raw = edit_spec.get("editing") if isinstance(edit_spec, dict) else None
+    raw = raw if isinstance(raw, dict) else {}
+    return {key: raw.get(key) is True for key in ("speech", "sceneOrder")}

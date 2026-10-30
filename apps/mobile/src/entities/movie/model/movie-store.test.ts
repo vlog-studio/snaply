@@ -415,6 +415,38 @@ describe('editing a movie', () => {
     expect(getMovieOutbox().pending.m1).toBe('update');
   });
 
+  // MOV-29 — the editing choices are the movie's own: a switch owes the server an
+  // update, and a recipe change leaves them as they are (unlike decorations).
+  it('writes an editing switch and keeps it through a recipe change', async () => {
+    useMovieStore.setState({ pending: {} });
+    const { result } = await renderHook(() => useUpdateMovieStyle());
+
+    await act(async () =>
+      result.current('m1', { editing: { speech: true, sceneOrder: false } }, 999),
+    );
+
+    expect(useMovieStore.getState().movies[0]).toMatchObject({
+      editing: { speech: true, sceneOrder: false },
+      updatedAt: 999,
+    });
+    expect(getMovieOutbox().pending.m1).toBe('update');
+
+    await act(async () => result.current('m1', { recipe: 'cinematic' }, 1000));
+
+    expect(useMovieStore.getState().movies[0].editing).toEqual({ speech: true, sceneOrder: false });
+  });
+
+  it('treats both-off as no change for a movie stored before editing choices', async () => {
+    const before = useMovieStore.getState().movies[0];
+    const { result } = await renderHook(() => useUpdateMovieStyle());
+
+    await act(async () =>
+      result.current('m1', { editing: { speech: false, sceneOrder: false } }, 999),
+    );
+
+    expect(useMovieStore.getState().movies[0]).toBe(before);
+  });
+
   // A movie stored before decorations reads as its recipe's defaults (classic:
   // all off) — writing those back is no change.
   it('treats the recipe’s own defaults as no change for a movie stored before decorations', async () => {

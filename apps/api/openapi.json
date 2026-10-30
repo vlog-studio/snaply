@@ -818,6 +818,24 @@
                       "face"
                     ]
                   },
+                  "editing": {
+                    "description": "편집 선택(MOV-29). 생략하면 둘 다 꺼짐 — 이 필드가 생기기 전의 작업도 같은 결과다. `sceneOrder` 는 API 가 순서의 주인이 AI 인 무비에만 켜서 보낸다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+                      }
+                    },
+                    "required": [
+                      "speech",
+                      "sceneOrder"
+                    ]
+                  },
                   "autoCuts": {
                     "description": "`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).",
                     "type": "boolean"
@@ -851,6 +869,14 @@
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 9007199254740991
+                            },
+                            "trimOwner": {
+                              "description": "구간의 주인(MOV-22). `ai` 면 워커가 경계를 박자에 맞추고 흔들리는 구간을 같은 스냅의 안정된 구간으로 옮겨도 된다(MOV-29). 생략하면 `user`.",
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "ai"
+                              ]
                             }
                           },
                           "required": [
@@ -1334,6 +1360,24 @@
             ],
             "description": "무비의 꾸밈(글자 · 이모지 · 얼굴 스티커). 바꾸면 다음 생성부터 적용된다 — 컷 · 순서 · 효과 · 곡은 그대로다."
           },
+          "editing": {
+            "type": "object",
+            "properties": {
+              "speech": {
+                "type": "boolean",
+                "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+              },
+              "sceneOrder": {
+                "type": "boolean",
+                "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+              }
+            },
+            "required": [
+              "speech",
+              "sceneOrder"
+            ],
+            "description": "무비의 편집 선택(말소리 · 장면 순서). 바꾸면 다음 생성부터 적용된다."
+          },
           "ratio": {
             "type": "string",
             "description": "출력 비율. 현재는 `9:16` 뿐이다."
@@ -1394,6 +1438,7 @@
           "captions",
           "fitMode",
           "decorations",
+          "editing",
           "ratio",
           "arranger",
           "clips",
@@ -2600,6 +2645,25 @@
                     ],
                     "additionalProperties": false
                   },
+                  "editing": {
+                    "description": "편집 선택(MOV-29). 생략하면 둘 다 꺼짐 — 이 필드가 생기기 전의 작업도 같은 결과다. `sceneOrder` 는 API 가 순서의 주인이 AI 인 무비에만 켜서 보낸다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+                      }
+                    },
+                    "required": [
+                      "speech",
+                      "sceneOrder"
+                    ],
+                    "additionalProperties": false
+                  },
                   "autoCuts": {
                     "description": "`true` 면 컷 구간 · 순서를 전부 AI 가 정한 무비다 — 레시피가 스냅에서 컷을 다시 고르고(매치컷 · 점수 위주 순서) 경계 효과를 정해도 된다. 사용자가 구간 · 순서를 고쳤으면 `false`(구간 · 순서를 지킨다).",
                     "type": "boolean"
@@ -2633,6 +2697,14 @@
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 9007199254740991
+                            },
+                            "trimOwner": {
+                              "description": "구간의 주인(MOV-22). `ai` 면 워커가 경계를 박자에 맞추고 흔들리는 구간을 같은 스냅의 안정된 구간으로 옮겨도 된다(MOV-29). 생략하면 `user`.",
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "ai"
+                              ]
                             }
                           },
                           "required": [
@@ -3128,6 +3200,25 @@
             "additionalProperties": false,
             "description": "무비의 꾸밈(글자 · 이모지 · 얼굴 스티커). 바꾸면 다음 생성부터 적용된다 — 컷 · 순서 · 효과 · 곡은 그대로다."
           },
+          "editing": {
+            "type": "object",
+            "properties": {
+              "speech": {
+                "type": "boolean",
+                "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+              },
+              "sceneOrder": {
+                "type": "boolean",
+                "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+              }
+            },
+            "required": [
+              "speech",
+              "sceneOrder"
+            ],
+            "additionalProperties": false,
+            "description": "무비의 편집 선택(말소리 · 장면 순서). 바꾸면 다음 생성부터 적용된다."
+          },
           "ratio": {
             "type": "string",
             "description": "출력 비율. 현재는 `9:16` 뿐이다."
@@ -3188,6 +3279,7 @@
           "captions",
           "fitMode",
           "decorations",
+          "editing",
           "ratio",
           "arranger",
           "clips",
@@ -7076,6 +7168,20 @@
                       }
                     }
                   },
+                  "editing": {
+                    "description": "편집 선택(말소리 · 장면 순서). 생략한 키는 꺼짐이다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
+                      }
+                    }
+                  },
                   "arranger": {
                     "description": "컷 순서의 주인. `ai` 면 서버가 촬영 시각 순으로 정렬하고, 사용자가 순서를 바꾸면 `user` 로 굳는다. 생략하면 `user`.",
                     "type": "string",
@@ -7655,6 +7761,20 @@
                       "face": {
                         "type": "boolean",
                         "description": "얼굴을 따라다니는 스티커(왕관 · 하트 · 반짝이)."
+                      }
+                    }
+                  },
+                  "editing": {
+                    "description": "보낸 키만 바꾼다. 레시피를 바꿔도 그대로다.",
+                    "type": "object",
+                    "properties": {
+                      "speech": {
+                        "type": "boolean",
+                        "description": "사람이 말하는 구간은 원본 목소리를 살리고 그동안 음원을 낮춘다."
+                      },
+                      "sceneOrder": {
+                        "type": "boolean",
+                        "description": "순서의 주인이 AI 인 무비에서 촬영 장면(10분 간격) 단위로 순서를 두고, 가장 강한 순간을 첫 컷으로 앞당긴다."
                       }
                     }
                   },

@@ -10,9 +10,11 @@ import {
   DefaultMovieRecipe,
   RecipeDecorationDefaults,
   movieDecorations,
+  movieEditing,
   movieRecipeOrDefault,
   recipePicksCuts,
   sameDecorations,
+  sameEditing,
 } from '../lib/movie-recipe';
 import { DefaultMovieStyle } from '../lib/movie-style';
 import { mergeRemoteMovies, movieFromRemote, type PendingWrite } from '../lib/movie-sync';
@@ -21,6 +23,7 @@ import type {
   Movie,
   MovieArranger,
   MovieDecorations,
+  MovieEditing,
   MovieRecipe,
   MovieRender,
   MovieStyle,
@@ -72,6 +75,8 @@ export type MovieStylePatch = {
    * the new recipe's defaults, as the server does.
    */
   decorations?: MovieDecorations;
+  /** The editing choices, whole (MOV-29). A recipe change leaves them as they are. */
+  editing?: MovieEditing;
   bgm?: string;
   captions?: boolean;
 };
@@ -320,6 +325,7 @@ export const useMovieStore = create<MovieState>()(
               next.style !== movie.style ||
               recipeChanged ||
               !sameDecorations(movieDecorations(next), movieDecorations(movie)) ||
+              !sameEditing(movieEditing(next), movieEditing(movie)) ||
               next.bgm !== movie.bgm ||
               next.captions !== movie.captions;
             return changed ? next : movie;

@@ -157,5 +157,105 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(ct.speed_for(ct.series_of(textured(40, 16)), {"actions": ("walk",)}, recipe.get("classic").spec["speed"]), 1.0)
 
 
+class MovieTargetTest(unittest.TestCase):
+    """무비 길이는 재료가 정한다(trend-recipes §23) — 진단 렌더 10편이 재료와 상관없이 모두 15.0초였다."""
+
+    BEATS = tuple(range(0, 200000, 500))  # 120 BPM — 16박 = 8초
+
+    def test_more_snaps_make_a_longer_movie_within_the_limits(self):
+        shot, low = (700, 2500), 15000  # 보통 컷 1.6초
+        ten = ct.movie_target([3000] * 10, shot, low, ())
+        thirty_two = ct.movie_target([3000] * 32, shot, low, ())
+        self.assertEqual(ten, 16000)
+        self.assertEqual(thirty_two, 51200)
+        self.assertEqual(ct.movie_target([3000] * 5, shot, low, ()), 15000)  # 하한
+        self.assertEqual(ct.movie_target([3000] * 60, shot, low, ()), ct.MAX_TARGET_MS)  # 상한
+
+    def test_short_sources_count_only_what_they_have(self):
+        self.assertEqual(ct.movie_target([1000] * 20, (700, 2500), 15000, ()), 20000)
+
+    def test_the_length_ends_on_a_phrase_of_the_song(self):
+        target = ct.movie_target([3000] * 13, (700, 2500), 15000, self.BEATS)  # 재료 20.8초 → 가까운 악구 끝 24초
+        self.assertEqual(target, 24000)
+        self.assertGreaterEqual(ct.movie_target([3000] * 10, (700, 2500), 15000, self.BEATS), 15000)  # 16초 → 16초(하한 아래로 내리지 않는다)
+
+    def test_a_far_phrase_does_not_stretch_the_movie(self):
+        # 재료로는 하한(15초)인데 다음 악구가 20.1초라 끌어올렸더니 같은 스냅을 늘려 채워 비트싱크 컷이 2초가 됐다(2026-10-30) — 20% 안의 악구만
+        beats = tuple(range(0, 200000, 419))  # 16박 = 6.7초 → 악구 13.4 · 20.1초
+        self.assertEqual(ct.movie_target([3000] * 11, (300, 1200), 15000, beats), 15000)
+
+
+class SnapToBeatsTest(unittest.TestCase):
+    """컷을 어떻게 골랐든 경계를 박자 프레임에 둔다(MOV-28, 진단 보고서 로드맵 1) — 원본 줌 쌍 · 빔 포맷은 박자를 보지 않았다."""
+
+    BEATS = tuple(range(230, 60000, 484))  # 124 BPM, 첫 박이 0 이 아닌 곡
+    FPS = 30
+
+    def boundaries(self, planned):
+        t, out = 0, []
+        for c in planned[:-1]:
+            t += round(c.out_ms * self.FPS / 1000)
+            out.append(t * 1000 / self.FPS)
+        return out
+
+    def test_every_boundary_lands_on_a_beat_frame_within_the_shot_range(self):
+        planned = [ct.PlannedCut(i, 300, 1800, 1.0, None) for i in range(8)]  # 1.5초씩 — 박자와 무관한 길이
+        snapped = ct.snap_to_beats(planned, [3000] * 8, self.BEATS, (700, 2500), self.FPS)
+        for at in self.boundaries(snapped):
+            self.assertLessEqual(min(abs(b - at) for b in self.BEATS), 1000 / self.FPS / 2 + 1)
+        self.assertTrue(all(700 <= c.out_ms <= 2500 for c in snapped))
+        self.assertEqual([c.index for c in snapped], list(range(8)))
+
+    def test_cut_lengths_are_whole_frames(self):
+        snapped = ct.snap_to_beats([ct.PlannedCut(i, 0, 1467, 1.0, None) for i in range(5)], [3000] * 5, self.BEATS, (500, 2500), self.FPS)
+        for c in snapped:
+            frames = c.out_ms * self.FPS / 1000
+            self.assertAlmostEqual(frames, round(frames), delta=0.05)
+
+    def test_a_cut_that_must_keep_its_end_moves_its_start(self):
+        # 원본 줌 인이 끝나는 순간으로 다음 컷과 이어지는 컷 — 끝은 그대로 두고 시작을 옮긴다
+        planned = [ct.PlannedCut(0, 1000, 2500, 1.0, None), ct.PlannedCut(1, 0, 1500, 1.0, None)]
+        snapped = ct.snap_to_beats(planned, [3000, 3000], self.BEATS, (700, 2500), self.FPS, keep_end=[True, False])
+        self.assertEqual(snapped[0].end_ms, 2500)
+        self.assertNotEqual(snapped[0].start_ms, 1000)
+
+    def test_speed_curves_freezes_and_short_sources_are_left_alone(self):
+        ramp = ct.PlannedCut(0, 0, 2000, 1.0, None, ramp=2.5)
+        hold = ct.PlannedCut(1, 0, 1000, 1.0, None, hold_ms=500, hold_at_ms=300)
+        tight = ct.PlannedCut(2, 0, 1000, 1.0, None)  # 원본이 딱 1초 — 늘릴 수도, 박자까지 줄이면 범위 밖
+        snapped = ct.snap_to_beats([ramp, hold, tight], [2000, 1000, 1000], self.BEATS, (950, 2500), self.FPS)
+        self.assertEqual(snapped[:2], [ramp, hold])
+        self.assertEqual((snapped[2].start_ms, snapped[2].end_ms), (0, 1000))
+
+    def test_speed_is_kept_while_the_source_window_follows_the_beat(self):
+        planned = [ct.PlannedCut(0, 0, 3000, 2.0, None), ct.PlannedCut(1, 0, 1500, 1.0, None)]  # 3초 원본을 2배 → 1.5초
+        snapped = ct.snap_to_beats(planned, [6000, 3000], self.BEATS, (700, 2500), self.FPS)
+        self.assertEqual(snapped[0].speed, 2.0)
+        at = self.boundaries(snapped)[0]
+        self.assertLessEqual(min(abs(b - at) for b in self.BEATS), 1000 / self.FPS / 2 + 1)
+
+    def test_a_cut_is_not_cut_by_more_than_half_a_beat_and_the_movie_end_stays(self):
+        # 원본을 다 쓴 2.5초 컷 — 다음 박자는 원본 밖이고 앞 박자는 반 박자보다 멀다 → 장면을 깎지 않는다(박자 맞춤이 원본을 먹지 않게)
+        beats = (975, 1811, 2670, 3553, 4412, 5248, 6107, 6943)  # 70 BPM 남짓
+        planned = [ct.PlannedCut(i, 0, 2500, 1.0, None) for i in range(3)]
+        snapped = ct.snap_to_beats(planned, [2500] * 3, beats, (700, 2500), self.FPS)
+        self.assertEqual(snapped[0], planned[0])
+        self.assertEqual(snapped[-1], planned[-1])  # 마지막 컷의 끝은 무비의 끝 — 박자로 옮기지 않는다
+        self.assertGreater(sum(c.out_ms for c in snapped), 7000)
+
+    def test_a_cut_stretched_past_the_shot_range_still_lands_on_a_beat(self):
+        # 최소 15초를 채우느라 컷이 레시피 범위(0.3~1.2초)보다 길어지면 범위 안 박자가 없어 건너뛰었다 — 수영장 묶음 비트싱크 0.3(2026-10-30)
+        beats = tuple(range(0, 60000, 418))  # 138 BPM
+        planned = [ct.PlannedCut(i, 300, 2000, 1.0, None) for i in range(6)]  # 1.7초 — 범위 밖
+        snapped = ct.snap_to_beats(planned, [3000] * 6, beats, (300, 1200), self.FPS)
+        for at in self.boundaries(snapped):
+            self.assertLessEqual(min(abs(b - at) for b in beats), 1000 / self.FPS / 2 + 1)
+        self.assertTrue(all(c.out_ms <= 1700 + 418 // 2 for c in snapped))  # 더 늘려도 반 박자까지
+
+    def test_without_beats_nothing_moves(self):
+        planned = [ct.PlannedCut(i, 0, 1500, 1.0, None) for i in range(3)]
+        self.assertEqual(ct.snap_to_beats(planned, [3000] * 3, (), (700, 2500), self.FPS), planned)
+
+
 if __name__ == "__main__":
     unittest.main()

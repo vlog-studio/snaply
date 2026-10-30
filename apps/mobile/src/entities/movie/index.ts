@@ -70,10 +70,13 @@ export { MovieBgmCatalog } from './lib/movie-bgm';
 export { MovieStyleCatalog, movieStyleLabel, movieStyleOrDefault } from './lib/movie-style';
 export {
   MovieDecorationOptions,
+  MovieEditingOptions,
   MovieRecipeCatalog,
   cutsAreAllAi,
   movieDecorations,
   movieDecorationsLabel,
+  movieEditing,
+  movieEditingLabel,
   movieRecipeLabel,
   movieRecipeOrDefault,
   recipePicksCuts,
@@ -99,6 +102,7 @@ export type {
   Movie,
   MovieArranger,
   MovieDecorations,
+  MovieEditing,
   MovieRecipe,
   MovieRender,
   MovieStatus,

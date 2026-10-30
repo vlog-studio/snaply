@@ -21,6 +21,7 @@ from pathlib import Path
 from loguru import logger
 
 import config
+from pipeline import speech as talk
 
 AUDIO_EXTS = {".m4a", ".mp3", ".aac", ".wav", ".ogg", ".flac"}
 MANIFEST_NAME = "manifest.json"
@@ -159,10 +160,22 @@ MUSIC_ONLY_BGM_GAIN = 1.0
 
 
 def mix(video_in: str, bgm_path: str, out: str, video_duration: float,
-        source_gain: float = 1.0, bgm_gain: float = BGM_GAIN, end_fade: float = 0.0) -> None:
+        source_gain: float = 1.0, bgm_gain: float = BGM_GAIN, end_fade: float = 0.0,
+        speech: list[tuple[float, float]] | None = None) -> None:
     """원본 오디오 위에 BGM 을 합성하고, 끝에서 fade-out. source_gain=0 이면 원본 소리를 빼고 BGM 만 남긴다(음원만 모드).
-    end_fade 초가 있으면 섞은 소리 전체(원본 포함)를 끝에서 닫는다 — 원본 소리가 마지막 컷에서 뚝 끊기지 않게(레시피 무비)."""
+    end_fade 초가 있으면 섞은 소리 전체(원본 포함)를 끝에서 닫는다 — 원본 소리가 마지막 컷에서 뚝 끊기지 않게(레시피 무비).
+    speech(초 구간)가 있으면 그 구간만 원본을 SPEECH_GAIN 으로 살리고 BGM 을 DUCK 배로 낮춘다(말하는 컷 — trend-recipes §24)."""
     fade_start = max(video_duration - 2.0, 0.0)
+    if speech:
+        bgm_volume = f"volume='{talk.gain_expr(speech, bgm_gain * talk.DUCK, bgm_gain)}':eval=frame"
+        bg = f"[1:a]{bgm_volume},afade=t=out:st={fade_start:.2f}:d=2,atrim=0:{video_duration:.2f}"
+        src = f"[0:a]volume='{talk.gain_expr(speech, max(source_gain, talk.SPEECH_GAIN), source_gain)}':eval=frame[src]"
+        # 크기는 곡선이 정한다 — amix 의 기본 정규화는 두 소리를 반씩 깎는다
+        fc = f"{bg}[bg];{src};[src][bg]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]"
+        if end_fade:
+            fc = fc[:-len("[a]")] + f",afade=t=out:st={max(video_duration - end_fade, 0.0):.2f}:d={end_fade:g}[a]"
+        _run_mix(video_in, bgm_path, out, fc)
+        return
     bg = f"[1:a]volume={bgm_gain:g},afade=t=out:st={fade_start:.2f}:d=2,atrim=0:{video_duration:.2f}"
     if source_gain == 0:
         fc = f"{bg},aresample=48000,aformat=channel_layouts=stereo[a]"
@@ -173,6 +186,10 @@ def mix(video_in: str, bgm_path: str, out: str, video_duration: float,
         fc = f"{bg}[bg];[0:a]volume={source_gain:g}[src];[src][bg]amix=inputs=2:duration=first:dropout_transition=0[a]"
     if end_fade:
         fc = fc[:-len("[a]")] + f",afade=t=out:st={max(video_duration - end_fade, 0.0):.2f}:d={end_fade:g}[a]"
+    _run_mix(video_in, bgm_path, out, fc)
+
+
+def _run_mix(video_in: str, bgm_path: str, out: str, fc: str) -> None:
     subprocess.run(
         [
             "ffmpeg", "-y",
@@ -188,8 +205,9 @@ def mix(video_in: str, bgm_path: str, out: str, video_duration: float,
 
 
 def apply_bgm(video_in: str, tag: str, out: str, video_duration: float, key: str,
-              source_gain: float = 1.0, bgm_gain: float = BGM_GAIN) -> tuple[str, bool]:
-    """BGM 합성 시도. `key` 는 곡을 고정하는 값(무비 id). 반환: (결과 경로, BGM 적용 여부).
+              source_gain: float = 1.0, bgm_gain: float = BGM_GAIN,
+              speech: list[tuple[float, float]] | None = None) -> tuple[str, bool]:
+    """BGM 합성 시도. `key` 는 곡을 고정하는 값(무비 id). 반환: (결과 경로, BGM 적용 여부). speech 는 말소리를 살릴 구간(초, `mix`).
 
     합성이 실패하면 BGM 없이 간다(backlog E-51) — 컷을 다 붙인 뒤라 무비 전체를 실패시키면 처음부터 다시 돈다.
     곡이 없을 때와 같은 결과다.
@@ -199,7 +217,7 @@ def apply_bgm(video_in: str, tag: str, out: str, video_duration: float, key: str
     if track is None:
         return video_in, False
     try:
-        mix(video_in, track, out, video_duration, source_gain, bgm_gain)
+        mix(video_in, track, out, video_duration, source_gain, bgm_gain, speech=speech)
     except subprocess.CalledProcessError as exc:
         logger.warning("BGM 합성 실패 — BGM 없이 진행 (track={}): {}", Path(track).name, (exc.stderr or "")[-300:])
         _capture(exc)

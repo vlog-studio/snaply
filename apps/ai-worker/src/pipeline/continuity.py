@@ -161,6 +161,22 @@ def _start(s: Series, previous: Series | None, prev_end: int | None, prev_seam: 
     return (best * STEP_MS, "match") if scores[best] >= MATCH_MIN else (0, None)
 
 
+MAX_TARGET_MS = 60_000  # 레시피 무비가 스스로 정하는 길이의 상한 — 숏폼에서 흔한 길이(잠정, trend-recipes §23)
+PHRASE_BEATS = 16  # 악구 — 4/4 의 4마디(다운비트를 모르므로 곡 처음부터 센 근사)
+# 목표에서 이만큼 안의 악구에만 맞춘다 — 하한(15초)인 무비를 다음 악구(20.1초)로 끌어올렸더니 같은 스냅을 늘려 채워 비트싱크 컷이 2초가 됐다(2026-10-30)
+PHRASE_TOLERANCE = 0.2  # 15% 로 두면 재료 20.8초 → 악구 24초(15.4%)도 빠진다
+
+
+def movie_target(source_ms: list[int], shot: tuple[int, int], low: int, beats: tuple[int, ...]) -> int:
+    """무비 목표 길이(ms) — 재료가 정한다(trend-recipes §23). 스냅마다 보통 컷 길이(shot 가운데, 원본이 짧으면 원본)를 더해 low ~ MAX_TARGET_MS 로
+    자르고, 박자를 알면 PHRASE_TOLERANCE 안의 가장 가까운 악구 끝(PHRASE_BEATS 박마다)에 맞춘다. 전에는 low(15초)가 곧 목표라 재료와 상관없이 15초 안팎이었다."""
+    typical = (shot[0] + shot[1]) // 2
+    target = max(low, min(MAX_TARGET_MS, sum(min(s, typical) for s in source_ms)))
+    phrases = [beats[i] for i in range(PHRASE_BEATS, len(beats), PHRASE_BEATS)
+               if low <= beats[i] <= MAX_TARGET_MS and abs(beats[i] - target) <= target * PHRASE_TOLERANCE]
+    return min(phrases, key=lambda p: abs(p - target)) if phrases else target
+
+
 def budgets(caps: list[int], min_ms: int | None) -> list[int]:
     """스냅마다 결과물에서 쓸 길이 목표 — 합이 min_ms 가 되도록 고르게(스냅이 내줄 수 있는 caps 를 넘지 않게). 모자라면 caps 전부."""
     if not min_ms or sum(caps) <= min_ms:
@@ -242,6 +258,58 @@ def plan_cuts(series: list[Series], concepts: list[dict], beats: tuple[int, ...]
         t += cut.out_ms
         prev_seam = cut.seam
     return planned
+
+
+def _resized(cut: PlannedCut, out_ms: float, source_ms: int, keep_end: bool, keep_start: bool) -> PlannedCut | None:
+    """결과물 길이가 out_ms 가 되게 원본 구간을 늘리거나 줄인 컷 — 끝을 지켜야 하면 시작을, 아니면 끝을(원본 끝에 닿으면 남은 만큼 시작을)
+    옮긴다. 원본 안에서 맞출 수 없으면 None."""
+    delta = round(out_ms * cut.speed) - (cut.end_ms - cut.start_ms)
+    start, end = cut.start_ms, cut.end_ms
+    if keep_end:
+        start -= delta
+    else:
+        end = min(source_ms, end + delta)
+        if not keep_start:
+            start -= delta - (end - cut.end_ms)
+    if start < 0 or end > source_ms or end - start != cut.end_ms - cut.start_ms + delta:
+        return None
+    return PlannedCut(cut.index, start, end, cut.speed, cut.seam, ramp=cut.ramp, hold_ms=cut.hold_ms, hold_at_ms=cut.hold_at_ms)
+
+
+def snap_to_beats(planned: list[PlannedCut], source_ms: list[int], beats: tuple[int, ...], shot: tuple[int, int], fps: int,
+                  keep_end: list[bool] | None = None, keep_start: list[bool] | None = None,
+                  movable: list[bool] | None = None) -> list[PlannedCut]:
+    """컷 경계를 곡의 박자 프레임에 둔다 — 컷 고르기(이음 계획 · 원본 줌 쌍 · 빔 서치)가 정한 길이를 shot 범위 안의 가장 가까운 박자로
+    옮긴다(MOV-28). 무비 시간축은 프레임으로 센다: 컷 길이는 프레임 정수(`editor.frame_cut_seconds` 가 그만큼만 남긴다)라 이어 붙여도
+    경계가 밀리지 않는다. 경계가 박자를 벗어나도 뒤 컷은 다시 박자에 맞춘다(시각은 절대값).
+    keep_end[k] — 원본 줌 인이 끝나는 순간으로 이어지는 컷은 끝 대신 시작을, keep_start[k] — 줌 아웃이 시작하는 컷은 끝만 옮긴다.
+    movable[k] 가 거짓인 컷(사용자가 자른 구간 — MOV-22)은 옮기지 않는다. 배속 곡선 · 멈춤이 있는 컷은 그 길이가 계획의 일부라 옮기지 않는다. 원본이 모자라 맞출 수 없는 컷, 반 박자보다 멀리 옮겨야 하는 컷
+    (박자 맞춤이 장면을 깎아 먹지 않게 — 원본을 다 쓴 짧은 무비), 마지막 컷(무비의 끝 — 끝맺음 페이드가 닫는다)도 그대로 둔다."""
+    if len(beats) < 2:
+        return planned
+    frame_ms = 1000 / fps
+    reach = float(np.median(np.diff(beats))) / 2
+    out, t_frames = [], 0
+    for k, cut in enumerate(planned):
+        snapped = None
+        if not cut.ramp and not cut.hold_ms and k < len(planned) - 1 and (movable is None or movable[k]):
+            t = t_frames * frame_ms
+            want = t + cut.out_ms
+            fits = []
+            # 최소 길이를 채우느라 이미 shot 범위를 넘은 컷은 지금 길이 근처(반 박자 안)까지 허용한다 — 범위 안 박자가 없어 건너뛰었다(2026-10-30)
+            longest = shot[1] if cut.out_ms <= shot[1] else cut.out_ms + reach
+            for b in beats:
+                frames = round(b / frame_ms) - t_frames
+                if frames > 0 and abs(b - want) <= reach and shot[0] <= frames * frame_ms <= longest:
+                    resized = _resized(cut, frames * frame_ms, source_ms[k], bool(keep_end and keep_end[k]),
+                                       bool(keep_start and keep_start[k]))
+                    if resized is not None:
+                        fits.append((abs(b - want), resized))
+            snapped = min(fits, key=lambda f: f[0])[1] if fits else None
+        cut = snapped or cut
+        out.append(cut)
+        t_frames += round(cut.out_ms / frame_ms)
+    return out
 
 
 def seams(planned: list[PlannedCut]) -> list[tuple[int, str]]:

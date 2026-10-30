@@ -8,12 +8,15 @@ import {
   isAiArranged,
   movieDecorations,
   movieDecorationsLabel,
+  movieEditing,
+  movieEditingLabel,
   movieRecipeLabel,
   movieStyleLabel,
   transitionAfter,
   useClearMovieLeftOut,
   useDeleteMovie,
   useMovieById,
+  type Movie,
   type TransitionKind,
 } from '@/entities/movie';
 import { useSnapFiles, useSnapIndex, type Snap } from '@/entities/snap';
@@ -112,6 +115,14 @@ export type MoviePageProps = {
  * - `failed` — the studio controls, led by the reason and a retry in the
  *   footer.
  */
+/** The 꾸밈 chip's read-out: the decorations that are on (or 없음), then any editing choice that is on (MOV-29). */
+function decorationChipLabel(movie: Movie): string {
+  const editing = movieEditingLabel(movieEditing(movie));
+  return editing
+    ? `${movieDecorationsLabel(movieDecorations(movie))} · ${editing}`
+    : movieDecorationsLabel(movieDecorations(movie));
+}
+
 export function MoviePage({ movieId }: MoviePageProps) {
   const theme = useTheme();
   const router = useRouter();
@@ -570,8 +581,8 @@ export function MoviePage({ movieId }: MoviePageProps) {
                 onPress={() => setRecipeOpen(true)}
               />
               <TapeChip
-                label={`꾸밈 · ${movieDecorationsLabel(movieDecorations(movie))}`}
-                accessibilityLabel={`꾸밈 ${movieDecorationsLabel(movieDecorations(movie))}`}
+                label={`꾸밈 · ${decorationChipLabel(movie)}`}
+                accessibilityLabel={`꾸밈 ${decorationChipLabel(movie)}`}
                 color="tapePink"
                 tilt={0.5}
                 onPress={() => setDecorationOpen(true)}

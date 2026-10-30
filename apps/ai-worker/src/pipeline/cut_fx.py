@@ -42,7 +42,9 @@ ZOOMS = ("push", "pull", "punch")
 NATURAL_SEAMS = ("cover", "whip", "match")
 PUNCH_ZOOM, PUNCH_EASE_S = 0.16, 0.08
 # 분할 칸이 들어오는 간격 — 칸 길이의 절반, 길어도 STAGGER_MAX_S(빈 칸이 오래 남지 않게)
-SPLIT_GAP_PX, SLIDE_S, STAGGER_MAX_S = 8, 0.16, 0.4
+SLIDE_S, STAGGER_MAX_S = 0.16, 0.4
+# 분할의 빈 자리 바탕 — 첫 칸을 화면에 꽉 채워 흐리고 어둡게(흰 바탕은 빈 화면으로 보였다 — trend-recipes §19)
+SPLIT_BACKDROP = "boxblur=40:2,eq=brightness=-0.12"
 
 
 FRAMES = (None, "letterbox")
@@ -318,7 +320,7 @@ def apply(src: str, dst: str, fx: CutFx, duration_s: float, render_spec: RenderS
         return src
     _run(["ffmpeg", "-y", "-i", src, "-filter_complex", f"[0:v:0]{vf}[v]", "-map", "[v]", "-map", "0:a:0?",
           "-c:v", "libx264", "-preset", editor.FAST_PRESET, "-crf", editor.INTERMEDIATE_CRF, "-pix_fmt", "yuv420p",
-          "-c:a", "copy", "-video_track_timescale", str(editor.TIMESCALE), "-t", f"{duration_s:.3f}", dst])
+          "-c:a", "copy", "-video_track_timescale", str(editor.TIMESCALE), "-t", f"{editor.frame_cut_seconds(duration_s, render_spec.fps):.4f}", dst])
     return dst
 
 
@@ -341,22 +343,29 @@ def split_graph(durations: list[float], render_spec: RenderSpec, look: str | Non
     slot = h // n
     # 레터박스 무비(band = 띠 높이): 첫 칸은 원래 띠 자리에 그대로, 둘째 칸은 아래 검은 영역에서, 셋째는 위에서 열린다 — 타이틀('Vlog')이
     # 걸린 띠가 움직이지 않는다(가운데 기준으로 쌓았더니 타이틀이 두 칸 사이 틈에 걸렸다 — 2026-10-22)
+    # 칸 사이 틈은 두지 않는다 — 8px 흰 틈이 테두리처럼 보였다(trend-recipes §19)
     center = (h - band) // 2 if band else 0
-    band_y = [center, center + band + SPLIT_GAP_PX, center - band - SPLIT_GAP_PX] if band else []
-    parts = [f"color=c={'black' if band else 'white'}:s={w}x{h}:r={fps}:d={total:.3f}[bg0]"]
+    band_y = [center, center + band, center - band] if band else []
+    if band:
+        parts = [f"color=c=black:s={w}x{h}:r={fps}:d={total:.3f}[bg0]"]
+    else:
+        parts = [f"[0:v:0]split=2[src0][backdrop];[backdrop]fps={fps},scale={w}:{h}:force_original_aspect_ratio=increase,"
+                 f"crop={w}:{h},{SPLIT_BACKDROP},tpad=stop_mode=clone:stop_duration={total:.3f},trim=duration={total:.3f},"
+                 f"setpts=PTS-STARTPTS[bg0]"]
     offsets = split_offsets(durations)
     for k, (d, offset) in enumerate(zip(lengths or durations, offsets)):
         hold = max(0.0, total - offset - d)
-        ph = band if band else slot - SPLIT_GAP_PX
+        ph = band if band else slot
         crop = "" if band else f",crop={w}:{ph}:0:(ih-{ph})*0.35"
+        source = "[src0]" if k == 0 and not band else f"[{k}:v:0]"
         parts.append(
-            f"[{k}:v:0]fps={fps},scale={w}:-2{crop},"
+            f"{source}fps={fps},scale={w}:-2{crop},"
             f"tpad=stop_mode=clone:stop_duration={hold:.3f},setpts=PTS-STARTPTS+{offset:.3f}/TB[p{k}]"
         )
         # 왼쪽 · 오른쪽에서 번갈아 미끄러져 들어온다
         sign = "-" if k % 2 == 0 else ""
         x = f"if(lt(t-{offset:.3f}\\,{SLIDE_S})\\,{sign}{w}*(1-(t-{offset:.3f})/{SLIDE_S})\\,0)"
-        y = band_y[k] if band else k * slot + SPLIT_GAP_PX // 2
+        y = band_y[k] if band else k * slot
         parts.append(f"[bg{k}][p{k}]overlay=x='{x}':y={y}:enable='gte(t,{offset:.3f})':eof_action=pass[bg{k + 1}]")
     # 분할 앞뒤 경계의 전환 효과와 색은 분할 전체에 건다
     finish = video_filter(CutFx(intro=edges.intro, outro=edges.outro), total, render_spec, look) or "format=yuv420p"
@@ -376,7 +385,7 @@ def split(panels: list[str], durations: list[float], dst: str, render_spec: Rend
     _run(["ffmpeg", "-y", *inputs, "-filter_complex", graph, "-map", "[v]", "-map", "[a]",
           "-c:v", "libx264", "-preset", editor.FAST_PRESET, "-crf", editor.INTERMEDIATE_CRF, "-pix_fmt", "yuv420p",
           "-c:a", "aac", "-ar", "48000", "-ac", "2", "-video_track_timescale", str(editor.TIMESCALE),
-          "-t", f"{total:.3f}", dst])
+          "-t", f"{editor.frame_cut_seconds(total, render_spec.fps):.4f}", dst])
     return dst
 
 

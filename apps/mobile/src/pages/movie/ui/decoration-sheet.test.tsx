@@ -66,6 +66,24 @@ describe('DecorationSheet', () => {
     });
   });
 
+  // MOV-29 — both start off whatever the recipe, and travel whole too.
+  it('draws the editing choices off by default and writes one through with the other kept', async () => {
+    const onChange = await renderSheet();
+
+    expect(screen.getByRole('switch', { name: '말소리' })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: '장면 순서' })).not.toBeChecked();
+
+    await fireEvent.press(screen.getByRole('switch', { name: '말소리' }));
+
+    expect(onChange).toHaveBeenCalledWith({ editing: { speech: true, sceneOrder: false } });
+  });
+
+  it('draws a movie’s own editing choices', async () => {
+    await renderSheet({ movie: { ...movie, editing: { speech: false, sceneOrder: true } } });
+
+    expect(screen.getByRole('switch', { name: '장면 순서' })).toBeChecked();
+  });
+
   it('says a finished movie changes only when it is made again, cuts and music kept', async () => {
     await renderSheet({ movie: { ...movie, status: 'ready' } });
 

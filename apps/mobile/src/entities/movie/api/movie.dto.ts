@@ -6,6 +6,7 @@ import { isTransitionKind, transitionAfter } from '../lib/movie-transition';
 import type {
   Movie,
   MovieDecorations,
+  MovieEditing,
   MovieRecipe,
   MovieStyle,
   SnapRef,
@@ -51,6 +52,8 @@ export const movieDtoSchema = z.object({
   // Optional: a server older than decorations sends none; the movie then reads
   // as its recipe's defaults (`movieDecorations`).
   decorations: z.object({ text: z.boolean(), emoji: z.boolean(), face: z.boolean() }).optional(),
+  // Optional for the same reason: a server older than editing choices sends none (both off).
+  editing: z.object({ speech: z.boolean(), sceneOrder: z.boolean() }).optional(),
   captions: z.boolean(),
   ratio: z.string(),
   arranger: z.string(),
@@ -119,6 +122,7 @@ export function mapRemoteMovie(dto: MovieDto, snapIdOf: SnapIdResolver): RemoteM
     style: movieStyleOrDefault(StyleByPreset[dto.stylePreset]),
     recipe: movieRecipeOrDefault(dto.recipe),
     ...(dto.decorations ? { decorations: dto.decorations } : null),
+    ...(dto.editing ? { editing: dto.editing } : null),
     captions: dto.captions,
     ratio: '9:16',
     arranger: dto.arranger === 'ai' ? 'ai' : 'user',
@@ -178,6 +182,8 @@ export type MovieBody = {
   recipe: MovieRecipe;
   /** Left out for a movie that has never had its own — the server keeps what it holds. */
   decorations?: MovieDecorations;
+  /** Left out for a movie that has never had its own — the server keeps what it holds. */
+  editing?: MovieEditing;
   captions: boolean;
   arranger: 'user' | 'ai';
 };
@@ -212,7 +218,7 @@ function toClipBody(videoId: string, ref: SnapRef): MovieClipBody {
 export function toMovieBody(
   movie: Pick<
     Movie,
-    'title' | 'snapRefs' | 'style' | 'recipe' | 'decorations' | 'captions' | 'arranger'
+    'title' | 'snapRefs' | 'style' | 'recipe' | 'decorations' | 'editing' | 'captions' | 'arranger'
   >,
   videoIdOf: VideoIdResolver,
 ): MovieBody | undefined {
@@ -245,6 +251,8 @@ export function toMovieBody(
     // resets them, the same request's decorations land on top — leaves exactly
     // what the screen showed (the store resets them on a recipe change too).
     ...(movie.decorations ? { decorations: movie.decorations } : null),
+    // Sent whole; a recipe change does not touch it (MOV-29).
+    ...(movie.editing ? { editing: movie.editing } : null),
     captions: movie.captions,
     arranger: movie.arranger ?? 'user',
   };

@@ -1,6 +1,7 @@
 import type {
   MovieArranger,
   MovieDecorations,
+  MovieEditing,
   MovieRecipe,
   MovieStatus,
   MovieStyle,
@@ -27,6 +28,8 @@ export type RemoteMovie = {
   recipe: MovieRecipe;
   /** `undefined` from a server older than decorations. */
   decorations?: MovieDecorations;
+  /** `undefined` from a server older than editing choices. */
+  editing?: MovieEditing;
   captions: boolean;
   ratio: '9:16';
   arranger: MovieArranger;

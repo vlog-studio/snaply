@@ -138,7 +138,7 @@ class FilterTest(unittest.TestCase):
         self.assertNotIn("crop=1080", graph)  # 칸은 띠 그대로
         center = (1920 - 608) // 2  # 첫 칸은 원래 띠 자리 — 타이틀이 걸린 띠가 움직이지 않는다
         self.assertIn(f"y={center}:", graph)
-        self.assertIn(f"y={center + 608 + cut_fx.SPLIT_GAP_PX}:", graph)  # 둘째 칸은 아래에서 열린다
+        self.assertIn(f"y={center + 608}:", graph)  # 둘째 칸은 아래에서 띠에 붙어 열린다(틈 없음 — 2026-10-30)
 
     def test_zoom_and_look_go_in_the_same_pass(self):
         vf = cut_fx.video_filter(cut_fx.CutFx(zoom="push"), 2.0, DEFAULT_RENDER_SPEC, "film")
@@ -148,6 +148,15 @@ class FilterTest(unittest.TestCase):
     def test_edge_window_is_at_most_a_third_of_the_cut(self):
         self.assertAlmostEqual(cut_fx._edge_window("spin", 0.45), 0.15)
         self.assertAlmostEqual(cut_fx._edge_window("whip", 3.0), 0.16)
+
+    def test_panels_fill_the_screen_without_white_or_gaps(self):
+        # 흰 바탕 위 8px 틈 — 칸 사이가 흰 테두리로, 다음 칸이 들어오기 전 자리가 하얀 빈 화면으로 보였다(trend-recipes §19)
+        graph, _ = cut_fx.split_graph([0.8, 0.7, 0.9], DEFAULT_RENDER_SPEC, None)
+        self.assertNotIn("white", graph)
+        self.assertIn("crop=1080:640:", graph)
+        for k in range(3):
+            self.assertIn(f"y={k * 640}:", graph)
+        self.assertIn("boxblur", graph)  # 빈 자리는 첫 칸을 흐리게 깐 바탕
 
     def test_split_lasts_the_sum_of_its_panels(self):
         graph, total = cut_fx.split_graph([0.8, 0.7, 0.9], DEFAULT_RENDER_SPEC, None)

@@ -8,6 +8,7 @@ import {
   type FitMode,
   DEFAULT_OUTPUT_PROFILE,
   type MovieDecorations,
+  type MovieEditing,
   recipeDecorations,
   MOVIE_CLIP_MAX,
   MOVIE_CLIP_MIN,
@@ -96,6 +97,8 @@ interface MovieRow {
   decorText: boolean;
   decorEmoji: boolean;
   decorFace: boolean;
+  editSpeech: boolean;
+  editSceneOrder: boolean;
   ratio: string;
   arranger: string;
   /** 에이전트가 초안에서 정한 분위기(개념 사전 `moods` id) — 전환을 고르는 비중이다(MOV-25). */
@@ -127,6 +130,8 @@ const SELECT = {
   decorText: true,
   decorEmoji: true,
   decorFace: true,
+  editSpeech: true,
+  editSceneOrder: true,
   ratio: true,
   arranger: true,
   mood: true,
@@ -180,6 +185,14 @@ function unavailableReason(video: ClipRow['video']): VideoRemovalReason | null {
 }
 
 /** 꾸밈(MOV-27)을 movies 의 세 열로. 키가 빠지면 넘기지 않는다. */
+/** 편집 선택(MOV-29)의 컬럼 — 보낸 키만. */
+function editingColumns(editing: Partial<MovieEditing>): { editSpeech?: boolean; editSceneOrder?: boolean } {
+  return {
+    ...(editing.speech !== undefined ? { editSpeech: editing.speech } : {}),
+    ...(editing.sceneOrder !== undefined ? { editSceneOrder: editing.sceneOrder } : {}),
+  };
+}
+
 function decorationColumns(decorations: Partial<MovieDecorations>): {
   decorText?: boolean;
   decorEmoji?: boolean;
@@ -202,6 +215,7 @@ function toDto(row: MovieRowWithJob): Movie {
     captions: row.captions,
     fitMode: row.fitMode as FitMode,
     decorations: { text: row.decorText, emoji: row.decorEmoji, face: row.decorFace },
+    editing: { speech: row.editSpeech, sceneOrder: row.editSceneOrder },
     ratio: row.ratio,
     arranger: row.arranger as MovieArranger,
     clips: row.clips.map((clip, index) => ({
@@ -514,6 +528,7 @@ export async function createMovie(params: {
   captions?: boolean;
   fitMode?: FitMode;
   decorations?: Partial<MovieDecorations>;
+  editing?: Partial<MovieEditing>;
   arranger?: MovieArranger;
 }): Promise<Movie> {
   if (params.id) {
@@ -558,6 +573,7 @@ export async function createMovie(params: {
         ...recipeDecorations(params.recipe ?? DEFAULT_MOVIE_RECIPE),
         ...params.decorations,
       }),
+      ...editingColumns(params.editing ?? {}),
       arranger,
       mood,
       clips: { create: clipCreateData(clips, aiTransitions) },
@@ -615,6 +631,7 @@ export async function updateMovie(params: {
   captions?: boolean;
   fitMode?: FitMode;
   decorations?: Partial<MovieDecorations>;
+  editing?: Partial<MovieEditing>;
   arranger?: MovieArranger;
 }): Promise<Movie> {
   const current = await findOwned(params.userId, params.movieId);
@@ -664,6 +681,8 @@ export async function updateMovie(params: {
       ...(params.captions !== undefined ? { captions: params.captions } : {}),
       ...(params.fitMode !== undefined ? { fitMode: params.fitMode } : {}),
       ...(decorations !== undefined ? decorationColumns(decorations) : {}),
+      // 편집 선택(MOV-29) — 보낸 키만, 레시피를 바꿔도 그대로다
+      ...(params.editing !== undefined ? editingColumns(params.editing) : {}),
       ...(params.arranger !== undefined ? { arranger: params.arranger } : {}),
       // 컷은 통째로 교체한다. 부분 갱신은 순서를 다시 계산해야 해서 두 표현이 어긋나기 쉽다.
       ...(clips !== undefined
@@ -772,6 +791,10 @@ export async function exportMovie(params: {
     fitMode: movie.fitMode as FitMode,
     // 꾸밈(MOV-27) — 워커는 이 값만 보고 글자 · 이모지 · 얼굴 스티커를 붙인다.
     decorations: { text: movie.decorText, emoji: movie.decorEmoji, face: movie.decorFace },
+    // 편집 선택(MOV-29) — 장면 순서는 순서의 주인이 AI 인 무비만(사용자가 정한 순서는 바꾸지 않는다, MOV-24)
+    editing: { speech: movie.editSpeech, sceneOrder: movie.editSceneOrder && movie.arranger === 'ai' },
+    // 컷마다 구간의 주인(MOV-22) — 워커는 AI 가 자른 컷만 박자 · 흔들림에 맞춰 옮긴다(MOV-29)
+    trimOwners: movie.clips.map((clip) => clip.trimOwner as MovieArranger),
     subtitles: movie.captions,
     // 경계마다 고른 전환(MOV-22). 빈 경계는 없어야 하지만, 있다면 아무 효과 없는 값으로 보낸다.
     transitions: movie.clips

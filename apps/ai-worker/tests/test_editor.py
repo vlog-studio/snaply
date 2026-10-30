@@ -61,6 +61,46 @@ class NormalizeClipTest(unittest.TestCase):
     @patch("pipeline.editor._run")
     @patch("pipeline.editor.probe_duration", return_value=5.0)
     @patch("pipeline.editor._has_audio", return_value=True)
+    def test_a_joined_cut_keeps_exactly_its_frame_count(self, _has_audio, _probe_duration, run) -> None:
+        # 1490ms(44.7프레임)를 그대로 -t 1.490 으로 넘기면 끝나는 시각이 1.49 를 넘는 45번째 프레임이 빠져 44프레임(1.4667초)이었다 — 컷마다
+        # 버림만큼 짧아져 이어 붙인 경계가 계획보다 앞당겨졌다(10컷에서 최대 184ms). 이제 가장 가까운 프레임 수(45)다
+        editor.normalize_clip("input.mp4", "output.mp4", "", DEFAULT_RENDER_SPEC, start_ms=0, end_ms=1490, speed=1.0,
+                              preset=editor.FAST_PRESET)
+        command = run.call_args.args[0]
+        t = float(command[command.index("-t") + 1])
+        self.assertEqual(int(t * DEFAULT_RENDER_SPEC.fps), 45)  # 끝나는 시각이 t 이하인 프레임 = floor(t × fps)
+        self.assertGreater(t * DEFAULT_RENDER_SPEC.fps % 1, 0.1)  # 프레임 경계에 딱 붙지 않는다(소수 오차로 한 프레임이 빠지지 않게)
+
+    @patch("pipeline.editor._run")
+    @patch("pipeline.editor.probe_duration", return_value=5.0)
+    @patch("pipeline.editor._has_audio", return_value=True)
+    def test_every_cut_ends_in_the_same_colour_format_after_its_effects(self, _has_audio, _probe_duration, run) -> None:
+        # 원본마다 색 태그(bt470bg · bt709)와 범위(yuvj 풀 레인지)가 달라, 이어 붙인 파일 중간에서 속성이 바뀌면 다음 단계(글 · 스티커
+        # 합성)의 필터가 다시 초기화되며 프레임을 버렸다(2026-10-29 — 8.07초에서 267ms 멈춤). 효과 뒤 · 끝 프레임 덧대기 앞에서 하나로 맞춘다
+        editor.normalize_clip("input.mp4", "output.mp4", "", DEFAULT_RENDER_SPEC, start_ms=0, end_ms=1500,
+                              extra_video="hue=s=0", preset=editor.FAST_PRESET)
+        graph = run.call_args.args[0][run.call_args.args[0].index("-filter_complex") + 1]
+        self.assertIn(f"hue=s=0,{editor.UNIFORM_FRAMES},tpad=", graph)
+
+    @patch("pipeline.editor._run")
+    @patch("pipeline.editor.probe_duration", return_value=5.0)
+    @patch("pipeline.editor._has_audio", return_value=True)
+    @patch("pipeline.editor._color_matches", side_effect=AssertionError("다시 재면 안 된다"))
+    def test_given_colour_filters_are_used_as_is(self, _matches, _has_audio, _probe_duration, run) -> None:
+        # 손떨림 보정본을 원본으로 되돌린 컷을 혼자 구우면 색 맞춤이 빠졌다(구간 하나면 맞출 상대가 없다 — 2026-10-30). 무비 전체로 잰 필터를 넘긴다
+        editor.prepare_segments([editor.ClipSource("a.mp4", 0, 1000)], editor.get_preset("일상"), DEFAULT_RENDER_SPEC, "w",
+                                colors=["eq=brightness=0.05"], fast=True)
+        graph = run.call_args.args[0][run.call_args.args[0].index("-filter_complex") + 1]
+        self.assertIn("eq=brightness=0.05", graph)
+
+    def test_frame_cut_seconds_keeps_the_rounded_frame_count(self) -> None:
+        for seconds in (0.5, 1.4667, 1.467, 1.512, 2.0, 0.3333):
+            t = editor.frame_cut_seconds(seconds, 30)
+            self.assertEqual(int(t * 30), round(seconds * 30), seconds)
+
+    @patch("pipeline.editor._run")
+    @patch("pipeline.editor.probe_duration", return_value=5.0)
+    @patch("pipeline.editor._has_audio", return_value=True)
     def test_window_outside_source_duration_is_rejected(
         self, _has_audio, _probe_duration, _run
     ) -> None:

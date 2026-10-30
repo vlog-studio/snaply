@@ -15,6 +15,7 @@ import {
   fitModeSchema,
   movieArrangerSchema,
   movieDecorationsSchema,
+  movieEditingSchema,
   movieRecipeSchema,
   movieStatusSchema,
   stylePresetSchema,
@@ -111,6 +112,7 @@ export const movieSchema = z
       '비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다.',
     ),
     decorations: movieDecorationsSchema,
+    editing: movieEditingSchema,
     ratio: z.string().describe('출력 비율. 현재는 `9:16` 뿐이다.'),
     arranger: movieArrangerSchema,
     clips: z.array(movieClipSchema).describe('컷 목록. **배열 순서가 곧 재생 순서**다.'),
@@ -192,6 +194,7 @@ export const createMovieBodySchema = z.object({
     .partial()
     .optional()
     .describe('꾸밈(글자 · 이모지 · 얼굴 스티커). 생략한 키는 레시피의 기본값이다.'),
+  editing: movieEditingSchema.partial().optional().describe('편집 선택(말소리 · 장면 순서). 생략한 키는 꺼짐이다.'),
   arranger: movieArrangerSchema
     .optional()
     .describe(
@@ -220,6 +223,7 @@ export const updateMovieBodySchema = z
       .describe(
         '보낸 키만 바꾼다. `recipe` 를 바꾸면 꾸밈은 새 레시피의 기본값으로 돌아가고, 같은 요청의 `decorations` 가 그 위에 얹힌다.',
       ),
+    editing: movieEditingSchema.partial().optional().describe('보낸 키만 바꾼다. 레시피를 바꿔도 그대로다.'),
     arranger: movieArrangerSchema.optional(),
   })
   .describe('보낸 필드만 바꾼다. 생성 중(`generating`)인 무비는 수정할 수 없다(409).');

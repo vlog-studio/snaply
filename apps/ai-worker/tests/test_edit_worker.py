@@ -202,6 +202,19 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.accents.await_args.args[-1], on)
         worker.storage.upload.assert_any_call("with_accents.mp4", mock.ANY, "video/mp4")
 
+    async def test_ai_trimmed_cuts_and_switches_go_through_the_ai_cut_step(self) -> None:
+        # AI 가 자른 컷이나 켠 편집 선택이 있으면 다듬고(MOV-29), 말소리 구간은 BGM 섞기로 간다. 없으면 부르지 않는다(지금과 같다)
+        refined = worker.ai_cuts.Applied([worker.editor.ClipSource("src.mp4", 100, 1600)], [], [0], [(200, 900)])
+        with mock.patch.object(worker, "_refine_ai_cuts", new=mock.AsyncMock(return_value=refined)) as step:
+            cut = {"cutId": "a", "videoId": VIDEO_ID, "sourceInMs": 0, "sourceOutMs": 1500, "trimOwner": "ai"}
+            await self.run_pipeline({**V3_SPEC, "timeline": {"cuts": [cut], "transitions": []}, "editing": {"speech": True}})
+            step.assert_awaited_once()
+            self.assertEqual(self.bgm.call_args.kwargs["speech"], [(0.2, 0.9)])
+            step.reset_mock()
+            await self.run_pipeline(V3_SPEC)
+            step.assert_not_awaited()
+        self.assertIsNone(self.bgm.call_args.kwargs["speech"])
+
     async def test_a_classic_movie_without_decorations_is_as_before(self) -> None:
         # 꾸밈이 없는 스펙(이 결정 전의 작업)은 레시피 기본값 — classic 은 셋 다 꺼짐(예전 TEXT_ACCENTS_ENABLED=false 와 같다)
         await self.run_pipeline(V3_SPEC)
@@ -248,7 +261,7 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
     async def test_the_recipe_seed_follows_the_composition_not_the_job(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
             await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True})
-        key = trend.await_args.args[-2]
+        key = trend.await_args.args[-3]
         spec = {**V3_SPEC, "recipe": "cinematic", "autoCuts": True}
         self.assertEqual(key, worker._variant_key(key.split(":")[0], spec))
         # 같은 구성이면 같은 시드(MOV-14 — 다시 만들어도 같은 편집), 레시피나 컷이 바뀌면 다른 시드. 작업 id 는 들어가지 않는다
@@ -258,12 +271,17 @@ class AccentStageWiringTest(unittest.IsolatedAsyncioTestCase):
         # 꾸밈만 바꾸면 같은 시드 — 글자만 꺼도 컷 · 순서 · 효과가 다시 섞이지 않는다(text-accent-stickers.md §9)
         off = {**spec, "decorations": {"text": False, "emoji": True, "face": True}}
         self.assertEqual(worker._variant_key("m1", spec), worker._variant_key("m1", off))
+        # 편집 선택도 — 말소리만 켜도 컷 · 순서 · 효과가 다시 섞이지 않는다(MOV-29)
+        talk = {**spec, "editing": {"speech": True, "sceneOrder": False}}
+        self.assertEqual(worker._variant_key("m1", spec), worker._variant_key("m1", talk))
 
     async def test_the_recipe_path_gets_the_movie_decorations(self) -> None:
         chosen = {"text": False, "emoji": True, "face": False}
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:
-            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True, "decorations": chosen})
-        self.assertEqual(trend.await_args.args[-1], chosen)
+            await self.run_pipeline({**V3_SPEC, "recipe": "cinematic", "autoCuts": True, "decorations": chosen,
+                                     "editing": {"speech": True}})
+        self.assertEqual(trend.await_args.args[-2], chosen)
+        self.assertEqual(trend.await_args.args[-1], {"speech": True, "sceneOrder": False})  # 편집 선택도(MOV-29)
 
     async def test_user_trimmed_movies_keep_their_cuts(self) -> None:
         with mock.patch.object(worker, "_render_trend", new=mock.AsyncMock(return_value="trend.mp4")) as trend:

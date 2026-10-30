@@ -613,6 +613,9 @@ model Movie {
   decorText   Boolean       @default(false) @map("decor_text")
   decorEmoji  Boolean       @default(false) @map("decor_emoji")
   decorFace   Boolean       @default(false) @map("decor_face")
+  /// 편집 선택(specs MOV-29) — 말하는 구간의 말소리 살리기 · 장면 단위 순서와 첫 컷 훅. 기본 꺼짐, 레시피를 바꿔도 그대로다.
+  editSpeech     Boolean    @default(false) @map("edit_speech")
+  editSceneOrder Boolean    @default(false) @map("edit_scene_order")
   /// 현재는 9:16 뿐이지만, 다른 비율이 생겨도 기존 무비가 자기 비율을 지키도록 저장한다.
   ratio       String        @default("9:16") @db.VarChar(10)
   arranger    MovieArranger @default(user)

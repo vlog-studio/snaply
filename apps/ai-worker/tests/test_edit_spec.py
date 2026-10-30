@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from pipeline.edit_spec import parse_job_clips, parse_timeline  # noqa: E402
+from pipeline.edit_spec import editing_of, parse_job_clips, parse_timeline  # noqa: E402
 from pipeline.transition import Transition  # noqa: E402
 
 
@@ -69,6 +69,21 @@ class TimelineSpecTest(unittest.TestCase):
         self.assertEqual(
             timeline.transitions, [Transition("crossfade", 400), Transition("hardcut")]
         )
+
+    def test_ai_trimmed_cuts_are_marked(self) -> None:
+        # AI 가 자른 컷만 워커가 박자 · 흔들림에 맞춰 옮긴다(MOV-29) — 생략은 사용자 구간
+        cuts = [{"cutId": "c0", "videoId": "video-a", "sourceInMs": 0, "trimOwner": "ai"},
+                {"cutId": "c1", "videoId": "video-b", "sourceInMs": 0}]
+        timeline = parse_timeline(_v3([{"fromCutId": "c0", "toCutId": "c1", "kind": "hardcut"}], cuts))
+        self.assertEqual(timeline.ai_cuts, [True, False])
+        self.assertEqual(parse_timeline(_v3([{"fromCutId": "c0", "toCutId": "c1", "kind": "hardcut"},
+                                             {"fromCutId": "c1", "toCutId": "c2", "kind": "hardcut"}])).ai_cuts,
+                         [False, False, False])
+
+    def test_editing_defaults_to_off(self) -> None:
+        self.assertEqual(editing_of({}), {"speech": False, "sceneOrder": False})
+        self.assertEqual(editing_of({"editing": {"speech": True}}), {"speech": True, "sceneOrder": False})
+        self.assertEqual(editing_of({"editing": {"speech": "yes", "sceneOrder": True}}), {"speech": False, "sceneOrder": True})
 
     def test_a_missing_boundary_is_not_filled_with_hardcut(self) -> None:
         # 빠진 전환을 조용히 채우면 사용자가 고른 전환이 빠진 결과물이 유료로 완료된다.

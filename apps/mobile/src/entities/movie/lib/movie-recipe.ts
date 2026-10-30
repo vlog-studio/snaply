@@ -1,6 +1,6 @@
 import type { MOVIE_RECIPES } from '@vlog-studio/shared-types';
 
-import type { Movie, MovieDecorations, MovieRecipe } from '../model/movie';
+import type { Movie, MovieDecorations, MovieEditing, MovieRecipe } from '../model/movie';
 
 /** One entry of the recipe catalog, as the recipe sheet draws it. */
 export type MovieRecipeOption = {
@@ -206,4 +206,33 @@ export function movieDecorationsLabel(decorations: MovieDecorations): string {
 
 export function sameDecorations(left: MovieDecorations, right: MovieDecorations): boolean {
   return left.text === right.text && left.emoji === right.emoji && left.face === right.face;
+}
+
+const EditingOff: MovieEditing = { speech: false, sceneOrder: false };
+
+/**
+ * The editing choices a movie's next run follows (root docs/specs/movie.md
+ * MOV-29): its own, or both off for a movie stored before the field existed —
+ * which is also what the server holds for it. Unlike the decorations they do
+ * not follow the recipe.
+ */
+export function movieEditing(movie: Pick<Movie, 'editing'>): MovieEditing {
+  return movie.editing ?? EditingOff;
+}
+
+/** The editing switches in the order the sheet draws them, with their names on screen. */
+export const MovieEditingOptions: readonly { key: keyof MovieEditing; label: string }[] = [
+  { key: 'speech', label: '말소리' },
+  { key: 'sceneOrder', label: '장면 순서' },
+];
+
+/** The editing switches that are on, joined for the 꾸밈 chip; empty when none is. */
+export function movieEditingLabel(editing: MovieEditing): string {
+  return MovieEditingOptions.filter((option) => editing[option.key])
+    .map((option) => option.label)
+    .join('·');
+}
+
+export function sameEditing(left: MovieEditing, right: MovieEditing): boolean {
+  return left.speech === right.speech && left.sceneOrder === right.sceneOrder;
 }
