@@ -373,6 +373,61 @@ describe('editing a movie', () => {
     expect(useMovieStore.getState().movies[0]).toBe(before);
   });
 
+  // The server resets a movie's decorations to the new recipe's defaults
+  // (MOV-27); the store does the same, so the switches never show values the
+  // next run will not follow, and the body carries them whole.
+  it('puts the decorations back to the new recipe’s defaults when the recipe changes', async () => {
+    useMovieStore.setState({
+      movies: [
+        {
+          ...makeMovie('m1', ['s1']),
+          recipe: 'cinematic',
+          decorations: { text: false, emoji: true, face: false },
+        },
+      ],
+      pending: {},
+    });
+    const { result } = await renderHook(() => useUpdateMovieStyle());
+
+    await act(async () => result.current('m1', { recipe: 'daylog' }, 999));
+
+    const [movie] = useMovieStore.getState().movies;
+    expect(movie.decorations).toEqual({ text: true, emoji: false, face: false });
+    expect(toMovieBody(movie, (snapId) => `v-${snapId}`)?.decorations).toEqual({
+      text: true,
+      emoji: false,
+      face: false,
+    });
+  });
+
+  it('writes a decoration switch and owes the server an update', async () => {
+    useMovieStore.setState({ pending: {} });
+    const { result } = await renderHook(() => useUpdateMovieStyle());
+
+    await act(async () =>
+      result.current('m1', { decorations: { text: false, emoji: true, face: false } }, 999),
+    );
+
+    expect(useMovieStore.getState().movies[0]).toMatchObject({
+      decorations: { text: false, emoji: true, face: false },
+      updatedAt: 999,
+    });
+    expect(getMovieOutbox().pending.m1).toBe('update');
+  });
+
+  // A movie stored before decorations reads as its recipe's defaults (classic:
+  // all off) — writing those back is no change.
+  it('treats the recipe’s own defaults as no change for a movie stored before decorations', async () => {
+    const before = useMovieStore.getState().movies[0];
+    const { result } = await renderHook(() => useUpdateMovieStyle());
+
+    await act(async () =>
+      result.current('m1', { decorations: { text: false, emoji: false, face: false } }, 999),
+    );
+
+    expect(useMovieStore.getState().movies[0]).toBe(before);
+  });
+
   it('leaves the movie identical when a style write changes nothing', async () => {
     const before = useMovieStore.getState().movies[0];
     const { result } = await renderHook(() => useUpdateMovieStyle());

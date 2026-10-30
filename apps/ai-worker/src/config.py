@@ -94,7 +94,7 @@ OPENAI_VISION_MODEL = os.environ.get("OPENAI_VISION_MODEL", "gpt-5.6-luna")
 OPENAI_IMAGE_DETAIL = os.environ.get("OPENAI_IMAGE_DETAIL", "low")
 VIDEO_ANALYSIS_TIMEOUT_SECONDS = int(os.environ.get("VIDEO_ANALYSIS_TIMEOUT_SECONDS", "90"))
 VIDEO_ANALYSIS_CONCURRENCY = int(os.environ.get("VIDEO_ANALYSIS_CONCURRENCY", "3"))
-VIDEO_ANALYSIS_PROMPT_VERSION = os.environ.get("VIDEO_ANALYSIS_PROMPT_VERSION", "v1")
+VIDEO_ANALYSIS_PROMPT_VERSION = os.environ.get("VIDEO_ANALYSIS_PROMPT_VERSION", "v2")
 
 # 텍스트 액센트의 생성 글(층 c) — AI 편집 에이전트와 같은 모델을 쓴다(docs/decisions/text-accent-stickers.md §2)
 EDIT_AGENT_MODEL = os.environ.get("EDIT_AGENT_MODEL", "gpt-5.6-luna")

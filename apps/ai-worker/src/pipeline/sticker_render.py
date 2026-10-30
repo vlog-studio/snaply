@@ -2,15 +2,16 @@
 
 libass 는 컬러 이모지 글리프를 그리지 못하므로(FreeType 가 COLR/CBDT 를 렌더하지 않는다) 스티커는 이미지로
 그린다. 스티커가 여럿이어도 overlay 체인이 길어지지 않게 **길이 전체의 RGBA 트랙 한 장**으로 구워 overlay 한 번으로
-합성한다(docs/plans/trend-editing-pipeline.md §5.2 · §10 의 13). 모양은 흰 칼선 테두리 + 그림자(다이컷 스티커).
-얼굴 스티커(`pipeline/face.py` — 얼굴을 따라다니는 왕관 · 선글라스 등)도 같은 트랙에 굽는다. 얼굴에 얹히는 것이라 칼선 없이 원본 이모지로.
+합성한다(docs/plans/trend-editing-pipeline.md §5.2 · §10 의 13). 그림은 원본 그대로다 — 테두리 · 그림자를 입히지 않는다
+(2026-10-29, 예전 흰 칼선 다이컷은 decisions/text-accent-stickers.md §3).
+얼굴 스티커(`pipeline/face.py` — 얼굴을 따라다니는 왕관 · 선글라스 등)도 같은 트랙에 굽는다.
 """
 
 import math
 import subprocess
 from functools import lru_cache
 
-from PIL import Image, ImageFilter
+from PIL import Image
 
 import config
 from pipeline import face as fc, ffmpeg_error, layout
@@ -19,7 +20,6 @@ from pipeline.sticker import Sticker
 EMOJI_DIR = config.WORKER_ROOT / "assets" / "stickers" / "emoji"
 FPS = 30
 POP_MS, OUT_MS, BUMP_MS = 220, 140, 150
-BORDER_PX = 14
 
 
 class StickerRenderError(RuntimeError):
@@ -27,27 +27,8 @@ class StickerRenderError(RuntimeError):
 
 
 @lru_cache(maxsize=64)
-def die_cut(emoji: str) -> Image.Image:
-    """원본 이모지에 흰 칼선 테두리와 아래 그림자를 입힌 RGBA."""
-    src = Image.open(EMOJI_DIR / f"{emoji}.png").convert("RGBA")
-    pad = BORDER_PX * 2
-    canvas = Image.new("RGBA", (src.width + pad * 2, src.height + pad * 2), (0, 0, 0, 0))
-    canvas.alpha_composite(src, (pad, pad))
-    solid = canvas.getchannel("A").point(lambda a: 255 if a > 40 else 0)
-    outline = solid.filter(ImageFilter.MaxFilter(BORDER_PX * 2 + 1)).filter(ImageFilter.GaussianBlur(1.2))
-    out = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    shadow = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    shadow.putalpha(outline.point(lambda a: int(a * 0.35)).filter(ImageFilter.GaussianBlur(8)))
-    white = Image.new("RGBA", canvas.size, (255, 255, 255, 0))
-    white.putalpha(outline)
-    out.alpha_composite(shadow, (0, 10))
-    out.alpha_composite(white)
-    out.alpha_composite(canvas)
-    return out
-
-
-@lru_cache(maxsize=16)
 def raw(emoji: str) -> Image.Image:
+    """원본 그림(RGBA) — 테두리 · 그림자 없이 그대로 그린다."""
     return Image.open(EMOJI_DIR / f"{emoji}.png").convert("RGBA")
 
 
@@ -107,7 +88,7 @@ def _draw_face(canvas: Image.Image, sticker: fc.FaceSticker, now_ms: float) -> N
 
 def _draw(canvas: Image.Image, sticker: Sticker, scale: float, rotation: float, dy: float, alpha: float) -> None:
     px = max(2, int(sticker.size_px * scale))
-    img = die_cut(sticker.emoji).resize((px, px), Image.BILINEAR).rotate(-rotation, expand=True, resample=Image.BILINEAR)
+    img = raw(sticker.emoji).resize((px, px), Image.BILINEAR).rotate(-rotation, expand=True, resample=Image.BILINEAR)
     if alpha < 1:
         img.putalpha(img.getchannel("A").point(lambda a: int(a * alpha)))
     cx, cy = sticker.xy[0] * layout.W, sticker.xy[1] * layout.H + dy

@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   isAiArranged,
+  movieDecorations,
+  movieDecorationsLabel,
   movieRecipeLabel,
   movieStyleLabel,
   transitionAfter,
@@ -47,6 +49,7 @@ import { CancelRunControl } from './cancel-run-control';
 import { CutFilesStage } from './cut-files-stage';
 import { CutInspector } from './cut-inspector';
 import { CutPlayer, type CutPlayerHandle } from './cut-player';
+import { DecorationSheet } from './decoration-sheet';
 import { DetailSheet } from './detail-sheet';
 import { EditExitSheet } from './edit-exit-sheet';
 import { GenerateFooter } from './generate-footer';
@@ -131,6 +134,7 @@ export function MoviePage({ movieId }: MoviePageProps) {
   const [renaming, setRenaming] = useState(false);
   const [styleOpen, setStyleOpen] = useState(false);
   const [recipeOpen, setRecipeOpen] = useState(false);
+  const [decorationOpen, setDecorationOpen] = useState(false);
   // The boundary whose transition picker is open — after cut N — or -1.
   const [transitionIndex, setTransitionIndex] = useState(-1);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -565,6 +569,13 @@ export function MoviePage({ movieId }: MoviePageProps) {
                 tilt={-0.5}
                 onPress={() => setRecipeOpen(true)}
               />
+              <TapeChip
+                label={`꾸밈 · ${movieDecorationsLabel(movieDecorations(movie))}`}
+                accessibilityLabel={`꾸밈 ${movieDecorationsLabel(movieDecorations(movie))}`}
+                color="tapePink"
+                tilt={0.5}
+                onPress={() => setDecorationOpen(true)}
+              />
               {/* The chip's second line is the one thing inside the sheet the
                   user can still change — since 배경 음악 left it (2026-08-13),
                   that is 순서 고정, read out in the sheet's own words. */}
@@ -724,6 +735,13 @@ export function MoviePage({ movieId }: MoviePageProps) {
         canEdit={canEdit}
         onChange={(patch) => saveStyle(movie.id, patch)}
         onClose={() => setRecipeOpen(false)}
+      />
+      <DecorationSheet
+        visible={decorationOpen}
+        movie={movie}
+        canEdit={canEdit}
+        onChange={(patch) => saveStyle(movie.id, patch)}
+        onClose={() => setDecorationOpen(false)}
       />
       <DetailSheet
         visible={detailOpen}

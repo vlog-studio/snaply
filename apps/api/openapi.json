@@ -482,6 +482,52 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
+              },
+              "subjects": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "frame": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "`frameTimestampsMs` 의 순번."
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "description": "사람이 읽는 이름. 내용 개념을 고르는 데는 쓰지 않는다."
+                          },
+                          "box": {
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "type": "array",
+                            "items": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "description": "그 프레임 전체를 0~1 로 본 `[x0, y0, x1, y1]`(왼쪽 위가 0,0)."
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "box"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "frame",
+                    "items"
+                  ]
+                },
+                "description": "프레임별 피사체 위치(프롬프트 v2, 2026-10-29). 글 · 이모지를 피사체 옆에 놓는 데 쓴다. 그 전의 분석은 빈 배열."
               }
             },
             "required": [
@@ -494,7 +540,8 @@
               "actions",
               "moods",
               "visualQuality",
-              "confidence"
+              "confidence",
+              "subjects"
             ]
           },
           "error": {
@@ -2144,6 +2191,54 @@
                 "type": "number",
                 "minimum": 0,
                 "maximum": 1
+              },
+              "subjects": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "frame": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "`frameTimestampsMs` 의 순번."
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "description": "사람이 읽는 이름. 내용 개념을 고르는 데는 쓰지 않는다."
+                          },
+                          "box": {
+                            "minItems": 4,
+                            "maxItems": 4,
+                            "type": "array",
+                            "items": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 1
+                            },
+                            "description": "그 프레임 전체를 0~1 로 본 `[x0, y0, x1, y1]`(왼쪽 위가 0,0)."
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "box"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "frame",
+                    "items"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "프레임별 피사체 위치(프롬프트 v2, 2026-10-29). 글 · 이모지를 피사체 옆에 놓는 데 쓴다. 그 전의 분석은 빈 배열."
               }
             },
             "required": [
@@ -2156,7 +2251,8 @@
               "actions",
               "moods",
               "visualQuality",
-              "confidence"
+              "confidence",
+              "subjects"
             ],
             "additionalProperties": false
           },

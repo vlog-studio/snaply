@@ -14,7 +14,8 @@ from pipeline.video_analysis.prompt import SYSTEM_PROMPT, USER_PROMPT
 from pipeline.video_analysis.schema import RESULT_JSON_SCHEMA, SCHEMA_NAME
 
 PROVIDER = "openai"
-MAX_OUTPUT_TOKENS = 700
+# 프롬프트 v2 의 피사체 상자로 출력이 늘었다 — 실측 최대 886 토큰(스냅 14편, docs/decisions/subject-boxes.md §6)
+MAX_OUTPUT_TOKENS = 1400
 
 
 def encode_data_url(frame_path: str) -> str:

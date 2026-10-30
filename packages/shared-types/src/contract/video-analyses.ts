@@ -17,6 +17,21 @@ export const videoVisualQualitySchema = z.object({
 });
 export type VideoVisualQuality = z.infer<typeof videoVisualQualitySchema>;
 
+/** 분석한 프레임 하나의 피사체 — 눈에 띄는 순서, 최대 3개. 옆자리가 없는 상자(화면을 거의 다 덮거나 끝까지 걸친 것)는 빠져 있다. */
+export const videoSubjectFrameSchema = z.object({
+  frame: z.int().min(0).describe('`frameTimestampsMs` 의 순번.'),
+  items: z.array(
+    z.object({
+      label: z.string().describe('사람이 읽는 이름. 내용 개념을 고르는 데는 쓰지 않는다.'),
+      box: z
+        .array(z.number().min(0).max(1))
+        .length(4)
+        .describe('그 프레임 전체를 0~1 로 본 `[x0, y0, x1, y1]`(왼쪽 위가 0,0).'),
+    }),
+  ),
+});
+export type VideoSubjectFrame = z.infer<typeof videoSubjectFrameSchema>;
+
 export const videoAnalysisResultSchema = z.object({
   durationMs: z.int().nullable().describe('워커가 FFprobe 로 실측한 길이. 클라이언트가 보고한 값이 아니다.'),
   frameTimestampsMs: z.array(z.int()),
@@ -28,6 +43,9 @@ export const videoAnalysisResultSchema = z.object({
   moods: z.array(z.string()),
   visualQuality: videoVisualQualitySchema,
   confidence: z.number().min(0).max(1).nullable(),
+  subjects: z
+    .array(videoSubjectFrameSchema)
+    .describe('프레임별 피사체 위치(프롬프트 v2, 2026-10-29). 글 · 이모지를 피사체 옆에 놓는 데 쓴다. 그 전의 분석은 빈 배열.'),
 });
 export type VideoAnalysisResult = z.infer<typeof videoAnalysisResultSchema>;
 

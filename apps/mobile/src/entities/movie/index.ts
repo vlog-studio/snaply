@@ -69,8 +69,11 @@ export { MovieTitleMaxLength } from './lib/movie-title';
 export { MovieBgmCatalog } from './lib/movie-bgm';
 export { MovieStyleCatalog, movieStyleLabel, movieStyleOrDefault } from './lib/movie-style';
 export {
+  MovieDecorationOptions,
   MovieRecipeCatalog,
   cutsAreAllAi,
+  movieDecorations,
+  movieDecorationsLabel,
   movieRecipeLabel,
   movieRecipeOrDefault,
   recipePicksCuts,
@@ -95,6 +98,7 @@ export type {
   CutTransition,
   Movie,
   MovieArranger,
+  MovieDecorations,
   MovieRecipe,
   MovieRender,
   MovieStatus,

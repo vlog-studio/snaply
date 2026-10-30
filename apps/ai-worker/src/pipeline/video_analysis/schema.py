@@ -14,6 +14,13 @@ MAX_SUMMARY_LENGTH = 200
 MAX_LIST_ITEMS = 6
 MAX_ITEM_LENGTH = 40
 
+# 프레임별 피사체 상자(docs/decisions/subject-boxes.md §5) — 꾸밈을 피사체 옆에 놓는 데만 쓴다. 옆자리가 없는 상자는 저장하지 않는다:
+# 화면을 거의 다 덮거나(면적), 화면 끝에서 끝까지 걸친 띠(가로 · 세로), 너무 작아 옆에 붙이면 상관없어 보이는 것. 값은 잠정.
+MAX_SUBJECTS_PER_FRAME = 3
+SUBJECT_MAX_AREA = 0.6
+SUBJECT_MAX_SPAN = 0.9
+SUBJECT_MIN_AREA = 0.005
+
 _STRING_LIST = {
     "type": "array",
     "items": {"type": "string"},
@@ -24,7 +31,7 @@ RESULT_JSON_SCHEMA = {
     "additionalProperties": False,
     "required": [
         "summary", "topics", "places", "objects", "actions", "moods",
-        "visualQuality", "confidence",
+        "visualQuality", "confidence", "subjects",
     ],
     "properties": {
         "summary": {"type": "string"},
@@ -47,6 +54,30 @@ RESULT_JSON_SCHEMA = {
             },
         },
         "confidence": {"type": "number"},
+        "subjects": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["frame", "items"],
+                "properties": {
+                    "frame": {"type": "integer"},
+                    "items": {
+                        "type": "array",
+                        "maxItems": MAX_SUBJECTS_PER_FRAME,
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["label", "box"],
+                            "properties": {
+                                "label": {"type": "string"},
+                                "box": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+                            },
+                        },
+                    },
+                },
+            },
+        },
     },
 }
 
@@ -87,6 +118,41 @@ def _validate_unit_range(field: str, value: object) -> float:
     return number
 
 
+def subject_box(value: object) -> list[float] | None:
+    """쓸 수 있는 상자면 0~1 로 자른 [x0, y0, x1, y1], 아니면 None — 거꾸로이거나, 면적이 너무 크거나 작거나, 화면 끝까지 걸친 띠."""
+    if not isinstance(value, list) or len(value) != 4 or not all(
+        isinstance(v, (int, float)) and not isinstance(v, bool) for v in value
+    ):
+        return None
+    x0, y0, x1, y1 = (min(1.0, max(0.0, float(v))) for v in value)
+    w, h = x1 - x0, y1 - y0
+    if w <= 0 or h <= 0 or not SUBJECT_MIN_AREA <= w * h <= SUBJECT_MAX_AREA:
+        return None
+    if w >= SUBJECT_MAX_SPAN or h >= SUBJECT_MAX_SPAN:
+        return None
+    return [round(x0, 4), round(y0, 4), round(x1, 4), round(y1, 4)]
+
+
+def _validate_subjects(value: object) -> list[dict]:
+    """프레임별 피사체 — 쓸 수 있는 상자만 남긴다. 위치는 보조 정보라 모양이 틀려도 분석을 실패시키지 않고 버린다."""
+    if not isinstance(value, list):
+        logger.info("subjects 가 배열이 아니다 — 버린다")
+        return []
+    frames: dict[int, list[dict]] = {}
+    for entry in value:
+        frame = entry.get("frame") if isinstance(entry, dict) else None
+        if isinstance(frame, bool) or not isinstance(frame, int) or frame < 0 or frame in frames:
+            continue
+        items = []
+        for item in (entry.get("items") or [])[:MAX_SUBJECTS_PER_FRAME]:
+            label = item.get("label") if isinstance(item, dict) else None
+            box = subject_box(item.get("box")) if isinstance(item, dict) else None
+            if isinstance(label, str) and label.strip() and box is not None:
+                items.append({"label": label.strip()[:MAX_ITEM_LENGTH], "box": box})
+        frames[frame] = items
+    return [{"frame": frame, "items": frames[frame]} for frame in sorted(frames)]
+
+
 def validate_result(payload: object) -> dict:
     """검증된 결과를 정규화해서 돌려준다. 실패는 ResultSchemaError."""
     if not isinstance(payload, dict):
@@ -120,4 +186,5 @@ def validate_result(payload: object) -> dict:
             "usableForEdit": usable,
         },
         "confidence": _validate_unit_range("confidence", payload.get("confidence")),
+        "subjects": _validate_subjects(payload.get("subjects")),
     }

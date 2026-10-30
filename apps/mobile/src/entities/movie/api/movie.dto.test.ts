@@ -210,3 +210,32 @@ describe('recipes', () => {
     expect(toMovieBody(base, videoIdOf)?.recipe).toBe('classic');
   });
 });
+
+describe('decorations', () => {
+  const base = {
+    title: '무비',
+    snapRefs: [{ snapId: 'a', order: 0 }],
+    style: 'daily' as const,
+    recipe: 'cinematic' as const,
+    captions: false,
+    arranger: 'user' as const,
+  };
+  const videoIdOf = (snapId: string) => `v-${snapId}`;
+
+  it('reads the decorations back, and none from a server older than them', () => {
+    const decorations = { text: false, emoji: true, face: true };
+    const withThem = movieDtoSchema.parse({ ...dto([]), decorations });
+
+    expect(mapRemoteMovie(withThem, snapIdOf).decorations).toEqual(decorations);
+    expect(mapRemoteMovie(dto([]), snapIdOf).decorations).toBeUndefined();
+  });
+
+  // Left out, the server keeps what it holds — the recipe's defaults it filled
+  // the movie with, which is what such a movie reads as here.
+  it('sends the movie’s own decorations, and none for a movie that never had them', () => {
+    const decorations = { text: true, emoji: false, face: false };
+
+    expect(toMovieBody({ ...base, decorations }, videoIdOf)?.decorations).toEqual(decorations);
+    expect(toMovieBody(base, videoIdOf)).not.toHaveProperty('decorations');
+  });
+});

@@ -18,7 +18,7 @@ sys.modules.setdefault("loguru", mock.MagicMock())
 
 from pipeline.video_analysis import analyzer, frame_sampler, openai_client  # noqa: E402
 from pipeline.video_analysis.errors import AnalysisError, classify_failure, is_retryable  # noqa: E402
-from pipeline.video_analysis.schema import ResultSchemaError, validate_result  # noqa: E402
+from pipeline.video_analysis.schema import RESULT_JSON_SCHEMA, ResultSchemaError, subject_box, validate_result  # noqa: E402
 
 
 def _valid_payload() -> dict:
@@ -31,6 +31,7 @@ def _valid_payload() -> dict:
         "moods": ["차분한"],
         "visualQuality": {"score": 0.86, "issues": ["shaky"], "usableForEdit": True},
         "confidence": 0.91,
+        "subjects": [{"frame": 0, "items": [{"label": "케이크", "box": [0.2, 0.4, 0.6, 0.8]}]}],
     }
 
 
@@ -247,6 +248,35 @@ class ResultValidationTest(unittest.TestCase):
         payload["objects"] = ["케이크", " "]
         with self.assertRaises(ResultSchemaError):
             validate_result(payload)
+
+
+class SubjectValidationTest(unittest.TestCase):
+    """프레임별 피사체 상자(프롬프트 v2, decisions/subject-boxes.md §5) — 옆자리가 없는 상자는 저장하지 않는다."""
+
+    def test_usable_boxes_are_kept_and_clamped(self):
+        self.assertEqual(subject_box([0.2, 0.4, 0.6, 0.8]), [0.2, 0.4, 0.6, 0.8])
+        self.assertEqual(subject_box([-0.1, 0.1, 0.3, 0.5]), [0.0, 0.1, 0.3, 0.5])
+
+    def test_boxes_without_a_side_to_sit_beside_are_dropped(self):
+        self.assertIsNone(subject_box([0.0, 0.0, 0.9, 0.9]))      # 면적 81% — 셀카 · 품에 안은 동물
+        self.assertIsNone(subject_box([0.0, 0.3, 0.98, 0.55]))    # 화면 폭 끝까지 걸친 띠 — 진열대 · 모래언덕
+        self.assertIsNone(subject_box([0.5, 0.05, 0.9, 0.97]))    # 세로로 끝까지 걸친 띠
+        self.assertIsNone(subject_box([0.5, 0.5, 0.52, 0.52]))    # 면적 0.04% — 너무 작다
+        self.assertIsNone(subject_box([0.6, 0.2, 0.4, 0.5]))      # 거꾸로
+        self.assertIsNone(subject_box([0.1, 0.2, 0.3]))
+
+    def test_a_malformed_subjects_field_is_dropped_without_failing_the_analysis(self):
+        payload = _valid_payload()
+        payload["subjects"] = [{"frame": 1, "items": [{"label": "", "box": [0.1, 0.1, 0.3, 0.3]},
+                                                      {"label": "컵", "box": [0.1, 0.1, 0.3, 0.3]}]},
+                               {"frame": "x", "items": []}, {"frame": 1, "items": []}, "junk"]
+        self.assertEqual(validate_result(payload)["subjects"],
+                         [{"frame": 1, "items": [{"label": "컵", "box": [0.1, 0.1, 0.3, 0.3]}]}])
+        payload["subjects"] = "none"
+        self.assertEqual(validate_result(payload)["subjects"], [])
+
+    def test_the_request_asks_for_subjects(self):
+        self.assertIn("subjects", RESULT_JSON_SCHEMA["required"])
 
 
 class AnalyzeOrchestrationTest(unittest.TestCase):
