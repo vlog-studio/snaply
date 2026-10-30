@@ -109,7 +109,7 @@ export const movieSchema = z
     recipe: movieRecipeSchema.describe('편집 스타일 레시피 — 소리 구성 · 타이틀 · 글 · 효과음 · 컷 고르기(매치컷) · 화면 틀. 원천은 `recipe-vocabulary.json`. `classic` 이 지금까지의 무비다.'),
     captions: z.boolean().describe('생성 시 소프트 자막을 만들지 여부.'),
     fitMode: fitModeSchema.describe(
-      '비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다.',
+      '비율이 다른 원본의 남는 자리를 채우는 방식 — `pad_black`(검정 띠, 기본) · `blur_background`(흐린 원본) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다.',
     ),
     decorations: movieDecorationsSchema,
     editing: movieEditingSchema,
@@ -189,7 +189,7 @@ export const createMovieBodySchema = z.object({
       '편집 스타일 레시피. 생략하면 `classic`. 컷을 전부 AI 가 정한 무비(`trimOwner: ai` · `arranger: ai`)는 생성 때 레시피가 컷 구간 · 순서까지 다시 고른다 — 사용자가 고친 무비는 구간 · 순서를 지키고 소리 · 타이틀 · 글 · 효과음만 레시피를 따른다.',
     ),
   captions: z.boolean().optional().describe('소프트 자막 생성 여부. 생략하면 `false`(쇼츠용).'),
-  fitMode: fitModeSchema.optional().describe('남는 자리를 채우는 방식. 생략하면 `blur_background`.'),
+  fitMode: fitModeSchema.optional().describe('남는 자리를 채우는 방식. 생략하면 `pad_black`.'),
   decorations: movieDecorationsSchema
     .partial()
     .optional()

@@ -33,8 +33,8 @@ class RequestTest(unittest.TestCase):
         self.assertTrue(request["text"]["format"]["strict"])
         body = json.loads(request["input"][1]["content"][0]["text"])
         self.assertEqual([c["cutId"] for c in body["cuts"]], ["t1", "t2"])
-        self.assertEqual(len(body["emojiAllowed"]), len(aw.POOL))
-        self.assertIn("☕", body["emojiAllowed"])
+        # 그림 스티커만 쓰므로(2026-10-30, text-accent-stickers.md §10) 생성이 고를 이모지는 없다 — 글만 쓴다
+        self.assertEqual(body["emojiAllowed"], [])
 
     def test_default_model_is_the_edit_agent_model(self):
         self.assertEqual(aw.build_request(CUTS)["model"], aw.config.EDIT_AGENT_MODEL)
@@ -44,6 +44,11 @@ class RequestTest(unittest.TestCase):
             aw.build_request([])
 
 
+# 생성이 고르는 이모지 목록은 지금 비어 있다(그림 스티커엔 이모지 문자가 없다). 거르는 규칙은 목록이 다시 생길 때를 위해 예전 목록 일부로 검사한다
+OLD_POOL = ("2615", "1f60d", "1f525", "2764")
+
+
+@mock.patch.object(aw, "POOL", OLD_POOL)
 class ParseTest(unittest.TestCase):
     def test_good_answers_pass(self):
         result = aw.parse_result(answer(
@@ -90,6 +95,7 @@ class ParseTest(unittest.TestCase):
 
 
 class EngineInputTest(unittest.TestCase):
+    @mock.patch.object(aw, "POOL", OLD_POOL)
     def test_generated_text_and_emoji_reach_the_plan(self):
         written = aw.parse_result(answer(
             {"cutId": "t1", "text": "라떼아트 미쳤다", "category": "exclaim", "emoji": ["😍"]},
@@ -101,12 +107,12 @@ class EngineInputTest(unittest.TestCase):
         stickers = sticker.plan([cut], [accent], 500, 7, emoji)
         self.assertEqual((stickers[0].emoji, stickers[0].reason), ("1f60d", "생성"))
 
-    def test_every_dictionary_sticker_is_in_the_generated_pool(self):
+    def test_the_generated_pool_is_empty_while_stickers_are_pictures(self):
+        # 사전은 그림(sk-*)만이고 그림엔 이모지 문자가 없어 생성(층 c)은 스티커를 고르지 않는다 — 사전(층 a)으로만 붙는다
         stickers = text_accent.VOCABULARY["stickers"]
         listed = set(stickers["sparkle"]).union(*(cps for table in stickers["byConcept"].values() for cps in table.values()))
-        # 이모지만 — 직접 받은 그림(sk-*)은 이모지 문자가 없어 생성(층 c)이 고를 수 없고 사전으로만 붙는다
-        listed = {cp for cp in listed if not cp.startswith("sk-")}
-        self.assertTrue(listed <= set(aw.POOL), listed - set(aw.POOL))
+        self.assertTrue(all(cp.startswith("sk-") for cp in listed))
+        self.assertEqual(aw.POOL, ())
 
 
 class CallTest(unittest.TestCase):

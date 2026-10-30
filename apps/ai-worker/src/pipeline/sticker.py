@@ -1,9 +1,10 @@
-"""이모지 스티커 배치 — 컷의 내용 개념에서 이모지를 골라 피사체 둘레에 차례로 붙인다(렌더는 `pipeline/sticker_render.py`).
+"""그림 스티커 배치 — 컷의 내용 개념에서 그림을 골라 화면 틀 모서리에 크게 붙인다(렌더는 `pipeline/sticker_render.py`).
 
-- 무엇을: 사전 `stickers.byConcept`(하위 개념은 상위의 목록을 물려받음). 분위기가 sparkleMoods 면 반짝이를 더한다
-- 몇 개: 1 + (컷이 2박 이상이면 1) + (시드로 0~1), 후보 수를 넘지 않는다
-- 어디에: 피사체 가장자리에 반쯤 걸치게(object.beside 의 위 · 아래 변형) → 피사체 위 → 화면 빈 모서리.
-  같은 컷의 텍스트 액센트와 앞서 붙인 스티커를 피한다. 피사체 상자가 없으면 빈 모서리만
+- 무엇을: 사전 `stickers.byConcept`(하위 개념은 상위의 목록을 물려받음). 사람 · 소파 · 분위기처럼 어디에나 있는 개념(`genericConcepts`)은
+  장식 그림(`decor`)만 — 주제가 좁은 그림이 엉뚱한 장면에 붙지 않게. 분위기가 sparkleMoods 면 반짝이를 더한다
+- 몇 개: 컷마다 하나, 4박 이상 이어지는 컷만 둘(text-accent-stickers.md §10 — 촘촘히 여럿이면 촌스럽다)
+- 어디에: 화면 틀 모서리에 반쯤 걸치게 — 가로 영상이 검은 띠 사이에 놓이면 띠와 영상의 경계, 꽉 채운 컷은 세이프 에어리어 모서리.
+  못 놓으면 피사체 가장자리 → 나머지 빈 모서리. 같은 컷의 텍스트 액센트와 앞서 붙인 스티커를 피한다
 - 언제: 반 박자씩 늦게 하나씩, holdBeats 박자 머묾
 
 결정론과 시드는 `pipeline/text_accent.py` 와 같다(같은 style-director 스테이지 시드).
@@ -16,6 +17,9 @@ from pipeline import text_accent as ta
 
 STICKERS: dict = ta.VOCABULARY["stickers"]
 MOTIONS: tuple[str, ...] = tuple(STICKERS["motions"])
+DECOR: frozenset[str] = frozenset(STICKERS["decor"])
+GENERIC: dict[str, frozenset[str]] = {fld: frozenset(ids) for fld, ids in STICKERS["genericConcepts"].items()}
+LONG_CUT_BEATS = 4  # 이만큼 이어지는 컷에만 스티커 둘
 
 
 @dataclass(frozen=True)
@@ -44,6 +48,8 @@ def candidates(cut: ta.CutContext, mood: str, stage_seed: int | None = None) -> 
         for concept in cut.concepts.get(fld, ()):
             for ancestor in sorted(ta.lineage(fld, concept), key=lambda c: c != concept):
                 listed = list(table.get(ancestor, ()))
+                if ancestor in GENERIC.get(fld, ()):
+                    listed = [cp for cp in listed if cp in DECOR]
                 if stage_seed is not None and listed:
                     k = ta.roll(stage_seed, cut.cut_id, "stk-pool", fld, ancestor) % len(listed)
                     listed = listed[k:] + listed[:k]
@@ -56,21 +62,28 @@ def candidates(cut: ta.CutContext, mood: str, stage_seed: int | None = None) -> 
     return found
 
 
-def spots(subject: layout.Box | None, size: float) -> list[tuple[str, tuple[float, float]]]:
+def spots(subject: layout.Box | None, size: float, frame: layout.Box | None = None) -> list[tuple[str, tuple[float, float]]]:
+    """자리 후보(선호 순) — 화면 틀 모서리 넷이 먼저, 그다음 피사체 가장자리, 마지막에 남은 빈 모서리."""
     sx, sy = size / layout.W, size / layout.H
     x0, y0, x1, y1 = layout.SAFE
     free = [
         ("freezone.bottomRight", (x1 - sx * 0.7, y1 - sy * 0.8)), ("freezone.bottomLeft", (x0 + sx * 0.7, y1 - sy * 0.8)),
         ("freezone.topRight", (x1 - sx * 0.7, y0 + sy * 0.8)), ("freezone.topLeft", (x0 + sx * 0.7, y0 + sy * 0.8)),
     ]
+    edges = free
+    if frame is not None and (frame[1] > y0 + 0.02 or frame[3] < y1 - 0.02):
+        # 가로 영상이 띠 사이에 놓였다 — 띠와 영상의 경계에 반쯤 걸쳐 띠를 무대로 쓴다
+        _, fy0, _, fy1 = frame
+        edges = [("frame.edge", (x1 - sx * 0.75, fy0)), ("frame.edge", (x0 + sx * 0.75, fy1)),
+                 ("frame.edge", (x0 + sx * 0.75, fy0)), ("frame.edge", (x1 - sx * 0.75, fy1))]
     if subject is None:
-        return free
+        return edges + [s for s in free if s not in edges]
     a, b, c, d = subject
     hug = [  # 가장자리에 걸치는 자리 — 스티커 폭의 15~20% 가 피사체 안으로 들어간다
         ("object.beside", (c - sx * 0.15, b - sy * 0.1)), ("object.beside", (a + sx * 0.15, b - sy * 0.1)),
         ("object.beside", (c - sx * 0.1, d - sy * 0.2)), ("object.beside", (a + sx * 0.1, d - sy * 0.2)),
     ]
-    return hug + [("object.beside", (c + sx * 0.6, (b + d) / 2)), ("object.beside", (a - sx * 0.6, (b + d) / 2))] + free
+    return edges + hug + [s for s in free if s not in edges]
 
 
 def plan_cut(cut: ta.CutContext, accent: ta.Accent | None, beats: accent_fit.Beats, stage_seed: int,
@@ -87,7 +100,7 @@ def plan_cut(cut: ta.CutContext, accent: ta.Accent | None, beats: accent_fit.Bea
         return []
     grid = accent_fit.as_grid(beats, cut.end_ms + 8 * (beats if isinstance(beats, int) else 500))
     beats_in_cut = max(1, sum(1 for b in grid if cut.start_ms <= b < cut.end_ms))
-    want = min(len(found), 1 + (beats_in_cut >= 2) + ta.roll(stage_seed, cut.cut_id, "stk-n") % 2)
+    want = min(len(found), 1 + (beats_in_cut >= LONG_CUT_BEATS))
     # 사전 후보는 앞쪽 둘 중 어디서 시작할지만 시드로 — 생성(층 c)이 고른 이모지는 그 앞에 그대로
     offset = ta.roll(stage_seed, cut.cut_id, "stk-pick") % min(2, len(rest)) if rest else 0
     order = own + rest[offset:] + rest[:offset]
@@ -104,9 +117,9 @@ def plan_cut(cut: ta.CutContext, accent: ta.Accent | None, beats: accent_fit.Bea
 def _place_one(cut, cp, reason, i, taken, grid, stage_seed, energy) -> Sticker | None:
     low, high = STICKERS["sizePx"]
     size = low + ta.roll(stage_seed, cut.cut_id, "stk-size", str(i)) % (high - low)
-    options = spots(cut.subject, size)
-    # 걸치는 네 자리 중 어디서 시작할지를 시드로 — 컷마다 붙는 쪽이 바뀐다
-    k = ta.roll(stage_seed, cut.cut_id, "stk-spot", str(i)) % 4 if cut.subject is not None else 0
+    options = spots(cut.subject, size, cut.frame)
+    # 모서리 넷 중 어디서 시작할지를 시드로 — 컷마다 붙는 쪽이 바뀐다
+    k = ta.roll(stage_seed, cut.cut_id, "stk-spot", str(i)) % 4
     options = options[k:4] + options[:k] + options[4:]
     for anchor, xy in options:
         r = _box(xy, size)

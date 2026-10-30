@@ -72,6 +72,7 @@ def build_cuts(cuts: list[CutSource], analyses: dict[str, dict], motions: dict[s
             subject.for_cut(analysis, cut.path, middle, fit_mode),
             motion=accent_inputs.cut_motion(motions.get(cut.video_id) or (), cut.start_ms, cut.end_ms),
             luma=_luma(cut, fit_mode),
+            frame=subject.frame_box(cut.path, fit_mode),
         ))
         t += length
     return contexts

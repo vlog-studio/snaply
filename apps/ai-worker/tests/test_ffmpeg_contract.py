@@ -862,7 +862,7 @@ class StickerOverlayContract(unittest.TestCase):
     def test_overlay_track_keeps_alpha_and_draws_the_sticker(self) -> None:
         from pipeline import sticker, sticker_render
 
-        placed = sticker.Sticker("a", "1f525", "", "freezone.topLeft", (0.3, 0.3), 240, 0.0, "popBob", 0, 1500, (0, 500, 1000))
+        placed = sticker.Sticker("a", "sk-3013", "", "freezone.topLeft", (0.3, 0.3), 240, 0.0, "popBob", 0, 1500, (0, 500, 1000))
         with tempfile.TemporaryDirectory() as work:
             track = sticker_render.bake_overlay([placed], 1500, os.path.join(work, "stickers.mov"))
             base = os.path.join(work, "base.mp4")

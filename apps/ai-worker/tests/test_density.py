@@ -71,7 +71,7 @@ class StickerLimitTest(unittest.TestCase):
 
 
 def stk(cut_id, start, reason):
-    return sticker.Sticker(cut_id, "1f600", reason, "corner", (0.5, 0.5), 200, 0.0, "pop", start, start + 1000, ())
+    return sticker.Sticker(cut_id, "sk-6196", reason, "corner", (0.5, 0.5), 200, 0.0, "pop", start, start + 1000, ())
 
 
 class StickerAloneTest(unittest.TestCase):

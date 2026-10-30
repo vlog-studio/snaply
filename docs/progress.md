@@ -3093,3 +3093,16 @@ backlog A-22 의 앱 화면. 무비 편집 화면의 칩 줄에 **꾸밈** 칩(�
 - **앱** — 꾸밈 시트에 '편집' 묶음(말소리 · 장면 순서), 칩이 켜진 것을 덧붙인다, 무비 모델 · DTO · 동기화 · 스토어(레시피를 바꿔도 그대로)
 - **스튜디오** — 말소리 · 장면 순서 스위치, classic 은 AI 초안 기본 무비처럼(컷을 AI 가 자른 것으로)
 - **검증** — 아래 '검증' 참고(이 항목을 쓴 시점에 돌린 것만)
+
+## 2026-10-30 (이어서) — 그림 스티커만 · 일반 개념엔 장식만 · 모서리 배치, 맞춤 기본은 검은 띠(MOV-8 · MOV-27, text-accent-stickers §10)
+
+- **사전 · 에셋** — 예전 Noto 이모지 102장과 `LICENSE-noto-emoji.txt` 를 지우고 `byConcept` · `sparkle` 에서 코드포인트를 뺐다. `generatedPool` 은 비웠다(그림엔
+  이모지 문자가 없다 — 생성은 글만). 새 `stickers.decor`(장식 그림 158장, 411장을 눈으로 보고 골랐다) · `stickers.genericConcepts`(사람 · 손 · 가구 · 조명 · 기기 ·
+  서기 · 들기 · 말하기 · 분위기 등). 크기 190~260 → 240~300px, 기울기 18 → 10°, 머묾 3 → 2박, 모션은 통통 · 흔들림만. 사전 판 1 → 2, 레시피 사전 17 → 18
+- **워커** — `sticker.candidates` 는 일반 개념에서 `decor` 만, `plan_cut` 은 컷마다 하나(4박 이상만 둘), `spots` 는 화면 틀 모서리가 먼저(가로 영상이 띠 사이면
+  띠와 영상의 경계 `frame.edge`), 그다음 피사체 가장자리. `CutContext.frame`(`subject.frame_box` — 보통 경로는 무비의 맞춤으로, 레시피 경로는 레터박스 띠).
+  얼굴 스티커 `crown` · `shades` → `starpin`(sk-4020) · `mustache`(sk-11206), 하트 · 반짝이도 그림으로
+- **API** — 계약 `DEFAULT_FIT_MODE` = `pad_black`, DB 기본값 · 기존 무비를 옮기는 마이그레이션 `20261030020000_movie_fit_black`, `openapi.json` 재생성, api-spec 갱신
+- **검증** — 워커 테스트 726건 통과(워커 이미지 안 — 새 `test_generic_concepts_use_only_decor` · `test_frame_corners_first` · `test_one_per_cut_two_on_long_cuts_staggered`
+  등), API 57파일 881건 통과(`TEST_REDIS_URL` 6390), `verify:mobile` 242 스위트 1818건 통과. 노래방 스냅 8개 · 루틴 · 순서 고정 · 검은 띠로 앱과 같은 꾸밈 경로
+  (`accent_stage`)를 스튜디오에서 렌더: 띠와 영상 경계에 장식 하트, 얼굴엔 별 핀, 엉뚱한 그림(덤벨 햄스터 · 야구 카드) 없음. 실기기 · 운영 확인은 아직

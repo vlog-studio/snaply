@@ -1,4 +1,4 @@
-"""이모지 스티커 배치와 모션의 계약 — 무엇을 · 몇 개 · 어디에 · 언제, 결정론, 프레임 한 장.
+"""그림 스티커 배치와 모션의 계약 — 무엇을 · 몇 개 · 어디에 · 언제, 결정론, 프레임 한 장.
 
 배치는 순수 검사다. 프레임 그리기는 Pillow 가 있어야 돈다(requirements 에 있다). 오버레이 트랙을 ffmpeg 로 굽는 것은
 `test_ffmpeg_contract.py` 가 맡는다.
@@ -24,25 +24,49 @@ def cut(cut_id="t1", start=0, end=1000, subject=CENTER, **concepts) -> CutContex
 
 class CandidatesTest(unittest.TestCase):
     def test_own_concept_first_then_inherited_and_no_duplicates(self):
-        found = sticker.candidates(cut(objects=["coffee"], actions=["drink"]), "default")
+        table = sticker.STICKERS["byConcept"]
+        found = sticker.candidates(cut(objects=["coffee"]), "default")
         emojis = [cp for cp, _ in found]
-        self.assertEqual(emojis[0], "2615")  # 마시기 → ☕
         self.assertEqual(len(emojis), len(set(emojis)))
-        self.assertIn("1f4a6", emojis)  # coffee 는 drink 의 하위 — drink 의 💦 를 물려받는다
+        own = set(table["objects"]["coffee"])
+        self.assertIn(emojis[0], own)
+        # coffee 는 drink 의 하위 — drink 의 그림도 물려받는다(자기 목록 뒤에)
+        inherited = [cp for cp in emojis if cp not in own]
+        self.assertTrue(inherited and set(inherited) <= set(table["objects"]["drink"]))
+
+    def test_only_picture_stickers(self):
+        # 예전 Noto 이모지(코드포인트)는 2026-10-30 지웠다(text-accent-stickers.md §10)
+        found = sticker.candidates(cut(objects=["coffee", "person"], places=["sea"], moods=["lively"]), "lively")
+        self.assertTrue(found and all(cp.startswith("sk-") for cp, _ in found))
+
+    def test_generic_concepts_use_only_decor(self):
+        # 사람 · 소파 · 들고 있음 · 분위기 같은 어디에나 있는 개념엔 장식만 — 노래방에 덤벨 햄스터가 붙지 않게
+        found = sticker.candidates(cut(objects=["person", "sofa"], actions=["hold"], moods=["lively"]), "lively")
+        self.assertTrue(found)
+        self.assertTrue(all(cp in sticker.DECOR for cp, _ in found), [cp for cp, _ in found if cp not in sticker.DECOR])
+        self.assertIn("sk-2335", sticker.STICKERS["byConcept"]["objects"]["sofa"])  # 덤벨 햄스터는 소파 목록엔 있지만
+        self.assertNotIn("sk-2335", [cp for cp, _ in found])  # 장식이 아니라 빠진다
+
+    def test_topic_concepts_keep_their_own_pictures(self):
+        found = [cp for cp, _ in sticker.candidates(cut(topics=["exercise"]), "default")]
+        self.assertTrue(any(cp not in sticker.DECOR for cp in found))  # 운동 글씨 같은 주제 그림은 주제 컷에 남는다
 
     def test_lively_and_emotional_moods_add_sparkles(self):
-        self.assertIn("2728", [cp for cp, _ in sticker.candidates(cut(topics=["shopping"]), "lively")])
-        self.assertNotIn("2728", [cp for cp, _ in sticker.candidates(cut(topics=["shopping"]), "calm")])
+        added = lambda mood: [cp for cp, why in sticker.candidates(cut(topics=["walk"]), mood) if why.endswith("(반짝이)")]  # noqa: E731
+        self.assertTrue(added("lively"))
+        self.assertEqual(added("calm"), [])
 
 
 class PlanTest(unittest.TestCase):
-    def test_count_order_and_staggered_entry(self):
-        c = cut(end=1000, objects=["coffee"], actions=["drink"], moods=["calm"])
-        placed = sticker.plan_cut(c, None, BEAT, SEED)
-        self.assertTrue(1 <= len(placed) <= 3)
-        self.assertEqual([s.start_ms for s in placed], [i * BEAT // 2 for i in range(len(placed))])
-        for s in placed:
-            self.assertLessEqual(s.end_ms, c.end_ms + BEAT // 2)
+    def test_one_per_cut_two_on_long_cuts_staggered(self):
+        # 컷마다 하나, 4박 이상 이어지는 컷만 둘(text-accent-stickers.md §10 — 전엔 1~3개)
+        short = sticker.plan_cut(cut(end=1000, objects=["coffee"], moods=["calm"]), None, BEAT, SEED)
+        self.assertEqual(len(short), 1)
+        long = sticker.plan_cut(cut(end=2500, objects=["coffee"], moods=["calm"]), None, BEAT, SEED)
+        self.assertEqual(len(long), 2)
+        self.assertEqual([s.start_ms for s in long], [0, BEAT // 2])
+        for s in long:
+            self.assertLessEqual(s.end_ms, 2500 + BEAT // 2)
 
     def test_stickers_avoid_the_accent_and_each_other(self):
         c = cut(objects=["coffee"], actions=["drink"], moods=["lively"])
@@ -55,18 +79,28 @@ class PlanTest(unittest.TestCase):
             for other in boxes[i + 1:]:
                 self.assertFalse(layout.overlaps(box, other))
 
-    def test_hugging_spots_need_a_subject(self):
-        with_subject = sticker.plan_cut(cut(objects=["coffee"]), None, BEAT, SEED)
-        without = sticker.plan_cut(cut(subject=None, objects=["coffee"]), None, BEAT, SEED)
-        self.assertEqual(with_subject[0].anchor, "object.beside")
-        self.assertTrue(all(s.anchor.startswith("freezone.") for s in without))
+    def test_frame_corners_first(self):
+        # 꽉 채운 컷은 세이프 에어리어 모서리, 가로 영상이 띠 사이에 놓이면 띠와 영상의 경계에 걸친다
+        full = sticker.plan_cut(cut(objects=["coffee"]), None, BEAT, SEED)
+        self.assertTrue(full[0].anchor.startswith("freezone."))
+        band = (0.0, 0.34, 1.0, 0.66)
+        boxed = sticker.plan_cut(CutContext("t1", 0, 1000, {"objects": ("coffee",)}, CENTER, frame=band), None, BEAT, SEED)
+        self.assertEqual(boxed[0].anchor, "frame.edge")
+        self.assertIn(boxed[0].xy[1], (band[1], band[3]))
+
+    def test_subject_edge_when_the_corners_are_taken(self):
+        blocked = [(0.0, 0.0, 1.0, 0.30), (0.0, 0.62, 1.0, 1.0)]  # 위 · 아래 모서리를 다른 것이 차지했다
+        options = sticker.spots(CENTER, 260)
+        self.assertEqual([a for a, _ in options[:4]], ["freezone.bottomRight", "freezone.bottomLeft", "freezone.topRight", "freezone.topLeft"])
+        free = [a for a, xy in options if layout.fits_at(sticker._box(xy, 260), blocked)]
+        self.assertEqual(free[0], "object.beside")
 
     def test_nothing_to_say_means_no_stickers(self):
         # 직접 받은 스티커가 모든 개념을 덮어 이제 개념이 없는 컷만 비는다 — 되돌리면 cut(objects=["wall"]) 로
         self.assertEqual(sticker.plan_cut(cut(), None, BEAT, SEED), [])
 
     def test_the_next_cut_prefers_emoji_it_did_not_just_see(self):
-        # 바다 → 친구들과 바다: 같은 장소라도 바로 앞 컷의 🌊 💦 🫧 를 그대로 되풀이하지 않는다
+        # 바다 → 친구들과 바다: 같은 장소라도 바로 앞 컷의 그림을 그대로 되풀이하지 않는다
         cuts = [cut("a", 0, 1000, places=["sea"]), cut("b", 1000, 2000, places=["sea"], topics=["friends"], moods=["lively"])]
         planned = sticker.plan(cuts, [], BEAT, SEED)
         seen = {s.emoji for s in planned if s.cut_id == "a"}
@@ -81,7 +115,7 @@ class PlanTest(unittest.TestCase):
 
 
 class PoseTest(unittest.TestCase):
-    STICKER = sticker.Sticker("t1", "2615", "", "object.beside", (0.5, 0.5), 200, 0.0, "popBob", 0, 1500, (0, 500, 1000))
+    STICKER = sticker.Sticker("t1", "sk-6196", "", "object.beside", (0.5, 0.5), 200, 0.0, "popBob", 0, 1500, (0, 500, 1000))
 
     def test_pops_in_bumps_on_beats_and_fades_out(self):
         render = _render_module()

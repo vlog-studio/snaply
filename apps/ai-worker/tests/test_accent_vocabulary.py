@@ -87,7 +87,7 @@ class AccentVocabularyTest(unittest.TestCase):
 
     def test_every_sticker_has_its_image(self):
         stickers = VOCAB["stickers"]
-        codepoints = set(stickers["sparkle"]) | set(stickers["generatedPool"])
+        codepoints = set(stickers["sparkle"]) | set(stickers["generatedPool"]) | set(stickers["decor"])
         for table in stickers["byConcept"].values():
             for listed in table.values():
                 codepoints |= set(listed)
@@ -96,6 +96,23 @@ class AccentVocabularyTest(unittest.TestCase):
                 self.assertTrue((EMOJI_DIR / f"{cp}.png").exists())
         self.assertTrue(set(stickers["sparkleMoods"]) <= set(CONTENT["moods"]))
         self.assertEqual(len(stickers["generatedPool"]), len(set(stickers["generatedPool"])))
+
+    def test_only_picture_stickers_and_generic_concepts_are_known(self):
+        # 예전 Noto 이모지는 지웠다 — 사전 · 얼굴 스티커 모두 그림(sk-*)만(text-accent-stickers.md §10)
+        from pipeline import face
+
+        stickers = VOCAB["stickers"]
+        listed = set(stickers["sparkle"]) | set(stickers["decor"])
+        for table in stickers["byConcept"].values():
+            for names in table.values():
+                listed |= set(names)
+        listed |= {name for name, *_ in face.KINDS.values()}
+        self.assertTrue(all(name.startswith("sk-") for name in listed), sorted(n for n in listed if not n.startswith("sk-")))
+        for name, *_ in face.KINDS.values():
+            self.assertTrue((EMOJI_DIR / f"{name}.png").exists(), name)
+        for fld, concepts in stickers["genericConcepts"].items():
+            with self.subTest(field=fld):
+                self.assertTrue(set(concepts) <= set(CONTENT[fld]), set(concepts) - set(CONTENT[fld]))
 
     def test_energy_motions_are_known_motions(self):
         energy = VOCAB["energy"]

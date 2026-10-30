@@ -84,6 +84,9 @@ def _contexts(snaps, series, concepts, planned, subjects=None, spec: dict | None
     """결과물 시간축의 컷 — 배속 컷의 움직임 곡선은 그 배수만큼 솎는다. 피사체는 매치컷이 찾은 것이 먼저(결과물 프레임에서 잰 값),
     없으면 스냅 분석의 프레임별 상자를 컷의 화면 틀(꽉 채움 · 레터박스 띠)로 옮긴 것."""
     contexts, t = [], 0
+    area = _frame_area(spec)
+    w, h = DEFAULT_RENDER_SPEC.width, DEFAULT_RENDER_SPEC.height
+    frame = (area[0] / w, area[1] / h, (area[0] + area[2]) / w, (area[1] + area[3]) / h) if area else None  # 레터박스 띠 사이
     for k, cut in enumerate(planned):
         motion = series[cut.index].motion[cut.start_ms // continuity.STEP_MS: cut.end_ms // continuity.STEP_MS]
         motion = tuple(motion[round(j * cut.speed)] for j in range(int(len(motion) / cut.speed)))
@@ -93,7 +96,7 @@ def _contexts(snaps, series, concepts, planned, subjects=None, spec: dict | None
             luma = None
         found = (subjects[k] if subjects else None) or subject.for_cut(
             snaps[cut.index].analysis, snaps[cut.index].path, (cut.start_ms + cut.end_ms) // 2, "cover", _frame_area(spec))
-        contexts.append(ta.CutContext(f"c{k}", t, t + cut.out_ms, concepts[cut.index], found, motion=motion, luma=luma))
+        contexts.append(ta.CutContext(f"c{k}", t, t + cut.out_ms, concepts[cut.index], found, motion=motion, luma=luma, frame=frame))
         t += cut.out_ms
     return contexts
 

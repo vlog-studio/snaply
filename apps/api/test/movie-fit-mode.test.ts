@@ -2,7 +2,7 @@
  * 무비마다 고르는 맞춤 방식(specs/movie.md MOV-8).
  *
  * 고정하는 계약:
- *   ① 보내지 않으면 `blur_background` 이고, 고른 값은 저장 · 응답 · 수정에서 그대로다
+ *   ① 보내지 않으면 `pad_black`(2026-10-30 — 전엔 `blur_background`) 이고, 고른 값은 저장 · 응답 · 수정에서 그대로다
  *   ② 목록에 없는 값은 400
  *   ③ 생성(export)은 무비의 값을 작업의 renderSpec 에 싣고, 큐의 작업도 같은 값이다
  */
@@ -49,11 +49,11 @@ async function exportRenderSpec(user: TestUser, movieId: string): Promise<Record
 }
 
 describe('맞춤 방식 저장', () => {
-  it('보내지 않으면 blur_background, 고르면 그대로 저장 · 응답되고 PATCH 로 바꿀 수 있다', async () => {
+  it('보내지 않으면 pad_black, 고르면 그대로 저장 · 응답되고 PATCH 로 바꿀 수 있다', async () => {
     const user = await h.createUser();
     const plain = await createMovie(user, {});
     expect(plain.statusCode).toBe(201);
-    expect(plain.json().data.fitMode).toBe('blur_background');
+    expect(plain.json().data.fitMode).toBe('pad_black');
 
     const created = await createMovie(user, { fitMode: 'pad_white' });
     expect(created.json().data.fitMode).toBe('pad_white');
@@ -65,10 +65,10 @@ describe('맞춤 방식 저장', () => {
       method: 'PATCH',
       url: `/movies/${id}`,
       headers: user.auth,
-      payload: { fitMode: 'pad_black' },
+      payload: { fitMode: 'blur_background' },
     });
     expect(patched.statusCode).toBe(200);
-    expect(patched.json().data.fitMode).toBe('pad_black');
+    expect(patched.json().data.fitMode).toBe('blur_background');
   });
 
   it('목록에 없는 값은 400', async () => {
@@ -79,14 +79,14 @@ describe('맞춤 방식 저장', () => {
 });
 
 describe('생성은 무비의 맞춤 방식으로 렌더한다', () => {
-  it('기본 무비는 지금까지와 같은 blur_background', async () => {
+  it('기본 무비는 검은 띠(pad_black)', async () => {
     const user = await h.createUser();
     const id = (await createMovie(user, { clips: [{ videoId: await createSnap(user) }] })).json().data.id as string;
     expect(await exportRenderSpec(user, id)).toMatchObject({
       outputProfile: 'short_vertical',
       width: 1080,
       height: 1920,
-      fitMode: 'blur_background',
+      fitMode: 'pad_black',
     });
   });
 

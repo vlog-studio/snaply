@@ -1335,7 +1335,7 @@
               "pad_black",
               "pad_white"
             ],
-            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
+            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `pad_black`(검정 띠, 기본) · `blur_background`(흐린 원본) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
           },
           "decorations": {
             "type": "object",
@@ -3174,7 +3174,7 @@
               "pad_black",
               "pad_white"
             ],
-            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
+            "description": "비율이 다른 원본의 남는 자리를 채우는 방식 — `pad_black`(검정 띠, 기본) · `blur_background`(흐린 원본) · `pad_white`(흰 띠) 등. 생성할 때 이 값으로 렌더한다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따른다."
           },
           "decorations": {
             "type": "object",
@@ -7140,7 +7140,7 @@
                     "type": "boolean"
                   },
                   "fitMode": {
-                    "description": "남는 자리를 채우는 방식. 생략하면 `blur_background`.",
+                    "description": "남는 자리를 채우는 방식. 생략하면 `pad_black`.",
                     "type": "string",
                     "enum": [
                       "contain",

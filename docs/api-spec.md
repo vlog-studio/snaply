@@ -258,7 +258,7 @@ FE 가 알아야 할 동작:
 - 큐 적재가 실패하면 `export` 는 500 이고, 이미 만든 작업은 `failed`(`errorCode: QUEUE_FAILED`)로 남으며 예약은 환급된다.
   편집 워커(`npm run worker`)가 떠 있지 않으면 작업은 `queued` 에 머문다.
 - 출력은 늘 세로 9:16 숏폼이다. 출력 프로필은 고르지 않는다. 비율이 다른 원본의 남는 자리는 무비의 `fitMode` 가 정한다 —
-  `blur_background`(흐린 원본, 기본) · `pad_black`(검정 띠) · `pad_white`(흰 띠). `POST /movies` · `PATCH /movies/{id}` 로 고르고
+  `pad_black`(검정 띠, 기본 — 2026-10-30 전에 만든 무비도 옮겼다) · `blur_background`(흐린 원본) · `pad_white`(흰 띠). `POST /movies` · `PATCH /movies/{id}` 로 고르고
   다시 만들어도 유지된다. 컷을 전부 AI 가 정한 레시피 무비는 레시피의 화면 틀을 따르고 이 값을 쓰지 않는다. 레터박스 레시피
   (`cinematic` · `letterbox-montage`)는 컷을 손본 무비에서도 이 값 대신 `pad_black` 으로 렌더한다(MOV-8). 저장된 값은 그대로다.
 - 진행률은 `GET /edit-jobs/{id}` 와

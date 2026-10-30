@@ -48,6 +48,8 @@ class CutContext:
     # 컷 구간의 움직임 곡선(STEP_MS 간격, 컷 시작부터) · 대표 프레임 휘도 격자(위 → 아래 행) — pipeline/accent_inputs.py
     motion: tuple[float, ...] = ()
     luma: tuple[tuple[float, ...], ...] | None = None
+    # 컷 영상이 화면에서 차지하는 자리(0~1) — 가로 영상이 검은 띠 사이에 놓이면 그 사이. None 이면 화면 전체(subject.frame_box)
+    frame: Box | None = None
 
 
 @dataclass(frozen=True)

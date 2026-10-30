@@ -19,7 +19,7 @@ try:
 except ImportError:  # 로컬에서 opencv 없이 돌릴 때
     HAS_CV2 = False
 
-CFG = {"enabled": True, "share": 1.0, "minTrackMs": 500, "gapMs": 1000, "kinds": ["crown"]}
+CFG = {"enabled": True, "share": 1.0, "minTrackMs": 500, "gapMs": 1000, "kinds": ["starpin"]}
 
 
 def moving(n: int, x0: float = 0.4, w: float = 0.2) -> list[list[face.Box]]:
@@ -47,7 +47,7 @@ class PlanTest(unittest.TestCase):
         stickers = face.plan(face.tracks(moving(12)), CFG, 1)
         self.assertEqual(len(stickers), 1)
         s = stickers[0]
-        self.assertEqual((s.kind, s.emoji), ("crown", "1f451"))
+        self.assertEqual((s.kind, s.emoji), ("starpin", "sk-4020"))
         self.assertLess(s.keys[0][2], 0.3)  # 왕관은 얼굴 위
         self.assertGreater(s.keys[-1][1], s.keys[0][1])  # 얼굴을 따라 오른쪽으로
 
@@ -68,7 +68,7 @@ class PlanTest(unittest.TestCase):
         self.assertLessEqual(long.end_ms - long.start_ms, face.MAX_HOLD_MS)
 
     def test_position_is_interpolated_between_keys(self):
-        s = face.FaceSticker("crown", "1f451", ((0, 0.2, 0.2, 0.1), (100, 0.4, 0.2, 0.1)))
+        s = face.FaceSticker("starpin", "sk-4020", ((0, 0.2, 0.2, 0.1), (100, 0.4, 0.2, 0.1)))
         self.assertEqual(face.at(s, 50), (0.30000000000000004, 0.2, 0.1))
         self.assertIsNone(face.at(s, 250))
 
