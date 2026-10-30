@@ -11,7 +11,7 @@
 # 설치는 deploy/aws/install.sh 가 한다(/etc/snaply/runner-job-started.sh).
 set -euo pipefail
 
-ALLOWED_WORKFLOW_REF="vlog-studio/snaply-backend/.github/workflows/deploy.yml@refs/heads/main"
+ALLOWED_WORKFLOW_REF="vlog-studio/snaply/.github/workflows/deploy.yml@refs/heads/main"
 
 if [ "${GITHUB_WORKFLOW_REF:-}" != "$ALLOWED_WORKFLOW_REF" ] || [ "${GITHUB_EVENT_NAME:-}" != "push" ]; then
   echo "이 runner 는 main 의 deploy.yml(push)만 받는다 — 받은 작업: ${GITHUB_WORKFLOW_REF:-알 수 없음} (${GITHUB_EVENT_NAME:-알 수 없음})" >&2
