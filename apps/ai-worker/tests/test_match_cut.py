@@ -223,6 +223,14 @@ class PairTest(unittest.TestCase):
         path = mc.order(boosted)
         self.assertEqual(path[path.index(0) + 1], 3)
 
+    def test_pairs_follow_the_snap_when_others_are_dropped(self):
+        from pipeline import trend_edit
+        a, b, c = (trend_edit.Snap(f"/w/{n}.mp4", {}) for n in "abc")
+        c = trend_edit.Snap(c.path, {}, lined_up_with=a.path)
+        self.assertEqual(trend_edit._pairs([a, b, c]), [None, None, 0])
+        self.assertEqual(trend_edit._pairs([a, c]), [None, 0])  # b 를 빼도 c 의 짝은 a 그대로
+        self.assertEqual(trend_edit._pairs([b, c]), [None, None])  # 짝이 빠지면 우대도 없다
+
     def test_a_pair_that_does_not_fit_at_all_stays_apart(self):
         s = np.full((3, 3), 0.9)
         s[0][2] = 0.0  # 맞춰 찍었어도 이어지지 않는다 — 힌트일 뿐

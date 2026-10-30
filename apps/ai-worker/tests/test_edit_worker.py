@@ -327,7 +327,7 @@ class RenderTrendTrackTest(unittest.IsolatedAsyncioTestCase):
             await worker._render_trend([VIDEO_ID, other], {VIDEO_ID: "/w/src_0.mp4", other: "/w/src_1.mp4"},
                                        worker.get_preset("감성"), "cinematic", {"movieId": "m1"}, JOB_ID, USER_ID, "/w", "m1:abc")
         snaps = render.call_args.args[0]
-        self.assertEqual([s.lined_up_with for s in snaps], [None, 0])
+        self.assertEqual([s.lined_up_with for s in snaps], [None, "/w/src_0.mp4"])  # 짝은 경로로 — 번호는 흔들림 거르기로 바뀐다
 
 
 class ApplyAccentsInputTest(unittest.IsolatedAsyncioTestCase):

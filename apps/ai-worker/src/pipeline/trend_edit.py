@@ -37,7 +37,7 @@ class Snap:
     path: str
     analysis: dict
     captured_at: datetime | None = None  # 촬영 시각 — 하루 타임스탬프 포맷의 글 · 촬영 순서
-    lined_up_with: int | None = None  # 겹쳐 보며 이어 찍은 앞 컷(짝)의 입력 번호 — 순서를 고를 때 붙일 후보로 우대(SNAP-24)
+    lined_up_with: str | None = None  # 겹쳐 보며 이어 찍은 앞 컷(짝)의 파일 경로 — 순서를 고를 때 붙일 후보로 우대(SNAP-24)
 
 
 @dataclass
@@ -145,6 +145,12 @@ def _seg_spec(spec: dict):
     return replace(DEFAULT_RENDER_SPEC, fit_mode="cover")
 
 
+def _pairs(snaps: list[Snap]) -> list[int | None]:
+    """스냅마다 짝(앞 컷)의 지금 번호 — 짝은 경로로 남아 있어, 흔들리는 스냅을 빼 번호가 바뀌어도 맞는다. 빠진 짝은 None."""
+    at = {s.path: i for i, s in enumerate(snaps)}
+    return [at.get(s.lined_up_with) if s.lined_up_with else None for s in snaps]
+
+
 def _match(snaps: list[Snap], series, concepts, beats, spec: dict, seed: int = 0):
     """매치컷 레시피 — 스냅마다 쓸 구간의 끝 · 시작 특징으로 연결 점수를 매겨 순서를 정하고(점수 위주로 자유롭게), 다시 컷을 정한 뒤
     문턱을 넘는 경계에 매치 줌을 건다. 반환: (순서, 컷 계획, 경계별 매치 또는 None, 경계별 점수)."""
@@ -160,7 +166,7 @@ def _match(snaps: list[Snap], series, concepts, beats, spec: dict, seed: int = 0
         return _match_motion(snaps, series, spec, size, tags, seed)
     first = continuity.plan_cuts(series, concepts, beats, spec)  # 순서를 정하기 전 — 스냅마다 쓸 구간의 대략
     ends = [match_cut.ends_of(snaps[c.index].path, c.start_ms, c.end_ms, size) for c in first]
-    pairs = [s.lined_up_with for s in snaps]
+    pairs = _pairs(snaps)
     scores = [[0.0 if i == j else match_cut.link(ends[i][1], ends[j][0], tags[i], tags[j])["score"] + match_cut.pair_bonus(i, j, pairs)
                for j in range(n)] for i in range(n)]
     order = match_cut.order(scores, cfg.get("temperature", 0.0), cfg.get("explore", 0.0), seed) if cfg.get("order") else list(range(n))
@@ -199,7 +205,7 @@ def _match_motion(snaps: list[Snap], series, spec: dict, size, tags, seed: int =
                      match_cut.with_motion(end, "zoom_in") if w.ends_in else end))
     weights = match_cut.MOTION_WEIGHTS
     m = len(items)
-    pairs = [s.lined_up_with for s in snaps]
+    pairs = _pairs(snaps)
     scores = [[-1.0 if items[x][0] == items[y][0] else
                match_cut.link(ends[x][1], ends[y][0], tags[items[x][0]], tags[items[y][0]], weights)["score"]
                + match_cut.pair_bonus(items[x][0], items[y][0], pairs)
@@ -333,7 +339,7 @@ def _match_beam(snaps: list[Snap], series, spec: dict, size, tags, seed: int, be
     ramp = float(prims.get("speedRamp") or 0.0)
     a, b = continuity.RAMP_SPAN
     scale = (a + (b - a) / ramp + (1 - b)) if ramp else 1.0
-    pairs = [s.lined_up_with for s in snaps]
+    pairs = _pairs(snaps)
     seq = fast_cut.beam(cands, lambda i, j: part(i, j)["score"] + match_cut.pair_bonus(cands[i].snap, cands[j].snap, pairs),
                         cont.get("minMovieMs") or 15000,
                         width=cfg.get("beamWidth", 8), per_snap=1,  # 같은 스냅은 한 번만(ONE_CUT_PER_SNAP)

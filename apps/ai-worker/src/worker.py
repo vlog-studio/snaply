@@ -239,7 +239,8 @@ async def _render_trend(video_ids, local_sources, preset, recipe_name, data, job
         captured = await db.fetch_captured_at(video_ids)
         client_ids, lined = await db.fetch_lined_up_with(video_ids)
         pairs = match_cut.pairs_of(video_ids, [client_ids.get(v) for v in video_ids], [lined.get(v) for v in video_ids])
-        snaps = [trend_edit.Snap(local_sources[v], analyses.get(v) or {}, _local_time(captured.get(v)), pairs[k])
+        snaps = [trend_edit.Snap(local_sources[v], analyses.get(v) or {}, _local_time(captured.get(v)),
+                                 local_sources[video_ids[pairs[k]]] if pairs[k] is not None else None)
                  for k, v in enumerate(video_ids)]
         # 곡 라이브러리는 컨테이너 안에 받아 둔다(볼륨 없음) — 배포로 새로 뜬 워커는 비어 있으므로 고르기 전에 맞춘다. 보통 경로는
         # music.apply_bgm 이 맞추지만 이 경로는 곡을 직접 고른다(빠뜨려 배포 직후 AI 컷 무비에 BGM 이 없었다, 2026-10-29)
