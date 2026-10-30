@@ -94,6 +94,35 @@ export type MovieSharing = {
   openInInstagram: () => Promise<InstagramHandoff>;
   /** True from that press until Instagram opens or the save fails. */
   handingOff: boolean;
+  /**
+   * Saves the rendered movie to the device album (MOV-15) — the way to keep
+   * it on the phone, since Android's share sheet has no save target. Resolves
+   * how it ended so the caller can say why it did not happen; `saved` also
+   * counts as offered, and unlike a share the app knows the file landed.
+   */
+  saveToAlbum: () => Promise<AlbumSave>;
+  /** True from that press until the save ends. */
+  savingToAlbum: boolean;
+  /** True once **this render** was saved to the album during this visit. */
+  savedToAlbum: boolean;
+};
+
+/**
+ * How a save to the album ended — the hand-off's cases minus opening Instagram.
+ * `busy` and `resolving` are ignored taps and say nothing, as there.
+ */
+export type AlbumSave =
+  'saved' | 'busy' | 'resolving' | 'blocked' | 'failed' | 'unavailable' | 'unresolved';
+
+/** What the screen says when the save could not happen. */
+export const AlbumSaveMessages: Record<
+  Exclude<AlbumSave, 'saved' | 'busy' | 'resolving'>,
+  string
+> = {
+  blocked: '무비를 앨범에 저장하려면 사진 권한이 필요해요.',
+  failed: '무비를 앨범에 저장하지 못했어요. 다시 시도해 주세요.',
+  unavailable: ShareBlockMessages['no-render'],
+  unresolved: ShareBlockMessages.unresolved,
 };
 
 /**
@@ -112,10 +141,10 @@ export const InstagramHandoffMessages: Record<
   string
 > = {
   saved: '무비를 앨범에 저장했어요. Instagram 앱을 직접 열어 올려 주세요.',
-  blocked: '무비를 앨범에 저장하려면 사진 권한이 필요해요.',
-  failed: '무비를 앨범에 저장하지 못했어요. 다시 시도해 주세요.',
-  unavailable: ShareBlockMessages['no-render'],
-  unresolved: ShareBlockMessages.unresolved,
+  blocked: AlbumSaveMessages.blocked,
+  failed: AlbumSaveMessages.failed,
+  unavailable: AlbumSaveMessages.unavailable,
+  unresolved: AlbumSaveMessages.unresolved,
 };
 
 /**
@@ -145,10 +174,14 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
   // The render the sheet was last opened on, so the flag dies with the render.
   const [offeredFor, setOfferedFor] = useState<string>();
   const [handingOff, setHandingOff] = useState(false);
+  const [savingToAlbum, setSavingToAlbum] = useState(false);
+  // The render last saved to the album, so the flag dies with the render.
+  const [savedFor, setSavedFor] = useState<string>();
   // The state above draws the controls; these decide, because a second tap can
   // land before the first one's render (2026-10-14 review, backlog E-53).
   const sharing = useRef(false);
   const handing = useRef(false);
+  const saving = useRef(false);
   const renderKey = movie?.render ? `${movie.id}-${movie.render.renderedAt}` : undefined;
 
   const share = () => {
@@ -178,27 +211,59 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
     })();
   };
 
-  const openInInstagram = async (): Promise<InstagramHandoff> => {
-    // The same empty-`uri` cases as 공유 (`ShareBlock`): a finished movie whose
-    // link is still on its way or could not be fetched must not be told it was
-    // never finished.
+  // The same empty-`uri` cases as 공유 (`ShareBlock`): a finished movie whose
+  // link is still on its way or could not be fetched must not be told it was
+  // never finished.
+  const albumTarget = ():
+    { key: string; from: string } | 'unavailable' | 'resolving' | 'unresolved' => {
     if (!movie?.render) return 'unavailable';
-    if (!uri) {
-      if (source.resolving) return 'resolving';
-      return source.unresolved ? 'unresolved' : 'unavailable';
+    if (uri) return { key: `${movie.id}-${movie.render.renderedAt}`, from: uri };
+    if (source.resolving) return 'resolving';
+    return source.unresolved ? 'unresolved' : 'unavailable';
+  };
+
+  /** The render into the album — what 앨범에 저장 is, and the first half of the hand-off. */
+  const putInAlbum = async (target: {
+    key: string;
+    from: string;
+  }): Promise<'saved' | 'blocked'> => {
+    const permission = await requestAlbumPermission();
+    if (!permission.granted) return 'blocked';
+    const localUri = await downloadRenderFile(target.from, target.key);
+    await saveVideoToAlbum(localUri);
+    // The file is the user's now — the same moment 공유 offers 끝내기 (MOV-17).
+    setOfferedFor(target.key);
+    return 'saved';
+  };
+
+  const saveToAlbum = async (): Promise<AlbumSave> => {
+    const target = albumTarget();
+    if (typeof target === 'string') return target;
+    if (saving.current) return 'busy';
+    saving.current = true;
+    setSavingToAlbum(true);
+    try {
+      const outcome = await putInAlbum(target);
+      if (outcome === 'saved') setSavedFor(target.key);
+      return outcome;
+    } catch (error) {
+      if (__DEV__) console.warn('[movie] album save failed:', String(error));
+      return 'failed';
+    } finally {
+      saving.current = false;
+      setSavingToAlbum(false);
     }
+  };
+
+  const openInInstagram = async (): Promise<InstagramHandoff> => {
+    const target = albumTarget();
+    if (typeof target === 'string') return target;
     if (handing.current) return 'busy';
-    const key = `${movie.id}-${movie.render.renderedAt}`;
     handing.current = true;
     setHandingOff(true);
     try {
       try {
-        const permission = await requestAlbumPermission();
-        if (!permission.granted) return 'blocked';
-        const localUri = await downloadRenderFile(uri, key);
-        await saveVideoToAlbum(localUri);
-        // The file is the user's now — the same moment 공유 offers 끝내기 (MOV-17).
-        setOfferedFor(key);
+        if ((await putInAlbum(target)) === 'blocked') return 'blocked';
       } catch (error) {
         if (__DEV__) console.warn('[movie] instagram hand-off failed:', String(error));
         return 'failed';
@@ -233,5 +298,8 @@ export function useShareMovie(movie: Movie | undefined, source: ShareSource): Mo
     share,
     openInInstagram,
     handingOff,
+    saveToAlbum,
+    savingToAlbum,
+    savedToAlbum: renderKey !== undefined && savedFor === renderKey,
   };
 }
