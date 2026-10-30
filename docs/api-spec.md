@@ -113,6 +113,21 @@ OpenAPI 로 표현되지 않아 아래 [WebSocket](#websocket-edit-jobsidprogres
 
 ---
 
+## 촬영 코치 (`contract/capture-coach.ts`)
+
+촬영 가이드를 켠 사용자에게 **앞 컷의 마지막 장면 한 장**을 AI 가 읽어 다음 컷 안내 한 줄과 피사체 자리를 돌려준다.
+결과는 **사용자에게 그대로 보인다**(스냅 분석과 다르다). **저장하지 않는다.**
+요구: [specs/snap-library.md](./specs/snap-library.md) SNAP-25 · 배경: [decisions/capture-coach.md](./decisions/capture-coach.md) §6
+
+- `POST /capture-coach/previous-cut` 🔒 — **동기**. body `{ image }`(JPEG base64, 데이터 URL 접두어 없이, 1.5M 자 이하) →
+  `{ scene, subject: { cx, cy, size } | null, advice, model }`. `scene` 은 `food | person | person_landscape | landscape | other`,
+  `subject` 는 장면 너비 · 높이의 몫(0~1, 왼쪽 위가 0)이고 크기는 너비의 몫이다(편집기의 피사체 정의와 같은 단위). 보통 1~2초, 길어야 8초.
+  모델은 `CAPTURE_COACH_MODEL`(기본 `gpt-6-luna`). 유저당 분당 20회.
+  에러: 동의 없음 `403 ANALYSIS_CONSENT_REQUIRED` · 서버 스위치 꺼짐 `503 ANALYSIS_DISABLED` · 모델 키 없음 `503 CAPTURE_COACH_UNAVAILABLE` ·
+  모델 실패 · 시간 초과 · 형식이 맞지 않는 답 `502 CAPTURE_COACH_FAILED` · base64 가 아님 400. **앱은 어느 실패든 모델 없는 안내로 돌아간다.**
+
+---
+
 ## AI 편집 (`contract/edit-jobs.ts`)
 
 편집 작업은 무비 생성(`POST /movies/{id}/export`)이 쓰는 엔진이다. **작업은 무비 생성으로만 만든다** — 만드는 규칙(크레딧 예약 ·

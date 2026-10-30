@@ -10,6 +10,7 @@ export * from './common.js';
 export * from './vocab.js';
 export * from './auth.js';
 export * from './analysis-consent.js';
+export * from './capture-coach.js';
 export * from './videos.js';
 export * from './video-analyses.js';
 export * from './edit-jobs.js';
@@ -40,6 +41,7 @@ import {
   revenuecatWebhook,
   syncPurchases,
 } from './billing.js';
+import { readPreviousCut } from './capture-coach.js';
 import { cancelEditJob, getEditJob } from './edit-jobs.js';
 import { getHealth } from './health.js';
 import { listNearbyLocations, reportGeofenceEnter } from './locations.js';
@@ -128,6 +130,7 @@ export const apiContract = {
   createAdRewardSession,
   getAdRewardStatus,
   abandonAdRewardSession,
+  readPreviousCut,
   revenuecatWebhook,
   admobSsvCallback,
 } as const;

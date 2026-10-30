@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import type { LocalRecording } from '@/shared/lib/recording-files';
 
 import { useCameraDevice } from './use-camera-device';
+import { useCaptureGuide } from './use-capture-guide';
 import { useCaptureSession, type RecordingStage } from './use-capture-session';
 import { useRecordingLibrary } from './use-recording-library';
 import { useRecordingPermissions } from './use-recording-permissions';
@@ -11,8 +12,9 @@ import { useRecordingPermissions } from './use-recording-permissions';
 type CaptureStage = RecordingStage | 'review';
 
 /**
- * Composes the capture screen out of its four concerns — permissions, the
- * camera device, one capture run, and the saved-recording library — and owns
+ * Composes the capture screen out of its five concerns — permissions, the
+ * camera device, one capture run, the saved-recording library, and the framing
+ * guide — and owns
  * only what genuinely spans them: the screen's stage, its single error banner,
  * and the flows that touch more than one concern (leaving, retaking, opening
  * the library, previewing and deleting a recording).
@@ -26,6 +28,7 @@ export function useCaptureRecorder() {
   const permissions = useRecordingPermissions();
   const library = useRecordingLibrary();
   const camera = useCameraDevice();
+  const guide = useCaptureGuide();
 
   const clearSurroundingErrors = () => {
     camera.clearError();
@@ -107,5 +110,6 @@ export function useCaptureRecorder() {
     camera,
     session,
     library,
+    guide,
   };
 }

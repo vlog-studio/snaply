@@ -17,6 +17,10 @@
 > 사용자에게 보이지 않는다는 §2 는 그대로다. §6.1 의 철회는 분석 결과 · 추천 기록에 더해 AI 편집 초안 기록(`movie_drafts`)과 분석에서 나온 취향
 > 행도 지운다(`apps/api/src/services/analysis-consent.service.ts` 의 `withdrawAnalysisConsent` → `purgeContentTastes`).
 
+> **후속 결정**(2026-10-29): 촬영 코치가 같은 동의 · 같은 스위치로 **앞 컷의 마지막 장면 한 장**을 `gpt-6-luna` 로 해석하고,
+> 그 결과(다음 컷 안내 한 줄 · 피사체 자리)를 사용자에게 보여 준다 — §2(결과 비노출)와 §3(요청 시점 분석)의 예외다. 해석은
+> 저장하지 않는다([capture-coach.md](capture-coach.md) §6).
+
 §1~§6 은 방향 결정이고, **§9 는 그 방향으로 실제 구현하면서 계획과 달라진 지점**이다.
 
 ---
