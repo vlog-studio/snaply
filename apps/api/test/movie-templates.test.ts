@@ -37,15 +37,16 @@ describe('GET /movie-templates', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('마이그레이션이 넣은 4개를 정렬 순서대로 준다', async () => {
+  it('마이그레이션이 넣고 내리지 않은 3개를 정렬 순서대로 준다', async () => {
     const user = await h.createUser();
 
     const res = await getCatalog(user);
 
     expect(res.statusCode).toBe(200);
     const { templates } = res.json().data;
-    // 앱의 내장 폴백 카탈로그와 같은 id·같은 순서여야 한다.
-    expect(templates.map((t: { id: string }) => t.id)).toEqual(['walk', 'day', 'cafe', 'trip']);
+    // 앱의 내장 폴백 카탈로그와 같은 id·같은 순서여야 한다. `cafe` 는 2026-11-02 에 내렸다
+    // (마이그레이션 20261102000000_retire_cafe_template).
+    expect(templates.map((t: { id: string }) => t.id)).toEqual(['walk', 'day', 'trip']);
   });
 
   it('각 템플릿이 편집 프리셋과 슬롯을 촬영 순서대로 들고 있다', async () => {
@@ -95,14 +96,14 @@ describe('GET /movie-templates', () => {
     const user = await h.createUser();
 
     await h.prisma.movieTemplate.update({
-      where: { id: 'cafe' },
+      where: { id: 'day' },
       data: { retiredAt: new Date() },
     });
     try {
       const { templates } = (await getCatalog(user)).json().data;
-      expect(templates.map((t: { id: string }) => t.id)).toEqual(['walk', 'day', 'trip']);
+      expect(templates.map((t: { id: string }) => t.id)).toEqual(['walk', 'trip']);
     } finally {
-      await h.prisma.movieTemplate.update({ where: { id: 'cafe' }, data: { retiredAt: null } });
+      await h.prisma.movieTemplate.update({ where: { id: 'day' }, data: { retiredAt: null } });
     }
   });
 
