@@ -98,13 +98,47 @@ describe('assignSlots', () => {
     expect(scorePair(cafe, 1, candidate('z', 0, { places: ['음식점'] }), 1)).toBeCloseTo(empty(cafe), 5);
   });
 
-  it('힌트마다 가장 잘 맞는 스냅 개념을 쓰고, 힌트 점수를 평균한다', () => {
+  // 한 필드의 힌트는 "이 중 하나면 된다"는 목록이다 — 하나만 맞아도 그 필드는 온전히 맞는다(decisions/template-snap-recommendation.md §7.3).
+  // 2026-11-02 전에는 힌트 전체의 평균이라 여기가 0.5 였다
+  it('필드 안에서는 가장 잘 맞는 힌트 하나를 쓴다', () => {
     const slot: ScoringSlot = { slotId: 'drink', position: 0, hints: { objects: ['coffee', 'cup'] } };
     const empty = scorePair(slot, 1, candidate('none', 0), 1);
 
-    const half = scorePair(slot, 1, candidate('x', 0, { objects: ['아메리카노', '잔디'] }), 1);
+    const one = scorePair(slot, 1, candidate('x', 0, { objects: ['아메리카노', '잔디'] }), 1);
 
-    expect(half - empty).toBeCloseTo(SCORE_WEIGHTS.keyword * 0.5, 5);
+    expect(one - empty).toBeCloseTo(SCORE_WEIGHTS.keyword * 1, 5);
+  });
+
+  it('힌트가 있는 필드끼리 평균한다 — 여러 필드가 맞을수록 높다', () => {
+    const slot: ScoringSlot = { slotId: 'cafe', position: 0, hints: { places: ['cafe'], objects: ['coffee', 'cup'] } };
+    const empty = scorePair(slot, 1, candidate('none', 0), 1);
+
+    const objectsOnly = scorePair(slot, 1, candidate('x', 0, { objects: ['라떼'] }), 1);
+    const both = scorePair(slot, 1, candidate('y', 0, { places: ['카페'], objects: ['라떼'] }), 1);
+
+    expect(objectsOnly - empty).toBeCloseTo(SCORE_WEIGHTS.keyword * 0.5, 5);
+    expect(both - empty).toBeCloseTo(SCORE_WEIGHTS.keyword * 1, 5);
+  });
+
+  it('힌트를 넉넉히 적은 슬롯에서도 맞는 스냅이 시간 순서를 이긴다', () => {
+    // 2026-11-02 일본 여행 실측의 모양 — 나들이 `넓게 한 번`(힌트 6개, 끝 쪽)에 이른 시각의 호수 컷과 끝 시각의 바 컷
+    const wide: ScoringSlot = {
+      slotId: 'wide',
+      position: 0,
+      hints: { places: ['scenery', 'sea', 'mountain'], topics: ['travel'], objects: ['building', 'sky'], temporalPrior: 0.85 },
+    };
+    // 외출 8컷 중 2번째가 호수, 7번째가 바 — 나머지는 아무 힌트에도 맞지 않는다
+    const candidates = Array.from({ length: 8 }, (_, index) =>
+      index === 1
+        ? candidate('lake', index, { places: ['호숫가'] })
+        : index === 6
+          ? candidate('bar', index, { places: ['실내 바'] })
+          : candidate(`other${index}`, index),
+    );
+
+    const { slots: assigned } = assignSlots([wide], candidates);
+
+    expect(assigned[0]?.videoId).toBe('lake');
   });
 
   it('사전에 없는 힌트 id 는 맞지 않는다', () => {

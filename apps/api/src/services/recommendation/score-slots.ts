@@ -130,20 +130,22 @@ function hintScore(field: ContentMatchField, hint: string, concepts: readonly st
   return concepts.reduce((best, concept) => Math.max(best, contentMatchScore(field, hint, concept)), 0);
 }
 
-/** 힌트 점수의 평균. 힌트가 없는 슬롯은 0 이고, 시간·화질로만 배정된다. 사전 밖 분석값은 맞지 않는다. */
+/**
+ * 필드마다 가장 잘 맞는 힌트 하나의 점수를, 힌트가 있는 필드끼리 평균한다. 한 필드의 힌트는 "이 중 하나면 된다"는 목록이라
+ * 힌트 전체의 평균으로 읽으면 힌트를 넉넉히 적은 슬롯일수록 맞아도 시간 항에 졌다(decisions/template-snap-recommendation.md §7.3).
+ * 힌트가 없는 슬롯은 0 이고, 시간·화질로만 배정된다. 사전 밖 분석값은 맞지 않는다.
+ */
 function keywordScore(hints: SlotMatchHints, analysis: CandidateAnalysis): number {
-  let total = 0;
+  let fields = 0;
   let matched = 0;
   for (const field of HINT_FIELDS) {
     const wanted = hints[field] ?? [];
     if (wanted.length === 0) continue;
     const concepts = normalizeContentValues(field, analysis[field]);
-    for (const hint of wanted) {
-      total += 1;
-      matched += hintScore(field, hint, concepts);
-    }
+    fields += 1;
+    matched += Math.max(...wanted.map((hint) => hintScore(field, hint, concepts)));
   }
-  return total === 0 ? 0 : matched / total;
+  return fields === 0 ? 0 : matched / fields;
 }
 
 /** 슬롯이 기대하는 위치와 스냅이 실제로 찍힌 위치가 얼마나 가까운가. */
