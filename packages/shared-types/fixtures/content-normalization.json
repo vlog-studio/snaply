@@ -123,6 +123,61 @@
     ],
     [
       "places",
+      "호숫가",
+      "lake"
+    ],
+    [
+      "places",
+      "실내 바",
+      "bar"
+    ],
+    [
+      "places",
+      "실내 식사 공간",
+      "restaurant"
+    ],
+    [
+      "places",
+      "기차역 승강장",
+      "station"
+    ],
+    [
+      "objects",
+      "눈 덮인 산",
+      "mountain"
+    ],
+    [
+      "objects",
+      "열차 안내 전광판",
+      "signboard"
+    ],
+    [
+      "objects",
+      "수플레 팬케이크",
+      "dessert"
+    ],
+    [
+      "objects",
+      "맥주잔",
+      "cup"
+    ],
+    [
+      "objects",
+      "볶음면",
+      "noodles"
+    ],
+    [
+      "topics",
+      "설산 풍경",
+      "nature"
+    ],
+    [
+      "topics",
+      "식사",
+      "food_spot"
+    ],
+    [
+      "places",
       "   ",
       null
     ],
