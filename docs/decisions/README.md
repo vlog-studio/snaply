@@ -40,7 +40,7 @@
 | [movie-snap-expiry-exemption.md](movie-snap-expiry-exemption.md) | **잠정** — 무비가 참조 중인 스냅도 만료 예외 없음(현행 유지). 다음 회의에서 요금제(A-2)와 함께 C(편집하면 기간 갱신)부터 다시 본다 | 코드 변경 없음(현행) |
 | [api-contract-schema-first.md](api-contract-schema-first.md) | API 계약 원천을 `packages/shared-types` Zod 스키마로 통일 | 완료 |
 | [snap-content-analysis.md](snap-content-analysis.md) | 스냅 내용 분석(vision) 도입. 법무 검토 전에는 사용자 동의(옵트인)로 켠다(2026-09-29 §6.1) | 분석·동의 완료. 결과는 AI 초안 · 취향에도 쓰인다(2026-10-13). 추천의 생산 활성화는 A-3 |
-| [template-snap-recommendation.md](template-snap-recommendation.md) | 템플릿 기반 스냅 자동 추천 — 앱 로컬 매칭 + 서버 추천 2단계, 서버 카탈로그, 무료 추천과 상한, 규칙 기반 점수화. 켜는 조건은 2026-09-29 부터 옵트인 | 완료, 생산 활성화 대기(A-6) |
+| [template-snap-recommendation.md](template-snap-recommendation.md) | 템플릿 기반 스냅 자동 추천 — 앱 로컬 매칭 + 서버 추천 2단계, 서버 카탈로그, 무료 추천과 상한, 규칙 기반 점수화(키워드는 필드별 최댓값의 평균, 2026-11-02). 켜는 조건은 2026-09-29 부터 옵트인 | 완료, 생산 활성화 대기(A-6) |
 | [edit-spec-v3.md](edit-spec-v3.md) | editSpec v3·에셋 매니페스트·어휘 사전의 설계 규칙(시드·핀·무효화·큐 분리·사전 로딩) | 어휘 사전 6종 구현(전환·컷 역할은 2026-10-01, 내용 개념은 2026-10-13) · 큐 분리(`edit-v3`)와 v3 `timeline`(컷·경계별 전환) 부분 구현(2026-10-01). 스키마 본문은 [plans/](../plans/README.md) 초안, 확정·파이프라인은 A-7 |
 | [transition-director.md](transition-director.md) | 고를 수 있는 전환 v1 다섯과 겹침형의 여분 프레임 규칙. AI 가 경계마다 전환을 고르는 규칙 — 스타일 경향 · 30분 장면 전환 · 두 컷을 키로 한 시드. 여분이 없어 들어가지 않는 `crossfade` 는 `dip` 으로 | 완료(2026-10-01, 편집 화면의 선택·미리보기 포함 — Galaxy 실기기 확인) |
 | [edit-director.md](edit-director.md) | AI 편집 초안이 스냅을 고르고 자르는 규칙 — 극단만 거르기(절반 한도) · 10분 안의 중복 · 컷 상한(MOV-5, 2026-10-20 부터 20)을 넘으면 촬영 흐름을 묶음으로 나눠 고르기 · 촬영순 · 스타일별 컷 길이와 겹침용 여분 | 구현됨(2026-10-01) — 문턱값은 잠정 |
