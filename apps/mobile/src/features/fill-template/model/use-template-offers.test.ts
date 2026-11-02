@@ -56,7 +56,7 @@ describe('useTemplateOffers', () => {
   it('offers every template in the catalog, with what the library fills', async () => {
     const { result } = await renderOffers();
 
-    expect(result.current).toHaveLength(4);
+    expect(result.current).toHaveLength(3);
     expect(result.current.every((offer) => offer.filled === 0)).toBe(true);
   });
 
@@ -73,14 +73,9 @@ describe('useTemplateOffers', () => {
     const { result } = await renderOffers();
 
     // 하루 요약 asks for four and has them; the rest are short and, with no
-    // taste, keep the catalog's order (동네 산책 · 카페 한 곳 · 나들이) — how
-    // many cuts each is short no longer reorders them (2026-10-15).
-    expect(result.current.map((offer) => offer.template.id)).toEqual([
-      'day',
-      'walk',
-      'cafe',
-      'trip',
-    ]);
+    // taste, keep the catalog's order (동네 산책 · 나들이) — how many cuts each
+    // is short no longer reorders them (2026-10-15).
+    expect(result.current.map((offer) => offer.template.id)).toEqual(['day', 'walk', 'trip']);
     expect(result.current[0]).toMatchObject({ filled: 4, slotCount: 4 });
   });
 
@@ -93,18 +88,13 @@ describe('useTemplateOffers', () => {
       makeSnap('c', 20),
       makeSnap('d', 30),
     ]);
-    mockTemplateOrder.mockReturnValue(['trip', 'cafe', 'day', 'walk']);
+    mockTemplateOrder.mockReturnValue(['trip', 'day', 'walk']);
 
     const { result } = await renderOffers();
 
     // 하루 요약 is the one the library fills, so it stays first even though the
-    // taste ranks it third; 나들이 (two short) now leads 카페 한 곳 (one short).
-    expect(result.current.map((offer) => offer.template.id)).toEqual([
-      'day',
-      'trip',
-      'cafe',
-      'walk',
-    ]);
+    // taste ranks it second; 나들이 (two short) now leads 동네 산책 (two short).
+    expect(result.current.map((offer) => offer.template.id)).toEqual(['day', 'trip', 'walk']);
   });
 
   // The studio card draws these as its strip, so they must be the cuts the
@@ -132,11 +122,6 @@ describe('useTemplateOffers', () => {
   it('keeps the catalog order when the library fills none and there is no taste', async () => {
     const { result } = await renderOffers();
 
-    expect(result.current.map((offer) => offer.template.id)).toEqual([
-      'walk',
-      'day',
-      'cafe',
-      'trip',
-    ]);
+    expect(result.current.map((offer) => offer.template.id)).toEqual(['walk', 'day', 'trip']);
   });
 });
