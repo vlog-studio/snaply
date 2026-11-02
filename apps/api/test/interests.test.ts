@@ -128,9 +128,9 @@ describe('interests in the taste profile', () => {
       }>).map((template) => template.id);
     expect((await order())[0]).toBe('walk');
 
-    await setInterests(user, ['cafe']);
+    await setInterests(user, ['travel']);
 
-    expect((await order())[0]).toBe('cafe');
+    expect((await order())[0]).toBe('trip');
   });
 });
 

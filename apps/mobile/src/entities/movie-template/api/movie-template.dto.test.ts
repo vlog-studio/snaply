@@ -3,12 +3,12 @@ import { mapMovieTemplate, movieTemplateCatalogDtoSchema } from './movie-templat
 
 function dto(over: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 'cafe',
-    name: '카페 한 곳',
-    description: '다녀온 카페를 소개하는 5컷',
+    id: 'walk',
+    name: '동네 산책',
+    description: '걸으며 찍은 6컷',
     style: '감성',
-    bgm: 'sunny-side',
-    slots: [{ id: 'front', label: '외관', hint: '가게 앞' }],
+    bgm: 'lofi-walk',
+    slots: [{ id: 'start', label: '출발', hint: '집 앞이나 지하철 출구' }],
     ...over,
   };
 }
@@ -29,11 +29,17 @@ describe('movieTemplateCatalogDtoSchema', () => {
     const parsed = movieTemplateCatalogDtoSchema.parse({
       updatedAt: '2026-08-19T00:00:00.000Z',
       templates: [
-        dto({ slots: [{ id: 'front', label: '외관', hint: '가게 앞', matchHints: {} }] }),
+        dto({
+          slots: [{ id: 'start', label: '출발', hint: '집 앞이나 지하철 출구', matchHints: {} }],
+        }),
       ],
     });
 
-    expect(parsed.templates[0].slots[0]).toEqual({ id: 'front', label: '외관', hint: '가게 앞' });
+    expect(parsed.templates[0].slots[0]).toEqual({
+      id: 'start',
+      label: '출발',
+      hint: '집 앞이나 지하철 출구',
+    });
   });
 });
 
@@ -60,7 +66,7 @@ describe('mapMovieTemplate', () => {
   it('maps the seeded catalog back to what the build ships', () => {
     // The ids and copy are seeded from this constant, so a mapped server row and
     // the offline fallback must describe the same template.
-    const shipped = MovieTemplateCatalog.find((template) => template.id === 'cafe');
+    const shipped = MovieTemplateCatalog.find((template) => template.id === 'walk');
     const mapped = mapMovieTemplate(
       dto({
         slots: shipped?.slots.map((slot) => ({ ...slot })),

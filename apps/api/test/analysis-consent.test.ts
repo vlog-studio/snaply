@@ -259,7 +259,7 @@ describe('동의와 서버 스위치가 분석·추천을 막는다', () => {
       method: 'POST',
       url: '/movie-recommendations',
       headers: user.auth,
-      payload: { templateId: 'cafe', candidates },
+      payload: { templateId: 'walk', candidates },
     });
     expect(res.statusCode).toBe(403);
     expect(res.json().error.code).toBe('ANALYSIS_CONSENT_REQUIRED');

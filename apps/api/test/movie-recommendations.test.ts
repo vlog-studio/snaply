@@ -25,8 +25,12 @@ let h: Harness;
 beforeAll(async () => {
   // 경로는 기본이 꺼짐이다. 켠 상태를 검증하려면 하네스에서 명시적으로 켠다.
   h = await createHarness({ MOVIE_RECOMMENDATION_ENABLED: 'true' });
+  // 점수화 규칙은 슬롯 다섯 개가 모두 한 장소(카페)를 요구하는 `cafe` 로 검증한다. 2026-11-02 에 목록에서 내렸지만
+  // (마이그레이션 20261102000000_retire_cafe_template) 규칙은 그대로라, 이 파일 동안만 되살린다 — 파일은 순서대로 돈다.
+  await h.prisma.movieTemplate.update({ where: { id: 'cafe' }, data: { retiredAt: null } });
 });
 afterAll(async () => {
+  await h.prisma.movieTemplate.update({ where: { id: 'cafe' }, data: { retiredAt: new Date() } });
   await h.close();
 });
 beforeEach(async () => {

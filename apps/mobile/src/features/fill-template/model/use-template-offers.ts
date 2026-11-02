@@ -36,7 +36,7 @@ export type TemplateOffer = {
  *
  * **Within each group, the server's order** (spec PRF-3): the
  * server orders the catalog by the user's taste, and keeps the catalog's own
- * order (`sort_order`) when there is none. So a cafe lover sees 카페 한 곳 ahead
+ * order (`sort_order`) when there is none. So a travel lover sees 나들이 ahead
  * of the other templates the library is short for, however many cuts each is
  * short, and a user with no taste sees the catalog's order. The row stays
  * stable while the library and the taste do.

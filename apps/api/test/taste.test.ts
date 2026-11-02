@@ -148,7 +148,7 @@ describe('signals from recommendations and drafts', () => {
       method: 'POST',
       url: '/movie-recommendations',
       headers: user.auth,
-      payload: { templateId: 'cafe', candidates: [cafe, sea] },
+      payload: { templateId: 'walk', candidates: [cafe, sea] },
     });
     const id = create.json().data.id;
 
@@ -342,14 +342,14 @@ describe('reflecting taste (PRF-3)', () => {
 
   it('keeps the catalog order for a user without taste', async () => {
     const user = await h.createUser();
-    expect(await templateOrder(user)).toEqual(['walk', 'day', 'cafe', 'trip']);
+    expect(await templateOrder(user)).toEqual(['walk', 'day', 'trip']);
   });
 
   it('brings forward the templates whose slots match what the user likes', async () => {
     const user = await h.createUser();
-    await setTaste(user, 'places', 'cafe', 0.8);
+    await setTaste(user, 'topics', 'travel', 0.8);
 
-    expect((await templateOrder(user))[0]).toBe('cafe');
+    expect((await templateOrder(user))[0]).toBe('trip');
   });
 
   it('only pushes a disliked template back — it stays in the list', async () => {
@@ -357,7 +357,7 @@ describe('reflecting taste (PRF-3)', () => {
     await setTaste(user, 'topics', 'walk', -0.9);
 
     const order = await templateOrder(user);
-    expect(order).toHaveLength(4);
+    expect(order).toHaveLength(3);
     expect(order[order.length - 1]).toBe('walk');
   });
 
